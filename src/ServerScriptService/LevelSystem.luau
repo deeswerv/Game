@@ -60,6 +60,12 @@ local function mirrorToPlayer(player: Player, data)
 			end
 		end
 	end
+	-- Also published as an attribute, the way Prestige is. The market reads it to decide
+	-- which guns are still locked and nameplates show it -- both were reading an attribute
+	-- nothing ever set, so every client believed every player was level 1.
+	if data.Level ~= nil then
+		player:SetAttribute("Level", data.Level)
+	end
 end
 
 -- How much a kill is worth, given who died.

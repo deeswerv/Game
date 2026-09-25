@@ -34,6 +34,7 @@ local systems = {
 	"QuestService",        -- quests, the giver NPC, and kill tracking
 	"CrystalService",       -- crystal nodes; a reason to look at the world
 	"CosmeticService",      -- hats and backs over the locked body; massless, never block shots
+	"AvatarLook",          -- each player's own clothes, skin, hair and hats on the locked body
 	"EmoteService",         -- emote wheel; the server owns which emotes exist
 	"CombatFeedService",   -- aim replication and the kill feed, both for the combat HUD
 	"WeaponBuildService",  -- per-player saved builds, camos, and dressing weapons on equip

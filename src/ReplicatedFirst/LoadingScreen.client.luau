@@ -24,18 +24,26 @@ ReplicatedFirst:RemoveDefaultLoadingScreen()
 
 -- Copied from Theme -- see the header.
 local SCRIM = Color3.fromRGB(8, 10, 14)
-local PANEL = Color3.fromRGB(23, 26, 33)
-local STROKE = Color3.fromRGB(46, 52, 65)
+local OUTLINE = Color3.fromRGB(8, 8, 12)
 local TEXT = Color3.fromRGB(255, 255, 255)
-local TEXT_DIM = Color3.fromRGB(167, 174, 188)
-local ACCENT = Color3.fromRGB(55, 214, 122)
+local TEXT_DIM = Color3.fromRGB(186, 190, 200)
+local ACCENT = Color3.fromRGB(46, 204, 84)
+local GOLD_TOP = Color3.fromRGB(255, 240, 120)
+local GOLD_BOTTOM = Color3.fromRGB(255, 160, 20)
 
 local MAX_WAIT = 20          -- hard ceiling on the whole screen, whatever else happens
--- Long enough that the screen is read rather than flashed, and no longer. It was 8, from
--- back when the profile took ~2s to load and the number was picked by hand; with HD Admin's
--- boot-time asset fetch gone the profile lands in under a second, so 8 was six seconds of
--- staring at a finished bar. A loading screen that waits for nothing is just a toll gate.
-local MIN_SHOW = 2.2
+-- Long enough that the screen is read rather than flashed, and no longer.
+local MIN_SHOW = 2.6
+
+-- What a first-time player most needs to know, one line at a time while they wait.
+local TIPS = {
+	"Press  M  to open the Shop and unlock new guns",
+	"Hold  Right Click  to aim down sights",
+	"Press  J  to queue for a 1v1 duel",
+	"Press  K  to fit attachments in the Armory",
+	"Press  N  to claim your free daily reward",
+	"Press  B  to equip weapons from your Inventory",
+}
 
 -- ------------------------------------------------------------------ build --
 
@@ -47,62 +55,129 @@ screen.DisplayOrder = 1000        -- above everything, including the killcam
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.Parent = playerGui
 
-local backdrop = Instance.new("Frame")
+-- One CanvasGroup holds everything, so the whole screen fades out as a single layer.
+local backdrop = Instance.new("CanvasGroup")
 backdrop.Name = "Backdrop"
 backdrop.BackgroundColor3 = SCRIM
 backdrop.BorderSizePixel = 0
 backdrop.Size = UDim2.fromScale(1, 1)
 backdrop.Parent = screen
 
+-- A soft lift in the middle so the title sits in light rather than on flat black.
+local glow = Instance.new("UIGradient")
+glow.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 120, 130)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 120, 130)),
+})
+glow.Rotation = 90
+glow.Parent = backdrop
+
+-- Slow diagonal stripes drifting across, so the screen is never a still image.
+local stripes = Instance.new("Frame")
+stripes.Name = "Stripes"
+stripes.BackgroundTransparency = 1
+stripes.AnchorPoint = Vector2.new(0.5, 0.5)
+stripes.Position = UDim2.fromScale(0.5, 0.5)
+stripes.Size = UDim2.fromScale(1.6, 1.6)
+stripes.Rotation = -18
+stripes.Parent = backdrop
+for i = 0, 11 do
+	local band = Instance.new("Frame")
+	band.BackgroundColor3 = Color3.fromRGB(40, 44, 58)
+	band.BackgroundTransparency = 0.55
+	band.BorderSizePixel = 0
+	band.Size = UDim2.new(0.035, 0, 1, 0)
+	band.Position = UDim2.fromScale(i / 12, 0)
+	band.Parent = stripes
+end
+TweenService:Create(stripes, TweenInfo.new(18, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), {
+	Position = UDim2.fromScale(0.5 + 1 / 12 * 1.6, 0.5),
+}):Play()
+
+local function edge(label: GuiObject, thickness: number, colour: Color3?)
+	local s = Instance.new("UIStroke")
+	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+	s.Color = colour or OUTLINE
+	s.Thickness = thickness
+	s.LineJoinMode = Enum.LineJoinMode.Round
+	s.Parent = label
+end
+
 local card = Instance.new("Frame")
 card.Name = "Card"
-card.BackgroundColor3 = PANEL
-card.BorderSizePixel = 0
+card.BackgroundTransparency = 1
 card.AnchorPoint = Vector2.new(0.5, 0.5)
-card.Position = UDim2.fromScale(0.5, 0.5)
-card.Size = UDim2.fromOffset(420, 150)
+card.Position = UDim2.fromScale(0.5, 0.46)
+card.Size = UDim2.fromOffset(640, 260)
 card.Parent = backdrop
 
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 14)
-corner.Parent = card
+local titleRow = Instance.new("Frame")
+titleRow.BackgroundTransparency = 1
+titleRow.Size = UDim2.new(1, 0, 0, 96)
+titleRow.Parent = card
+local titleList = Instance.new("UIListLayout")
+titleList.FillDirection = Enum.FillDirection.Horizontal
+titleList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+titleList.VerticalAlignment = Enum.VerticalAlignment.Center
+titleList.Padding = UDim.new(0, 18)
+titleList.SortOrder = Enum.SortOrder.LayoutOrder
+titleList.Parent = titleRow
 
-local stroke = Instance.new("UIStroke")
-stroke.Color = STROKE
-stroke.Thickness = 1
-stroke.Parent = card
+local function titleWord(text: string, order: number, gold: boolean): TextLabel
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.Text = text
+	label.TextSize = 84
+	label.TextColor3 = TEXT
+	label.AutomaticSize = Enum.AutomaticSize.XY
+	label.Size = UDim2.fromOffset(0, 0)
+	label.LayoutOrder = order
+	label.Parent = titleRow
+	edge(label, 5)
+	if gold then
+		local g = Instance.new("UIGradient")
+		g.Color = ColorSequence.new(GOLD_TOP, GOLD_BOTTOM)
+		g.Rotation = 90
+		g.Parent = label
+	end
+	return label
+end
+titleWord("PROJECT", 1, false)
+titleWord("ZEE", 2, true)
 
-local title = Instance.new("TextLabel")
-title.BackgroundTransparency = 1
-title.Font = Enum.Font.GothamBlack
-title.Text = "PROJECT ZEE"
-title.TextSize = 30
-title.TextColor3 = TEXT
-title.Size = UDim2.new(1, 0, 0, 34)
-title.Position = UDim2.fromOffset(0, 30)
-title.Parent = card
+local titleScale = Instance.new("UIScale")
+titleScale.Scale = 0.6
+titleScale.Parent = titleRow
+TweenService:Create(titleScale, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 
 local status = Instance.new("TextLabel")
 status.Name = "Status"
 status.BackgroundTransparency = 1
-status.Font = Enum.Font.GothamMedium
+status.Font = Enum.Font.SourceSansBold
 status.Text = "Connecting"
-status.TextSize = 13
+status.TextSize = 24
 status.TextColor3 = TEXT_DIM
-status.Size = UDim2.new(1, 0, 0, 16)
-status.Position = UDim2.fromOffset(0, 68)
+status.Size = UDim2.new(1, 0, 0, 28)
+status.Position = UDim2.fromOffset(0, 112)
 status.Parent = card
+edge(status, 1.8)
 
 local track = Instance.new("Frame")
-track.BackgroundColor3 = SCRIM
+track.BackgroundColor3 = Color3.fromRGB(20, 22, 26)
 track.BorderSizePixel = 0
 track.AnchorPoint = Vector2.new(0.5, 0)
-track.Position = UDim2.new(0.5, 0, 0, 102)
-track.Size = UDim2.fromOffset(340, 4)
+track.Position = UDim2.new(0.5, 0, 0, 152)
+track.Size = UDim2.fromOffset(460, 26)
 track.Parent = card
 local trackCorner = Instance.new("UICorner")
-trackCorner.CornerRadius = UDim.new(1, 0)
+trackCorner.CornerRadius = UDim.new(0, 9)
 trackCorner.Parent = track
+local rim = Instance.new("UIStroke")
+rim.Color = OUTLINE
+rim.Thickness = 3
+rim.Parent = track
 
 local fill = Instance.new("Frame")
 fill.BackgroundColor3 = ACCENT
@@ -110,8 +185,46 @@ fill.BorderSizePixel = 0
 fill.Size = UDim2.fromScale(0, 1)
 fill.Parent = track
 local fillCorner = Instance.new("UICorner")
-fillCorner.CornerRadius = UDim.new(1, 0)
+fillCorner.CornerRadius = UDim.new(0, 9)
 fillCorner.Parent = fill
+local sheen = Instance.new("UIGradient")
+sheen.Color = ColorSequence.new(Color3.fromRGB(220, 255, 220), Color3.fromRGB(150, 180, 150))
+sheen.Rotation = 90
+sheen.Parent = fill
+
+local percent = Instance.new("TextLabel")
+percent.BackgroundTransparency = 1
+percent.Font = Enum.Font.FredokaOne
+percent.Text = "0%"
+percent.TextSize = 18
+percent.TextColor3 = TEXT
+percent.Size = UDim2.fromScale(1, 1)
+percent.ZIndex = 3
+percent.Parent = track
+edge(percent, 2)
+
+local tip = Instance.new("TextLabel")
+tip.Name = "Tip"
+tip.BackgroundTransparency = 1
+tip.Font = Enum.Font.SourceSansBold
+tip.Text = ""
+tip.TextSize = 22
+tip.TextColor3 = Color3.fromRGB(255, 196, 40)
+tip.Size = UDim2.new(1, 0, 0, 26)
+tip.Position = UDim2.fromOffset(0, 206)
+tip.Parent = card
+edge(tip, 1.8)
+
+task.spawn(function()
+	local index = math.random(1, #TIPS)
+	while screen.Parent do
+		tip.Text = "TIP:  " .. TIPS[index]
+		tip.TextTransparency = 1
+		TweenService:Create(tip, TweenInfo.new(0.3), { TextTransparency = 0 }):Play()
+		task.wait(2.4)
+		index = index % #TIPS + 1
+	end
+end)
 
 -- The bar shows the SLOWER of two things: how much has actually loaded, and how far through
 -- the minimum hold we are. Without the second, a fast join fills the bar in two seconds and
@@ -143,7 +256,9 @@ local barDriver = RunService.RenderStepped:Connect(function()
 	-- The bar shows real progress, with time only as a floor on how fast it may APPEAR to
 	-- move: a bar that jumps to full in one frame reads as broken rather than fast.
 	local byTime = elapsed() / MIN_SHOW
-	fill.Size = UDim2.fromScale(math.clamp(math.min(stageTarget, byTime), 0, 1), 1)
+	local shown = math.clamp(math.min(stageTarget, byTime), 0, 1)
+	fill.Size = UDim2.fromScale(shown, 1)
+	percent.Text = string.format("%d%%", math.floor(shown * 100 + 0.5))
 end)
 
 task.spawn(function()
@@ -204,15 +319,10 @@ task.spawn(function()
 	status.Text = "Ready"
 	task.wait(0.2)
 
-	local fade = TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-	TweenService:Create(backdrop, fade, { BackgroundTransparency = 1 }):Play()
-	TweenService:Create(card, fade, { BackgroundTransparency = 1 }):Play()
-	TweenService:Create(stroke, fade, { Transparency = 1 }):Play()
-	for _, label in ipairs({ title, status }) do
-		TweenService:Create(label, fade, { TextTransparency = 1 }):Play()
-	end
-	TweenService:Create(track, fade, { BackgroundTransparency = 1 }):Play()
-	TweenService:Create(fill, fade, { BackgroundTransparency = 1 }):Play()
+	-- The whole screen is one CanvasGroup, so it fades as a single layer.
+	TweenService:Create(backdrop, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		GroupTransparency = 1,
+	}):Play()
 
 	task.wait(0.5)
 	barDriver:Disconnect()
