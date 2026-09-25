@@ -16,6 +16,7 @@
 local TweenService = game:GetService("TweenService")
 
 local Theme = require(script.Parent.Theme)
+local UISound = require(script.Parent.UISound)
 local Components = require(script.Parent.Components)
 
 local Nav = {}
@@ -165,6 +166,7 @@ function Nav.new(parent: GuiObject, entries: { Entry })
 				TweenService:Create(scale, Theme.Tween.Press, { Scale = 0.94 }):Play()
 			end),
 			tile.Activated:Connect(function()
+				UISound.Play("Click")
 				TweenService:Create(scale, Theme.Tween.Pop, { Scale = 1 }):Play()
 				self:DismissHint(entry.id)
 				entry.onActivated()

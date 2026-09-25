@@ -17,6 +17,7 @@ local RunService = game:GetService("RunService")
 local Modules = ReplicatedStorage:WaitForChild("UI"):WaitForChild("Modules")
 local Theme = require(Modules:WaitForChild("Theme"))
 local Components = require(Modules:WaitForChild("Components"))
+local UISound = require(Modules:WaitForChild("UISound"))
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -274,6 +275,9 @@ local function healthColour(fraction: number): Color3
 end
 
 local function present(killed: boolean)
+	-- A heavy hit and a thud under it: the one moment that should sound bad.
+	UISound.Play("Slam", 0.55)
+	UISound.Play("Clunk", 0.4, 0.8)
 	-- Headline slams in, the card rises and fades in under it.
 	headlineScale.Scale = 1.7
 	TweenService:Create(headlineScale, TweenInfo.new(0.32, Enum.EasingStyle.Back, Enum.EasingDirection.Out),

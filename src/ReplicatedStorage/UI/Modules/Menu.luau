@@ -19,6 +19,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Theme = require(script.Parent.Theme)
 local Components = require(script.Parent.Components)
+local UISound = require(script.Parent.UISound)
 local UIState = require(ReplicatedStorage:WaitForChild("UIState"))
 
 local Menu = {}
@@ -413,6 +414,7 @@ function Menu:Open()
 
 	-- Counted, not assigned: several panels can be open and each clears only its own entry.
 	UIState.SetOpen(self._id, true)
+	UISound.Play("Whoosh", 1.6, 0.35)
 	self._restoreMouse = UserInputService.MouseBehavior
 	UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 	setBlur(true)

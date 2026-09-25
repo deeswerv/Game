@@ -23,6 +23,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local Theme = require(script.Parent.Theme)
 local Components = require(script.Parent.Components)
+local UISound = require(script.Parent.UISound)
 
 local Duel = {}
 Duel.__index = Duel
@@ -239,6 +240,7 @@ local function buildPlay(self, parent: GuiObject)
 		TweenService:Create(hover, Theme.Tween.Press, { Scale = 0.92 }):Play()
 	end)
 	holder.Activated:Connect(function()
+		UISound.Play("Click")
 		TweenService:Create(hover, Theme.Tween.Pop, { Scale = 1 }):Play()
 		self:_dismissHint()
 		self:Toggle()
@@ -776,6 +778,12 @@ function Duel:_showResults(state)
 
 	if won then
 		self:_confetti(backdrop)
+		UISound.Sequence("Ring", { 1, 1.26, 1.5, 2 }, 0.11)
+	elseif draw then
+		UISound.Play("Slam", 0.9)
+	else
+		UISound.Play("Clunk", 0.45)
+		UISound.Play("Slam", 0.6, 0.8)
 	end
 
 	local function close()
@@ -935,6 +943,7 @@ function Duel:_splash(state)
 	right.slab.Position = UDim2.new(1.1, 0, 0.5, 0)
 	TweenService:Create(left.slab, inInfo, { Position = UDim2.new(0.5, 6, 0.5, 0) }):Play()
 	TweenService:Create(right.slab, inInfo, { Position = UDim2.new(0.5, -6, 0.5, 0) }):Play()
+	UISound.Play("Whoosh", 0.9)
 	self._vsText.TextTransparency = 1
 	task.delay(0.22, function()
 		if self._vsToken ~= token then
@@ -942,6 +951,7 @@ function Duel:_splash(state)
 		end
 		fadeText(self._vsText, 0, 0.01)
 		slam(self._vsText, 3, 0.34)
+		UISound.Play("Slam", 0.75)
 	end)
 
 	task.delay(VS_HOLD, function()
@@ -964,6 +974,7 @@ function Duel:_hideSplash(animated: boolean)
 		return
 	end
 	local outInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+	UISound.Play("Whoosh", 1.25, 0.6)
 	TweenService:Create(self._vsLeft.slab, outInfo, { Position = UDim2.new(-0.1, 0, 0.5, 0) }):Play()
 	TweenService:Create(self._vsRight.slab, outInfo, { Position = UDim2.new(1.1, 0, 0.5, 0) }):Play()
 	fadeText(self._vsText, 1, 0.2)
@@ -980,6 +991,7 @@ end
 
 function Duel:_showCount(n: number)
 	self._pendingCount = nil
+	UISound.Play("Tick", math.clamp(1.25 - n * 0.1, 0.8, 1.3))
 	self._count.Visible = true
 	self._count.Text = tostring(n)
 	self._countGradient.Color = ColorSequence.new(GOLD_TOP, GOLD_BOTTOM)
@@ -1046,6 +1058,7 @@ function Duel:_countdown(state)
 			end
 			self:_banner(string.format("ROUND %d", round), WHITE, Color3.fromRGB(190, 196, 210), sub, colour,
 				MATCH_ROUND_HOLD)
+			UISound.Play("Slam", 0.9)
 		end
 	end
 
@@ -1061,6 +1074,8 @@ end
 
 function Duel:_fight()
 	self:_hideSplash(false)
+	UISound.Play("Tick", 1.7)
+	UISound.Play("Slam", 1.1)
 	self._lastCount = nil
 	self._count.Visible = true
 	self._count.Text = "FIGHT!"
@@ -1107,10 +1122,13 @@ function Duel:_scoreboard(state)
 		local line = string.format("%d  -  %d", you, them)
 		if scored and conceded then
 			self:_banner("TRADED", GOLD_TOP, GOLD_BOTTOM, line)
+			UISound.Play("Slam", 1)
 		elseif scored then
 			self:_banner("ROUND WON", GOLD_TOP, GOLD_BOTTOM, line)
+			UISound.Sequence("Ring", { 1.1, 1.4 }, 0.1)
 		else
 			self:_banner("ROUND LOST", Color3.fromRGB(255, 130, 130), Color3.fromRGB(200, 20, 30), line)
+			UISound.Play("Clunk", 0.55)
 		end
 	end
 	self._lastYou, self._lastThem = you, them

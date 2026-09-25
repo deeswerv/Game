@@ -11,6 +11,7 @@
 local TweenService = game:GetService("TweenService")
 
 local Theme = require(script.Parent.Theme)
+local UISound = require(script.Parent.UISound)
 
 local Components = {}
 
@@ -233,6 +234,11 @@ local function makeInteractive(button: GuiButton, visual: GuiObject, options: { 
 	end)
 	on(button.MouseButton1Up, function()
 		goTo(tint, -Theme.Motion.HoverLift, Theme.Tween.Press)
+	end)
+	-- Every button clicks. Activated rather than the mouse events, so a tap and a gamepad
+	-- press click too.
+	on(button.Activated, function()
+		UISound.Play("Click")
 	end)
 
 	-- Touch never fires MouseEnter, so a phone would otherwise get no press feedback at all.

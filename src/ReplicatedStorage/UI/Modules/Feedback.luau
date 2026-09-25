@@ -16,6 +16,7 @@ local TweenService = game:GetService("TweenService")
 
 local Theme = require(script.Parent.Theme)
 local Components = require(script.Parent.Components)
+local UISound = require(script.Parent.UISound)
 
 local Feedback = {}
 Feedback.__index = Feedback
@@ -288,6 +289,7 @@ function Feedback:Reset()
 end
 
 function Feedback:LevelUp(level: number)
+	UISound.Sequence("Ring", { 1, 1.26, 1.5, 2 }, 0.1)
 	self._levelToken = (self._levelToken or 0) + 1
 	local token = self._levelToken
 	local banner = self._levelBanner

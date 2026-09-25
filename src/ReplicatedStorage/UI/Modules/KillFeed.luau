@@ -13,6 +13,7 @@
 local TweenService = game:GetService("TweenService")
 
 local Theme = require(script.Parent.Theme)
+local UISound = require(script.Parent.UISound)
 local Components = require(script.Parent.Components)
 
 local KillFeed = {}
@@ -323,6 +324,9 @@ end
 --- The centre-bottom call. A token guards it so a second kill during the first one's fade
 --- does not get hidden by the first one's timer.
 function KillFeed:Eliminated(victim: string)
+	-- The kill sting: a bright ring over a thump, so a kill is heard as well as seen.
+	UISound.Play("Ring", 1.35, 0.8)
+	UISound.Play("Slam", 1.3, 0.6)
 	self._token += 1
 	local token = self._token
 
