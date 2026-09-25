@@ -33,6 +33,9 @@ if not DeathReport then
 	DeathReport = event
 end
 
+-- How recent an NPC's hit has to be for the death screen to name it.
+local NPC_BLAME_WINDOW = 8
+
 --- Who, with what, and is there anything left to look at.
 local function report(humanoid: Humanoid)
 	local character = humanoid.Parent
@@ -53,8 +56,26 @@ local function report(humanoid: Humanoid)
 		killer = nil
 	end
 
-	local killerCharacter = killer and killer.Character or nil
-	local killerHumanoid = killerCharacter and killerCharacter:FindFirstChildOfClass("Humanoid")
+	local killerName: string? = nil
+	local killerLevel: number? = nil
+	local killerHumanoid: Humanoid? = nil
+	if killer then
+		killerName = killer.DisplayName ~= "" and killer.DisplayName or killer.Name
+		local level = killer:GetAttribute("Level")
+		killerLevel = type(level) == "number" and level or nil
+		local killerCharacter = killer.Character
+		killerHumanoid = killerCharacter and killerCharacter:FindFirstChildOfClass("Humanoid")
+	else
+		-- No player to credit. If an NPC shot you in the last few seconds, it was that NPC;
+		-- older than that and it is more honest to say nothing than to blame the wrong thing.
+		local model = KillCredit.GetAttackerModel(humanoid, NPC_BLAME_WINDOW)
+		if model then
+			killerName = model.Name
+			local level = model:GetAttribute("Level")
+			killerLevel = type(level) == "number" and level or nil
+			killerHumanoid = model:FindFirstChildOfClass("Humanoid")
+		end
+	end
 
 	-- Only offer a camera subject if there is a living body to watch. Spectating a corpse or
 	-- a character that has already been cleaned up gives a black screen, which reads as a bug.
@@ -64,8 +85,14 @@ local function report(humanoid: Humanoid)
 	end
 
 	DeathReport:FireClient(victim, {
-		killerName = killer and killer.DisplayName or nil,
+		killerName = killerName,
 		killerUserId = killer and killer.UserId or nil,
+		killerLevel = killerLevel,
+		isNpc = killer == nil and killerName ~= nil,
+		-- What they had left: the reference's death card shows it, and it is the one number
+		-- that tells you how close the fight was.
+		killerHealth = killerHumanoid and math.max(0, math.ceil(killerHumanoid.Health)) or nil,
+		killerMaxHealth = killerHumanoid and killerHumanoid.MaxHealth or nil,
 		subject = watchable,
 		-- Recorded on the humanoid by KillCredit.Damage at the moment of the hit.
 		weapon = humanoid:GetAttribute("LastHitWeapon"),

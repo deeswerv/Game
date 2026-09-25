@@ -228,6 +228,7 @@ end
 function Combat.Hurt(agent, victimModel: Model, victim: Humanoid, amount: number, weaponName: string?,
 	direction: Vector3, partName: string)
 	victim:SetAttribute("LastHitPart", partName)
+	KillCredit.NoteAttacker(victim, agent.model)
 	if Combat.OnDamage then
 		Combat.OnDamage(victimModel, agent.model, amount)
 	end

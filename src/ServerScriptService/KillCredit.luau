@@ -121,6 +121,24 @@ function KillCredit.GetKiller(humanoid: Humanoid?): Player?
 	return nil
 end
 
+-- The last NPC to hurt each humanoid, so the death screen can say "Bandit" instead of
+-- "you died" when there is no player to credit. Presentation only: kill credit, XP and
+-- stats never read it. Weak keys, so a humanoid that is gone drops out on its own.
+local npcAttacker: { [Humanoid]: { model: Model, at: number } } = setmetatable({}, { __mode = "k" }) :: any
+
+function KillCredit.NoteAttacker(humanoid: Humanoid, model: Model)
+	npcAttacker[humanoid] = { model = model, at = os.clock() }
+end
+
+-- The NPC that hurt `humanoid` within the last `within` seconds, if it still exists.
+function KillCredit.GetAttackerModel(humanoid: Humanoid, within: number): Model?
+	local entry = npcAttacker[humanoid]
+	if entry and os.clock() - entry.at <= within and entry.model.Parent then
+		return entry.model
+	end
+	return nil
+end
+
 -- Armour. A flat amount comes off every hit, but never more than ARMOUR_TAKES of it, so a
 -- heavily armoured enemy shrugs off chip damage while a real hit still lands most of its
 -- weight. Read from a SERVER-written attribute on the victim's model (NPCService sets it),
