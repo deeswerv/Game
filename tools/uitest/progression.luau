@@ -233,6 +233,21 @@ local bought = ShopService.AttemptPurchase(player, "item", gated.id)
 check(bought.ok == true, ("and sold at level %d, straight after the level is set (%s)"):format(gated.levelRequired,
 	tostring(bought.reason)))
 
+print("the starting weapon")
+profile.Loadout = {}
+ShopService.ApplyLoadout(player)
+local carried = World.backpack:FindFirstChild("Vantage") or player.Character:FindFirstChild("Vantage")
+check(carried ~= nil, "a player who never chose a loadout spawns with the Vantage")
+local owned = ShopService.GetOwnership(player).OwnedItems
+check(table.find(owned, "Vantage") ~= nil, "and owns it without buying it")
+local vantageGate = nil
+for _, item in ipairs(GameConfig.ShopItems) do
+	if item.id == "Vantage" then
+		vantageGate = item.levelRequired
+	end
+end
+check(vantageGate == 1, "with no level gate on it")
+
 -- ---------------------------------------------------------------- wallet --
 
 print("coins on the profile")

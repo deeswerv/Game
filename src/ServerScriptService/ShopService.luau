@@ -143,6 +143,10 @@ local function loadoutOf(player: Player): { string }
 		return {}
 	end
 	local saved = Replica.Data.Loadout or {}
+	-- Never chosen anything: carry the starting weapon rather than an empty hotbar.
+	if #saved == 0 and WeaponConfig.STARTING_WEAPON then
+		return { WeaponConfig.STARTING_WEAPON }
+	end
 	if #saved <= LOADOUT_SIZE then
 		return saved
 	end
@@ -603,8 +607,8 @@ end
 
 local function onPlayerAdded(player: Player)
 	-- The saved loadout is restored on every spawn, so a death costs you your position and
-	-- nothing else. A player who has never equipped anything has an empty loadout, which
-	-- restores as an empty hotbar -- exactly the old starting state.
+	-- nothing else. A player who has never equipped anything carries the starting weapon
+	-- (loadoutOf).
 	local function restore()
 		-- The Backpack is replaced on respawn, so wait for the new one rather than racing it.
 		player:WaitForChild("Backpack", 10)

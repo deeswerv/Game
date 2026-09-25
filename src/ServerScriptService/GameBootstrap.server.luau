@@ -57,6 +57,10 @@ local systems = {
 	"TurfWarService",      -- a crew rolls into Downtown every few minutes; drive them out for a payout
 }
 
+-- Which build this is (tools/build.luau stamps it), first thing in the output.
+print(("[Bootstrap] PROJECT ZEE, build %s"):format(
+	tostring(game:GetService("ReplicatedStorage"):GetAttribute("BuildStamp") or "unstamped")))
+
 for _, name in ipairs(systems) do
 	local module = ServerScriptService:FindFirstChild(name)
 	if not module then

@@ -92,10 +92,16 @@ WeaponConfig.Defaults = {
 	TrailColor = Color3.fromRGB(235, 235, 245),
 }
 
+-- What a new player carries before they have ever picked anything from the inventory.
+WeaponConfig.STARTING_WEAPON = "Vantage"
+
 -- Per-weapon overrides. Add a weapon by adding a table here whose key matches the
 -- Tool's name; nothing else needs to change.
 WeaponConfig.Weapons = {
 	Vantage = {
+		-- The starting weapon: everyone owns it, and a player who has never chosen a loadout
+		-- spawns carrying it (WeaponConfig.STARTING_WEAPON).
+		Starter = true,
 		Type = "Gun",
 		Class = "Pistol",
 		DeathKnockback = 26,

@@ -255,11 +255,11 @@ GameConfig.ShopItems = {
 	{
 		id = "Vantage",
 		name = "Vantage",
-		desc = "Semi-automatic sidearm. 12 rounds, R to reload, headshots hurt.",
-		price = 800,
+		desc = "Semi-automatic sidearm. 12 rounds, R to reload, headshots hurt. Everyone starts with one.",
+		price = 0,
 		item = "Vantage",
 		image = "",
-		levelRequired = 6,
+		levelRequired = 1,
 	},
 }
 

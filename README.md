@@ -10,6 +10,27 @@ To put it live, publish from that file with **File → Publish to Roblox As…**
 existing experience. Keep a copy of your current place first; `place/base.rbxl` is the original
 as uploaded.
 
+### Is this the latest build?
+
+The title screen (bottom-right corner) and the owner panel (F4, top-right) both show a
+**BUILD** date and time, and the server prints it first thing in the Output window. If it does
+not match the newest commit on this branch, you are playing an older copy of the file:
+download `build/Game.rbxl` again.
+
+### Saving while testing in Studio
+
+A place opened with **Open from File** has never been published, so Roblox gives it no
+DataStores at all: levels, coins, prestige and unlocks work during the test but are gone when
+you press Stop, whatever the game does. To test saving:
+
+1. **File → Publish to Roblox As…** your experience (keep a copy of your current place first).
+2. **Game Settings → Security → Enable Studio Access to API Services** → on.
+3. Play again. The owner panel's strip shows **● SAVING TO THE PROFILE** in green when it is
+   really saving, and the Output window says `[Data] saving to DataStores`. If it says
+   **NOT SAVING**, one of the two steps above is missing.
+
+The live game always saves.
+
 ## Controls
 
 | Key | Does |

@@ -213,6 +213,14 @@ end
 if not fs.isDir("build") then
 	fs.writeDir("build")
 end
+-- Stamp the build, so a place opened in Studio can say which build it is (the owner panel and
+-- the title screen show it, and the server prints it). "Nothing changed" is very often an
+-- older copy of the file; the stamp settles that at a glance.
+do
+	local stamp = os.date("!%Y-%m-%d %H:%M UTC")
+	game:GetService("ReplicatedStorage"):SetAttribute("BuildStamp", stamp)
+	print(`build stamp {stamp}`)
+end
 fs.writeFile("build/Game.rbxl", roblox.serializePlace(game))
 print("wrote build/Game.rbxl")
 

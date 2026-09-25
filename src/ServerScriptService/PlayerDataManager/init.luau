@@ -129,6 +129,21 @@ local function PlayerAdded(Player: Player)
 	end
 end
 
+-- Say plainly, once, if nothing this session will be kept. A place opened from a file has
+-- never been published, so Roblox gives it no DataStores at all; a published place still needs
+-- Studio's API access turned on. Either way ProfileService quietly runs on a stand-in store
+-- and every level, coin and unlock is gone when the test stops -- which looks exactly like
+-- "the owner panel does not save".
+task.spawn(function()
+	if not PlayerDataManager:IsSaving() then
+		warn("[Data] NOT SAVING THIS SESSION: DataStores are unavailable. Publish the place (File > Publish to"
+			.. " Roblox) and turn on Game Settings > Security > Enable Studio Access to API Services, or test in"
+			.. " the live game. Until then levels, coins and unlocks last only until the test stops.")
+	else
+		print("[Data] saving to DataStores")
+	end
+end)
+
 for _, player in ipairs(Players:GetPlayers()) do
 	task.spawn(PlayerAdded, player)
 end

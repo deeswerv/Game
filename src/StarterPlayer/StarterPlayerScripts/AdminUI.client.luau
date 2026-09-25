@@ -121,6 +121,16 @@ saving.Name = "Saving"
 saving.Position = UDim2.fromOffset(14, 68)
 saving.Size = UDim2.fromOffset(240, 16)
 
+-- Which build this is, so "nothing changed" can be checked against the latest in a glance.
+local stamp = Components.Label(menu.header, {
+	text = "BUILD " .. tostring(ReplicatedStorage:GetAttribute("BuildStamp") or "?"),
+	font = Theme.Font.Bold, size = 12, colour = Theme.Colour.TextMuted, align = Enum.TextXAlignment.Right,
+})
+stamp.Name = "BuildStamp"
+stamp.AnchorPoint = Vector2.new(1, 0)
+stamp.Position = UDim2.new(1, -60, 0, 48)
+stamp.Size = UDim2.fromOffset(260, 16)
+
 -- The numbers.
 local statsRow = Instance.new("Frame")
 statsRow.Name = "Stats"
@@ -561,6 +571,11 @@ function refreshState()
 		else
 			saving.Text = "● NOT SAVING (STUDIO API OFF)"
 			saving.TextColor3 = Theme.Colour.Danger
+			if status.Text == "Ready." then
+				status.Text = "Nothing will be kept after this test: publish the place and turn on Game Settings >"
+					.. " Security > Studio Access to API Services (or test in the live game)."
+				status.TextColor3 = Theme.Colour.Warning
+			end
 		end
 		-- The boxes show the live numbers, unless you are in the middle of typing one.
 		for _, field in ipairs(fields) do

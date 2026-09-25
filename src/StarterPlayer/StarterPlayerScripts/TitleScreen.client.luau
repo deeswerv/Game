@@ -209,6 +209,22 @@ local play = Components.Button(screen, {
 	end,
 })
 
+-- Which build this is, small in the corner: the quickest way to tell an old copy of the place
+-- from the latest one.
+do
+	local stamp = Components.Label(screen, {
+		text = "BUILD " .. tostring(game:GetService("ReplicatedStorage"):GetAttribute("BuildStamp") or "?"),
+		font = Theme.Font.Bold,
+		size = 12,
+		colour = Theme.Colour.TextMuted,
+		align = Enum.TextXAlignment.Right,
+	})
+	stamp.Name = "BuildStamp"
+	stamp.AnchorPoint = Vector2.new(1, 1)
+	stamp.Position = UDim2.new(1, -16, 1, -10)
+	stamp.Size = UDim2.fromOffset(300, 16)
+end
+
 local shortcuts = Instance.new("Frame")
 shortcuts.Name = "Shortcuts"
 shortcuts.BackgroundTransparency = 1
