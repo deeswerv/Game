@@ -105,8 +105,11 @@ local function dress(player: Player, character: Model)
 		end
 		-- Layered clothing (jackets, hoodies, shoes) wraps onto the body's own cages.
 		look:SetAccessories(theirs:GetAccessories(false), false)
-		-- Never let the experience's avatar rules resize or re-body the locked rig.
-		look.UseAvatarSettings = false
+		-- Never let the experience's avatar rules resize or re-body the locked rig. Guarded on
+		-- its own: an engine without the property should still dress the player.
+		pcall(function()
+			look.UseAvatarSettings = false
+		end)
 		humanoid:ApplyDescriptionAsync(look)
 	end)
 	if not ok then

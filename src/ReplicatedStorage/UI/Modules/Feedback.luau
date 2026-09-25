@@ -57,6 +57,8 @@ function Feedback.new(playerGui: Instance)
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.DisplayOrder = 5              -- under the HUD, over the world
 	gui.Parent = playerGui
+	-- Same responsive scale as the HUD, so the level call and the threat ring fit a phone.
+	self._unbindScale = Components.BindScale(gui)
 	self._gui = gui
 
 	-- Vignette: four soft red edges. Their strength is one number, applied to all four.
@@ -325,6 +327,7 @@ end
 
 function Feedback:Destroy()
 	self._conn:Disconnect()
+	self._unbindScale()
 	self._grade:Destroy()
 	self._gui:Destroy()
 end
