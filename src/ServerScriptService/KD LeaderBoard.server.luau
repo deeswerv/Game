@@ -1,6 +1,16 @@
 local Players = game:GetService("Players")
 local dataStore = game:GetService("DataStoreService")
-local data = dataStore:GetDataStore("Stats")
+-- Guarded: GetDataStore throws in an unpublished place (a .rbxl opened from disk) and without
+-- Studio API access. Unguarded, this script died on this line and no player ever got
+-- leaderstats -- no Kills, no Deaths, no Coins, so no cash on the HUD. Every read and write
+-- below is already in a pcall, so a nil store only means coins are not loaded or saved.
+local okStore, data = pcall(function()
+	return dataStore:GetDataStore("Stats")
+end)
+if not okStore then
+	warn("[Leaderstats] DataStores unavailable; coins will not load or save this session")
+	data = nil
+end
 
 -- This script owns leaderstats setup and Deaths.
 -- Kills are awarded by ServerScriptService.KillCredit, which tags the attacker onto

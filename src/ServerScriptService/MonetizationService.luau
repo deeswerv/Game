@@ -14,7 +14,24 @@ local GameConfig = require(ReplicatedStorage.GameConfig)
 
 -- Receipts already granted. Roblox re-sends a receipt until we confirm it, so this
 -- is what stops a coin bundle being granted twice after a server crash.
-local ReceiptStore = DataStoreService:GetDataStore("PurchaseReceipts_v1")
+--
+-- Fetched under pcall. GetDataStore THROWS in a place that is not published (a .rbxl opened
+-- from disk) and when Studio has no API access; unguarded, that killed this whole module at
+-- its first line -- before PromptPurchase existed -- and MainUI, waiting on that remote,
+-- never built the shop, the inventory hotkeys, the dock or the "+" beside the cash. Every
+-- use below is already inside a pcall, so a nil store simply means receipts are not
+-- checked (and so products are not granted) until DataStores are available.
+local ReceiptStore: DataStore? = nil
+do
+	local ok, store = pcall(function()
+		return DataStoreService:GetDataStore("PurchaseReceipts_v1")
+	end)
+	if ok then
+		ReceiptStore = store
+	else
+		warn("[Monetization] DataStores unavailable (" .. tostring(store) .. "); purchases will not be granted")
+	end
+end
 
 local remotes = ReplicatedStorage:FindFirstChild("GameRemotes")
 if not remotes then
@@ -92,7 +109,7 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 
 	local alreadyGranted
 	local readOk = pcall(function()
-		alreadyGranted = ReceiptStore:GetAsync(key)
+		alreadyGranted = (ReceiptStore :: DataStore):GetAsync(key)
 	end)
 	if not readOk then
 		-- Could not verify. Granting now risks double-granting, so retry later.
@@ -114,7 +131,7 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 
 	-- Record only after the grant succeeded.
 	local writeOk = pcall(function()
-		ReceiptStore:SetAsync(key, true)
+		(ReceiptStore :: DataStore):SetAsync(key, true)
 	end)
 	if not writeOk then
 		-- The player has their coins but we could not write the receipt. Retrying

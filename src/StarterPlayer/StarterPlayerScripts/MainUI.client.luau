@@ -27,6 +27,7 @@ local Workshop = require(Modules:WaitForChild("Workshop"))
 local Nav = require(Modules:WaitForChild("Nav"))
 local Feedback = require(Modules:WaitForChild("Feedback"))
 local Scoreboard = require(Modules:WaitForChild("Scoreboard"))
+local Remote = require(Modules:WaitForChild("Remote"))
 local WeaponConfig = require(ReplicatedStorage:WaitForChild("WeaponConfig"))
 
 local StarterGui = game:GetService("StarterGui")
@@ -64,9 +65,32 @@ screen.Parent = playerGui
 local Components = require(Modules:WaitForChild("Components"))
 Components.BindScale(screen)
 
-local hud = Hud.new(screen)
-local feedback = Feedback.new(playerGui)
-local board = Scoreboard.new(playerGui)
+-- Every panel is built through this. One that throws while building is replaced by an inert
+-- stand-in (every method a no-op) and named in the output, instead of stopping this script
+-- and taking every panel after it down too -- which is exactly how the shop, the dock and
+-- the menu hotkeys all went missing at once.
+local function safe(name: string, build: () -> any): any
+	local ok, result = pcall(build)
+	if ok and result ~= nil then
+		return result
+	end
+	warn(("[MainUI] %s failed to build: %s"):format(name, tostring(result)))
+	return setmetatable({}, {
+		__index = function()
+			return function() end
+		end,
+	})
+end
+
+local hud = safe("HUD", function()
+	return Hud.new(screen)
+end)
+local feedback = safe("Feedback", function()
+	return Feedback.new(playerGui)
+end)
+local board = safe("Scoreboard", function()
+	return Scoreboard.new(playerGui)
+end)
 
 -- Held, not toggled: Tab shows the board for exactly as long as you want to look at it.
 UserInputService.InputBegan:Connect(function(input: InputObject)
@@ -79,11 +103,16 @@ UserInputService.InputEnded:Connect(function(input: InputObject)
 		board:SetOpen(false)
 	end
 end)
-local killFeed = KillFeed.new(screen)
-local objective = Objective.new(screen)
+local killFeed = safe("KillFeed", function()
+	return KillFeed.new(screen)
+end)
+local objective = safe("Objective", function()
+	return Objective.new(screen)
+end)
 
-local matchRemotes = ReplicatedStorage:WaitForChild("Remotes")
-local rangeAction = matchRemotes:WaitForChild("RangeAction") :: RemoteFunction
+-- Remotes are held lazily (see UI.Modules.Remote): building the interface never waits on
+-- the server, and a service that failed to start costs its own feature, not the whole UI.
+local rangeAction = Remote.get("Remotes", "RangeAction")
 
 -- The gun range is a place you go and come back from, not a panel. One key does both, and the
 -- server owns where "back" is -- the client never says where to put you.
@@ -95,9 +124,10 @@ local function toggleRange()
 		end)
 	end)
 end
-local duel = Duel.new(screen, {
-	matchAction = matchRemotes:WaitForChild("MatchAction") :: RemoteFunction,
-	matchUpdate = matchRemotes:WaitForChild("MatchUpdate") :: RemoteEvent,
+local duel = safe("Duel", function()
+	return Duel.new(screen, {
+	matchAction = Remote.get("Remotes", "MatchAction") :: any,
+	matchUpdate = Remote.get("Remotes", "MatchUpdate") :: any,
 }, {
 	-- The duel scoreboard takes the top of the screen; cash and level step aside for it.
 	onScoreboard = function(visible: boolean)
@@ -108,6 +138,7 @@ local duel = Duel.new(screen, {
 		killFeed:SetLift(visible)
 	end,
 })
+end)
 
 -- --------------------------------------------------------------- objective --
 
@@ -115,12 +146,6 @@ local duel = Duel.new(screen, {
 -- from it. Rewards are read out of QuestConfig here because the active-quest block in that
 -- payload carries only progress, not what it pays.
 task.spawn(function()
-	local gameRemotesFolder = ReplicatedStorage:WaitForChild("GameRemotes", 30)
-	local questUpdated = gameRemotesFolder and gameRemotesFolder:WaitForChild("QuestUpdated", 30)
-	if not questUpdated or not questUpdated:IsA("RemoteEvent") then
-		return
-	end
-
 	local okConfig, QuestConfig = pcall(function()
 		return require(ReplicatedStorage:WaitForChild("QuestConfig"))
 	end)
@@ -133,7 +158,7 @@ task.spawn(function()
 		return quest and quest.rewards or nil
 	end
 
-	questUpdated.OnClientEvent:Connect(function(state)
+	Remote.get("GameRemotes", "QuestUpdated").OnClientEvent:Connect(function(state)
 		local active = type(state) == "table" and state.active or nil
 		objective:Set(active, active and rewardsFor(active.id) or nil)
 	end)
@@ -186,7 +211,9 @@ end
 
 -- The hotbar joins the HUD's weapon dock, so the slots and the ammo count share one row
 -- in the bottom-right corner the way the references lay them out.
-local hotbar = Hotbar.new(hud.dock, equipSlot)
+local hotbar = safe("Hotbar", function()
+	return Hotbar.new(hud.dock, equipSlot)
+end)
 
 local function refreshHotbar()
 	local character = player.Character
@@ -222,8 +249,9 @@ end
 
 -- Coins are kept on leaderstats by the server, so this reads rather than tracks.
 task.spawn(function()
-	local stats = player:WaitForChild("leaderstats", 30)
-	local coins = stats and stats:WaitForChild("Coins", 30)
+	-- No short timeout: if the leaderstats script is slow to start, the cash still arrives.
+	local stats = player:WaitForChild("leaderstats", 1e6)
+	local coins = stats and stats:WaitForChild("Coins", 1e6)
 	if not coins or not coins:IsA("ValueBase") then
 		return
 	end
@@ -239,13 +267,8 @@ end)
 -- Anything earned -- a level milestone, a weapon mastery tier -- comes down one channel and
 -- is shown in the feed the kills already use, so a reward reads as part of the fight rather
 -- than a popup that stops it.
-task.spawn(function()
-	local remotes = ReplicatedStorage:WaitForChild("GameRemotes", 30)
-	local reward = remotes and remotes:WaitForChild("ProgressionReward", 30)
-	if not reward or not reward:IsA("RemoteEvent") then
-		return
-	end
-	reward.OnClientEvent:Connect(function(kind: unknown, a: unknown, b: unknown, c: unknown, d: unknown)
+do
+	Remote.get("GameRemotes", "ProgressionReward").OnClientEvent:Connect(function(kind: unknown, a: unknown, b: unknown, c: unknown, d: unknown)
 		if kind == "Milestone" then
 			local level = tonumber(a) or 0
 			local earned = type(b) == "table" and table.concat(b, ", ") or ""
@@ -258,18 +281,13 @@ task.spawn(function()
 			killFeed:Notice("MASTERY", ("%s %s%s"):format(weapon, string.upper(tier), earned))
 		end
 	end)
-end)
+end
 
-task.spawn(function()
-	local remotes = ReplicatedStorage:WaitForChild("GameRemotes", 30)
-	local xpGained = remotes and remotes:WaitForChild("XPGained", 30)
-	if not xpGained or not xpGained:IsA("RemoteEvent") then
-		return
-	end
+do
 	-- The first message is the loaded profile, not a gain; only a rise after that is a
 	-- level-up worth celebrating.
 	local lastLevel: number? = nil
-	xpGained.OnClientEvent:Connect(function(amount: number, exp: number, maxExp: number, level: number)
+	Remote.get("GameRemotes", "XPGained").OnClientEvent:Connect(function(amount: number, exp: number, maxExp: number, level: number)
 		local now = math.floor(tonumber(level) or 1)
 		hud:SetLevel(now, exp, maxExp)
 		if lastLevel ~= nil and type(amount) == "number" and amount > 0 then
@@ -280,7 +298,7 @@ task.spawn(function()
 		end
 		lastLevel = now
 	end)
-end)
+end
 
 -- ----------------------------------------------------------------- vitals --
 
@@ -443,11 +461,8 @@ local function nearMe(point: unknown): boolean
 		and ((point :: Vector3) - root.Position).Magnitude <= THREAT_RADIUS
 end
 
-task.spawn(function()
-	local remotes = ReplicatedStorage:WaitForChild("Remotes", 30)
-	local gunEffect = remotes and remotes:WaitForChild("GunEffect", 30)
-	if gunEffect and gunEffect:IsA("RemoteEvent") then
-		gunEffect.OnClientEvent:Connect(function(kind: unknown, shooter: unknown, _tool: unknown, origin: unknown, endPoints: unknown)
+do
+	Remote.get("Remotes", "GunEffect").OnClientEvent:Connect(function(kind: unknown, shooter: unknown, _tool: unknown, origin: unknown, endPoints: unknown)
 			if kind ~= "Shot" or shooter == player or typeof(origin) ~= "Vector3" or type(endPoints) ~= "table" then
 				return
 			end
@@ -458,11 +473,8 @@ task.spawn(function()
 				end
 			end
 		end)
-	end
 
-	local npcEffect = remotes and remotes:WaitForChild("NPCEffect", 30)
-	if npcEffect and npcEffect:IsA("RemoteEvent") then
-		npcEffect.OnClientEvent:Connect(function(batch: unknown)
+	Remote.get("Remotes", "NPCEffect").OnClientEvent:Connect(function(batch: unknown)
 			if type(batch) ~= "table" then
 				return
 			end
@@ -473,8 +485,7 @@ task.spawn(function()
 				end
 			end
 		end)
-	end
-end)
+end
 
 -- ---------------------------------------------------------------- menus --
 
@@ -489,34 +500,50 @@ menuLayer.DisplayOrder = 20
 menuLayer.Parent = playerGui
 Components.BindScale(menuLayer)
 
-local gameRemotes = ReplicatedStorage:WaitForChild("GameRemotes")
-local inventory = Inventory.new(menuLayer, {
-	getOwnership = gameRemotes:WaitForChild("GetOwnership") :: RemoteFunction,
-	loadoutAction = gameRemotes:WaitForChild("LoadoutAction") :: RemoteFunction,
-})
+local function gameRemote(name: string): any
+	return Remote.get("GameRemotes", name)
+end
+local function remote(name: string): any
+	return Remote.get("Remotes", name)
+end
 
-local market = Market.new(menuLayer, {
-	getOwnership = gameRemotes:WaitForChild("GetOwnership") :: RemoteFunction,
-	PurchaseItem = gameRemotes:WaitForChild("PurchaseItem") :: RemoteFunction,
-	PurchaseCamo = gameRemotes:WaitForChild("PurchaseCamo") :: RemoteFunction,
-	PurchaseAttachment = gameRemotes:WaitForChild("PurchaseAttachment") :: RemoteFunction,
-	PurchaseCosmetic = gameRemotes:WaitForChild("PurchaseCosmetic") :: RemoteFunction,
-	ownershipChanged = gameRemotes:WaitForChild("OwnershipChanged") :: RemoteEvent,
-	promptPurchase = gameRemotes:WaitForChild("PromptPurchase") :: RemoteEvent,
-})
+local inventory = safe("Inventory", function()
+	return Inventory.new(menuLayer, {
+		getOwnership = gameRemote("GetOwnership"),
+		loadoutAction = gameRemote("LoadoutAction"),
+	})
+end)
 
-local profile = Profile.new(menuLayer, {
-	profileRequest = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ProfileRequest") :: RemoteFunction,
-})
+local market = safe("Shop", function()
+	return Market.new(menuLayer, {
+		getOwnership = gameRemote("GetOwnership"),
+		PurchaseItem = gameRemote("PurchaseItem"),
+		PurchaseCamo = gameRemote("PurchaseCamo"),
+		PurchaseAttachment = gameRemote("PurchaseAttachment"),
+		PurchaseCosmetic = gameRemote("PurchaseCosmetic"),
+		ownershipChanged = gameRemote("OwnershipChanged"),
+		promptPurchase = gameRemote("PromptPurchase"),
+	})
+end)
 
-local daily = Daily.new(menuLayer, {
-	dailyAction = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DailyAction") :: RemoteFunction,
-})
+local profile = safe("Profile", function()
+	return Profile.new(menuLayer, {
+		profileRequest = remote("ProfileRequest"),
+	})
+end)
 
-local workshop = Workshop.new(menuLayer, {
-	getOwnership = gameRemotes:WaitForChild("GetOwnership") :: RemoteFunction,
-	buildAction = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("BuildAction") :: RemoteFunction,
-})
+local daily = safe("Daily", function()
+	return Daily.new(menuLayer, {
+		dailyAction = remote("DailyAction"),
+	})
+end)
+
+local workshop = safe("Armory", function()
+	return Workshop.new(menuLayer, {
+		getOwnership = gameRemote("GetOwnership"),
+		buildAction = remote("BuildAction"),
+	})
+end)
 
 -- Forward-declared: the nav is built below, but opening a menu by hotkey should still retire
 -- that menu's first-time hint on the nav.
@@ -551,18 +578,14 @@ workshop:OnShop(function()
 end)
 
 -- The vendor NPC asks for the market by name, so walking up to the stall still opens it.
-task.spawn(function()
-	local openVendor = gameRemotes:WaitForChild("OpenVendor", 30)
-	if openVendor and openVendor:IsA("RemoteEvent") then
-		openVendor.OnClientEvent:Connect(function()
-			inventory:Close()
-			market:Toggle()
-		end)
-	end
+gameRemote("OpenVendor").OnClientEvent:Connect(function()
+	inventory:Close()
+	market:Toggle()
 end)
 
 -- Hints are the first-session teaching: the three things a new player should find first.
-nav = Nav.new(screen, {
+nav = safe("Nav", function()
+	return Nav.new(screen, {
 	{ id = "Inventory", label = "Items", key = "[B]", onActivated = function()
 		openOnly(inventory)
 	end },
@@ -585,16 +608,12 @@ nav = Nav.new(screen, {
 		openOnly(daily)
 	end },
 })
+end)
 
 -- --------------------------------------------------------------- feed --
 
-task.spawn(function()
-	local remotes = ReplicatedStorage:WaitForChild("Remotes", 30)
-	local feed = remotes and remotes:WaitForChild("KillFeed", 30)
-	if not feed or not feed:IsA("RemoteEvent") then
-		return
-	end
-	feed.OnClientEvent:Connect(function(victimName: unknown, weaponName: unknown)
+do
+	Remote.get("Remotes", "KillFeed").OnClientEvent:Connect(function(victimName: unknown, weaponName: unknown)
 		if type(victimName) ~= "string" then
 			return
 		end
@@ -603,17 +622,13 @@ task.spawn(function()
 	end)
 
 	-- Everyone else's player kills. Our own are already in the feed from the remote above.
-	local all = remotes and remotes:WaitForChild("KillFeedAll", 30)
-	if not all or not all:IsA("RemoteEvent") then
-		return
-	end
-	all.OnClientEvent:Connect(function(killer: unknown, victim: unknown, weapon: unknown, killerId: unknown, victimId: unknown)
+	Remote.get("Remotes", "KillFeedAll").OnClientEvent:Connect(function(killer: unknown, victim: unknown, weapon: unknown, killerId: unknown, victimId: unknown)
 		if killerId == player.UserId or type(killer) ~= "string" or type(victim) ~= "string" then
 			return
 		end
 		killFeed:PushOther(killer, victim, type(weapon) == "string" and weapon or nil, victimId == player.UserId)
 	end)
-end)
+end
 
 -- --------------------------------------------------------- number keys --
 

@@ -26,7 +26,12 @@ local BOARDS = {
 
 local stores = {}
 for _, b in ipairs(BOARDS) do
-	stores[b.id] = DataStoreService:GetOrderedDataStore(b.store)
+	-- Guarded: throws in an unpublished place. A missing store just leaves its board empty;
+	-- every read and write of it is already inside a pcall.
+	local ok, store = pcall(function()
+		return DataStoreService:GetOrderedDataStore(b.store)
+	end)
+	stores[b.id] = ok and store or nil
 end
 
 local REFRESH_INTERVAL = 60

@@ -1,6 +1,13 @@
 local Players = game:GetService("Players")
 local DataStoreService = game:GetService("DataStoreService")
-local Saver = DataStoreService:GetDataStore("SaveLeaderstats")
+-- Guarded: GetDataStore throws in an unpublished place and without Studio API access.
+local okStore, Saver = pcall(function()
+	return DataStoreService:GetDataStore("SaveLeaderstats")
+end)
+if not okStore then
+	warn("[DataSaver] DataStores unavailable; leaderstats will not be saved this session")
+	return
+end
 
 Players.PlayerAdded:Connect(function(player)
 	local Data = nil
@@ -15,7 +22,7 @@ Players.PlayerAdded:Connect(function(player)
 			end
 		end
 	else
-		error(errormessage)
+		warn("[DataSaver] could not load " .. player.Name .. ": " .. tostring(errormessage))
 	end
 end)
 
@@ -29,7 +36,7 @@ local function Save(player)
 		Saver:SetAsync(tostring(player.UserId), SavedData)
 	end)
 	if not success then
-		error(errormessage)
+		warn("[DataSaver] could not save " .. player.Name .. ": " .. tostring(errormessage))
 	end
 end
 
