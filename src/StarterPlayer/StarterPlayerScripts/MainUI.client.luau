@@ -513,8 +513,12 @@ local function openOnly(target)
 	end
 end
 
--- The "+" beside the cash goes straight to the shop, as it does in the references.
+-- The "+" beside the cash goes straight to the shop, as it does in the references, and so
+-- does the armory's "unlock in shop" on a gun you do not own yet.
 hud:OnShop(function()
+	openOnly(market)
+end)
+workshop:OnShop(function()
 	openOnly(market)
 end)
 

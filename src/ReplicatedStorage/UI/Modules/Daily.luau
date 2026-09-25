@@ -35,25 +35,30 @@ function Daily.new(parent: Instance, remotes)
 
 	local menu = Menu.new(parent, {
 		id = "Daily",
-		title = "DAILY REWARD",
-		size = UDim2.fromOffset(700, 340),
+		title = "Daily Rewards",
+		subtitle = "Come back every day -- the streak pays more",
+		icon = "🎁",
+		size = UDim2.fromOffset(900, 400),
 	})
 	self._menu = menu
 
 	self._streak = Components.Label(menu.content, {
 		text = "",
-		size = Theme.Text.Small,
-		colour = Theme.Colour.TextDim,
+		font = Theme.Font.Bold,
+		size = Theme.Text.Large,
+		colour = Theme.Colour.Level,
+		align = Enum.TextXAlignment.Center,
 	})
-	self._streak.Size = UDim2.new(1, 0, 0, 18)
+	self._streak.Size = UDim2.new(1, 0, 0, 22)
 
 	self._ladder = Instance.new("Frame")
 	self._ladder.Name = "Ladder"
 	self._ladder.BackgroundTransparency = 1
-	self._ladder.Size = UDim2.new(1, 0, 0, 110)
+	self._ladder.Size = UDim2.new(1, 0, 0, 150)
 	self._ladder.Position = UDim2.fromOffset(0, 30)
 	self._ladder.Parent = menu.content
-	Components.List(self._ladder, Enum.FillDirection.Horizontal, Theme.Space.S)
+	local ladderRow = Components.List(self._ladder, Enum.FillDirection.Horizontal, 10, Enum.HorizontalAlignment.Center)
+	ladderRow.VerticalAlignment = Enum.VerticalAlignment.Center
 
 	-- Named _claimButton, NOT _claim: a field and a method sharing a name means `self:_claim()`
 	-- resolves to the field first and dies with "attempt to call a table value", which is
@@ -62,8 +67,9 @@ function Daily.new(parent: Instance, remotes)
 		name = "Claim",
 		text = "CLAIM",
 		primary = true,
-		size = UDim2.new(0, 240, 0, Theme.Size.ButtonHeight),
-		position = UDim2.new(0.5, 0, 0, 158),
+		textSize = 26,
+		size = UDim2.new(0, 280, 0, 54),
+		position = UDim2.new(0.5, 0, 0, 196),
 		anchor = Vector2.new(0.5, 0),
 		onActivated = function()
 			self:Claim()
@@ -77,7 +83,7 @@ function Daily.new(parent: Instance, remotes)
 		align = Enum.TextXAlignment.Center,
 	})
 	self._note.Size = UDim2.new(1, 0, 0, 18)
-	self._note.Position = UDim2.fromOffset(0, 206)
+	self._note.Position = UDim2.fromOffset(0, 258)
 
 	menu:OnOpen(function()
 		self:Refresh()
@@ -141,69 +147,73 @@ function Daily:_render(status)
 		local isToday = index == current and claimable
 		local isPast = index < current
 
+		-- A chunky card per day: gold and lifted when it is today's, ticked once claimed.
 		local tile = Instance.new("Frame")
 		tile.Name = "Day" .. index
-		tile.BackgroundColor3 = isToday and Theme.Colour.PanelRaised or Theme.Colour.Sunken
+		tile.BackgroundColor3 = isToday and Color3.fromRGB(255, 176, 30)
+			or isPast and Theme.Colour.Sunken or Theme.Colour.PanelRaised
 		tile.BorderSizePixel = 0
-		tile.Size = UDim2.fromOffset(88, 104)
+		tile.Size = UDim2.fromOffset(isToday and 112 or 104, isToday and 146 or 132)
 		tile.LayoutOrder = index
 		tile.Parent = self._ladder
-		Components.Corner(tile, Theme.Radius.Card)
-		if isToday then
-			Components.Stroke(tile, Theme.Colour.Accent, Theme.Stroke.Emphasis)
-		else
-			Components.Stroke(tile)
-		end
+		Components.Corner(tile, 14)
+		Components.Stroke(tile, isToday and Color3.new(1, 1, 1) or Theme.Colour.Outline, isToday and 3 or 2)
+		Components.Gradient(tile)
 
 		local day = Components.Label(tile, {
 			text = "Day " .. index,
-			caps = true,
-			size = Theme.Text.Micro,
-			align = Enum.TextXAlignment.Center,
-			colour = isToday and Theme.Colour.Accent or Theme.Colour.TextMuted,
-		})
-		day.Size = UDim2.new(1, 0, 0, 14)
-		day.Position = UDim2.fromOffset(0, 10)
-
-		local coins = Components.Label(tile, {
-			text = tostring(entry.coins or 0),
-			font = Theme.Font.Display,
+			font = Theme.Font.Bold,
 			size = Theme.Text.Large,
 			align = Enum.TextXAlignment.Center,
-			colour = isPast and Theme.Colour.TextMuted or Theme.Colour.Currency,
+			colour = isPast and Theme.Colour.TextMuted or Theme.Colour.Text,
 		})
-		coins.Size = UDim2.new(1, 0, 0, 24)
-		coins.Position = UDim2.fromOffset(0, 32)
+		day.Size = UDim2.new(1, 0, 0, 22)
+		day.Position = UDim2.fromOffset(0, 6)
 
-		local caption = Components.Label(tile, {
-			text = "coins",
-			size = Theme.Text.Micro,
+		local gift = Components.Icon(tile, isPast and "✅" or (entry.crystals and "💎" or "🎁"), 34)
+		gift.AnchorPoint = Vector2.new(0.5, 0)
+		gift.Position = UDim2.new(0.5, 0, 0, 30)
+
+		local coins = Components.Label(tile, {
+			text = "$" .. tostring(entry.coins or 0),
+			font = Theme.Font.Display,
+			size = 24,
 			align = Enum.TextXAlignment.Center,
-			colour = Theme.Colour.TextMuted,
+			colour = isPast and Theme.Colour.TextMuted or Theme.Colour.Currency,
+			outline = false,
 		})
-		caption.Size = UDim2.new(1, 0, 0, 14)
-		caption.Position = UDim2.fromOffset(0, 56)
+		Components.Outline(coins, 2.2, Theme.Colour.CurrencyEdge, isPast and 0.6 or 0)
+		coins.Size = UDim2.new(1, 0, 0, 28)
+		coins.Position = UDim2.fromOffset(0, 76)
 
 		if entry.crystals then
 			local bonus = Components.Label(tile, {
 				text = string.format("+%d crystals", entry.crystals),
-				size = Theme.Text.Micro,
+				font = Theme.Font.Bold,
+				size = Theme.Text.Small,
 				align = Enum.TextXAlignment.Center,
-				colour = Theme.Rarity.Epic.colour,
+				colour = Theme.Rarity.Epic.colour:Lerp(Color3.new(1, 1, 1), 0.3),
 			})
-			bonus.Size = UDim2.new(1, 0, 0, 14)
-			bonus.Position = UDim2.fromOffset(0, 76)
+			bonus.Size = UDim2.new(1, 0, 0, 16)
+			bonus.Position = UDim2.fromOffset(0, 104)
+		end
+
+		if isToday then
+			local chip = Components.Chip(tile, "TODAY", Theme.Colour.Accent)
+			chip.AnchorPoint = Vector2.new(0.5, 0.5)
+			chip.Position = UDim2.new(0.5, 0, 1, 0)
+			chip.ZIndex = 3
 		end
 
 		table.insert(self._rungs, tile)
 	end
 
 	local streak = tonumber(status.streak) or 0
-	self._streak.Text = string.format("%d day streak  -  best %d",
+	self._streak.Text = string.format("🔥 %d day streak   ·   best %d",
 		streak, tonumber(status.bestStreak) or 0)
 
 	self._claimButton:SetEnabled(claimable)
-	self._claimButton:SetText(claimable and "CLAIM" or "CLAIMED")
+	self._claimButton:SetText(claimable and "CLAIM REWARD" or "✓ CLAIMED")
 
 	if not claimable then
 		self._note.Text = string.format("Next reward in %s",
