@@ -23,7 +23,7 @@ local Settings = {}
 Settings.__index = Settings
 
 local WHITE = Color3.new(1, 1, 1)
-local ROW_HEIGHT = 58
+local ROW_HEIGHT = 48
 local SAVE_DELAY = 0.8
 
 -- ----------------------------------------------------------------- apply --
@@ -60,6 +60,8 @@ local function apply(id: string, value: number)
 		Players.LocalPlayer:SetAttribute("FovSetting", value)
 	elseif id == "Crosshair" then
 		Players.LocalPlayer:SetAttribute("CrosshairColour", value)
+	elseif id == "HeadLook" then
+		Players.LocalPlayer:SetAttribute("HeadLookSetting", value)
 	end
 end
 
@@ -92,7 +94,7 @@ local function row(self, parent: GuiObject, setting: SettingsConfig.Setting, ord
 		size = 20,
 		outline = 2,
 	})
-	label.Position = UDim2.fromOffset(16, 6)
+	label.Position = UDim2.fromOffset(16, 4)
 	label.Size = UDim2.fromOffset(240, 24)
 	local hint = Components.Label(frame, {
 		text = setting.hint,
@@ -101,7 +103,7 @@ local function row(self, parent: GuiObject, setting: SettingsConfig.Setting, ord
 		colour = Theme.Colour.TextMuted,
 		outline = false,
 	})
-	hint.Position = UDim2.fromOffset(16, 32)
+	hint.Position = UDim2.fromOffset(16, 28)
 	hint.Size = UDim2.fromOffset(250, 16)
 
 	local minus = Components.Button(frame, {
@@ -222,7 +224,7 @@ function Settings.new(parent: Instance, remotes)
 	list.BackgroundTransparency = 1
 	list.Size = UDim2.new(1, 0, 1, -60)
 	list.Parent = menu.content
-	Components.List(list, Enum.FillDirection.Vertical, 6)
+	Components.List(list, Enum.FillDirection.Vertical, 4)
 
 	local order = 0
 	local lastGroup = nil
@@ -238,7 +240,7 @@ function Settings.new(parent: Instance, remotes)
 				outline = 2,
 			})
 			header.LayoutOrder = order
-			header.Size = UDim2.new(1, 0, 0, 26)
+			header.Size = UDim2.new(1, 0, 0, 22)
 		end
 		order += 1
 		row(self, list, setting, order)

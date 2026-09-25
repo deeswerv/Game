@@ -17,6 +17,7 @@
 local fs = require("@lune/fs")
 local roblox = require("@lune/roblox")
 local World = require("./world")
+local Rig = require("./rig")
 local R = World.R
 local CFrame = roblox.CFrame
 
@@ -210,35 +211,8 @@ R.mirror(place:GetService("ServerScriptService"):FindFirstChild("EmoteService"),
 
 -- The game's own rig, so there are real joints to pose.
 local player = World.player
-local source = place:GetService("StarterPlayer"):FindFirstChild("StarterCharacter")
-local rig = R.mirror(source, World.workspace)
-rig.Name = player.Name
--- The mirror does not carry references between instances; wire each joint's parts back up.
-for _, sourceMotor in ipairs(source:GetDescendants()) do
-	if sourceMotor:IsA("Motor6D") and sourceMotor.Part0 and sourceMotor.Part1 then
-		local motor = nil
-		for _, c in ipairs(rig:FindFirstChild(sourceMotor.Parent.Name):GetChildren()) do
-			if c.ClassName == "Motor6D" and c.Name == sourceMotor.Name then
-				motor = c
-			end
-		end
-		World.force(motor, "Part0", rig:FindFirstChild(sourceMotor.Part0.Name))
-		World.force(motor, "Part1", rig:FindFirstChild(sourceMotor.Part1.Name))
-		-- No animator runs here, so the animated part of each joint is at rest.
-		World.force(motor, "Transform", CFrame.new())
-	end
-end
-World.force(player, "Character", rig)
+local rig, rests = Rig.character(World, place)
 local humanoid = rig:FindFirstChildOfClass("Humanoid")
-humanoid.MaxHealth = 100
-humanoid.Health = 100
-local rigRoot = rig:FindFirstChild("HumanoidRootPart")
-rig.PrimaryPart = rigRoot
-rigRoot.CFrame = CFrame.new(0, 3, 0)
--- Standing still: what the engine would report for a character that is not moving.
-World.force(humanoid, "MoveDirection", roblox.Vector3.new(0, 0, 0))
-World.force(humanoid, "Jump", false)
-World.force(rigRoot, "AssemblyLinearVelocity", roblox.Vector3.new(0, 0, 0))
 
 local EmoteService = World.require(sss.EmoteService)
 World.advance(0.1)
@@ -268,19 +242,8 @@ humanoid.Health = 100
 -- ---------------------------------------------------------------- client --
 
 print("client")
-local rests = {}
-for _, d in ipairs(place:GetService("StarterPlayer").StarterCharacter:GetDescendants()) do
-	if d:IsA("Motor6D") and d.Part1 then
-		rests[d.Part1.Name] = d.C0
-	end
-end
 local function motorFor(partName: string)
-	for _, d in ipairs(rig:GetDescendants()) do
-		if d:IsA("Motor6D") and d.Part1 and d.Part1.Name == partName then
-			return d
-		end
-	end
-	return nil
+	return Rig.motor(rig, partName)
 end
 
 local scripts = World.service("StarterPlayer").StarterPlayerScripts

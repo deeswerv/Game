@@ -29,6 +29,8 @@ SettingsConfig.Schema = {
 		format = "percent", hint = "Recoil kick, landings, hits" },
 	{ id = "Fov", label = "FIELD OF VIEW", group = "CAMERA", min = 70, max = 100, step = 1, default = 70,
 		format = "degrees", hint = "Wider sees more; aiming still zooms" },
+	{ id = "HeadLook", label = "HEAD LOOK", group = "CAMERA", min = 0, max = 1, step = 0.1, default = 1,
+		format = "percent", hint = "Head turns where you look; 0% is off" },
 	{ id = "Crosshair", label = "CROSSHAIR COLOUR", group = "COMBAT", min = 1, max = 6, step = 1, default = 1,
 		format = "colour", hint = "Dot, arms and shotgun ring" },
 } :: { Setting }
