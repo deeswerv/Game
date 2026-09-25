@@ -56,6 +56,8 @@ type Bout = {
 	state: string,             -- "countdown" | "live" | "over"
 	endsAt: number,
 	winner: Player?,
+	dealt: { [Player]: number },   -- damage each duellist landed on the other
+	taken: { [Player]: number },
 }
 
 local queue: { Player } = {}
@@ -84,6 +86,7 @@ local function describe(player: Player)
 		}
 	end
 	local opponent = bout.players[1] == player and bout.players[2] or bout.players[1]
+	local now = os.clock()
 	return {
 		in_match = true,
 		state = bout.state,
@@ -91,7 +94,12 @@ local function describe(player: Player)
 		them = (opponent and bout.score[opponent]) or 0,
 		target = MatchService.SCORE_TO_WIN,
 		opponentName = opponent and opponent.DisplayName or "?",
-		secondsLeft = math.max(0, math.floor(bout.endsAt - os.clock())),
+		opponentUserId = opponent and opponent.UserId or 0,
+		-- The match clock only, not the countdown in front of it.
+		secondsLeft = math.max(0, math.floor(math.min(bout.endsAt - now, MatchService.TIME_LIMIT))),
+		-- Seconds until the fight starts, while it has not.
+		countdown = bout.state == "countdown"
+			and math.max(0, math.ceil(bout.endsAt - MatchService.TIME_LIMIT - now)) or 0,
 		won = bout.winner ~= nil and bout.winner == player or nil,
 	}
 end
@@ -172,14 +180,24 @@ local function finish(bout: Bout, winner: Player?, reason: string)
 
 	for _, p in ipairs(bout.players) do
 		if p.Parent then
+			local opponent = bout.players[1] == p and bout.players[2] or bout.players[1]
+			-- Everything the results screen shows, from this player's side. In a duel your
+			-- deaths are exactly your opponent's kills.
 			MatchUpdate:FireClient(p, {
 				in_match = true,
 				state = "over",
 				won = winner ~= nil and winner == p or false,
 				draw = winner == nil,
 				reason = reason,
-				opponentName = (bout.players[1] == p and bout.players[2] or bout.players[1]) and
-					(bout.players[1] == p and bout.players[2] or bout.players[1]).DisplayName or "?",
+				opponentName = opponent and opponent.DisplayName or "?",
+				opponentUserId = opponent and opponent.UserId or 0,
+				target = MatchService.SCORE_TO_WIN,
+				you = bout.score[p] or 0,
+				them = (opponent and bout.score[opponent]) or 0,
+				dealt = math.floor(bout.dealt[p] or 0),
+				taken = math.floor(bout.taken[p] or 0),
+				theirDealt = math.floor((opponent and bout.dealt[opponent]) or 0),
+				theirTaken = math.floor((opponent and bout.taken[opponent]) or 0),
 			})
 		end
 	end
@@ -218,6 +236,8 @@ local function begin(a: Player, b: Player)
 		state = "countdown",
 		endsAt = os.clock() + MatchService.COUNTDOWN + MatchService.TIME_LIMIT,
 		winner = nil,
+		dealt = { [a] = 0, [b] = 0 },
+		taken = { [a] = 0, [b] = 0 },
 	}
 	bouts[bout.id] = bout
 
@@ -385,6 +405,21 @@ end
 -- the victim; re-deriving any of that here would be a second opinion that could disagree.
 KillCredit.KillAwarded.Event:Connect(function(killer: Player?, _humanoid: Humanoid?, victim: Player?)
 	MatchService.RegisterKill(killer, victim)
+end)
+
+-- Damage between the two duellists, for the results screen. Only a live bout counts, and
+-- only hits one duellist lands on the other -- a stray NPC in the way is not the duel.
+KillCredit.Damaged.Event:Connect(function(humanoid: Humanoid, dealt: number, attacker: Player?)
+	if not attacker then
+		return
+	end
+	local victim = Players:GetPlayerFromCharacter(humanoid.Parent)
+	local bout = boutOf[attacker]
+	if not victim or not bout or bout.state ~= "live" or boutOf[victim] ~= bout or victim == attacker then
+		return
+	end
+	bout.dealt[attacker] = (bout.dealt[attacker] or 0) + dealt
+	bout.taken[victim] = (bout.taken[victim] or 0) + dealt
 end)
 
 print("[Match] duel queue open")

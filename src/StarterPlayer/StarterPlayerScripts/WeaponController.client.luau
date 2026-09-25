@@ -239,6 +239,10 @@ GunEffect.OnClientEvent:Connect(function(kind, ...)
 		local position, amount, headshot, lethal = ...
 		if typeof(position) == "Vector3" and type(amount) == "number" then
 			CombatFX.DamageNumber(position, amount, headshot == true, lethal == true)
+			-- Our own kill: cash flies out of the body.
+			if lethal == true then
+				CombatFX.CashBurst(position)
+			end
 		end
 	elseif kind == "HitFlash" then
 		local models, lethalFlags = ...

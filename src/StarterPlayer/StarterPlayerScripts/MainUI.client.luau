@@ -82,6 +82,15 @@ end
 local duel = Duel.new(screen, {
 	matchAction = matchRemotes:WaitForChild("MatchAction") :: RemoteFunction,
 	matchUpdate = matchRemotes:WaitForChild("MatchUpdate") :: RemoteEvent,
+}, {
+	-- The duel scoreboard takes the top of the screen; cash and level step aside for it.
+	onScoreboard = function(visible: boolean)
+		hud:SetIdentityVisible(not visible)
+	end,
+	-- The ELIMINATED call lifts clear of the PLAY diamond while that is on screen.
+	onPlayVisible = function(visible: boolean)
+		killFeed:SetLift(visible)
+	end,
 })
 
 -- --------------------------------------------------------------- objective --
@@ -244,9 +253,12 @@ task.spawn(function()
 	-- The first message is the loaded profile, not a gain; only a rise after that is a
 	-- level-up worth celebrating.
 	local lastLevel: number? = nil
-	xpGained.OnClientEvent:Connect(function(_amount: number, exp: number, maxExp: number, level: number)
+	xpGained.OnClientEvent:Connect(function(amount: number, exp: number, maxExp: number, level: number)
 		local now = math.floor(tonumber(level) or 1)
 		hud:SetLevel(now, exp, maxExp)
+		if lastLevel ~= nil and type(amount) == "number" and amount > 0 then
+			hud:XpPopup(amount)
+		end
 		if lastLevel ~= nil and now > lastLevel then
 			feedback:LevelUp(now)
 		end
@@ -544,11 +556,7 @@ nav = Nav.new(screen, {
 	{ id = "Workshop", label = "Armory", key = "[K]", onActivated = function()
 		openOnly(workshop)
 	end },
-	-- Not a menu: this one acts immediately rather than opening a panel, so it does not go
-	-- through openOnly.
-	{ id = "Duel", label = "1v1", key = "[J]", hint = "Queue A 1v1 Duel!", onActivated = function()
-		duel:Toggle()
-	end },
+	-- Duels are the PLAY diamond now (and J), so the dock no longer needs a tile for them.
 	{ id = "Profile", label = "Profile", key = "[P]", onActivated = function()
 		openOnly(profile)
 	end },
@@ -572,6 +580,18 @@ task.spawn(function()
 		end
 		killFeed:Push(victimName, type(weaponName) == "string" and weaponName or nil)
 		killFeed:Eliminated(victimName)
+	end)
+
+	-- Everyone else's player kills. Our own are already in the feed from the remote above.
+	local all = remotes and remotes:WaitForChild("KillFeedAll", 30)
+	if not all or not all:IsA("RemoteEvent") then
+		return
+	end
+	all.OnClientEvent:Connect(function(killer: unknown, victim: unknown, weapon: unknown, killerId: unknown, victimId: unknown)
+		if killerId == player.UserId or type(killer) ~= "string" or type(victim) ~= "string" then
+			return
+		end
+		killFeed:PushOther(killer, victim, type(weapon) == "string" and weapon or nil, victimId == player.UserId)
 	end)
 end)
 
@@ -605,7 +625,6 @@ UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: 
 	end
 	if input.KeyCode == Enum.KeyCode.J then
 		duel:Toggle()
-		nav:DismissHint("Duel")
 		return
 	end
 	if input.KeyCode == Enum.KeyCode.P then

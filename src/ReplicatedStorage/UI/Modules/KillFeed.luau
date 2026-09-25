@@ -227,6 +227,55 @@ function KillFeed:Push(victim: string, weapon: string?)
 	fadeOut(row, ROW_LIFETIME, self._rows)
 end
 
+--- Somebody else's kill, from the server-wide feed: "Killer [weapon] Victim". When the victim
+--- is you, the row is lit red so your own death stands out from the traffic.
+function KillFeed:PushOther(killer: string, victim: string, weapon: string?, victimIsMe: boolean?)
+	local row = newRow(self, "Other")
+	if victimIsMe then
+		row.BackgroundColor3 = Color3.fromRGB(110, 14, 20)
+		row.BackgroundTransparency = 0.15
+	else
+		local spine = row:FindFirstChild("Spine")
+		if spine and spine:IsA("Frame") then
+			spine.BackgroundColor3 = Theme.Colour.TextMuted
+		end
+	end
+
+	Components.Label(row, {
+		text = killer,
+		font = Theme.Font.Bold,
+		size = Theme.Text.Body,
+		autoSize = true,
+		layoutOrder = 1,
+	})
+	Components.Label(row, {
+		text = weapon and ("[" .. weapon .. "]") or "»",
+		font = Theme.Font.Bold,
+		size = Theme.Text.Small,
+		colour = Theme.Colour.TextDim,
+		autoSize = true,
+		layoutOrder = 2,
+	})
+	Components.Label(row, {
+		text = victimIsMe and "YOU" or victim,
+		font = Theme.Font.Bold,
+		size = Theme.Text.Body,
+		colour = Theme.Colour.Kill:Lerp(Color3.new(1, 1, 1), 0.2),
+		autoSize = true,
+		layoutOrder = 3,
+	})
+
+	fadeOut(row, ROW_LIFETIME, self._rows)
+end
+
+--- The call sits low, just over the bottom row, as the references have it -- unless the PLAY
+--- diamond is on screen there, in which case it lifts clear of it.
+function KillFeed:SetLift(lifted: boolean)
+	local lift = lifted and 96 or 0
+	self._banner.Position = UDim2.new(0.5, 0, 1, -150 - lift)
+	self._streak.Position = UDim2.new(0.5, 0, 1, -196 - lift)
+end
+
 --- A line that is not a kill: something earned. Same feed, same shape, gold spine, so a
 --- reward reads as part of the fight rather than as a popup interrupting it.
 function KillFeed:Notice(tag: string, text: string, colour: Color3?)

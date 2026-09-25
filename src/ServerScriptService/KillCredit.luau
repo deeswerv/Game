@@ -22,6 +22,11 @@ KillCredit.KillAwarded = Instance.new("BindableEvent")
 -- Gore listens to this so an NPC killed by another NPC still bursts.
 KillCredit.HumanoidDied = Instance.new("BindableEvent")
 
+-- Fired after every attributed hit: (humanoid, dealt, attacker: Player?, weapon: string?).
+-- `dealt` is the health actually removed -- after armour, and never more than was left --
+-- so anything tallying damage (a duel's damage dealt / taken) counts what really landed.
+KillCredit.Damaged = Instance.new("BindableEvent")
+
 local TAG_NAME = "creator"
 -- How long a hit stays "fresh" enough to count as the kill. Without this, a player
 -- who chipped someone an hour ago would steal the kill from whoever finished them.
@@ -153,7 +158,12 @@ function KillCredit.Damage(humanoid: Humanoid?, amount: number, player: Player?,
 	-- Tag() bails out when there is no attacking player, so watch here too: an NPC
 	-- killed by another NPC still needs its death noticed.
 	watch(humanoid)
+	local before = humanoid.Health
 	humanoid:TakeDamage(KillCredit.Mitigate(humanoid, amount))
+	local dealt = before - humanoid.Health
+	if dealt > 0 then
+		KillCredit.Damaged:Fire(humanoid, dealt, player, weapon)
+	end
 end
 
 return KillCredit

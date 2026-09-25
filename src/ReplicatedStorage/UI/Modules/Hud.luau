@@ -151,6 +151,7 @@ local function buildIdentity(self, parent: GuiObject)
 
 	self._cash, self._level, self._xp, self._badge = amount, level, xp, badge
 	self._cashPill, self._cashPopups = pill, popups
+	self._identity, self._xpHolder = holder, xpHolder
 end
 
 local function buildVitals(self, parent: GuiObject)
@@ -579,6 +580,47 @@ function Hud:SetLevel(level: number, exp: number?, maxExp: number?)
 	if previous and whole > previous then
 		pop(self._badge, 1.6)
 	end
+end
+
+--- "+15 XP" pops out beside the level diamond whenever experience lands.
+function Hud:XpPopup(amount: number)
+	if amount <= 0 or not self._identity.Visible then
+		return
+	end
+	local label = Components.Label(self._cashPopups, {
+		text = string.format("+%d XP", math.floor(amount)),
+		font = Theme.Font.Display,
+		size = 20,
+		colour = Theme.Colour.Xp,
+		align = Enum.TextXAlignment.Center,
+		outline = false,
+	})
+	Components.Outline(label, 2.2, Color3.fromRGB(50, 10, 70), 0)
+	label.Size = UDim2.new(1, 0, 0, 24)
+	label.Position = UDim2.fromOffset(150 + math.random(-10, 10), -34)
+	pop(label, 1.6)
+	TweenService:Create(label, TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Position = label.Position + UDim2.fromOffset(0, 40),
+	}):Play()
+	task.delay(0.8, function()
+		if label.Parent then
+			TweenService:Create(label, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+			local edge = label:FindFirstChildOfClass("UIStroke")
+			if edge then
+				TweenService:Create(edge, TweenInfo.new(0.4), { Transparency = 1 }):Play()
+			end
+		end
+	end)
+	task.delay(1.3, function()
+		label:Destroy()
+	end)
+end
+
+--- During a duel the scoreboard takes the top of the screen, as in the references, and the
+--- cash and level step aside for it.
+function Hud:SetIdentityVisible(visible: boolean)
+	self._identity.Visible = visible
+	self._xpHolder.Visible = visible
 end
 
 --- Hidden wholesale while a menu is open, so the HUD never shows through a panel.

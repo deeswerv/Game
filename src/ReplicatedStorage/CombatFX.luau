@@ -943,4 +943,54 @@ function CombatFX.KillBurst(model: Model)
 	end
 end
 
+-- ---------------------------------------------------------------- cash burst --
+
+--- Banknotes thrown out of a body you just dropped -- the reference's cash-on-kill beat.
+--- Only the killer sees it (it is triggered from their own lethal hit), and it is one
+--- BillboardGui with a handful of labels, gone in a second.
+function CombatFX.CashBurst(position: Vector3)
+	if not budget() then
+		return
+	end
+	local holder = decor(Vector3.new(0.05, 0.05, 0.05), CFrame.new(position + Vector3.new(0, 1, 0)),
+		Color3.new(), Enum.Material.SmoothPlastic)
+	holder.Transparency = 1
+	holder.Name = "CashBurst"
+	track(holder, 1.3)
+
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.fromOffset(260, 220)
+	bb.AlwaysOnTop = true
+	bb.LightInfluence = 0
+	bb.MaxDistance = 250
+	bb.Adornee = holder
+	bb.Parent = holder
+
+	for i = 1, 6 do
+		local bill = Instance.new("TextLabel")
+		bill.BackgroundTransparency = 1
+		bill.Text = "💵"
+		bill.TextSize = 30
+		bill.Font = Enum.Font.SourceSansBold
+		bill.AnchorPoint = Vector2.new(0.5, 0.5)
+		bill.Position = UDim2.fromScale(0.5, 0.6)
+		bill.Size = UDim2.fromOffset(40, 40)
+		bill.Rotation = math.random(-30, 30)
+		bill.Parent = bb
+		local angle = (i / 6) * math.pi - math.pi + (math.random() - 0.5) * 0.5
+		local reach = 70 + math.random() * 40
+		local info = TweenInfo.new(0.9, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+		TweenService:Create(bill, info, {
+			Position = UDim2.new(0.5, math.cos(angle) * reach, 0.6, math.sin(angle) * reach * 0.8 - 20),
+			Rotation = bill.Rotation + math.random(-120, 120),
+			TextSize = 22,
+		}):Play()
+		task.delay(0.55, function()
+			if bill.Parent then
+				TweenService:Create(bill, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+			end
+		end)
+	end
+end
+
 return CombatFX

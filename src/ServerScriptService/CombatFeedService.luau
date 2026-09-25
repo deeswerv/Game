@@ -20,6 +20,17 @@ local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local AimUpdate = Remotes:WaitForChild("AimUpdate") :: RemoteEvent
 local KillFeed = Remotes:WaitForChild("KillFeed") :: RemoteEvent
 
+-- Player-on-player kills, announced to the whole server the way the reference feed shows
+-- everyone's eliminations. NPC kills stay private to the killer: the world has dozens of
+-- NPCs, and a feed full of strangers' bandit kills would bury the fights that matter.
+local KillFeedAll = Remotes:FindFirstChild("KillFeedAll") :: RemoteEvent?
+if not KillFeedAll then
+	local created = Instance.new("RemoteEvent")
+	created.Name = "KillFeedAll"
+	created.Parent = Remotes
+	KillFeedAll = created
+end
+
 local CombatFeedService = {}
 
 -- How far the weapon is allowed to follow the camera. Past this it stops looking like
@@ -58,7 +69,8 @@ Players.PlayerRemoving:Connect(function(player)
 	lastAccepted[player] = nil
 end)
 
--- Sent only to the killer: this is their feed, not a server-wide announcement.
+-- The killer always hears about it (their ELIMINATED call); a player victim also goes out to
+-- everyone.
 KillCredit.KillAwarded.Event:Connect(function(killer, humanoid, victim)
 	if not killer or not killer:IsA("Player") then
 		return
@@ -72,6 +84,9 @@ KillCredit.KillAwarded.Event:Connect(function(killer, humanoid, victim)
 		end
 	elseif typeof(victim) == "string" then
 		name = victim
+	elseif typeof(humanoid) == "Instance" and humanoid.Parent then
+		-- An NPC: its model carries its display name ("Bandit", "Warlord").
+		name = humanoid.Parent.Name
 	end
 	-- What did it, so the feed can read killer / weapon / victim the way the reference does
 	-- rather than just naming the victim. CombatDeath reads this same attribute to pick the
@@ -83,6 +98,11 @@ KillCredit.KillAwarded.Event:Connect(function(killer, humanoid, victim)
 	end
 
 	KillFeed:FireClient(killer, name, weapon)
+
+	if typeof(victim) == "Instance" and victim:IsA("Player") then
+		local killerName = killer.DisplayName ~= "" and killer.DisplayName or killer.Name
+		;(KillFeedAll :: RemoteEvent):FireAllClients(killerName, name, weapon or false, killer.UserId, victim.UserId)
+	end
 end)
 
 return CombatFeedService
