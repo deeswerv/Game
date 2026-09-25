@@ -434,6 +434,10 @@ function MatchService.InBout(player: Player): boolean
 	return boutOf[player] ~= nil
 end
 
+function MatchService.InQueue(player: Player): boolean
+	return indexOf(queue, player) ~= nil
+end
+
 --- Duellists respawn INSIDE the arena, not at the world spawn.
 local function onCharacterAdded(player: Player, character: Model)
 	local bout = boutOf[player]

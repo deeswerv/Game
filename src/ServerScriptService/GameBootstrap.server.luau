@@ -45,6 +45,7 @@ local systems = {
 	"StatsService",        -- deaths, weapon usage, and the record the profile card shows
 	"RangeService",        -- the gun range: damage and DPS read off the targets themselves
 	"DailyService",        -- the daily reward ladder, timed on the server
+	"DuelPads",            -- 1v1 pads by the spawn: stand on one to queue (last: it looks for clear ground)
 }
 
 for _, name in ipairs(systems) do
