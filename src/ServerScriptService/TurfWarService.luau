@@ -157,6 +157,10 @@ function TurfWarService.Start(): boolean
 					if player.Parent and dealt > 0 then
 						local mvp = player == best
 						pay(player, mvp and (1 + TurfWarService.MVP_BONUS) or 1)
+						local okC, ContractService = pcall(require, ServerScriptService:FindFirstChild("ContractService") :: ModuleScript)
+						if okC and type(ContractService) == "table" and ContractService.Note then
+							task.spawn(ContractService.Note, player, "turf")
+						end
 						turfEvent:FireClient(player, "reward", {
 							coins = math.floor(TurfWarService.REWARD.coins * (mvp and 1 + TurfWarService.MVP_BONUS or 1)),
 							xp = math.floor(TurfWarService.REWARD.xp * (mvp and 1 + TurfWarService.MVP_BONUS or 1)),

@@ -78,6 +78,10 @@ local function openStash(player: Player, stash: BasePart)
 		kind = "reward", title = "ROOFTOP STASH", coins = reward.coins, crystals = reward.crystals, xp = reward.xp,
 	})
 	print(("[Downtown] %s opened the rooftop stash"):format(player.Name))
+	local okC, ContractService = pcall(require, ServerScriptService:FindFirstChild("ContractService") :: ModuleScript)
+	if okC and type(ContractService) == "table" and ContractService.Note then
+		task.spawn(ContractService.Note, player, "stash")
+	end
 end
 
 --- Prompts on everything marked for one, pads in the hall. Safe to run on a baked copy.

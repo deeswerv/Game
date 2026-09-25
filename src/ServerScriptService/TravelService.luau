@@ -135,6 +135,11 @@ function TravelService.Go(player: Player, id: string): (boolean, string?)
 	root.AssemblyLinearVelocity = Vector3.zero
 	root.AssemblyAngularVelocity = Vector3.zero
 	char:PivotTo(target)
+	-- Somewhere new, for the Explorer achievement.
+	local ok, ContractService = pcall(require, ServerScriptService:FindFirstChild("ContractService") :: ModuleScript)
+	if ok and type(ContractService) == "table" and ContractService.Note then
+		task.spawn(ContractService.Note, player, "travel", 1, { place = id })
+	end
 	return true, nil
 end
 

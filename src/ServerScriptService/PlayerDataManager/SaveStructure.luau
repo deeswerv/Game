@@ -69,6 +69,15 @@ local SaveStructure = {
 	-- The UTC day the Downtown rooftop stash was last opened (once a day).
 	StashDay = 0,
 
+	-- Achievements (AchievementService / AchievementConfig): running counts per kind
+	-- ("kill" = 412, "streak" = best run), which are unlocked, which have been claimed, and
+	-- the places travelled to for Explorer. All dictionaries, so Replica never sees a gappy
+	-- array; Reconcile() fills them into existing profiles empty.
+	AchievementStats = {},
+	AchievementsUnlocked = {},
+	AchievementsClaimed = {},
+	AchievementPlaces = {},
+
 	-- How many times this player has reset their level at the cap. Drives the emblem shown
 	-- beside their name, and is the one number that never resets.
 	--

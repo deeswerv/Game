@@ -117,6 +117,35 @@ return function(World)
 			},
 		}
 	end
+	-- AchievementService.State: a few ready to claim, some part way, some done.
+	local AchievementConfig = World.require(rs:FindFirstChild("AchievementConfig"))
+	local claimedTitles = {}
+	R.serverFunctions.AchievementAction = function(action, arg)
+		local list, done, ready = {}, 0, 0
+		for i, a in ipairs(AchievementConfig.List) do
+			local unlocked = i % 3 ~= 0
+			local claimed = unlocked and i % 2 == 0
+			local progress = unlocked and a.goal or math.floor(a.goal * ((i * 37) % 90) / 100)
+			if unlocked then
+				done += 1
+				if not claimed then
+					ready += 1
+				end
+			end
+			table.insert(list, { id = a.id, category = a.category, icon = a.icon, title = a.title, text = a.text,
+				goal = a.goal, progress = progress, unlocked = unlocked, claimed = claimed, reward = a.reward })
+		end
+		local state = { list = list, done = done, total = #list, ready = ready,
+			titles = { "Veteran", "Duelist", "Explorer" }, equipped = claimedTitles[1] or "Veteran" }
+		if action == "claim" or action == "equip" then
+			if action == "equip" then
+				claimedTitles[1] = arg
+				state.equipped = arg
+			end
+			return { ok = true, state = state }
+		end
+		return state
+	end
 	R.serverFunctions.BuildAction = function(action)
 		return { ok = true, builds = {}, camos = {}, attachments = {} }
 	end

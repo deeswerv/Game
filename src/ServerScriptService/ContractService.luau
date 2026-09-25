@@ -25,6 +25,11 @@ local LevelSystem = require(ServerScriptService.LevelSystem)
 
 local ContractService = {}
 
+-- Everything counted here, re-broadcast: AchievementService listens to the same stream of
+-- kills, headshots, duels and drops, plus kinds only it counts (places travelled to, turf
+-- wars won, stashes found, bounties claimed) that other services report through Note too.
+ContractService.Noted = Instance.new("BindableEvent")
+
 local remotes = ReplicatedStorage:FindFirstChild("Remotes")
 if not remotes then
 	remotes = Instance.new("Folder")
@@ -141,7 +146,9 @@ end
 
 --- Something happened that a contract might count. `amount` defaults to 1; `detail` narrows
 --- kills (the weapon class, the distance).
-function ContractService.Note(player: Player, kind: string, amount: number?, detail: { class: string?, distance: number? }?)
+function ContractService.Note(player: Player, kind: string, amount: number?,
+	detail: { class: string?, distance: number?, place: string? }?)
+	ContractService.Noted:Fire(player, kind, amount, detail)
 	local replica = replicas[player]
 	if not replica then
 		return
@@ -174,6 +181,7 @@ function ContractService.Note(player: Player, kind: string, amount: number?, det
 					if now >= c.target then
 						paid[id] = true
 						replica:SetValue("ContractsDone", (tonumber(replica.Data.ContractsDone) or 0) + 1)
+						ContractService.Noted:Fire(player, "contract", 1, nil)
 						pay(player, replica, c.reward)
 						ContractUpdate:FireClient(player, "complete", {
 							id = c.id, title = c.title, icon = c.icon, tier = c.tier, reward = c.reward,

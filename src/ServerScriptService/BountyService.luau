@@ -100,6 +100,10 @@ KillCredit.KillAwarded.Event:Connect(function(killer: Player, humanoid: Humanoid
 				victim = victim.DisplayName, victimId = victim.UserId, amount = price,
 			})
 			print(("[Bounty] %s claimed %s's $%d"):format(killer.Name, victim.Name, price))
+			local okC, ContractService = pcall(require, ServerScriptService:FindFirstChild("ContractService") :: ModuleScript)
+			if okC and type(ContractService) == "table" and ContractService.Note then
+				task.spawn(ContractService.Note, killer, "bounty")
+			end
 		end
 	end
 

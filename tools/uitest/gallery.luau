@@ -35,7 +35,7 @@ World.serverRemotes({
 		MatchAction = "RemoteFunction", MatchUpdate = "RemoteEvent", RangeAction = "RemoteFunction",
 		ProfileRequest = "RemoteFunction", DailyAction = "RemoteFunction", BuildAction = "RemoteFunction",
 		StatAction = "RemoteFunction", SettingsAction = "RemoteFunction",
-		ContractAction = "RemoteFunction", ContractUpdate = "RemoteEvent", SupplyEvent = "RemoteEvent", WorldReward = "RemoteEvent", BountyEvent = "RemoteEvent", TurfEvent = "RemoteEvent", TravelAction = "RemoteFunction",
+		ContractAction = "RemoteFunction", ContractUpdate = "RemoteEvent", SupplyEvent = "RemoteEvent", WorldReward = "RemoteEvent", BountyEvent = "RemoteEvent", TurfEvent = "RemoteEvent", TravelAction = "RemoteFunction", AchievementAction = "RemoteFunction", AchievementEvent = "RemoteEvent",
 		KillFeed = "RemoteEvent", KillFeedAll = "RemoteEvent", DeathReport = "RemoteEvent",
 		GunEffect = "RemoteEvent", NPCEffect = "RemoteEvent", GunAction = "RemoteEvent",
 		MeleeAction = "RemoteEvent", MeleeEffect = "RemoteEvent", AimUpdate = "RemoteEvent",
@@ -76,6 +76,18 @@ if tool then
 end
 shot("01_hud")
 
+-- 26. The title screen, as a player joining sees it; PLAY puts the HUD back for the rest.
+World.run(sps:FindFirstChild("TitleScreen"))
+shot("26_title", 1.4)
+do
+	local title = World.playerGui:FindFirstChild("TitleScreen")
+	local playButton = title and World.find(title, "Play", "TextButton")
+	if playButton then
+		World.click(playButton)
+	end
+	World.advance(1.5)
+end
+
 -- 2..6. Every menu.
 toggle(Enum.KeyCode.B)
 shot("02_inventory")
@@ -108,6 +120,9 @@ toggle(Enum.KeyCode.Y)
 toggle(Enum.KeyCode.T)
 shot("24_travel")
 toggle(Enum.KeyCode.T)
+toggle(Enum.KeyCode.H)
+shot("25_achievements")
+toggle(Enum.KeyCode.H)
 
 -- A WANTED player nearby, and your own streak call.
 do

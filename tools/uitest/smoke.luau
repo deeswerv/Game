@@ -44,7 +44,7 @@ World.serverRemotes({
 		MatchAction = "RemoteFunction", MatchUpdate = "RemoteEvent", RangeAction = "RemoteFunction",
 		ProfileRequest = "RemoteFunction", DailyAction = "RemoteFunction", BuildAction = "RemoteFunction",
 		StatAction = "RemoteFunction", SettingsAction = "RemoteFunction",
-		ContractAction = "RemoteFunction", ContractUpdate = "RemoteEvent", SupplyEvent = "RemoteEvent", WorldReward = "RemoteEvent", BountyEvent = "RemoteEvent", TurfEvent = "RemoteEvent", TravelAction = "RemoteFunction",
+		ContractAction = "RemoteFunction", ContractUpdate = "RemoteEvent", SupplyEvent = "RemoteEvent", WorldReward = "RemoteEvent", BountyEvent = "RemoteEvent", TurfEvent = "RemoteEvent", TravelAction = "RemoteFunction", AchievementAction = "RemoteFunction", AchievementEvent = "RemoteEvent",
 		KillFeed = "RemoteEvent", KillFeedAll = "RemoteEvent", DeathReport = "RemoteEvent",
 		GunEffect = "RemoteEvent", NPCEffect = "RemoteEvent", ChestEffect = "RemoteEvent",
 	},
@@ -120,6 +120,7 @@ for _, case in ipairs({
 	{ key = Enum.KeyCode.L, name = "contracts (L)" },
 	{ key = Enum.KeyCode.Y, name = "level road (Y)" },
 	{ key = Enum.KeyCode.T, name = "travel (T)" },
+	{ key = Enum.KeyCode.H, name = "achievements (H)" },
 }) do
 	World.pressKey(case.key)
 	World.advance(0.6)
@@ -187,6 +188,24 @@ do
 	})
 	World.advance(4.5)
 	check("the warning clears once it has gone off", alert == nil or not alert.Visible)
+end
+
+-- The title screen: up on join (the harness has no loading screen to wait for), it holds
+-- the HUD back and frees the mouse; PLAY drops you in and puts everything back.
+do
+	World.run(sps:FindFirstChild("TitleScreen"))
+	World.advance(1.2)
+	local title = gui:FindFirstChild("TitleScreen")
+	check("title screen shows", title ~= nil)
+	check("title screen holds the HUD back", World.player:GetAttribute("UIOpen") == true)
+	local playButton = title and World.find(title, "Play", "TextButton")
+	check("title has a PLAY button", playButton ~= nil)
+	if playButton then
+		World.click(playButton)
+		World.advance(1.5)
+	end
+	check("PLAY drops you in", gui:FindFirstChild("TitleScreen") == nil and gui:FindFirstChild("TitleFade") == nil)
+	check("and gives the HUD back", World.player:GetAttribute("UIOpen") ~= true)
 end
 
 World.advance(1)

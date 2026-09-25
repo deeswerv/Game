@@ -37,6 +37,7 @@ local WorldEvents = require(Modules:WaitForChild("WorldEvents"))
 local Bounties = require(Modules:WaitForChild("Bounties"))
 local LevelRoad = require(Modules:WaitForChild("LevelRoad"))
 local Travel = require(Modules:WaitForChild("Travel"))
+local Achievements = require(Modules:WaitForChild("Achievements"))
 local WeaponConfig = require(ReplicatedStorage:WaitForChild("WeaponConfig"))
 
 local StarterGui = game:GetService("StarterGui")
@@ -633,6 +634,16 @@ local contracts = safe("Contracts", function()
 	})
 end)
 
+-- Forward-declared: claiming from the panel shows a banner, and the toasts are built below.
+local announceClaim: (any) -> () = function() end
+local achievements = safe("Achievements", function()
+	return Achievements.new(menuLayer, {
+		achievementAction = remote("AchievementAction"),
+	}, function(a)
+		announceClaim(a)
+	end)
+end)
+
 local settings = safe("Settings", function()
 	return Settings.new(menuLayer, {
 		settingsAction = remote("SettingsAction"),
@@ -648,9 +659,9 @@ local nav: any
 local NAV_ID = {
 	[inventory] = "Inventory", [market] = "Market", [workshop] = "Workshop",
 	[profile] = "Profile", [daily] = "Daily", [journal] = "Journal",
-	[settings] = "Settings", [contracts] = "Contracts", [travel] = "Travel",
+	[settings] = "Settings", [contracts] = "Contracts", [travel] = "Travel", [achievements] = "Achievements",
 }
-local PANELS = { inventory, market, workshop, profile, daily, journal, contracts, road, travel, settings }
+local PANELS = { inventory, market, workshop, profile, daily, journal, contracts, road, travel, achievements, settings }
 
 -- Opening one panel closes the others. Two full-screen menus stacked on each other is how a
 -- player loses track of what Escape is going to do.
@@ -715,6 +726,9 @@ nav = safe("Nav", function()
 		{ id = "Contracts", label = "Contracts", key = "[L]", onActivated = function()
 			openOnly(contracts)
 		end },
+		{ id = "Achievements", label = "Awards", key = "[H]", onActivated = function()
+			openOnly(achievements)
+		end },
 		{ id = "Profile", label = "Profile", key = "[P]", onActivated = function()
 			openOnly(profile)
 		end },
@@ -769,16 +783,51 @@ do
 	end)
 end
 
--- What is new, once per session: the district is one gate away and easy to miss.
-task.delay(9, function()
-	toast:Push({
-		title = "NEW: DOWNTOWN",
-		text = "Press T to travel there",
-		icon = "🏙",
-		colour = Color3.fromRGB(255, 64, 170),
-		duration = 9,
-	})
-end)
+-- ----------------------------------------------------------- achievements --
+
+-- An unlock is a banner and a badge on the Awards tile; the reward is claimed in the panel.
+do
+	local achievementAction = remote("AchievementAction")
+	local function refreshBadge()
+		task.spawn(function()
+			local ok, state = pcall(function()
+				return achievementAction:InvokeServer("state")
+			end)
+			if ok and type(state) == "table" and nav then
+				nav:SetBadge("Achievements", tonumber(state.ready) or 0)
+			end
+		end)
+	end
+	remote("AchievementEvent").OnClientEvent:Connect(function(kind: unknown, data: unknown)
+		if kind ~= "unlocked" or type(data) ~= "table" then
+			return
+		end
+		local info = data :: any
+		toast:Banner({
+			title = "ACHIEVEMENT UNLOCKED",
+			subtitle = ("%s  %s  ·  PRESS H TO CLAIM"):format(tostring(info.icon or "🏆"), string.upper(tostring(info.title or ""))),
+			colour = Color3.fromRGB(255, 196, 40),
+			sound = "Ring",
+			duration = 4,
+		})
+		refreshBadge()
+		if achievements:IsOpen() then
+			achievements:Refresh()
+		end
+	end)
+	announceClaim = function(a: any)
+		local reward = a and a.reward or {}
+		toast:Banner({
+			title = string.upper(tostring(a and a.title or "REWARD")),
+			subtitle = Achievements.RewardText(reward),
+			colour = Color3.fromRGB(255, 196, 40),
+			sound = "Ring",
+			duration = 3.5,
+		})
+		refreshBadge()
+	end
+	task.delay(4, refreshBadge)
+end
 
 -- -------------------------------------------------------------- contracts --
 
@@ -925,6 +974,10 @@ UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: 
 		openOnly(travel)
 		return
 	end
+	if input.KeyCode == Enum.KeyCode.H then
+		openOnly(achievements)
+		return
+	end
 
 	-- Slot keys are gameplay, so they stop at the edge of a menu.
 	if player:GetAttribute("UIOpen") == true then
@@ -965,4 +1018,12 @@ local function refreshMenuState()
 end
 refreshMenuState()
 player:GetAttributeChangedSignal("UIOpen"):Connect(refreshMenuState)
+
+-- The title screen's "1V1 DUEL" shortcut: into the queue the moment the game is on screen.
+player:GetAttributeChangedSignal("TitleAction"):Connect(function()
+	if player:GetAttribute("TitleAction") == "duel" then
+		player:SetAttribute("TitleAction", nil)
+		duel:Toggle()
+	end
+end)
 player:GetAttributeChangedSignal("Scoped"):Connect(refreshMenuState)

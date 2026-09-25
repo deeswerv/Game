@@ -21,6 +21,7 @@ as uploaded.
 | **O** | Quest journal |
 | **L** | Daily contracts |
 | **Y** (or click the level diamond) | Level road: what every level unlocks, and what is next |
+| **H** | Achievements: claim rewards and pick the title you wear |
 | **T** | Travel: jump to the Crossing, Downtown, the Flats, the Mine, the Watchpoint or the Reach (not while under fire or in a duel) |
 | **E** (hold) | Open a supply drop |
 | **F1** | Settings: volumes, camera shake, field of view, crosshair colour |
@@ -62,6 +63,22 @@ minutes and everyone who landed a hit is paid, with a bonus for the MVP.
 - **Supply drops**: every four minutes a crate parachutes into one of the open zones under a
   pillar of light, with a marker and distance on your screen. First to hold E on it keeps the
   cash, crystals and XP inside; about one in eight is a golden Elite drop worth double.
+
+## Title screen
+
+Joining opens on a title screen once per session: the camera flies over Downtown, the Flats,
+a duel map and the harbour behind the PROJECT ZEE logo, with your card (level, title, money)
+and what is new. **PLAY** (or Space / Enter) drops you in; the **1V1 DUEL**, **DOWNTOWN** and
+**THE FLATS** shortcuts drop you straight into the queue or onto that place.
+
+## Achievements
+
+25 long-term goals in four groups -- Combat, Duels, World, Progress -- from First Blood to
+Legend (1,000 takedowns), Champion (50 duel wins), Explorer (all six places), Warlord Slayer,
+Street Defender (turf wars) and Completionist. They count themselves from what the server
+already decides; an unlock pops a banner and a badge on the Awards tile, and the reward
+(cash, XP, crystals, often a **title**) is claimed in the panel (H), where you also choose
+the title you wear. `lune run tools/uitest/achievements.luau` checks the list and the counting.
 
 ## The Flats battleground
 
