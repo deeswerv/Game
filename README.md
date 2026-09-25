@@ -21,6 +21,7 @@ as uploaded.
 | **O** | Quest journal |
 | **L** | Daily contracts |
 | **Y** (or click the level diamond) | Level road: what every level unlocks, and what is next |
+| **T** | Travel: jump to the Crossing, Downtown, the Flats, the Mine, the Watchpoint or the Reach (not while under fire or in a duel) |
 | **E** (hold) | Open a supply drop |
 | **F1** | Settings: volumes, camera shake, field of view, crosshair colour |
 | **Right mouse** | Aim; with the Longshot (or a strong scope) you look through the scope |
@@ -39,8 +40,8 @@ count.
 
 ## Downtown
 
-Take the **pink gate** at the spawn crossing to **Downtown**, a city district built block by
-block: an avenue from the gate to **ZEE TOWER**, **ZEE PLAZA** with its fountain and screen
+Open **Travel** (T) and pick **Downtown**, a city district built block by block: an avenue
+from the arrival point to **ZEE TOWER**, **ZEE PLAZA** with its fountain and screen
 tower, **ZEE GUNS** and the **ARMORY** (walk up and press E to shop or customise), **ZEE GAS**
 and the **24/7** with the **CONTRACTS** board, the **DUEL HALL** with its own 1v1 pads, a
 basketball court, a pocket park, parked cars, street lamps and a skyline all round. Climb the

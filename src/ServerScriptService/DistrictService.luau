@@ -10,8 +10,8 @@
 --   * The DUEL HALL gets its own pair of 1v1 pads (DuelPads), into the same queue.
 --   * The ROOFTOP STASH at the top of the fire escape pays once a day per player.
 --
--- The travel gate to it is TravelService's "Downtown" pad; supply drops come down in its
--- streets too (SupplyDropService).
+-- You get there from the Travel menu (TravelService's "Downtown" place lands on the forecourt);
+-- supply drops come down in its streets too (SupplyDropService).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
@@ -24,7 +24,7 @@ local Downtown = require(script.Downtown)
 local DistrictService = {}
 
 DistrictService.FOLDER = "Downtown"
--- The travel pad lands at CENTRE + Downtown.Arrival; TravelService.Pads.Downtown matches it.
+-- Travellers land at CENTRE + Downtown.Arrival; TravelService's Downtown place matches it.
 DistrictService.CENTRE = Vector3.new(-155, 1000, 1500)
 DistrictService.STASH = { coins = 750, crystals = 3, xp = 400 }
 

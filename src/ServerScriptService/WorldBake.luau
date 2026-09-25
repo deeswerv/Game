@@ -33,7 +33,6 @@ WorldBake.Order = {
 	{ folder = "BiomeDressing", module = "BiomeService" },
 	{ folder = "Arenas",        module = "ArenaService" },
 	{ folder = "Map2Cover",     module = "CoverService" },
-	{ folder = "TravelGates",   module = "TravelService" },
 	{ folder = "Landmarks",     module = "LandmarkService" },
 	{ folder = "Downtown",      module = "DistrictService" },
 }

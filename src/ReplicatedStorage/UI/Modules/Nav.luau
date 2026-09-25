@@ -33,6 +33,7 @@ local ICONS: { [string]: string } = {
 	Duel = "⚔️",
 	Profile = "🏆",
 	Range = "🎯",
+	Travel = "🗺",
 	Daily = "🎁",
 	Journal = "📜",
 	Settings = "⚙️",

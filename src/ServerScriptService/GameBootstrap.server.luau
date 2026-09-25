@@ -23,7 +23,7 @@ local systems = {
 	"AmbienceService",     -- day/night, wind and cloud; the world stops being static
 	"MapExpansion",        -- satellite islets, bridges and landmarks
 	"CoverService",        -- Map 2's combat spaces: the ruin, the flanks, the high ground
-	"TravelService",       -- paired gates between the islands; the world is not walkable end to end
+	"TravelService",       -- the Travel menu's server half: the places, and the one door that moves you
 	"LandmarkService",     -- one tall, distinct silhouette per island, lit in its gate's colour
 	"LeaderboardService",  -- global kill/money/time boards in the hub
 	"AdminService",        -- owner-only tools, validated server side

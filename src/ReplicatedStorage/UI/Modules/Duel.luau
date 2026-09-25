@@ -93,8 +93,10 @@ local function buildPlay(self, parent: GuiObject)
 	holder.AutoButtonColor = false
 	holder.Text = ""
 	holder.BackgroundTransparency = 1
-	holder.AnchorPoint = Vector2.new(0.5, 1)
-	holder.Position = UDim2.new(0.5, 0, 1, -112)
+	-- Bottom-left, just above your name and health: where the eye already goes for "me",
+	-- and clear of the middle of the screen where the fighting is.
+	holder.AnchorPoint = Vector2.new(0, 1)
+	holder.Position = UDim2.new(0, 24, 1, -122)
 	holder.Size = UDim2.fromOffset(104, 104)
 	holder.Parent = parent
 
@@ -193,8 +195,8 @@ local function buildPlay(self, parent: GuiObject)
 	local bubble = Instance.new("Frame")
 	bubble.Name = "Hint"
 	bubble.BackgroundColor3 = WHITE
-	bubble.AnchorPoint = Vector2.new(0.5, 1)
-	bubble.Position = UDim2.new(0.5, 0, 0, -6)
+	bubble.AnchorPoint = Vector2.new(0, 1)
+	bubble.Position = UDim2.new(0, 4, 0, -6)
 	bubble.Size = UDim2.fromOffset(0, 32)
 	bubble.AutomaticSize = Enum.AutomaticSize.X
 	bubble.Parent = holder
@@ -214,12 +216,12 @@ local function buildPlay(self, parent: GuiObject)
 	local pointer = Instance.new("Frame")
 	pointer.BackgroundColor3 = WHITE
 	pointer.AnchorPoint = Vector2.new(0.5, 0.5)
-	pointer.Position = UDim2.new(0.5, 0, 1, 1)
+	pointer.Position = UDim2.new(0, 48, 1, 1)
 	pointer.Size = UDim2.fromOffset(10, 10)
 	pointer.Rotation = 45
 	pointer.Parent = bubble
 	local bob = TweenService:Create(bubble, TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-		Position = UDim2.new(0.5, 0, 0, -12),
+		Position = UDim2.new(0, 4, 0, -12),
 	})
 	bob:Play()
 

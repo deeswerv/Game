@@ -93,6 +93,30 @@ return function(World)
 			secondsLeft = 5 * 3600 + 12 * 60, lifetime = 23,
 		}
 	end
+	-- TravelService.Places as shipped.
+	R.serverFunctions.TravelAction = function(action)
+		if action == "go" then
+			return { ok = true }
+		end
+		local rbx = require("@lune/roblox")
+		local V3, C3 = rbx.Vector3, rbx.Color3
+		return {
+			places = {
+				{ id = "Hub", label = "The Crossing", blurb = "Spawn, the 1v1 pads and the harbour.", icon = "⚓", levels = "LV 1-2",
+					colour = C3.fromRGB(88, 176, 232), position = V3.new(-155, 1.25, 275) },
+				{ id = "Downtown", label = "Downtown", blurb = "Shops, the Duel Hall, contracts and turf wars.", icon = "🏙",
+					levels = "LV 4-7", colour = C3.fromRGB(236, 120, 150), position = V3.new(-155, 1000.5, 1330) },
+				{ id = "Flats", label = "The Flats", blurb = "The bandit camp and the guard post, at war.", icon = "⚔",
+					levels = "LV 3-5", colour = C3.fromRGB(214, 150, 70), position = V3.new(-465, 1, 160) },
+				{ id = "Mine", label = "Crystal Mine", blurb = "Behind the falls: crystal seams to mine.", icon = "💎",
+					levels = "LV 1-3", colour = C3.fromRGB(150, 110, 240), position = V3.new(-101, 4, 61) },
+				{ id = "WatchPoint", label = "Watchpoint", blurb = "High ground over the western isles.", icon = "🔭",
+					levels = "LV 2-4", colour = C3.fromRGB(110, 190, 140), position = V3.new(-320, 6, 291) },
+				{ id = "Reach", label = "The Reach", blurb = "The far east. The toughest fights, the best loot.", icon = "🏔",
+					levels = "LV 6-9", colour = C3.fromRGB(120, 150, 220), position = V3.new(145, 1.9, 375) },
+			},
+		}
+	end
 	R.serverFunctions.BuildAction = function(action)
 		return { ok = true, builds = {}, camos = {}, attachments = {} }
 	end

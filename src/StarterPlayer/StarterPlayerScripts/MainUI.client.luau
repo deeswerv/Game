@@ -36,6 +36,7 @@ local Contracts = require(Modules:WaitForChild("Contracts"))
 local WorldEvents = require(Modules:WaitForChild("WorldEvents"))
 local Bounties = require(Modules:WaitForChild("Bounties"))
 local LevelRoad = require(Modules:WaitForChild("LevelRoad"))
+local Travel = require(Modules:WaitForChild("Travel"))
 local WeaponConfig = require(ReplicatedStorage:WaitForChild("WeaponConfig"))
 
 local StarterGui = game:GetService("StarterGui")
@@ -170,10 +171,8 @@ local duel = safe("Duel", function()
 	onScoreboard = function(visible: boolean)
 		hud:SetIdentityVisible(not visible)
 	end,
-	-- The ELIMINATED call lifts clear of the PLAY diamond while that is on screen.
-	onPlayVisible = function(visible: boolean)
-		killFeed:SetLift(visible)
-	end,
+	-- The PLAY diamond lives bottom-left now, clear of the ELIMINATED call; nothing to move.
+	onPlayVisible = function(_visible: boolean) end,
 })
 end)
 
@@ -617,6 +616,12 @@ local journal = safe("Journal", function()
 end)
 journalRef = journal
 
+local travel = safe("Travel", function()
+	return Travel.new(menuLayer, {
+		travelAction = remote("TravelAction"),
+	}, menuLayer)
+end)
+
 local road = safe("LevelRoad", function()
 	return LevelRoad.new(menuLayer)
 end)
@@ -643,9 +648,9 @@ local nav: any
 local NAV_ID = {
 	[inventory] = "Inventory", [market] = "Market", [workshop] = "Workshop",
 	[profile] = "Profile", [daily] = "Daily", [journal] = "Journal",
-	[settings] = "Settings", [contracts] = "Contracts",
+	[settings] = "Settings", [contracts] = "Contracts", [travel] = "Travel",
 }
-local PANELS = { inventory, market, workshop, profile, daily, journal, contracts, road, settings }
+local PANELS = { inventory, market, workshop, profile, daily, journal, contracts, road, travel, settings }
 
 -- Opening one panel closes the others. Two full-screen menus stacked on each other is how a
 -- player loses track of what Escape is going to do.
@@ -717,7 +722,9 @@ nav = safe("Nav", function()
 		{ id = "Players", label = "Players", key = "[Tab]", icon = "📋", onActivated = function()
 			board:Toggle()
 		end },
-		{ id = "Range", label = "Range", key = "[V]", onActivated = toggleRange },
+		{ id = "Travel", label = "Travel", key = "[T]", onActivated = function()
+			openOnly(travel)
+		end },
 		{ id = "Settings", label = "Settings", key = "[F1]", onActivated = function()
 			openOnly(settings)
 		end },
@@ -766,7 +773,7 @@ end
 task.delay(9, function()
 	toast:Push({
 		title = "NEW: DOWNTOWN",
-		text = "Take the pink gate at the crossing",
+		text = "Press T to travel there",
 		icon = "🏙",
 		colour = Color3.fromRGB(255, 64, 170),
 		duration = 9,
@@ -912,6 +919,10 @@ UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: 
 	end
 	if input.KeyCode == Enum.KeyCode.Y then
 		openOnly(road)
+		return
+	end
+	if input.KeyCode == Enum.KeyCode.T then
+		openOnly(travel)
 		return
 	end
 
