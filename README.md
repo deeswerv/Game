@@ -26,6 +26,17 @@ as uploaded.
 
 You can also queue by standing on one of the glowing **1V1 pads** near the spawn.
 
+## Gun handling
+
+- **Moving and jumping** open your cone; aiming steadies part of that (a scoped sniper on the
+  move still throws rounds wide). The crosshair shows exactly the cone the server fires.
+- **First-shot accuracy**: a weapon rested for a moment fires its first round tighter. Tap for
+  precision, spray for volume. Snipers only get it scoped.
+- **Tactical reloads**: reloading with a round still chambered takes 75% of the time.
+- **Wallbangs**: rifles and snipers put rounds through thin cover (glass, planks, crates) for
+  reduced damage; hitting someone that way calls WALLBANG. Concrete stops everything.
+- The armory card shows Mobility, Penetration and both reload times for each weapon.
+
 ## Duel maps
 
 Every duel is fought on one of four maps, and a pair who just played one map gets a different

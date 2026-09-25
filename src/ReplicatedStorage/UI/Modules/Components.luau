@@ -512,12 +512,13 @@ end
 
 --- "Accuracy  [██████ 92 ]" -- the weapon stat line of the reference armory: a bold label,
 --- a white bar on a grey track, and the value printed dark inside the bar.
-function Components.StatRow(parent: GuiObject, label: string, value: number, maximum: number, options: { layoutOrder: number?, colour: Color3?, suffix: string?, display: string? }?): Frame
+function Components.StatRow(parent: GuiObject, label: string, value: number, maximum: number, options: { layoutOrder: number?, colour: Color3?, suffix: string?, display: string?, height: number? }?): Frame
 	local opts = options or {}
+	local height = opts.height or 26
 	local row = Instance.new("Frame")
 	row.Name = "StatRow"
 	row.BackgroundTransparency = 1
-	row.Size = UDim2.new(1, 0, 0, 26)
+	row.Size = UDim2.new(1, 0, 0, height)
 	row.LayoutOrder = opts.layoutOrder or 0
 	row.Parent = parent
 
@@ -529,7 +530,7 @@ function Components.StatRow(parent: GuiObject, label: string, value: number, max
 	track.BackgroundColor3 = Color3.fromRGB(92, 96, 108)
 	track.BackgroundTransparency = 0.25
 	track.BorderSizePixel = 0
-	track.Size = UDim2.new(0.6, 0, 0, 18)
+	track.Size = UDim2.new(0.6, 0, 0, height - 8)
 	track.AnchorPoint = Vector2.new(0, 0.5)
 	track.Position = UDim2.new(0.4, 0, 0.5, 0)
 	track.Parent = row

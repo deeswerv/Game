@@ -13,6 +13,7 @@ local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 
 local WeaponConfig = require(ReplicatedStorage.WeaponConfig)
+local GunHandling = require(ReplicatedStorage:WaitForChild("GunHandling"))
 local ReloadAnimator = require(ReplicatedStorage:WaitForChild("ReloadAnimator"))
 local ViewKick = require(ReplicatedStorage:WaitForChild("ViewKick"))
 local CombatFX = require(ReplicatedStorage:WaitForChild("CombatFX"))
@@ -45,6 +46,11 @@ local recoilProfile = nil
 local ads = false
 local heat = 0
 local lastShot = 0
+-- The reload in progress on the equipped weapon: when it started, how long the server said
+-- it takes, and whether it is the quicker tactical one (a round still chambered).
+local reloadStartedAt: number? = nil
+local reloadDuration: number? = nil
+local reloadTactical = false
 local baseFov = camera.FieldOfView
 
 -- Camera recoil is tracked as an absolute angle we drift back from. ViewKick turns it
@@ -379,7 +385,7 @@ HIT_SOUND.SoundId = "rbxassetid://3398620867"
 HIT_SOUND.Volume = 0.4
 HIT_SOUND.Parent = gui
 
-local function flashHitmarker(headshot: boolean, lethal: boolean?)
+local function flashHitmarker(headshot: boolean, lethal: boolean?, wallbang: boolean?)
 	local colour
 	if lethal then
 		colour = Color3.fromRGB(255, 80, 80)
@@ -415,10 +421,22 @@ local function flashHitmarker(headshot: boolean, lethal: boolean?)
 	-- The arms flinch outward with the marker, so the whole crosshair answers the hit.
 	bloom = math.max(bloom, lethal and 10 or 5)
 
-	-- A hit on the head gets its own call and its own ding over the usual click.
-	if headshot then
-		headshotLabel.Text = lethal and "HEADSHOT KILL" or "HEADSHOT"
-		headshotLabel.TextColor3 = lethal and Color3.fromRGB(255, 96, 80) or Color3.fromRGB(255, 206, 80)
+	-- A hit on the head gets its own call and its own ding over the usual click, and so does
+	-- a round put through a wall.
+	if headshot or wallbang then
+		local words = {}
+		if wallbang then
+			table.insert(words, "WALLBANG")
+		end
+		if headshot then
+			table.insert(words, "HEADSHOT")
+		end
+		if lethal and #words == 1 then
+			table.insert(words, "KILL")
+		end
+		headshotLabel.Text = table.concat(words, " ")
+		headshotLabel.TextColor3 = lethal and Color3.fromRGB(255, 96, 80)
+			or (wallbang and Color3.fromRGB(110, 226, 255) or Color3.fromRGB(255, 206, 80))
 		headshotLabel.TextTransparency = 0
 		headshotEdge.Transparency = 0
 		headshotScale.Scale = 1.5
@@ -464,7 +482,7 @@ end
 -- Effects for every player's shots, including our own.
 GunEffect.OnClientEvent:Connect(function(kind, ...)
 	if kind == "Shot" then
-		local shooter, tool, origin, endPoints = ...
+		local shooter, tool, origin, endPoints, wallHits = ...
 		local wcfg = tool and WeaponConfig.Get(tool.Name)
 		if not wcfg then
 			return
@@ -481,9 +499,17 @@ GunEffect.OnClientEvent:Connect(function(kind, ...)
 			CombatFX.Tracer(origin, p, wcfg.TracerColor, wcfg.TracerWidth, weaponName)
 			CombatFX.Impact(p, origin, weaponName)
 		end
+		-- Where rounds went through a wall: the entry holes.
+		if type(wallHits) == "table" then
+			for _, p in ipairs(wallHits) do
+				if typeof(p) == "Vector3" then
+					CombatFX.Impact(p, origin, weaponName)
+				end
+			end
+		end
 	elseif kind == "Hitmarker" then
-		local headshot, lethal = ...
-		flashHitmarker(headshot == true, lethal == true)
+		local headshot, lethal, wallbang = ...
+		flashHitmarker(headshot == true, lethal == true, wallbang == true)
 	elseif kind == "Damage" then
 		local position, amount, headshot, lethal = ...
 		if typeof(position) == "Vector3" and type(amount) == "number" then
@@ -507,8 +533,13 @@ GunEffect.OnClientEvent:Connect(function(kind, ...)
 			end
 		end
 	elseif kind == "Reload" then
-		local shooter, tool, needsCharge, duration = ...
+		local shooter, tool, needsCharge, duration, tactical = ...
 		local wcfg = tool and WeaponConfig.For(tool)
+		if shooter == player and tool == equipped then
+			reloadStartedAt = os.clock()
+			reloadDuration = type(duration) == "number" and duration or nil
+			reloadTactical = tactical == true
+		end
 		local character = shooter and shooter.Character
 		if not wcfg or not character then
 			return
@@ -610,11 +641,10 @@ local function tryShoot()
 	fireFeedback(tool, cfg)
 end
 
-local reloadStartedAt: number? = nil
-
 local function setEquipped(tool: Tool?)
 	equipped = tool
 	reloadStartedAt = nil
+	reloadDuration = nil
 	-- .For, not .Get: the recoil, spread, rate and zoom the player feels have to be the
 	-- ones their equipped build actually produces, or a scope would look like it steadies
 	-- the weapon while the gun kicks exactly as hard as before.
@@ -1047,12 +1077,14 @@ RunService.RenderStepped:Connect(function(dt)
 			if not reloadStartedAt then
 				reloadStartedAt = os.clock()
 			end
-			local t = math.clamp((os.clock() - reloadStartedAt) / math.max(cfg.ReloadTime or 1, 0.1), 0, 1)
-			callout.Text = "RELOADING"
+			local t = math.clamp((os.clock() - reloadStartedAt) / math.max(reloadDuration or cfg.ReloadTime or 1, 0.1), 0, 1)
+			callout.Text = reloadTactical and "TACTICAL RELOAD" or "RELOADING"
 			callout.TextColor3 = Color3.fromRGB(255, 206, 60)
 			reloadFill.Size = UDim2.fromScale(t, 1)
 		else
 			reloadStartedAt = nil
+			reloadDuration = nil
+			reloadTactical = false
 			if ammo <= 0 then
 				callout.Text = "RELOAD  [R]"
 				-- A slow red pulse, so an empty gun is noticed without shouting.
@@ -1076,10 +1108,10 @@ RunService.RenderStepped:Connect(function(dt)
 	-- Crosshair opens with spread.
 	if cfg then
 		heat = math.max(0, heat - cfg.SpreadRecovery * dt)
-		local spread = math.clamp(cfg.SpreadMin + heat, cfg.SpreadMin, cfg.SpreadMax)
-		if ads then
-			spread *= cfg.AdsSpreadScale
-		end
+		-- The same cone the server will fire: running and jumping open it, a rested weapon
+		-- closes it (GunHandling).
+		local speed, airborne = GunHandling.Motion(player.Character)
+		local spread = GunHandling.Spread(cfg, heat, ads, speed, airborne, os.clock() - lastShot)
 		-- Convert the cone angle to pixels at the current FOV, plus whatever the last shots
 		-- bloomed it by.
 		bloom = math.max(0, bloom - bloom * math.min(10 * dt, 1))

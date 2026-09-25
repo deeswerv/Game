@@ -11,6 +11,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local Debris = game:GetService("Debris")
 
 local WeaponConfig = require(ReplicatedStorage.WeaponConfig)
+local GunHandling = require(ReplicatedStorage.GunHandling)
 local KillCredit = require(ServerScriptService.KillCredit)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -89,13 +90,12 @@ local function updateHeat(st, cfg)
 	st.heat = math.max(0, st.heat - cfg.SpreadRecovery * dt)
 end
 
-local function currentSpread(st, cfg, ads: boolean): number
+--- The cone for this shot: the listed spread and heat, aiming, how the shooter is moving and
+--- whether the weapon was rested (GunHandling -- the crosshair draws the same numbers).
+local function currentSpread(st, cfg, ads: boolean, character: Model, sinceShot: number): number
 	updateHeat(st, cfg)
-	local spread = math.clamp(cfg.SpreadMin + st.heat, cfg.SpreadMin, cfg.SpreadMax)
-	if ads then
-		spread *= cfg.AdsSpreadScale
-	end
-	return spread
+	local speed, airborne = GunHandling.Motion(character)
+	return GunHandling.Spread(cfg, st.heat, ads, speed, airborne, sinceShot)
 end
 
 -- Rotate a direction by a random cone of `degrees`.
@@ -220,9 +220,11 @@ local function reload(player: Player, tool: Tool, cfg)
 	end
 
 	-- Whether the action needs racking: only when the chamber ran dry. A partial reload
-	-- leaves a round chambered, so the weapon does not get charged for no reason.
+	-- leaves a round chambered, so the weapon does not get charged for no reason -- and is
+	-- quicker for it (a tactical reload).
 	local needsCharge = cfg.ChargePart ~= nil
 		and (cfg.ChargeWhenEmpty == false or ammo <= 0)
+	local duration, tactical = GunHandling.ReloadTime(cfg, ammo)
 
 	st.reloadToken += 1
 	local token = st.reloadToken
@@ -232,9 +234,9 @@ local function reload(player: Player, tool: Tool, cfg)
 
 	-- One broadcast for the whole reload. Every client animates it from here; the stages
 	-- are timed client side rather than streamed, so this costs one remote, not seven.
-	GunEffect:FireAllClients("Reload", player, tool, needsCharge, cfg.ReloadTime)
+	GunEffect:FireAllClients("Reload", player, tool, needsCharge, duration, tactical)
 
-	task.delay(cfg.ReloadTime, function()
+	task.delay(duration, function()
 		-- The only place ammo is granted, and only if this exact reload is still the live
 		-- one. Ammo cannot be duplicated by reload timing because nothing else adds it.
 		if st.reloadToken ~= token or not st.reloading then
@@ -247,6 +249,23 @@ local function reload(player: Player, tool: Tool, cfg)
 			tool:SetAttribute("Reloading", false)
 		end
 	end)
+end
+
+--- Whether a point is buried in something solid. A round coming out of one wall straight
+--- into another would otherwise start its next ray INSIDE the second, where a raycast
+--- cannot see it, and pass through it for free.
+local function embedded(point: Vector3, rayParams: RaycastParams): boolean
+	local overlap = OverlapParams.new()
+	overlap.FilterType = Enum.RaycastFilterType.Exclude
+	overlap.FilterDescendantsInstances = rayParams.FilterDescendantsInstances
+	for _, part in ipairs(workspace:GetPartBoundsInRadius(point, 0.05, overlap)) do
+		-- A body is not a wall: the next ray is what hits it.
+		local model = part:FindFirstAncestorOfClass("Model")
+		if part.CanQuery and not (model and model:FindFirstChildOfClass("Humanoid")) then
+			return true
+		end
+	end
+	return false
 end
 
 local function fire(player: Player, tool: Tool, cfg, aimPoint: Vector3, ads: boolean)
@@ -264,7 +283,8 @@ local function fire(player: Player, tool: Tool, cfg, aimPoint: Vector3, ads: boo
 
 	-- Server-side rate limit. The client has its own, purely so the gun feels right.
 	local now = os.clock()
-	if now - st.lastShot < cfg.FireRate - RATE_GRACE then
+	local sinceShot = now - st.lastShot
+	if sinceShot < cfg.FireRate - RATE_GRACE then
 		return
 	end
 	st.lastShot = now
@@ -294,7 +314,7 @@ local function fire(player: Player, tool: Tool, cfg, aimPoint: Vector3, ads: boo
 	end
 	baseDir = baseDir.Unit
 
-	local spread = currentSpread(st, cfg, ads)
+	local spread = currentSpread(st, cfg, ads, character, sinceShot)
 	st.heat = math.min(st.heat + cfg.SpreadPerShot, cfg.SpreadMax)
 
 	local params = RaycastParams.new()
@@ -312,49 +332,90 @@ local function fire(player: Player, tool: Tool, cfg, aimPoint: Vector3, ads: boo
 	local struckList: { Model } = {}
 	local killed: { [Model]: boolean } = {}
 
+	-- Where rounds went through a wall: entry holes for everyone's impact effects.
+	local wallHits: { Vector3 } = {}
+	local penetration = GunHandling.Traits(cfg).Penetration
+
 	for _ = 1, cfg.PelletsPerShot do
 		local dir = applySpread(baseDir, spread)
-		local result = workspace:Raycast(origin, dir * cfg.Range, params)
-		local hitPos = result and result.Position or (origin + dir * cfg.Range)
-		table.insert(endPoints, hitPos)
+		local from = origin
+		local remaining = cfg.Range
+		local budget = penetration
+		local walls = 0
+		local kept = 1
+		local finalPos = origin + dir * cfg.Range
 
-		if result then
+		-- Follow the round: into a body (done), into a wall it cannot pass (done), or
+		-- through a thin wall and on, a little weaker, to whatever is behind it.
+		while remaining > 0 do
+			local result = workspace:Raycast(from, dir * remaining, params)
+			if not result then
+				finalPos = from + dir * remaining
+				break
+			end
+			local hitPos = result.Position
 			local model = result.Instance:FindFirstAncestorOfClass("Model")
 			local victim = model and model:FindFirstChildOfClass("Humanoid")
-			if victim and victim ~= humanoid and victim.Health > 0 then
-				local damage, headshot =
-					damageFor(cfg, result.Instance.Name, (hitPos - origin).Magnitude)
-				-- What actually lands after the victim's armour. KillCredit.Damage applies the
-				-- armour itself; this is only so the number and the kill flag tell the truth.
-				local dealt = KillCredit.Mitigate(victim, damage)
-				-- Whether this round finishes them has to be decided before the damage is
-				-- applied, or the health is already zero by the time it is read and every
-				-- hit looks like a kill.
-				local lethal = dealt >= victim.Health
-				-- Where it landed, for the victim's hit reaction and death. Presentation only.
-				victim:SetAttribute("LastHitPart", result.Instance.Name)
-				-- Through KillCredit so kills and XP land on the shooter. The weapon and the
-				-- direction of the shot ride along so a killing blow can throw the body the
-				-- way the round was travelling.
-				KillCredit.Damage(victim, damage, player, tool.Name, dir)
-				GunEffect:FireClient(player, "Hitmarker", headshot, lethal)
-				-- Only the shooter gets the number. Everyone seeing everyone's damage turns
-				-- a firefight into unreadable confetti.
-				GunEffect:FireClient(player, "Damage", hitPos, dealt, headshot, lethal)
+			if victim then
+				finalPos = hitPos
+				if victim ~= humanoid and victim.Health > 0 then
+					local damage, headshot =
+						damageFor(cfg, result.Instance.Name, (hitPos - origin).Magnitude)
+					damage *= kept
+					local wallbang = walls > 0
+					-- What actually lands after the victim's armour. KillCredit.Damage applies
+					-- the armour itself; this is only so the number and the kill flag tell the
+					-- truth.
+					local dealt = KillCredit.Mitigate(victim, damage)
+					-- Whether this round finishes them has to be decided before the damage is
+					-- applied, or the health is already zero by the time it is read and every
+					-- hit looks like a kill.
+					local lethal = dealt >= victim.Health
+					-- Where it landed, for the victim's hit reaction and death. Presentation only.
+					victim:SetAttribute("LastHitPart", result.Instance.Name)
+					-- Through KillCredit so kills and XP land on the shooter. The weapon and the
+					-- direction of the shot ride along so a killing blow can throw the body the
+					-- way the round was travelling.
+					KillCredit.Damage(victim, damage, player, tool.Name, dir)
+					GunEffect:FireClient(player, "Hitmarker", headshot, lethal, wallbang)
+					-- Only the shooter gets the number. Everyone seeing everyone's damage turns
+					-- a firefight into unreadable confetti.
+					GunEffect:FireClient(player, "Damage", hitPos, dealt, headshot, lethal, wallbang)
 
-				if model and not struck[model] then
-					struck[model] = true
-					table.insert(struckList, model)
+					if model and not struck[model] then
+						struck[model] = true
+						table.insert(struckList, model)
+					end
+					if lethal and model then
+						killed[model] = true
+					end
 				end
-				if lethal and model then
-					killed[model] = true
-				end
+				break
 			end
+
+			-- A wall. Through it, if it is thin and soft enough for what this round has left.
+			if walls >= GunHandling.MAX_WALLS then
+				finalPos = hitPos
+				break
+			end
+			local exit, cost = GunHandling.Through(result.Instance, hitPos, dir, budget)
+			if not exit or cost > budget or embedded(exit + dir * 0.06, params) then
+				finalPos = hitPos
+				break
+			end
+			budget -= cost
+			walls += 1
+			kept *= GunHandling.WALL_DAMAGE
+			table.insert(wallHits, hitPos)
+			remaining -= (exit - from).Magnitude + 0.05
+			from = exit + dir * 0.05
+			finalPos = from
 		end
+		table.insert(endPoints, finalPos)
 	end
 
 	-- Everyone draws the tracer, muzzle flash and impact locally.
-	GunEffect:FireAllClients("Shot", player, tool, origin, endPoints)
+	GunEffect:FireAllClients("Shot", player, tool, origin, endPoints, #wallHits > 0 and wallHits or nil)
 	reportNoise(player, origin, cfg, tool)
 
 	-- And everyone sees what was hit flare, which is the clearest read that a shot landed.

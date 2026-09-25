@@ -17,6 +17,7 @@ local Theme = require(script.Parent.Theme)
 local Components = require(script.Parent.Components)
 local Menu = require(script.Parent.Menu)
 local WeaponConfig = require(ReplicatedStorage:WaitForChild("WeaponConfig"))
+local GunHandling = require(ReplicatedStorage:WaitForChild("GunHandling"))
 local WeaponPreview = require(ReplicatedStorage:WaitForChild("WeaponPreview"))
 
 local Inventory = {}
@@ -86,13 +87,21 @@ local function statRows(cfg): { { any } }
 	local accuracy = math.clamp(100 - (cfg.SpreadMin or 0) * 14 - (cfg.RecoilPitch or 0) * 5, 5, 100)
 	local rpm = 60 / math.max(cfg.FireRate or 1, 0.01)
 	local damage = (cfg.Damage or 0) * (cfg.PelletsPerShot or 1)
+	local traits = GunHandling.Traits(cfg)
+	local mobility = math.clamp(100 - traits.MoveSpread * 16 - traits.JumpSpread * 3, 5, 100)
+	local pierce = traits.Penetration
+	local pierceWord = pierce <= 0 and "None" or (pierce < 1 and "Light" or (pierce < 2.5 and "Medium" or "Heavy"))
+	local tactical = GunHandling.ReloadTime(cfg, 1)
 	return {
-		{ "Accuracy", accuracy, string.format("%d", math.floor(accuracy + 0.5)) },
 		{ "Damage", math.clamp(damage, 0, 100), string.format("%d", math.floor(damage + 0.5)) },
 		{ "Fire Rate", math.clamp(rpm / 1000 * 100, 0, 100), string.format("%d RPM", math.floor(rpm + 0.5)) },
-		{ "Magazine", math.clamp((cfg.MagazineSize or 0) / 60 * 100, 0, 100), tostring(cfg.MagazineSize or 0) },
+		{ "Accuracy", accuracy, string.format("%d", math.floor(accuracy + 0.5)) },
+		{ "Mobility", mobility, string.format("%d", math.floor(mobility + 0.5)) },
 		{ "Range", math.clamp((cfg.Range or 0) / 500 * 100, 0, 100), tostring(math.floor(cfg.Range or 0)) },
-		{ "Reload", math.clamp((1 - (cfg.ReloadTime or 0) / 4) * 100, 5, 100), string.format("%.1fs", cfg.ReloadTime or 0) },
+		{ "Penetration", math.clamp(pierce / 3.4 * 100, 0, 100), pierceWord },
+		{ "Magazine", math.clamp((cfg.MagazineSize or 0) / 60 * 100, 0, 100), tostring(cfg.MagazineSize or 0) },
+		{ "Reload", math.clamp((1 - (cfg.ReloadTime or 0) / 4) * 100, 5, 100),
+			string.format("%.1fs / %.1fs", tactical, cfg.ReloadTime or 0) },
 	}
 end
 Inventory.StatRows = statRows
@@ -114,7 +123,7 @@ local function buildDetail(self, parent: GuiObject)
 	stage.Name = "Stage"
 	stage.BackgroundColor3 = Color3.fromRGB(70, 76, 92)
 	stage.BorderSizePixel = 0
-	stage.Size = UDim2.new(1, -Theme.Space.L, 0, 150)
+	stage.Size = UDim2.new(1, -Theme.Space.L, 0, 124)
 	stage.Position = UDim2.fromOffset(Theme.Space.S, Theme.Space.S)
 	stage.Parent = panel
 	Components.Corner(stage, 10)
@@ -140,12 +149,12 @@ local function buildDetail(self, parent: GuiObject)
 		outline = 2.4,
 	})
 	name.Size = UDim2.new(1, -Theme.Space.L, 0, 32)
-	name.Position = UDim2.fromOffset(Theme.Space.S, 162)
+	name.Position = UDim2.fromOffset(Theme.Space.S, 134)
 
 	local chipRow = Instance.new("Frame")
 	chipRow.BackgroundTransparency = 1
 	chipRow.Size = UDim2.new(1, 0, 0, 22)
-	chipRow.Position = UDim2.fromOffset(0, 196)
+	chipRow.Position = UDim2.fromOffset(0, 168)
 	chipRow.Parent = panel
 	local chips = Components.List(chipRow, Enum.FillDirection.Horizontal, 6, Enum.HorizontalAlignment.Center)
 	chips.VerticalAlignment = Enum.VerticalAlignment.Center
@@ -159,16 +168,16 @@ local function buildDetail(self, parent: GuiObject)
 		wrap = true,
 	})
 	description.Size = UDim2.new(1, -Theme.Space.XL, 0, 34)
-	description.Position = UDim2.fromOffset(Theme.Space.M, 222)
+	description.Position = UDim2.fromOffset(Theme.Space.M, 194)
 	description.TextYAlignment = Enum.TextYAlignment.Top
 
 	local stats = Instance.new("Frame")
 	stats.Name = "Stats"
 	stats.BackgroundTransparency = 1
-	stats.Size = UDim2.new(1, -Theme.Space.L, 0, 170)
-	stats.Position = UDim2.fromOffset(Theme.Space.XS, 262)
+	stats.Size = UDim2.new(1, -Theme.Space.L, 0, 200)
+	stats.Position = UDim2.fromOffset(Theme.Space.XS, 232)
 	stats.Parent = panel
-	Components.List(stats, Enum.FillDirection.Vertical, 3)
+	Components.List(stats, Enum.FillDirection.Vertical, 2)
 
 	self._preview, self._name, self._chips, self._description, self._stats =
 		preview, name, chipRow, description, stats
@@ -377,6 +386,7 @@ function Inventory:_select(name: string)
 		Components.StatRow(self._stats, row[1], row[2], 100, {
 			layoutOrder = order,
 			display = row[3],
+			height = 22,
 		})
 	end
 
