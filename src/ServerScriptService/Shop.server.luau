@@ -1,0 +1,13 @@
+-- Superseded by ServerScriptService.ShopService.
+--
+-- The original handler here trusted the client for the price:
+--     BuyItemRE.OnServerEvent:Connect(function(plr, cost, name)
+--         if plr.leaderstats.Coins.Value >= cost then ...
+-- so a crafted FireServer could buy anything for 0, and a negative cost subtracted a
+-- negative number -- minting coins. It also re-parented the tool template straight out
+-- of ReplicatedStorage instead of cloning it, destroying the master copy for everyone.
+--
+-- Purchases now go through the GameRemotes.PurchaseItem RemoteFunction, which reads
+-- prices from ReplicatedStorage.GameConfig on the server and ignores client input
+-- beyond the item id. This script is left disabled rather than deleted so the history
+-- is visible; it is safe to remove.

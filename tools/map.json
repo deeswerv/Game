@@ -1,0 +1,2656 @@
+[
+  {
+    "class": "Script",
+    "file": "src/Workspace/Coin/CoinScript.server.luau",
+    "path": [
+      1,
+      4,
+      1
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/Workspace/Rig/Animate.client.luau",
+    "path": [
+      1,
+      8,
+      9
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/Workspace/Rig~2/Animate.client.luau",
+    "path": [
+      1,
+      9,
+      9
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/Workspace/Rig~3/Animate.client.luau",
+    "path": [
+      1,
+      10,
+      9
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/Workspace/Rig~4/Animate.client.luau",
+    "path": [
+      1,
+      13,
+      9
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/Workspace/Coin~2/CoinScript.server.luau",
+    "path": [
+      1,
+      14,
+      1
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/Workspace/Coin~3/CoinScript.server.luau",
+    "path": [
+      1,
+      17,
+      2
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/Workspace/Rig~5/Animate.client.luau",
+    "path": [
+      1,
+      18,
+      9
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/Workspace/Coin~4/CoinScript.server.luau",
+    "path": [
+      1,
+      21,
+      1
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/Workspace/Coin~5/CoinScript.server.luau",
+    "path": [
+      1,
+      22,
+      1
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/Workspace/Dummies/6/Script.server.luau",
+    "path": [
+      1,
+      197,
+      1,
+      1
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/Workspace/Dummies/1/Script.server.luau",
+    "path": [
+      1,
+      197,
+      2,
+      1
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/Workspace/Dummies/2/Script.server.luau",
+    "path": [
+      1,
+      197,
+      3,
+      1
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/Workspace/Dummies/4/Script.server.luau",
+    "path": [
+      1,
+      197,
+      4,
+      1
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/Workspace/Dummies/3/Script.server.luau",
+    "path": [
+      1,
+      197,
+      5,
+      1
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/Workspace/Dummies/5/Script.server.luau",
+    "path": [
+      1,
+      197,
+      6,
+      1
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/Workspace/Dummies/ParryTest/Script.server.luau",
+    "path": [
+      1,
+      197,
+      7,
+      1
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/Workspace/Anime Outline! (Open)/Plz Read Me.server.luau",
+    "path": [
+      1,
+      201,
+      1
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/Workspace/__DevRange/TargetReset.server.luau",
+    "path": [
+      1,
+      203,
+      7
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/ReplicatedFirst/LoadingScreen.client.luau",
+    "path": [
+      9,
+      1
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/NPCAnimator.client.luau",
+    "path": [
+      15,
+      1,
+      2
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/WindController/init.client.luau",
+    "path": [
+      15,
+      1,
+      3
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/WindController/WindLines.luau",
+    "path": [
+      15,
+      1,
+      3,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/WindController/WindShake/init.luau",
+    "path": [
+      15,
+      1,
+      3,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/WindController/WindShake/Settings.luau",
+    "path": [
+      15,
+      1,
+      3,
+      2,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/WindController/WindShake/Octree/init.luau",
+    "path": [
+      15,
+      1,
+      3,
+      2,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/WindController/WindShake/Octree/OctreeNode.luau",
+    "path": [
+      15,
+      1,
+      3,
+      2,
+      2,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/WindController/WindShake/Octree/OctreeRegionUtils.luau",
+    "path": [
+      15,
+      1,
+      3,
+      2,
+      2,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/init.luau",
+    "path": [
+      15,
+      1,
+      4
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/CameraModule/init.luau",
+    "path": [
+      15,
+      1,
+      4,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/CameraModule/CameraUtils.luau",
+    "path": [
+      15,
+      1,
+      4,
+      1,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/CameraModule/BaseOcclusion.luau",
+    "path": [
+      15,
+      1,
+      4,
+      1,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/CameraModule/CameraUI.luau",
+    "path": [
+      15,
+      1,
+      4,
+      1,
+      3
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/CameraModule/Invisicam.luau",
+    "path": [
+      15,
+      1,
+      4,
+      1,
+      4
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/CameraModule/BaseCamera.luau",
+    "path": [
+      15,
+      1,
+      4,
+      1,
+      5
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/CameraModule/VRVehicleCamera.luau",
+    "path": [
+      15,
+      1,
+      4,
+      1,
+      6
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/CameraModule/VRCamera.luau",
+    "path": [
+      15,
+      1,
+      4,
+      1,
+      7
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/CameraModule/CameraInput.luau",
+    "path": [
+      15,
+      1,
+      4,
+      1,
+      8
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/CameraModule/VRBaseCamera.luau",
+    "path": [
+      15,
+      1,
+      4,
+      1,
+      9
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/CameraModule/CameraToggleStateController.luau",
+    "path": [
+      15,
+      1,
+      4,
+      1,
+      10
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/CameraModule/ZoomController/init.luau",
+    "path": [
+      15,
+      1,
+      4,
+      1,
+      11
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/CameraModule/ZoomController/Popper.luau",
+    "path": [
+      15,
+      1,
+      4,
+      1,
+      11,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/CameraModule/Poppercam.luau",
+    "path": [
+      15,
+      1,
+      4,
+      1,
+      12
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/CameraModule/OrbitalCamera.luau",
+    "path": [
+      15,
+      1,
+      4,
+      1,
+      13
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/CameraModule/ClassicCamera.luau",
+    "path": [
+      15,
+      1,
+      4,
+      1,
+      14
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/CameraModule/LegacyCamera.luau",
+    "path": [
+      15,
+      1,
+      4,
+      1,
+      15
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/CameraModule/TransparencyController.luau",
+    "path": [
+      15,
+      1,
+      4,
+      1,
+      16
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/CameraModule/VehicleCamera/init.luau",
+    "path": [
+      15,
+      1,
+      4,
+      1,
+      17
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/CameraModule/VehicleCamera/VehicleCameraConfig.luau",
+    "path": [
+      15,
+      1,
+      4,
+      1,
+      17,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/CameraModule/VehicleCamera/VehicleCameraCore.luau",
+    "path": [
+      15,
+      1,
+      4,
+      1,
+      17,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/CameraModule/MouseLockController.luau",
+    "path": [
+      15,
+      1,
+      4,
+      1,
+      18
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/ControlModule/init.luau",
+    "path": [
+      15,
+      1,
+      4,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/ControlModule/DynamicThumbstick.luau",
+    "path": [
+      15,
+      1,
+      4,
+      2,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/ControlModule/ClickToMoveController.luau",
+    "path": [
+      15,
+      1,
+      4,
+      2,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/ControlModule/TouchJump.luau",
+    "path": [
+      15,
+      1,
+      4,
+      2,
+      3
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/ControlModule/Keyboard.luau",
+    "path": [
+      15,
+      1,
+      4,
+      2,
+      4
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/ControlModule/BaseCharacterController.luau",
+    "path": [
+      15,
+      1,
+      4,
+      2,
+      5
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/ControlModule/VehicleController.luau",
+    "path": [
+      15,
+      1,
+      4,
+      2,
+      6
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/ControlModule/VRNavigation.luau",
+    "path": [
+      15,
+      1,
+      4,
+      2,
+      7
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/ControlModule/PathDisplay.luau",
+    "path": [
+      15,
+      1,
+      4,
+      2,
+      8
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/ControlModule/TouchThumbstick.luau",
+    "path": [
+      15,
+      1,
+      4,
+      2,
+      9
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/ControlModule/Gamepad.luau",
+    "path": [
+      15,
+      1,
+      4,
+      2,
+      10
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PlayerModule/ControlModule/ClickToMoveDisplay.luau",
+    "path": [
+      15,
+      1,
+      4,
+      2,
+      11
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/ShiftLock.client.luau",
+    "path": [
+      15,
+      1,
+      5
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/MainUI.client.luau",
+    "path": [
+      15,
+      1,
+      6
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/ChestUI.client.luau",
+    "path": [
+      15,
+      1,
+      7
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/WeaponController.client.luau",
+    "path": [
+      15,
+      1,
+      8
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/PromptUI.client.luau",
+    "path": [
+      15,
+      1,
+      9
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/QuestUI.client.luau",
+    "path": [
+      15,
+      1,
+      10
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/GoreEffects.client.luau",
+    "path": [
+      15,
+      1,
+      11
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/EmoteWheel.client.luau",
+    "path": [
+      15,
+      1,
+      12
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/AdminUI.client.luau",
+    "path": [
+      15,
+      1,
+      13
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/WeaponPoseHold.client.luau",
+    "path": [
+      15,
+      1,
+      14
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/AudioSpace.client.luau",
+    "path": [
+      15,
+      1,
+      15
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/OutlineService.client.luau",
+    "path": [
+      15,
+      1,
+      16
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/CustomiseUI.client.luau",
+    "path": [
+      15,
+      1,
+      17
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/WeaponInspect.client.luau",
+    "path": [
+      15,
+      1,
+      18
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/Ambience.client.luau",
+    "path": [
+      15,
+      1,
+      19
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/Nameplates.client.luau",
+    "path": [
+      15,
+      1,
+      20
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/CameraBob.client.luau",
+    "path": [
+      15,
+      1,
+      21
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterPlayerScripts/Killcam.client.luau",
+    "path": [
+      15,
+      1,
+      22
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterCharacterScripts/StarterCharacterScripts/Movement/Dash/init.client.luau",
+    "path": [
+      15,
+      2,
+      1,
+      2,
+      1
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/StarterPlayer/StarterCharacterScripts/StarterCharacterScripts/Movement/Dash/Effect/Skill.server.luau",
+    "path": [
+      15,
+      2,
+      1,
+      2,
+      1,
+      4,
+      1
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/StarterPlayer/StarterCharacterScripts/StarterCharacterScripts/Script.server.luau",
+    "path": [
+      15,
+      2,
+      1,
+      3
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterCharacterScripts/StarterCharacterScripts/Animate (disabled, wrong parent).client.luau",
+    "path": [
+      15,
+      2,
+      1,
+      4
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterCharacterScripts/StarterCharacterScripts/CameraImmersive (never ran - see comment).client.luau",
+    "path": [
+      15,
+      2,
+      1,
+      5
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterCharacterScripts/StarterCharacterScripts/VaultUp.client.luau",
+    "path": [
+      15,
+      2,
+      1,
+      6
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterCharacterScripts/Animate_R6_retired.client.luau",
+    "path": [
+      15,
+      2,
+      2
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterCharacterScripts/Dashing/Dash.client.luau",
+    "path": [
+      15,
+      2,
+      3,
+      1
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterCharacterScripts/Dashing/JumpLock.client.luau",
+    "path": [
+      15,
+      2,
+      3,
+      2
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/StarterPlayer/StarterCharacterScripts/Starter Player --_ StarterCharacterScripts.server.luau",
+    "path": [
+      15,
+      2,
+      5
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterCharacterScripts/Animate (disabled duplicate).client.luau",
+    "path": [
+      15,
+      2,
+      16
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterCharacterScripts/CamController.client.luau",
+    "path": [
+      15,
+      2,
+      17
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterCharacterScripts/FOVLock (disabled - was a third writer on FieldOfView).client.luau",
+    "path": [
+      15,
+      2,
+      18
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterCharacterScripts/JumpAtkDisabler.client.luau",
+    "path": [
+      15,
+      2,
+      19
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterCharacterScripts/Lerp.client.luau",
+    "path": [
+      15,
+      2,
+      20
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPlayer/StarterCharacter/Animate.client.luau",
+    "path": [
+      15,
+      3,
+      4
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterPack/DoubleJump.client.luau",
+    "path": [
+      16,
+      1
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterGui/StarterGui/Running.client.luau",
+    "path": [
+      17,
+      1,
+      1
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/StarterGui/ComboCounter/HitCounterFrame/HitCounter/init.client.luau",
+    "path": [
+      17,
+      2,
+      1,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/StarterGui/ComboCounter/HitCounterFrame/HitCounter/HitCounter.luau",
+    "path": [
+      17,
+      2,
+      1,
+      1,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/UI/Modules/Theme.luau",
+    "path": [
+      41,
+      2,
+      1,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/UI/Modules/Components.luau",
+    "path": [
+      41,
+      2,
+      1,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/UI/Modules/Hud.luau",
+    "path": [
+      41,
+      2,
+      1,
+      3
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/UI/Modules/Hotbar.luau",
+    "path": [
+      41,
+      2,
+      1,
+      4
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/UI/Modules/KillFeed.luau",
+    "path": [
+      41,
+      2,
+      1,
+      5
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/UI/Modules/Menu.luau",
+    "path": [
+      41,
+      2,
+      1,
+      6
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/UI/Modules/Inventory.luau",
+    "path": [
+      41,
+      2,
+      1,
+      7
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/UI/Modules/Nav.luau",
+    "path": [
+      41,
+      2,
+      1,
+      8
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/UI/Modules/Market.luau",
+    "path": [
+      41,
+      2,
+      1,
+      9
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/UI/Modules/Workshop.luau",
+    "path": [
+      41,
+      2,
+      1,
+      10
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/UI/Modules/Objective.luau",
+    "path": [
+      41,
+      2,
+      1,
+      11
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/UI/Modules/Duel.luau",
+    "path": [
+      41,
+      2,
+      1,
+      12
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/UI/Modules/Profile.luau",
+    "path": [
+      41,
+      2,
+      1,
+      13
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/UI/Modules/Daily.luau",
+    "path": [
+      41,
+      2,
+      1,
+      14
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Hitboxes/Combat/M1/weldCF.luau",
+    "path": [
+      41,
+      7,
+      1,
+      1,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/Bezier.luau",
+    "path": [
+      41,
+      8,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/BezierTweens/init.luau",
+    "path": [
+      41,
+      8,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/BezierTweens/Waypoints.luau",
+    "path": [
+      41,
+      8,
+      2,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/BezierTweens/Signal.luau",
+    "path": [
+      41,
+      8,
+      2,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/BoatTween/init.luau",
+    "path": [
+      41,
+      8,
+      3
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/BoatTween/Bezier.luau",
+    "path": [
+      41,
+      8,
+      3,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/BoatTween/Lerps.luau",
+    "path": [
+      41,
+      8,
+      3,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/BoatTween/TweenFunctions.luau",
+    "path": [
+      41,
+      8,
+      3,
+      3
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/DamageModule.luau",
+    "path": [
+      41,
+      8,
+      4
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/FastCastRedux/init.luau",
+    "path": [
+      41,
+      8,
+      5
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/FastCastRedux/Table.luau",
+    "path": [
+      41,
+      8,
+      5,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/FastCastRedux/ActiveCast.luau",
+    "path": [
+      41,
+      8,
+      5,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/FastCastRedux/Signal.luau",
+    "path": [
+      41,
+      8,
+      5,
+      3
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/FastCastRedux/TypeDefinitions.luau",
+    "path": [
+      41,
+      8,
+      5,
+      4
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/FastCastRedux/TypeMarshaller.luau",
+    "path": [
+      41,
+      8,
+      5,
+      5
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/Items.luau",
+    "path": [
+      41,
+      8,
+      6
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/Mouse2/init.luau",
+    "path": [
+      41,
+      8,
+      7
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/Mouse2/SystemCursors.luau",
+    "path": [
+      41,
+      8,
+      7,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/Mouse2/Thread.luau",
+    "path": [
+      41,
+      8,
+      7,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/RaycastHitboxV4/init.luau",
+    "path": [
+      41,
+      8,
+      8
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/RaycastHitboxV4/HitboxCaster.luau",
+    "path": [
+      41,
+      8,
+      8,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/RaycastHitboxV4/VisualizerCache.luau",
+    "path": [
+      41,
+      8,
+      8,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/RaycastHitboxV4/GoodSignal.luau",
+    "path": [
+      41,
+      8,
+      8,
+      3
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/RaycastHitboxV4/Solvers/Attachment.luau",
+    "path": [
+      41,
+      8,
+      8,
+      4,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/RaycastHitboxV4/Solvers/LinkAttachments.luau",
+    "path": [
+      41,
+      8,
+      8,
+      4,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/RaycastHitboxV4/Solvers/Vector3.luau",
+    "path": [
+      41,
+      8,
+      8,
+      4,
+      3
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/RaycastHitboxV4/Solvers/Bone.luau",
+    "path": [
+      41,
+      8,
+      8,
+      4,
+      4
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/RockScript.luau",
+    "path": [
+      41,
+      8,
+      9
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/RocksModule.luau",
+    "path": [
+      41,
+      8,
+      10
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/Zone/init.luau",
+    "path": [
+      41,
+      8,
+      11
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/Zone/Enum/init.luau",
+    "path": [
+      41,
+      8,
+      11,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/Zone/Enum/Accuracy.luau",
+    "path": [
+      41,
+      8,
+      11,
+      1,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/Zone/Enum/Detection.luau",
+    "path": [
+      41,
+      8,
+      11,
+      1,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/Zone/Janitor.luau",
+    "path": [
+      41,
+      8,
+      11,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/Zone/OldSignal.luau",
+    "path": [
+      41,
+      8,
+      11,
+      3
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/Zone/Signal.luau",
+    "path": [
+      41,
+      8,
+      11,
+      4
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/Zone/VERSION.luau",
+    "path": [
+      41,
+      8,
+      11,
+      5
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/Zone/ZoneController/init.luau",
+    "path": [
+      41,
+      8,
+      11,
+      6
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/Zone/ZoneController/CollectiveWorldModel.luau",
+    "path": [
+      41,
+      8,
+      11,
+      6,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/Zone/ZoneController/Tracker.luau",
+    "path": [
+      41,
+      8,
+      11,
+      6,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/Zone/ZonePlusReference.luau",
+    "path": [
+      41,
+      8,
+      11,
+      7
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/ModuleRock.luau",
+    "path": [
+      41,
+      8,
+      12
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/Debris.luau",
+    "path": [
+      41,
+      8,
+      13
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/LightningBolt/init.luau",
+    "path": [
+      41,
+      8,
+      14
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/LightningBolt/LightningSparks.luau",
+    "path": [
+      41,
+      8,
+      14,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/LightningBolt/LightningExplosion.luau",
+    "path": [
+      41,
+      8,
+      14,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/PartCache/init.luau",
+    "path": [
+      41,
+      8,
+      15
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/PartCache/Table.luau",
+    "path": [
+      41,
+      8,
+      15,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/CameraShaker/init.luau",
+    "path": [
+      41,
+      8,
+      16
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/CameraShaker/CameraShakeInstance.luau",
+    "path": [
+      41,
+      8,
+      16,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/CameraShaker/CameraShakePresets.luau",
+    "path": [
+      41,
+      8,
+      16,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/BezierCurve.luau",
+    "path": [
+      41,
+      8,
+      17
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/CraterEffects/init.luau",
+    "path": [
+      41,
+      8,
+      18
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/CraterEffects/Presets.luau",
+    "path": [
+      41,
+      8,
+      18,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/CraterEffects/Styles.luau",
+    "path": [
+      41,
+      8,
+      18,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Modules/Misc.luau",
+    "path": [
+      41,
+      8,
+      19
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Replica/ReplicaService.luau",
+    "path": [
+      41,
+      10,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Replica/ReplicaController.luau",
+    "path": [
+      41,
+      10,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Replica/MadworkScriptSignal.luau",
+    "path": [
+      41,
+      10,
+      3
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Replica/RateLimiter.luau",
+    "path": [
+      41,
+      10,
+      4
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Replica/MadworkMaid.luau",
+    "path": [
+      41,
+      10,
+      5
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/Replica/ReplicaServiceListeners.luau",
+    "path": [
+      41,
+      10,
+      6
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/AutoSave.luau",
+    "path": [
+      41,
+      12
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/InterceptValue/init.luau",
+    "path": [
+      41,
+      13
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/InterceptValue/init.spec.luau",
+    "path": [
+      41,
+      13,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/GameConfig.luau",
+    "path": [
+      41,
+      15
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/UIKit.luau",
+    "path": [
+      41,
+      16
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/WeaponConfig.luau",
+    "path": [
+      41,
+      17
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/NPCConfig.luau",
+    "path": [
+      41,
+      18
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/QuestConfig.luau",
+    "path": [
+      41,
+      19
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/CosmeticConfig.luau",
+    "path": [
+      41,
+      20
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/ReloadAnimator.luau",
+    "path": [
+      41,
+      21
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/WeaponPreview.luau",
+    "path": [
+      41,
+      22
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/AttachmentConfig.luau",
+    "path": [
+      41,
+      23
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/AttachmentBuilder.luau",
+    "path": [
+      41,
+      24
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/CamoConfig.luau",
+    "path": [
+      41,
+      25
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/InspectController.luau",
+    "path": [
+      41,
+      26
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/WeaponFinish.luau",
+    "path": [
+      41,
+      27
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/WeaponMounts.luau",
+    "path": [
+      41,
+      28
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/WeaponParts/Warden.luau",
+    "path": [
+      41,
+      29,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/WeaponParts/Blackwood.luau",
+    "path": [
+      41,
+      29,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/WeaponParts/Sentinel.luau",
+    "path": [
+      41,
+      29,
+      3
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/ViewKick.luau",
+    "path": [
+      41,
+      30
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/CombatFX.luau",
+    "path": [
+      41,
+      31
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/WeaponAudio.luau",
+    "path": [
+      41,
+      32
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/ChestConfig.luau",
+    "path": [
+      41,
+      33
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/PrestigeBadge.luau",
+    "path": [
+      41,
+      34
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/ArmSolver.luau",
+    "path": [
+      41,
+      35
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/UIState.luau",
+    "path": [
+      41,
+      36
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/DialogueConfig.luau",
+    "path": [
+      41,
+      37
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/CrystalConfig.luau",
+    "path": [
+      41,
+      38
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/AmbienceConfig.luau",
+    "path": [
+      41,
+      39
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/WeatherConfig.luau",
+    "path": [
+      41,
+      40
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/EmoteConfig.luau",
+    "path": [
+      41,
+      41
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/NPCAnimation.luau",
+    "path": [
+      41,
+      42
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/PoseLayers.luau",
+    "path": [
+      41,
+      43
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ReplicatedStorage/ProgressionConfig.luau",
+    "path": [
+      41,
+      44
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/ServerScriptService/GunHandler.server.luau",
+    "path": [
+      42,
+      1
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/ServerScriptService/Targets.server.luau",
+    "path": [
+      42,
+      2
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/ServerScriptService/KD LeaderBoard.server.luau",
+    "path": [
+      42,
+      3
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/DailyService.luau",
+    "path": [
+      42,
+      4
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/ServerScriptService/Data Saver Script.server.luau",
+    "path": [
+      42,
+      5
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/ServerScriptService/Shop.server.luau",
+    "path": [
+      42,
+      6
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/RankService.luau",
+    "path": [
+      42,
+      7
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/ServerScriptService/R6Ragdoll/init.server.luau",
+    "path": [
+      42,
+      8
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/R6Ragdoll/RagdollBuilder.luau",
+    "path": [
+      42,
+      8,
+      1
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/ServerScriptService/R6Ragdoll/NPCRagdollHandler.server.luau",
+    "path": [
+      42,
+      8,
+      2
+    ]
+  },
+  {
+    "class": "LocalScript",
+    "file": "src/ServerScriptService/R6Ragdoll/RagdollClient.client.luau",
+    "path": [
+      42,
+      8,
+      3
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/ServerScriptService/ServerDataStoreScriptHolder/init.server.luau",
+    "path": [
+      42,
+      9
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/ServerScriptService/ServerDataStoreScriptHolder/Stats.server.luau",
+    "path": [
+      42,
+      9,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/ServerDataStoreScriptHolder/Quests.luau",
+    "path": [
+      42,
+      9,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/MatchService.luau",
+    "path": [
+      42,
+      10
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/RangeService.luau",
+    "path": [
+      42,
+      11
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/PlayerDataManager/init.luau",
+    "path": [
+      42,
+      12
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/PlayerDataManager/SaveStructure.luau",
+    "path": [
+      42,
+      12,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/ArenaService.luau",
+    "path": [
+      42,
+      13
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/KillCredit.luau",
+    "path": [
+      42,
+      14
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/LevelSystem.luau",
+    "path": [
+      42,
+      15
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/ShopService.luau",
+    "path": [
+      42,
+      16
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/MonetizationService.luau",
+    "path": [
+      42,
+      17
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/VendorNPC.luau",
+    "path": [
+      42,
+      18
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/ServerScriptService/GameBootstrap.server.luau",
+    "path": [
+      42,
+      19
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/AbilityService.luau",
+    "path": [
+      42,
+      20
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/HolsterService.luau",
+    "path": [
+      42,
+      21
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/NPCService/init.luau",
+    "path": [
+      42,
+      22
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/NPCService/World.luau",
+    "path": [
+      42,
+      22,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/NPCService/Effects.luau",
+    "path": [
+      42,
+      22,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/NPCService/Spawner.luau",
+    "path": [
+      42,
+      22,
+      3
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/NPCService/Body.luau",
+    "path": [
+      42,
+      22,
+      4
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/NPCService/Combat.luau",
+    "path": [
+      42,
+      22,
+      5
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/NPCService/Death.luau",
+    "path": [
+      42,
+      22,
+      6
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/NPCService/AI/Perception.luau",
+    "path": [
+      42,
+      22,
+      7,
+      1
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/NPCService/AI/Navigator.luau",
+    "path": [
+      42,
+      22,
+      7,
+      2
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/NPCService/AI/Squad.luau",
+    "path": [
+      42,
+      22,
+      7,
+      3
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/NPCService/AI/Cover.luau",
+    "path": [
+      42,
+      22,
+      7,
+      4
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/NPCService/AI/StateMachine.luau",
+    "path": [
+      42,
+      22,
+      7,
+      5
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/QuestService.luau",
+    "path": [
+      42,
+      23
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/StatsService.luau",
+    "path": [
+      42,
+      24
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/MeleeHandler.luau",
+    "path": [
+      42,
+      25
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/GoreService.luau",
+    "path": [
+      42,
+      26
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/WorldBake.luau",
+    "path": [
+      42,
+      27
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/MapExpansion.luau",
+    "path": [
+      42,
+      28
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/LeaderboardService.luau",
+    "path": [
+      42,
+      29
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/AdminService.luau",
+    "path": [
+      42,
+      30
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/WeaponPose.luau",
+    "path": [
+      42,
+      31
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/CombatFeedService.luau",
+    "path": [
+      42,
+      32
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/CombatDeath.luau",
+    "path": [
+      42,
+      33
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/WeaponDropService.luau",
+    "path": [
+      42,
+      34
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/WeaponSkinService.luau",
+    "path": [
+      42,
+      35
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/WeaponBuildService.luau",
+    "path": [
+      42,
+      36
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/WeaponImporter.luau",
+    "path": [
+      42,
+      37
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/WeaponBuilder.luau",
+    "path": [
+      42,
+      38
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/ServerScriptService/ChestService.server.luau",
+    "path": [
+      42,
+      39
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/ServerScriptService/RigNormalise.server.luau",
+    "path": [
+      42,
+      40
+    ]
+  },
+  {
+    "class": "Script",
+    "file": "src/ServerScriptService/AudioMix.server.luau",
+    "path": [
+      42,
+      41
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/ReputationService.luau",
+    "path": [
+      42,
+      42
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/BiomeService.luau",
+    "path": [
+      42,
+      43
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/AmbienceService.luau",
+    "path": [
+      42,
+      44
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/WeatherService.luau",
+    "path": [
+      42,
+      45
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/EmoteService.luau",
+    "path": [
+      42,
+      46
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/CosmeticService.luau",
+    "path": [
+      42,
+      47
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/CrystalService.luau",
+    "path": [
+      42,
+      48
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/BossService.luau",
+    "path": [
+      42,
+      49
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/AscentService.luau",
+    "path": [
+      42,
+      50
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/MineService.luau",
+    "path": [
+      42,
+      51
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/KillcamService.luau",
+    "path": [
+      42,
+      52
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/CoverService.luau",
+    "path": [
+      42,
+      53
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/TravelService.luau",
+    "path": [
+      42,
+      54
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/ServerScriptService/LandmarkService.luau",
+    "path": [
+      42,
+      55
+    ]
+  },
+  {
+    "class": "ModuleScript",
+    "file": "src/TestService/RobloxLSP_Settings.luau",
+    "path": [
+      46,
+      1
+    ]
+  }
+]
