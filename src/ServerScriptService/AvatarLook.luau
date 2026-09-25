@@ -5,11 +5,19 @@
 -- Motor6D joints that WeaponPose, ArmSolver, ReloadAnimator and the ragdoll all measure off,
 -- and one hitbox so nobody's avatar is harder to hit than anybody else's. That body is kept.
 --
--- What was lost with it was the player: every character was the same blue-and-teal blank.
--- This dresses the locked body in the player's OWN clothes, skin tone, hair, hats and layered
--- clothing, read from their avatar. It starts from the description the body already wears,
--- so body parts, proportions, scales and animations are untouched and the rig stays exactly
--- what the rest of the game expects -- only the cosmetic fields are copied over.
+-- This dresses it in the player's OWN clothes, skin tone, hair, hats and layered clothing.
+--
+-- HOW, and why not ApplyDescription: the body's stored HumanoidDescription does not match
+-- the meshes it actually wears (it lists a default head and older limb ids), so asking the
+-- engine to apply any description makes it REBUILD every body part. The rebuilt parts come
+-- rigged with the engine's AnimationConstraints, which RigNormalise deletes on sight so the
+-- Motor6D code keeps working -- leaving a body with no joints at all. The character fell
+-- apart and died on every spawn.
+--
+-- So the live body is never handed to the engine. The player's avatar is built OFF-SCREEN
+-- as its own model (once per session), and only the pieces that sit on top of a body are
+-- copied across: the Shirt/Pants/T-shirt, the skin colours, and each accessory attached the
+-- ordinary way through Humanoid:AddAccessory. Nothing about the rig itself changes.
 --
 -- Worn accessories are made massless and invisible to raycasts, so a big hat or long hair can
 -- never catch a bullet meant for the body.
@@ -21,35 +29,41 @@ local AvatarLook = {}
 -- Turn the whole thing off without touching anything else.
 AvatarLook.Enabled = true
 
-local CLOTHING_FIELDS = { "Shirt", "Pants", "GraphicTShirt" }
 local COLOUR_FIELDS = {
-	"HeadColor", "TorsoColor", "LeftArmColor", "RightArmColor", "LeftLegColor", "RightLegColor",
-}
-local RIGID_FIELDS = {
-	"HatAccessory", "HairAccessory", "FaceAccessory", "NeckAccessory",
-	"ShouldersAccessory", "FrontAccessory", "BackAccessory", "WaistAccessory",
+	"HeadColor3", "TorsoColor3", "LeftArmColor3", "RightArmColor3", "LeftLegColor3", "RightLegColor3",
 }
 
--- One lookup per player per session; the avatar does not change mid-game.
-local cache: { [number]: HumanoidDescription } = {}
+-- The player's avatar, built once per session and never parented anywhere.
+local built: { [number]: Model | false } = {}
+local building: { [number]: boolean } = {}
 
-local function descriptionFor(player: Player): HumanoidDescription?
-	local cached = cache[player.UserId]
-	if cached then
-		return cached
-	end
-	-- Test players in Studio have negative ids and no avatar to read.
-	if player.UserId <= 0 then
+local function avatarFor(player: Player): Model?
+	local userId = player.UserId
+	-- Test players in Studio's multi-client mode have negative ids and no avatar to read.
+	if userId <= 0 then
 		return nil
 	end
+	-- Two spawns racing each other share one build.
+	while building[userId] do
+		task.wait(0.1)
+	end
+	local cached = built[userId]
+	if cached ~= nil then
+		return cached or nil
+	end
+	building[userId] = true
 	local ok, result = pcall(function()
-		return Players:GetHumanoidDescriptionFromUserIdAsync(player.UserId)
+		local description = Players:GetHumanoidDescriptionFromUserIdAsync(userId)
+		return Players:CreateHumanoidModelFromDescriptionAsync(description, Enum.HumanoidRigType.R15)
 	end)
+	building[userId] = nil
 	if ok and result then
-		cache[player.UserId] = result
+		built[userId] = result
 		return result
 	end
-	warn("[AvatarLook] could not read the avatar of " .. player.Name .. ": " .. tostring(result))
+	-- Remembered as a failure so a broken avatar service is not asked again every respawn.
+	built[userId] = false
+	warn("[AvatarLook] could not build the avatar of " .. player.Name .. ": " .. tostring(result))
 	return nil
 end
 
@@ -77,47 +91,54 @@ local function dress(player: Player, character: Model)
 		return
 	end
 
-	-- ApplyDescription needs the character in the world.
-	local waited = 0
-	while not character:IsDescendantOf(workspace) and waited < 5 do
-		waited += task.wait(0.1)
-	end
-	if not character:IsDescendantOf(workspace) or humanoid.Health <= 0 then
-		return
-	end
-
-	local theirs = descriptionFor(player)
-	if not theirs or player.Character ~= character then
+	local source = avatarFor(player)
+	if not source or player.Character ~= character or humanoid.Health <= 0 then
 		return
 	end
 
 	local ok, err = pcall(function()
-		-- Start from what the locked body already wears: its parts, scales and animations.
-		local look = humanoid:GetAppliedDescription()
-		for _, field in ipairs(CLOTHING_FIELDS) do
-			(look :: any)[field] = (theirs :: any)[field]
+		-- Clothing: replace whatever the body came with.
+		for _, child in ipairs(character:GetChildren()) do
+			if child:IsA("Clothing") or child:IsA("ShirtGraphic") then
+				child:Destroy()
+			end
 		end
-		for _, field in ipairs(COLOUR_FIELDS) do
-			(look :: any)[field] = (theirs :: any)[field]
+		for _, child in ipairs(source:GetChildren()) do
+			if child:IsA("Clothing") or child:IsA("ShirtGraphic") then
+				child:Clone().Parent = character
+			end
 		end
-		for _, field in ipairs(RIGID_FIELDS) do
-			(look :: any)[field] = (theirs :: any)[field]
+
+		-- Skin: the body's own BodyColors takes the avatar's colours.
+		local from = source:FindFirstChildOfClass("BodyColors")
+		if from then
+			local to = character:FindFirstChildOfClass("BodyColors")
+			if not to then
+				to = Instance.new("BodyColors")
+				to.Parent = character
+			end
+			for _, field in ipairs(COLOUR_FIELDS) do
+				(to :: any)[field] = (from :: any)[field]
+			end
 		end
-		-- Layered clothing (jackets, hoodies, shoes) wraps onto the body's own cages.
-		look:SetAccessories(theirs:GetAccessories(false), false)
-		-- Never let the experience's avatar rules resize or re-body the locked rig. Guarded on
-		-- its own: an engine without the property should still dress the player.
-		pcall(function()
-			look.UseAvatarSettings = false
-		end)
-		humanoid:ApplyDescriptionAsync(look)
+
+		-- Accessories, attached the ordinary way. The copy's old weld points at the
+		-- off-screen model, so it is removed and AddAccessory makes a fresh one.
+		for _, child in ipairs(source:GetChildren()) do
+			if child:IsA("Accessory") then
+				local copy = child:Clone()
+				for _, d in ipairs(copy:GetDescendants()) do
+					if d:IsA("JointInstance") or d:IsA("WeldConstraint") then
+						d:Destroy()
+					end
+				end
+				harmless(copy)
+				humanoid:AddAccessory(copy)
+			end
+		end
 	end)
 	if not ok then
 		warn("[AvatarLook] could not dress " .. player.Name .. ": " .. tostring(err))
-	end
-
-	for _, child in ipairs(character:GetChildren()) do
-		harmless(child)
 	end
 end
 
@@ -138,7 +159,11 @@ for _, player in ipairs(Players:GetPlayers()) do
 	task.spawn(watch, player)
 end
 Players.PlayerRemoving:Connect(function(player)
-	cache[player.UserId] = nil
+	local model = built[player.UserId]
+	if model then
+		model:Destroy()
+	end
+	built[player.UserId] = nil
 end)
 
 return AvatarLook
