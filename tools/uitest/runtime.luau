@@ -366,6 +366,10 @@ local function readProp(self, key: string)
 	return defaultOf(st.class, key)
 end
 
+-- Callbacks are not properties in the reflection database, but server code assigns them
+-- (RemoteFunction.OnServerInvoke) and suites load server modules, so they are held here.
+local CALLBACKS = { OnServerInvoke = true, OnClientInvoke = true, OnInvoke = true }
+
 INSTANCE.__index = function(self, key)
 	local st = state[self]
 	if key == "ClassName" then
@@ -374,6 +378,9 @@ INSTANCE.__index = function(self, key)
 		return st.parent
 	elseif key == "Name" then
 		return st.props.Name or (st.source and st.source.Name) or st.class
+	end
+	if CALLBACKS[key] then
+		return st.props[key]
 	end
 	local m = Methods[key] or classMethod(st.class, key)
 	if m then
@@ -444,6 +451,13 @@ end
 
 INSTANCE.__newindex = function(self, key, value)
 	local st = state[self]
+	if CALLBACKS[key] then
+		if value ~= nil and type(value) ~= "function" then
+			error(("Unable to assign %s: a function is expected"):format(key), 2)
+		end
+		st.props[key] = value
+		return
+	end
 	if key == "Parent" then
 		setParent(self, value)
 		return

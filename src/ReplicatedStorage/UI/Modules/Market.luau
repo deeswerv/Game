@@ -252,6 +252,13 @@ function Market.new(parent: Instance, remotes)
 	menu:OnOpen(function()
 		self:Refresh()
 	end)
+	-- A level gained with the shop open -- a kill, a quest, the owner panel -- unlocks guns
+	-- there and then, rather than on the next time the shop is opened.
+	player:GetAttributeChangedSignal("Level"):Connect(function()
+		if menu:IsOpen() then
+			self:Refresh()
+		end
+	end)
 
 	-- A purchase made anywhere -- here, or by a vendor NPC -- redraws the shelf.
 	if remotes.ownershipChanged then

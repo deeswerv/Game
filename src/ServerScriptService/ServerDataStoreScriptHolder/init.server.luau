@@ -98,8 +98,11 @@ Players.PlayerAdded:Connect(function(Player)
 			if quest then
 				if NewValue >= quest.Amount then
 					Replica:SetValue("QuestProgress", 0)
-					Replica:SetValue("Gold", Replica.Data.Gold + quest.Gold)
-					Replica:SetValue("EXP", Replica.Data.EXP + quest.EXP)
+					Replica:SetValue("Gold", (Replica.Data.Gold or 0) + (quest.Gold or 0))
+					-- Through LevelSystem, like every other XP award, so it levels up by the
+					-- real curve and stops at the cap.
+					local LevelSystem = require(game:GetService("ServerScriptService").LevelSystem) :: any
+					LevelSystem.AwardXP(Player, quest.EXP or 0)
 					Replica:SetValue("CurrentQuest", "None") 
 					uiReplicator:FireClient(Player, "Quest", Replica.Data.QuestProgress, Replica.Data.CurrentQuest, quest.Target, quest.Rewards, quest.Amount)
 
@@ -128,36 +131,13 @@ Players.PlayerAdded:Connect(function(Player)
 		end
 		
 		
+		-- Mirror only. This used to run its own level-up whenever EXP reached MaxEXP -- a
+		-- second rule beside LevelSystem's, on a different curve (MaxEXP * 1.1) and with no
+		-- cap. LevelSystem writes EXP before MaxEXP, so a remainder between the old and new
+		-- bar sizes tripped it: one kill, two levels, and nothing stopped it passing the cap.
+		-- LevelSystem is the only thing that levels anyone up now.
 		Replica:ListenToChange("EXP", function(NewValue, OldValue)
 			expVal.Value = NewValue
-
-			if NewValue == Replica.Data.MaxEXP then
-				Replica:SetValue("EXP", 0)
-				Replica:SetValue("MaxEXP", Replica.Data.MaxEXP + (Replica.Data.MaxEXP * 0.1))
-				Replica:SetValue("Level", Replica.Data.Level + 1)
-				Replica:SetValue("StatPoints", Replica.Data.StatPoints + 3)
-				
-				uiReplicator:FireClient(Player, "EXP", Replica.Data.EXP, Replica.Data.MaxEXP, Replica.Data.Level)
-				
-				maxExpVal.Value = Replica.Data.MaxEXP
-				expVal.Value = Replica.Data.EXP
-				levelValue.Value = Replica.Data.Level
-				statPointsVal.Value = Replica.Data.StatPoints
-				replicate:FireAllClients("LevelUp", Player.Character)
-			elseif NewValue > Replica.Data.MaxEXP then
-				Replica:SetValue("EXP", Replica.Data.EXP - Replica.Data.MaxEXP)
-				Replica:SetValue("MaxEXP", Replica.Data.MaxEXP + (Replica.Data.MaxEXP * 0.1))
-				Replica:SetValue("Level", Replica.Data.Level + 1)
-				Replica:SetValue("StatPoints", Replica.Data.StatPoints + 3)
-				
-				uiReplicator:FireClient(Player, "EXP", Replica.Data.EXP, Replica.Data.MaxEXP, Replica.Data.Level)
-				
-				maxExpVal.Value = Replica.Data.MaxEXP
-				expVal.Value = Replica.Data.EXP
-				levelValue.Value = Replica.Data.Level
-				statPointsVal.Value = Replica.Data.StatPoints
-				replicate:FireAllClients("LevelUp", Player.Character)
-			end
 		end)
 
 		Replica:ListenToChange("MaxStamina", function(NewValue, OldValue)

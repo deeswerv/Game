@@ -112,6 +112,8 @@ function LevelSystem.AwardXP(player: Player, amount: number)
 		if data.Level >= Cfg.MAX_LEVEL then
 			return
 		end
+		-- Every prestige makes all XP worth a little more, wherever it came from.
+		amount = math.max(1, math.floor(amount * GameConfig.PrestigeXPMultiplier(data.Prestige or 0) + 0.5))
 
 		local level = data.Level
 		local exp = data.EXP + amount
@@ -155,6 +157,9 @@ function LevelSystem.AwardXP(player: Player, amount: number)
 			end
 
 			LevelUp:FireClient(player, level, gainedLevels * Cfg.STAT_POINTS_PER_LEVEL)
+			if level >= Cfg.MAX_LEVEL then
+				ProgressionReward:FireClient(player, "PrestigeReady", level)
+			end
 		end
 
 		mirrorToPlayer(player, Replica.Data)
@@ -175,6 +180,32 @@ local function getLevel(player: Player?): number
 		return (lv :: any).Value
 	end
 	return 1
+end
+
+--- Put a player straight onto `level` (clamped to 1..cap), bar empty -- the owner panel's
+--- path. Everything that shows or checks a level is updated in one go: the profile (which
+--- is what saves), the Stats mirror the server's own checks read, the Level attribute the
+--- shop and nameplates read, and the HUD. Missing any one of those is how a level set from
+--- the panel looked applied but left the shop's guns locked.
+function LevelSystem.SetLevel(player: Player, level: number): (boolean, number)
+	local target = math.clamp(math.floor(tonumber(level) or 1), 1, Cfg.MAX_LEVEL)
+	local ok = pcall(function()
+		local Replica = PlayerDataManager:GetPlayerDataReplica(player):expect()
+		local maxExp = GameConfig.GetRequiredEXP(target)
+		Replica:SetValue("Level", target)
+		Replica:SetValue("EXP", 0)
+		Replica:SetValue("MaxEXP", maxExp)
+		mirrorToPlayer(player, Replica.Data)
+		XPGained:FireClient(player, 0, 0, maxExp, target)
+		if target >= Cfg.MAX_LEVEL then
+			ProgressionReward:FireClient(player, "PrestigeReady", target)
+		end
+	end)
+	return ok, target
+end
+
+function LevelSystem.MaxLevel(): number
+	return Cfg.MAX_LEVEL
 end
 
 KillCredit.KillAwarded.Event:Connect(function(killer: Player, victimHumanoid: Humanoid, victimPlayer: Player?)
@@ -206,6 +237,17 @@ end)
 -- Push profile values onto the player's mirror instances once they are ready.
 local function onPlayerAdded(player: Player)
 	PlayerDataManager:GetPlayerDataReplica(player):andThen(function(Replica)
+		-- The cap came down from 100 to 50. A profile above it keeps the XP it earned past the
+		-- cap in its lifetime total, and lands on the cap -- ready to prestige, not reset.
+		if (Replica.Data.Level or 1) > Cfg.MAX_LEVEL then
+			local banked = tonumber(Replica.Data.LifetimeXP) or 0
+			for lv = Cfg.MAX_LEVEL, Replica.Data.Level - 1 do
+				banked += GameConfig.GetRequiredEXP(lv)
+			end
+			Replica:SetValue("LifetimeXP", banked + (tonumber(Replica.Data.EXP) or 0))
+			Replica:SetValue("Level", Cfg.MAX_LEVEL)
+			Replica:SetValue("EXP", 0)
+		end
 		-- MaxEXP may predate the current curve; correct it on load.
 		local expected = GameConfig.GetRequiredEXP(Replica.Data.Level)
 		if Replica.Data.MaxEXP ~= expected then
@@ -402,12 +444,14 @@ function LevelSystem.Prestige(player: Player): (boolean, string)
 		-- Weapons, camos, attachments, builds and completed quests are all on the preserve
 		-- list and are deliberately not touched here.
 
-		local reward = PrestigeCfg.COIN_REWARD_BASE
-			+ PrestigeCfg.COIN_REWARD_PER_PRESTIGE * (newPrestige - 1)
-		local stats = player:FindFirstChild("leaderstats")
-		local coins = stats and stats:FindFirstChild("Coins")
-		if coins and coins:IsA("IntValue") then
-			coins.Value += reward
+		local pay = GameConfig.PrestigeReward(newPrestige)
+		local reward = pay.coins
+		ShopService.AwardCoins(player, reward)
+		Replica:SetValue("Crystals", (tonumber(Replica.Data.Crystals) or 0) + pay.crystals)
+		local titles = table.clone(Replica.Data.Titles or {})
+		if not table.find(titles, pay.title) then
+			table.insert(titles, pay.title)
+			Replica:SetValue("Titles", titles)
 		end
 
 		mirrorToPlayer(player, Replica.Data)
@@ -416,7 +460,9 @@ function LevelSystem.Prestige(player: Player): (boolean, string)
 		PrestigeChanged:FireAllClients(player, newPrestige)
 
 		local tier = GameConfig.GetPrestigeTier(newPrestige)
-		return { ok = true, prestige = newPrestige, reward = reward, name = tier.name }
+		print(("[LevelSystem] %s prestiged to %d (%s)"):format(player.Name, newPrestige, tier.name))
+		return { ok = true, prestige = newPrestige, reward = reward, crystals = pay.crystals, title = pay.title,
+			xpBonus = pay.xpBonus, name = tier.name }
 	end)
 
 	prestiging[player] = nil

@@ -18,7 +18,11 @@ Players.PlayerAdded:Connect(function(player)
 	if success then
 		if Data then
 			for i, v in pairs(Data) do
-				player:WaitForChild("leaderstats"):WaitForChild(i).Value = v
+				-- Not Coins: those are on the profile now (WalletService), and loading this
+				-- older copy over them is how a balance used to roll back.
+				if i ~= "Coins" then
+					player:WaitForChild("leaderstats"):WaitForChild(i).Value = v
+				end
 			end
 		end
 	else
@@ -29,7 +33,9 @@ end)
 local function Save(player)
 	local SavedData = {}
 	for _, v in pairs(player.leaderstats:GetChildren()) do
-		SavedData[v.Name] = v.Value
+		if v.Name ~= "Coins" then
+			SavedData[v.Name] = v.Value
+		end
 	end
 
 	local success, errormessage = pcall(function()

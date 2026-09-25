@@ -19,7 +19,10 @@ GameConfig.Leveling = {
 	MAX_XP_MULTIPLIER = 3.0,
 
 	STAT_POINTS_PER_LEVEL = 3,
-	MAX_LEVEL = 100,
+	-- The cap, and where prestige opens. 50 levels of this curve is about 400,000 XP -- a fifth
+	-- of the old 100-level climb -- so prestige is something players actually reach, and the
+	-- replay comes from prestiging rather than from one endless bar.
+	MAX_LEVEL = 50,
 
 	-- Heal to full on level up -- a small reward that also reads clearly in combat.
 	HEAL_ON_LEVEL_UP = true,
@@ -35,12 +38,16 @@ GameConfig.Leveling = {
 GameConfig.Prestige = {
 	-- Reaching the level cap unlocks the reset. Nothing happens automatically: prestiging
 	-- is always the player's own decision, because it costs them their level.
-	REQUIRED_LEVEL = 100,
+	REQUIRED_LEVEL = 50,
 	MAX_PRESTIGE = 10,
 
 	-- Paid out each time, scaling with the prestige being entered.
 	COIN_REWARD_BASE = 5000,
 	COIN_REWARD_PER_PRESTIGE = 2500,
+	CRYSTAL_REWARD_PER_PRESTIGE = 10,
+	-- Every prestige makes every XP award worth this much more, for good: the climb back is
+	-- quicker each time, which is what makes resetting feel like a step up rather than a loss.
+	XP_BONUS_PER_PRESTIGE = 0.05,
 
 	-- What survives a prestige. Everything not listed here is reset.
 	--
@@ -73,6 +80,25 @@ GameConfig.PrestigeTiers = {
 	[9] = { name = "Radiant",   colour = Color3.fromRGB(255, 226, 150), ring = Color3.fromRGB(230, 168, 60),  points = 8 },
 	[10] = { name = "Apex",     colour = Color3.fromRGB(255, 255, 255), ring = Color3.fromRGB(238, 190, 98),  points = 8 },
 }
+
+--- What entering prestige `n` pays: coins, crystals, the tier's title and the XP bonus it
+--- brings the total to. Shared, so the Level Road shows exactly what the server hands over.
+function GameConfig.PrestigeReward(n: number)
+	local cfg = GameConfig.Prestige
+	local tier = GameConfig.GetPrestigeTier(n)
+	return {
+		coins = cfg.COIN_REWARD_BASE + cfg.COIN_REWARD_PER_PRESTIGE * (n - 1),
+		crystals = cfg.CRYSTAL_REWARD_PER_PRESTIGE * n,
+		title = tier.name .. " Prestige",
+		xpBonus = cfg.XP_BONUS_PER_PRESTIGE * n,
+	}
+end
+
+--- How much every XP award is multiplied by at `prestige`.
+function GameConfig.PrestigeXPMultiplier(prestige: number): number
+	return 1 + GameConfig.Prestige.XP_BONUS_PER_PRESTIGE * math.clamp(math.floor(prestige or 0), 0,
+		GameConfig.Prestige.MAX_PRESTIGE)
+end
 
 --- Emblem description for a prestige count, clamped so an out-of-range value still draws.
 function GameConfig.GetPrestigeTier(prestige: number)

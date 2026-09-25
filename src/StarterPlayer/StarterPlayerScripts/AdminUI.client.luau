@@ -1,19 +1,23 @@
 --!strict
--- Owner-only admin panel.
+-- The owner panel (F4, or the ADMIN button top-left).
 --
--- This builds nothing unless the SERVER says you are the owner, and even then the
--- panel is only a convenience: every button goes through AdminCommand, which
--- re-checks ownership before acting. Hiding the UI is not the security.
+-- This builds nothing unless the SERVER says you are the owner, and even then the panel is
+-- only a convenience: every button goes through AdminCommand, which re-checks ownership
+-- before acting. Hiding the UI is not the security.
+--
+-- Built in the same shell as every other menu (UI.Modules.Menu), with a strip across the top
+-- that always shows who you are acting on and their numbers AS THE SERVER HAS THEM -- level,
+-- prestige, coins, crystals, kills -- re-read after every command, so a change you make is
+-- one you can see land. The boxes are filled with those current values and keep whatever
+-- you type in them; and the strip says plainly whether the profile is really being saved
+-- (in Studio without API access nothing is, and every change is gone at the end of the test).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
-local UIKit = require(ReplicatedStorage.UIKit)
-local WeaponConfig = require(ReplicatedStorage.WeaponConfig)
-local NPCConfig = require(ReplicatedStorage.NPCConfig)
-local UIState = require(game:GetService("ReplicatedStorage"):WaitForChild("UIState"))
-local Theme = UIKit.Theme
+local WeaponConfig = require(ReplicatedStorage:WaitForChild("WeaponConfig"))
+local NPCConfig = require(ReplicatedStorage:WaitForChild("NPCConfig"))
 
 local player = Players.LocalPlayer
 local remotes = ReplicatedStorage:WaitForChild("GameRemotes")
@@ -32,289 +36,446 @@ if not allowed then
 	return
 end
 
+local Modules = ReplicatedStorage:WaitForChild("UI"):WaitForChild("Modules")
+local Theme = require(Modules:WaitForChild("Theme")) :: any
+local Components = require(Modules:WaitForChild("Components")) :: any
+local Menu = require(Modules:WaitForChild("Menu")) :: any
+
 local gui = Instance.new("ScreenGui")
 gui.Name = "AdminUI"
 gui.ResetOnSpawn = false
 gui.IgnoreGuiInset = true
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.DisplayOrder = 40
 gui.Parent = player:WaitForChild("PlayerGui")
+Components.BindScale(gui)
 
-local isOpen = false
+local CATEGORIES = {
+	{ id = "Progress", label = "Progress", icon = "📈" },
+	{ id = "Weapons", label = "Weapons", icon = "🔫" },
+	{ id = "NPCs", label = "NPCs", icon = "👾" },
+	{ id = "Move", label = "Move", icon = "🧭" },
+	{ id = "Self", label = "Self", icon = "🛡" },
+	{ id = "World", label = "World", icon = "🌦" },
+	{ id = "Data", label = "Data", icon = "📊" },
+}
 
-local panel = UIKit.frame({
-	Name = "Panel",
-	AnchorPoint = Vector2.new(0, 0),
-	Position = UDim2.new(0, 16, 0, 54),
-	Size = UDim2.fromOffset(330, 520),
-	BackgroundColor3 = Theme.Background,
-	Visible = false,
-	Parent = gui,
-})
-UIKit.corner(panel, UDim.new(0, 12))
-UIKit.stroke(panel, Color3.fromRGB(196, 64, 64), 1, 0.2)
-
-local header = UIKit.frame({
-	Name = "Header",
-	Size = UDim2.new(1, 0, 0, 46),
-	BackgroundColor3 = Theme.Panel,
-	Parent = panel,
-})
-UIKit.corner(header, UDim.new(0, 12))
-
-UIKit.label({
-	Position = UDim2.fromOffset(16, 0),
-	Size = UDim2.new(1, -60, 1, 0),
-	Text = "ADMIN  ·  owner only",
-	Font = Theme.FontBold,
-	TextColor3 = Color3.fromRGB(226, 110, 110),
-	TextSize = 15,
-	Parent = header,
+local menu = Menu.new(gui, {
+	id = "Admin",
+	title = "Owner Panel",
+	subtitle = "Changes are made on the server and saved to the profile straight away",
+	icon = "👑",
+	size = UDim2.fromOffset(1020, 640),
+	categories = CATEGORIES,
 })
 
-local closeBtn = UIKit.button({
-	Name = "Close",
-	AnchorPoint = Vector2.new(1, 0.5),
-	Position = UDim2.new(1, -12, 0.5, 0),
-	Size = UDim2.fromOffset(28, 28),
-	Text = "X",
-	TextSize = 14,
-	Parent = header,
-})
-UIKit.corner(closeBtn, UDim.new(0, 6))
-UIKit.hover(closeBtn, Theme.PanelLight, Theme.Danger)
+local WHITE = Color3.new(1, 1, 1)
 
--- A rail of categories across the top, one chip per section, and only the chosen section's
--- rows below it. Borrowed from the admin suite this replaced: its one genuinely good idea was
--- that a long command list is unusable until it is split into pages you can aim at.
-local rail = UIKit.frame({
-	Name = "Rail",
-	Position = UDim2.fromOffset(10, 52),
-	Size = UDim2.new(1, -20, 0, 58),
-	BackgroundTransparency = 1,
-	Parent = panel,
-})
+local function commas(n: number): string
+	local s = tostring(math.floor(n))
+	local out = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
+	return (out:gsub("^,", ""))
+end
 
-local railLayout = Instance.new("UIListLayout")
-railLayout.FillDirection = Enum.FillDirection.Horizontal
--- Wrapped onto a second line rather than scrolled sideways: a category you cannot see is a
--- category you will not use, and there are eight of them in a 330-wide panel.
-railLayout.Wraps = true
-railLayout.Padding = UDim.new(0, 4)
-railLayout.SortOrder = Enum.SortOrder.LayoutOrder
-railLayout.Parent = rail
+local function card(parent: Instance, name: string, size: UDim2, colour: Color3?): Frame
+	local f = Instance.new("Frame")
+	f.Name = name
+	f.BackgroundColor3 = colour or Theme.Colour.PanelRaised
+	f.BorderSizePixel = 0
+	f.Size = size
+	f.Parent = parent
+	Components.Corner(f, 12)
+	Components.Stroke(f, Theme.Colour.Outline, 2)
+	Components.Gradient(f)
+	return f
+end
+
+-- ------------------------------------------------------------ the strip --
+
+local content = menu.content
+local strip = card(content, "Target", UDim2.new(1, 0, 0, 92))
+
+-- Who the buttons act on: you, or anyone else here.
+local targetName = player.Name
+local knownPlayers: { string } = { player.Name }
+
+local targetLabel = Components.Label(strip, { text = "ACTING ON", font = Theme.Font.Bold, size = 12,
+	colour = Theme.Colour.TextDim })
+targetLabel.Position = UDim2.fromOffset(14, 8)
+targetLabel.Size = UDim2.fromOffset(200, 16)
+
+local prevTarget = Components.Button(strip, { name = "PrevTarget", text = "◀", textSize = 18,
+	size = UDim2.fromOffset(34, 34), position = UDim2.fromOffset(12, 30) })
+local targetText = Components.Label(strip, { text = player.Name, face = Theme.Face.HeavyItalic, size = 22,
+	outline = 2, align = Enum.TextXAlignment.Center })
+targetText.Name = "TargetName"
+targetText.Position = UDim2.fromOffset(50, 30)
+targetText.Size = UDim2.fromOffset(160, 34)
+targetText.TextTruncate = Enum.TextTruncate.AtEnd
+local nextTarget = Components.Button(strip, { name = "NextTarget", text = "▶", textSize = 18,
+	size = UDim2.fromOffset(34, 34), position = UDim2.fromOffset(214, 30) })
+
+local saving = Components.Label(strip, { text = "● CHECKING SAVES...", font = Theme.Font.Bold, size = 12,
+	colour = Theme.Colour.TextDim })
+saving.Name = "Saving"
+saving.Position = UDim2.fromOffset(14, 68)
+saving.Size = UDim2.fromOffset(240, 16)
+
+-- The numbers.
+local statsRow = Instance.new("Frame")
+statsRow.Name = "Stats"
+statsRow.BackgroundTransparency = 1
+statsRow.Position = UDim2.fromOffset(264, 8)
+statsRow.Size = UDim2.new(1, -276, 1, -16)
+statsRow.Parent = strip
+Components.List(statsRow, Enum.FillDirection.Horizontal, 8)
+
+local statValues: { [string]: TextLabel } = {}
+local function statPill(id: string, label: string, colour: Color3, order: number, width: number)
+	local pill = card(statsRow, id, UDim2.fromOffset(width, 76), Theme.Colour.Sunken)
+	pill.LayoutOrder = order
+	local top = Components.Label(pill, { text = label, font = Theme.Font.Bold, size = 12, colour = Theme.Colour.TextDim,
+		align = Enum.TextXAlignment.Center })
+	top.Position = UDim2.fromOffset(0, 6)
+	top.Size = UDim2.new(1, 0, 0, 16)
+	local value = Components.Label(pill, { text = "-", face = Theme.Face.HeavyItalic, size = 26, colour = colour,
+		outline = 2.2, align = Enum.TextXAlignment.Center })
+	value.Name = "Value"
+	value.Position = UDim2.fromOffset(4, 26)
+	value.Size = UDim2.new(1, -8, 0, 34)
+	value.TextScaled = true
+	statValues[id] = value
+	return pill
+end
+
+local levelPill = statPill("Level", "LEVEL", Theme.Colour.Level, 1, 106)
+statPill("Prestige", "PRESTIGE", WHITE, 2, 116)
+statPill("Coins", "COINS", Theme.Colour.Currency, 3, 136)
+statPill("Crystals", "CRYSTALS", Color3.fromRGB(150, 210, 255), 4, 104)
+statPill("Kills", "KILLS", Theme.Colour.Kill, 5, 94)
+
+-- The emblem, for prestige.
+local okBadge, PrestigeBadge = pcall(function()
+	return require(ReplicatedStorage:WaitForChild("PrestigeBadge", 5) :: ModuleScript) :: any
+end)
+local emblem = nil
+if okBadge and PrestigeBadge then
+	local holder = statsRow:FindFirstChild("Prestige") :: Frame
+	emblem = PrestigeBadge.Create(holder, 30)
+	emblem.root.AnchorPoint = Vector2.new(0, 0.5)
+	emblem.root.Position = UDim2.new(0, 6, 0, 43)
+	local value = statValues.Prestige
+	value.Position = UDim2.fromOffset(34, 26)
+	value.Size = UDim2.new(1, -40, 0, 34)
+end
+levelPill.LayoutOrder = 1
+
+-- ----------------------------------------------------------- the body --
 
 local body = Instance.new("ScrollingFrame")
 body.Name = "Body"
-body.Position = UDim2.fromOffset(10, 116)
-body.Size = UDim2.new(1, -20, 1, -162)
 body.BackgroundTransparency = 1
 body.BorderSizePixel = 0
-body.ScrollBarThickness = 4
-body.ScrollBarImageColor3 = Theme.AccentDim
+body.Position = UDim2.fromOffset(0, 104)
+body.Size = UDim2.new(1, 0, 1, -104 - 40)
 body.CanvasSize = UDim2.new()
 body.AutomaticCanvasSize = Enum.AutomaticSize.Y
-body.Parent = panel
+body.ScrollBarThickness = 6
+body.ScrollBarImageColor3 = Theme.Colour.Stroke
+body.Parent = content
+Components.List(body, Enum.FillDirection.Vertical, 10)
+Components.Padding(body, nil, 0, 2)
 
-local layout = Instance.new("UIListLayout")
-layout.Padding = UDim.new(0, 6)
--- Without this the layout defaults to sorting by NAME, which threw every section heading
--- to the bottom of the panel and left the buttons in one undifferentiated block -- the
--- LayoutOrder each row already sets was being ignored entirely.
-layout.SortOrder = Enum.SortOrder.LayoutOrder
-layout.Parent = body
+local status = Components.Label(content, { text = "Ready.", font = Theme.Font.Bold, size = 16,
+	colour = Theme.Colour.TextDim, align = Enum.TextXAlignment.Center })
+status.Name = "Status"
+status.AnchorPoint = Vector2.new(0, 1)
+status.Position = UDim2.new(0, 0, 1, 0)
+status.Size = UDim2.new(1, 0, 0, 30)
+status.TextWrapped = true
 
-local status = UIKit.label({
-	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0.5, 0, 1, -10),
-	Size = UDim2.new(1, -20, 0, 32),
-	Text = "",
-	TextSize = 12,
-	TextColor3 = Theme.TextDim,
-	TextWrapped = true,
-	TextXAlignment = Enum.TextXAlignment.Center,
-	Parent = panel,
-})
+-- ------------------------------------------------------------- commands --
 
-local function say(result)
+local refreshState: () -> ()
+
+local function say(result: any)
 	if typeof(result) ~= "table" then
-		status.Text = "No response"
-		status.TextColor3 = Theme.Danger
+		status.Text = "No response from the server"
+		status.TextColor3 = Theme.Colour.Danger
 		return
 	end
-	status.Text = tostring(result.reason)
-	status.TextColor3 = result.ok and Theme.Success or Theme.Danger
+	status.Text = tostring(result.reason or (result.ok and "Done" or "Failed"))
+	status.TextColor3 = result.ok and Theme.Colour.Accent or Theme.Colour.Danger
 end
 
-local function run(name, args)
+local function run(name: string, args: { [string]: any }?, after: ((any) -> ())?)
+	local payload = table.clone(args or {})
+	if targetName ~= player.Name then
+		payload.target = targetName
+	end
+	status.Text = "..."
+	status.TextColor3 = Theme.Colour.TextDim
 	task.spawn(function()
 		local ok, result = pcall(function()
-			return AdminCommand:InvokeServer(name, args or {})
+			return AdminCommand:InvokeServer(name, payload)
 		end)
-		say(ok and result or { ok = false, reason = "Request failed" })
-	end)
-end
-
--- ----------------------------------------------------------------- sections --
---
--- Every row belongs to the section that was opened last, and only the chosen section is
--- visible. Rows created later -- the waypoint buttons arrive from the server a moment after
--- the panel is built -- pass their section explicitly, so they land on the right page.
-
-local order = 0
-local sections: { { name: string, items: { Instance }, chip: TextButton } } = {}
-local current
-local showSection
-
-local function register(inst: Instance, section)
-	section = section or current
-	if section then
-		table.insert(section.items, inst)
-		inst.Visible = section.chosen == true
-	end
-	return inst
-end
-
-local function heading(text)
-	local section = { name = text, items = {}, chosen = false }
-	table.insert(sections, section)
-
-	local chip = UIKit.button({
-		Name = text,
-		Size = UDim2.fromOffset(0, 26),
-		AutomaticSize = Enum.AutomaticSize.X,
-		Text = "  " .. text .. "  ",
-		TextSize = 11,
-		LayoutOrder = #sections,
-		Parent = rail,
-	})
-	UIKit.corner(chip, UDim.new(0, 6))
-	chip.TextColor3 = Theme.TextDim
-	chip.BackgroundColor3 = Theme.Panel
-	chip.MouseButton1Click:Connect(function()
-		showSection(section)
-	end)
-	section.chip = chip
-
-	current = section
-	return section
-end
-
-function showSection(section)
-	for _, other in ipairs(sections) do
-		local active = other == section
-		other.chosen = active
-		other.chip.BackgroundColor3 = active and Theme.AccentDim or Theme.Panel
-		other.chip.TextColor3 = active and Theme.Background or Theme.TextDim
-		for _, item in ipairs(other.items) do
-			item.Visible = active
+		local answer = ok and result or { ok = false, reason = "Request failed" }
+		say(answer)
+		if after then
+			after(answer)
 		end
-	end
+		refreshState()
+	end)
 end
 
--- A row with a text box and a Set button.
-local function valueRow(label, command, default, placeholder, section)
+-- ---------------------------------------------------------- page parts --
+
+type Field = { box: TextBox, dirty: boolean, key: string? }
+local fields: { Field } = {}
+local pages: { [string]: { GuiObject } } = {}
+local currentPage = "Progress"
+local order = 0
+
+local function place(page: string, item: GuiObject)
 	order += 1
-	local row = register(UIKit.frame({
-		Size = UDim2.new(1, 0, 0, 34),
-		BackgroundTransparency = 1,
-		LayoutOrder = order,
-		Parent = body,
-	}), section)
+	item.LayoutOrder = order
+	item.Visible = page == currentPage
+	pages[page] = pages[page] or {}
+	table.insert(pages[page], item)
+end
+
+local function heading(page: string, text: string)
+	local label = Components.Label(body, { text = text, face = Theme.Face.HeavyItalic, size = 20,
+		colour = Theme.Colour.Level, outline = 2 })
+	label.Size = UDim2.new(1, 0, 0, 24)
+	place(page, label)
+end
+
+--- A row: what it is, a box holding the value, a SET button, and quick buttons beside it.
+--- `key` names the live value the box shows until you type in it.
+local function valueRow(page: string, spec: { title: string, hint: string, command: string, key: string?,
+	placeholder: string?, default: string?, quick: { { label: string, command: string, value: any, danger: boolean? } }? })
+	local row = card(body, spec.command, UDim2.new(1, -8, 0, 64))
+	place(page, row)
+
+	local title = Components.Label(row, { text = spec.title, face = Theme.Face.Condensed, size = 20, outline = 2 })
+	title.Position = UDim2.fromOffset(14, 6)
+	title.Size = UDim2.fromOffset(200, 24)
+	local hint = Components.Label(row, { text = spec.hint, font = Theme.Font.Medium, size = 12,
+		colour = Theme.Colour.TextMuted })
+	hint.Position = UDim2.fromOffset(14, 34)
+	hint.Size = UDim2.fromOffset(200, 18)
+	hint.TextTruncate = Enum.TextTruncate.AtEnd
 
 	local box = Instance.new("TextBox")
-	box.Size = UDim2.new(1, -96, 1, 0)
-	box.BackgroundColor3 = Theme.PanelLight
+	box.Name = "Input"
+	box.BackgroundColor3 = Theme.Colour.Sunken
 	box.BorderSizePixel = 0
-	box.Font = Theme.Font
-	box.TextColor3 = Theme.Text
-	box.TextSize = 13
-	box.PlaceholderText = placeholder or label
-	box.Text = default or ""
+	box.Position = UDim2.fromOffset(222, 12)
+	box.Size = UDim2.fromOffset(170, 40)
+	box.Font = Theme.Font.Bold
+	box.TextSize = 20
+	box.TextColor3 = WHITE
+	box.PlaceholderText = spec.placeholder or ""
+	box.PlaceholderColor3 = Theme.Colour.TextMuted
+	box.Text = spec.default or ""
 	box.ClearTextOnFocus = false
 	box.Parent = row
-	UIKit.corner(box, UDim.new(0, 6))
+	Components.Corner(box, 10)
+	Components.Stroke(box, Theme.Colour.Stroke, 2)
 
-	local btn = UIKit.button({
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, 0, 0, 0),
-		Size = UDim2.fromOffset(88, 34),
-		Text = label,
-		TextSize = 12,
-		Parent = row,
-	})
-	UIKit.corner(btn, UDim.new(0, 6))
-	UIKit.hover(btn, Theme.AccentDim, Theme.Accent)
-	btn.TextColor3 = Theme.Background
-	btn.MouseButton1Click:Connect(function()
-		run(command, { value = box.Text })
+	local field: Field = { box = box, dirty = false, key = spec.key }
+	table.insert(fields, field)
+	box.Focused:Connect(function()
+		field.dirty = true
 	end)
+
+	Components.Button(row, {
+		name = "Set",
+		text = "SET",
+		textSize = 18,
+		primary = true,
+		size = UDim2.fromOffset(78, 40),
+		position = UDim2.fromOffset(400, 12),
+		onActivated = function()
+			local value = box.Text
+			run(spec.command, { value = value }, function(result)
+				if type(result) == "table" and result.ok then
+					field.dirty = false
+				end
+			end)
+		end,
+	})
+
+	local x = 490
+	for _, q in ipairs(spec.quick or {}) do
+		local width = math.max(58, #q.label * 11 + 20)
+		Components.Button(row, {
+			name = q.command .. "_" .. tostring(q.value),
+			text = q.label,
+			textSize = 16,
+			danger = q.danger,
+			size = UDim2.fromOffset(width, 40),
+			position = UDim2.fromOffset(x, 12),
+			onActivated = function()
+				field.dirty = false
+				run(q.command, { value = q.value })
+			end,
+		})
+		x += width + 6
+	end
 	return box
 end
 
-local function actionButton(label, command, value, danger, section)
-	order += 1
-	local btn = register(UIKit.button({
-		-- Named after what it does, so a button can be found and clicked by path rather than
-		-- by pixel -- which is how this panel gets tested.
-		Name = command .. (value ~= nil and ("_" .. tostring(value)) or ""),
-		Size = UDim2.new(1, 0, 0, 32),
-		Text = label,
-		TextSize = 13,
-		LayoutOrder = order,
-		Parent = body,
-	}), section)
-	UIKit.corner(btn, UDim.new(0, 6))
-	UIKit.hover(btn, danger and Theme.PanelLight or Theme.Panel, danger and Theme.Danger or Theme.PanelLight)
-	btn.TextColor3 = Theme.Text
-	btn.MouseButton1Click:Connect(function()
-		run(command, { value = value })
-	end)
-	return btn
+--- A grid of one-press buttons.
+local function grid(page: string, buttons: { { label: string, command: string, value: any?, danger: boolean? } }, name: string?)
+	local holder = Instance.new("Frame")
+	holder.Name = name or "Grid"
+	holder.BackgroundTransparency = 1
+	holder.Size = UDim2.new(1, -8, 0, 0)
+	holder.AutomaticSize = Enum.AutomaticSize.Y
+	holder.Parent = body
+	local layout = Instance.new("UIGridLayout")
+	layout.CellSize = UDim2.fromOffset(202, 44)
+	layout.CellPadding = UDim2.fromOffset(8, 8)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = holder
+	for i, b in ipairs(buttons) do
+		local button = Components.Button(holder, {
+			name = b.command .. (b.value ~= nil and ("_" .. tostring(b.value)) or ""),
+			text = b.label,
+			textSize = 15,
+			danger = b.danger,
+			layoutOrder = i,
+			onActivated = function()
+				run(b.command, { value = b.value })
+			end,
+		})
+		button.instance.TextTruncate = Enum.TextTruncate.AtEnd
+	end
+	place(page, holder)
+	return holder
 end
 
--- ------------------------------------------------------------------ contents --
+-- ------------------------------------------------------------- progress --
 
-heading("STATS")
-valueRow("Coins", "SetCoins", "10000", "amount")
-valueRow("Kills", "SetKills", "0", "amount")
-
-heading("PROGRESSION")
-valueRow("Level", "SetLevel", "20", "1 - 100")
--- Sets the rank straight out, without the level reset. For looking at an emblem.
-valueRow("Prestige", "SetPrestige", "0", "0 - 10")
--- Runs the genuine prestige, level reset included, so the real flow can be exercised
--- without grinding to the cap first. Marked danger because it does actually reset.
-actionButton("Run a real prestige (resets level)", "DoPrestige", nil, true)
-
-heading("WEAPONS")
-local weaponNames = {}
-for name in pairs(WeaponConfig.Weapons) do table.insert(weaponNames, name) end
-table.sort(weaponNames)
-for _, name in ipairs(weaponNames) do
-	actionButton("Give " .. name, "GiveWeapon", name)
+heading("Progress", "LEVEL & PRESTIGE")
+valueRow("Progress", {
+	title = "LEVEL", hint = "1 to the cap; the bar starts empty", command = "SetLevel", key = "level",
+	placeholder = "level",
+	quick = {
+		{ label = "-1", command = "AddLevels", value = -1 },
+		{ label = "+1", command = "AddLevels", value = 1 },
+		{ label = "+5", command = "AddLevels", value = 5 },
+		{ label = "MAX", command = "SetLevel", value = 999 },
+	},
+})
+valueRow("Progress", {
+	title = "PRESTIGE", hint = "Sets the rank only; no level reset", command = "SetPrestige", key = "prestige",
+	placeholder = "0 - 10",
+})
+do
+	-- The real thing, level reset and all. Asks twice when it is aimed at you.
+	local row = card(body, "RealPrestige", UDim2.new(1, -8, 0, 64))
+	place("Progress", row)
+	local title = Components.Label(row, { text = "RUN A REAL PRESTIGE", face = Theme.Face.Condensed, size = 20, outline = 2 })
+	title.Position = UDim2.fromOffset(14, 6)
+	title.Size = UDim2.fromOffset(420, 24)
+	local hint = Components.Label(row, { text = "The genuine flow: needs max level, resets the level, pays the rewards",
+		font = Theme.Font.Medium, size = 12, colour = Theme.Colour.TextMuted })
+	hint.Position = UDim2.fromOffset(14, 34)
+	hint.Size = UDim2.fromOffset(460, 18)
+	local armed = false
+	local button
+	button = Components.Button(row, {
+		name = "DoPrestige",
+		text = "PRESTIGE",
+		textSize = 18,
+		danger = true,
+		size = UDim2.fromOffset(250, 40),
+		position = UDim2.fromOffset(490, 12),
+		onActivated = function()
+			if not armed and targetName == player.Name then
+				armed = true
+				button:SetText("PRESS AGAIN TO RESET")
+				task.delay(4, function()
+					armed = false
+					button:SetText("PRESTIGE")
+				end)
+				return
+			end
+			armed = false
+			button:SetText("PRESTIGE")
+			run("DoPrestige", { confirm = true })
+		end,
+	})
 end
 
-heading("NPCS")
-local archetypes = {}
-for name in pairs(NPCConfig.Archetypes) do table.insert(archetypes, name) end
-table.sort(archetypes)
-for _, name in ipairs(archetypes) do
-	actionButton("Spawn " .. name, "SpawnNPC", name)
+heading("Progress", "CURRENCY & STATS")
+valueRow("Progress", {
+	title = "COINS", hint = "Saved on the profile", command = "SetCoins", key = "coins", placeholder = "amount",
+	quick = {
+		{ label = "+1K", command = "AddCoins", value = 1000 },
+		{ label = "+10K", command = "AddCoins", value = 10000 },
+		{ label = "+100K", command = "AddCoins", value = 100000 },
+		{ label = "-1K", command = "AddCoins", value = -1000, danger = true },
+	},
+})
+valueRow("Progress", {
+	title = "CRYSTALS", hint = "Spent at the Quartermaster", command = "SetCrystals", key = "crystals",
+	placeholder = "amount",
+})
+valueRow("Progress", {
+	title = "KILLS", hint = "The leaderboard count", command = "SetKills", key = "kills", placeholder = "amount",
+})
+
+-- -------------------------------------------------------------- weapons --
+
+heading("Weapons", "OWNERSHIP")
+grid("Weapons", { { label = "UNLOCK EVERY WEAPON", command = "UnlockAllWeapons" } }, "Unlock")
+heading("Weapons", "GIVE ONE (OWNED FOR GOOD, EQUIPPED NOW)")
+do
+	local names = {}
+	for name in pairs(WeaponConfig.Weapons) do
+		table.insert(names, name)
+	end
+	table.sort(names)
+	local buttons = {}
+	for _, name in ipairs(names) do
+		table.insert(buttons, { label = name, command = "GiveWeapon", value = name })
+	end
+	grid("Weapons", buttons, "Give")
 end
-actionButton("Spawn the Flats Warlord", "SpawnBoss", "Flats")
-actionButton("Spawn the Reach Warlord", "SpawnBoss", "Reach")
-actionButton("Kill all NPCs", "ClearNPCs", nil, true)
-actionButton("Clear dropped weapons", "ClearDrops", nil, true)
 
--- The map's travel network is gone; this section remains because it is admin tooling, not a
--- way for a player to move -- every button is refused on the server for anyone but the owner.
-heading("ADMIN MOVE")
-valueRow("To player", "Teleport", "", "player name")
+-- ----------------------------------------------------------------- NPCs --
 
--- The destinations come FROM THE SERVER rather than being typed here, so there is one list
--- instead of a server copy and a menu copy to drift apart -- and so the destinations are not
--- something a non-owner client could read out of this script.
-local moveSection = current
+heading("NPCs", "SPAWN IN FRONT OF YOU")
+do
+	local archetypes = {}
+	for name in pairs(NPCConfig.Archetypes) do
+		table.insert(archetypes, name)
+	end
+	table.sort(archetypes)
+	local buttons = {}
+	for _, name in ipairs(archetypes) do
+		table.insert(buttons, { label = name, command = "SpawnNPC", value = name })
+	end
+	grid("NPCs", buttons, "Spawn")
+end
+heading("NPCs", "BOSSES & CLEAN-UP")
+grid("NPCs", {
+	{ label = "Flats Warlord", command = "SpawnBoss", value = "Flats" },
+	{ label = "Reach Warlord", command = "SpawnBoss", value = "Reach" },
+	{ label = "Kill all NPCs", command = "ClearNPCs", danger = true },
+	{ label = "Clear dropped weapons", command = "ClearDrops", danger = true },
+}, "Bosses")
+
+-- ----------------------------------------------------------------- move --
+
+heading("Move", "TO A PLAYER")
+valueRow("Move", { title = "PLAYER", hint = "Start of their name", command = "Teleport", placeholder = "name" })
+heading("Move", "WAYPOINTS")
+local waypointGrid = grid("Move", {}, "Waypoints")
 task.spawn(function()
 	local ok, result = pcall(function()
 		return AdminCommand:InvokeServer("Waypoints", {})
@@ -322,76 +483,158 @@ task.spawn(function()
 	if not ok or type(result) ~= "table" or type(result.waypoints) ~= "table" then
 		return
 	end
-	for _, entry in ipairs(result.waypoints) do
-		-- These arrive after the rest of the panel is built, so they name their section
-		-- rather than landing on whichever page happened to be open last.
-		actionButton("Go to " .. tostring(entry.name), "Teleport", entry.id, false, moveSection)
+	for i, entry in ipairs(result.waypoints) do
+		local button = Components.Button(waypointGrid, {
+			name = "Teleport_" .. tostring(entry.id),
+			text = tostring(entry.name),
+			textSize = 15,
+			layoutOrder = i,
+			onActivated = function()
+				run("Teleport", { value = entry.id })
+			end,
+		})
+		button.instance.TextTruncate = Enum.TextTruncate.AtEnd
 	end
 end)
 
+-- ----------------------------------------------------------------- self --
 
-heading("SELF")
-actionButton("Toggle godmode", "Godmode", nil)
-actionButton("Heal", "Heal", nil)
-valueRow("Walk speed", "Speed", "16", "studs per second")
+heading("Self", "SURVIVAL")
+grid("Self", {
+	{ label = "Toggle godmode", command = "Godmode" },
+	{ label = "Heal to full", command = "Heal" },
+}, "Survival")
+valueRow("Self", { title = "WALK SPEED", hint = "Studs a second (16 is normal)", command = "Speed", placeholder = "16",
+	default = "16",
+	quick = { { label = "16", command = "Speed", value = 16 }, { label = "40", command = "Speed", value = 40 } } })
 
--- The world's own dials, so a lighting or visibility problem can be reproduced on demand
--- instead of waited for: the day/night clock takes sixteen real minutes to come round.
-heading("WORLD")
-for _, state in ipairs({ "Clear", "Overcast", "Fog", "Rain" }) do
-	actionButton("Weather: " .. state, "Weather", state)
+-- ---------------------------------------------------------------- world --
+
+heading("World", "WEATHER")
+grid("World", {
+	{ label = "Clear", command = "Weather", value = "Clear" },
+	{ label = "Overcast", command = "Weather", value = "Overcast" },
+	{ label = "Fog", command = "Weather", value = "Fog" },
+	{ label = "Rain", command = "Weather", value = "Rain" },
+}, "Weather")
+heading("World", "TIME")
+valueRow("World", { title = "HOUR", hint = "0 - 24; pauses the clock", command = "TimeOfDay", placeholder = "12",
+	default = "12", quick = { { label = "RESUME CLOCK", command = "ResumeTime", value = nil } } })
+
+-- ----------------------------------------------------------------- data --
+
+heading("Data", "SERVER")
+grid("Data", { { label = "Diagnostics", command = "Diagnostics" } }, "Diagnostics")
+
+-- --------------------------------------------------------------- state --
+
+local busyState = false
+function refreshState()
+	if busyState then
+		return
+	end
+	busyState = true
+	task.spawn(function()
+		local ok, state = pcall(function()
+			return AdminCommand:InvokeServer("State", { target = targetName ~= player.Name and targetName or nil })
+		end)
+		busyState = false
+		if not ok or type(state) ~= "table" or not state.ok then
+			return
+		end
+		if type(state.players) == "table" then
+			knownPlayers = state.players
+		end
+		targetText.Text = tostring(state.target or targetName)
+		statValues.Level.Text = string.format("%d / %d", state.level or 1, state.maxLevel or 50)
+		statValues.Prestige.Text = tostring(state.prestige or 0)
+		statValues.Coins.Text = commas(tonumber(state.coins) or 0)
+		statValues.Crystals.Text = commas(tonumber(state.crystals) or 0)
+		statValues.Kills.Text = commas(tonumber(state.kills) or 0)
+		if emblem then
+			emblem:SetLevel(state.level or 1)
+			emblem:SetPrestige(state.prestige or 0)
+		end
+		if state.saving then
+			saving.Text = "● SAVING TO THE PROFILE"
+			saving.TextColor3 = Theme.Colour.Accent
+		else
+			saving.Text = "● NOT SAVING (STUDIO API OFF)"
+			saving.TextColor3 = Theme.Colour.Danger
+		end
+		-- The boxes show the live numbers, unless you are in the middle of typing one.
+		for _, field in ipairs(fields) do
+			if field.key and not field.dirty and not field.box:IsFocused() then
+				local value = state[field.key]
+				if value ~= nil then
+					field.box.Text = tostring(value)
+				end
+			end
+		end
+	end)
 end
-valueRow("Set hour", "TimeOfDay", "12", "0 - 24, pauses the clock")
-actionButton("Resume the day/night clock", "ResumeTime", nil)
 
-heading("DATA")
-actionButton("Diagnostics: population, tick, parts", "Diagnostics", nil)
--- Coins live in leaderstats and were being persisted by two legacy DataStores that can
--- disagree. This copies the HIGHEST of the three onto the profile and never lowers anything.
--- Nothing reads the profile figure yet: run it, read what it reports, then we switch over.
-actionButton("Migrate my coins onto the profile", "MigrateCoins", nil, true)
-
--- Open on the first page rather than showing everything at once.
-showSection(sections[1])
-
--- ------------------------------------------------------------------- toggle --
-
-local function setOpen(open)
-	isOpen = open
-	panel.Visible = open
-	UIState.SetOpen("Admin", open)
+local function cycleTarget(step: number)
+	local index = table.find(knownPlayers, targetName) or 1
+	index = (index - 1 + step) % math.max(1, #knownPlayers) + 1
+	targetName = knownPlayers[index] or player.Name
+	targetText.Text = targetName
+	for _, field in ipairs(fields) do
+		field.dirty = false
+	end
+	refreshState()
 end
-
-closeBtn.MouseButton1Click:Connect(function()
-	setOpen(false)
+prevTarget.instance.Activated:Connect(function()
+	cycleTarget(-1)
 end)
+nextTarget.instance.Activated:Connect(function()
+	cycleTarget(1)
+end)
+
+-- ---------------------------------------------------------------- pages --
+
+menu:OnCategory(function(id: string)
+	currentPage = id
+	for page, items in pairs(pages) do
+		for _, item in ipairs(items) do
+			item.Visible = page == id
+		end
+	end
+	body.CanvasPosition = Vector2.zero
+end)
+menu:OnOpen(function()
+	menu:SelectCategory(currentPage)
+	refreshState()
+end)
+
+-- ---------------------------------------------------------------- open --
 
 -- F4 is free and out of the way of the other menus.
 UserInputService.InputBegan:Connect(function(input)
-	if input.KeyCode == Enum.KeyCode.F4 then
-		if not UserInputService:GetFocusedTextBox() then
-			setOpen(not isOpen)
-		end
+	if input.KeyCode == Enum.KeyCode.F4 and not UserInputService:GetFocusedTextBox() then
+		menu:Toggle()
 	end
 end)
 
-local openBtn = UIKit.button({
-	Name = "OpenAdmin",
-	-- Top-left. It used to sit at x=232 to clear the HD Admin icon; that suite is gone, so
-	-- the button takes the corner back.
-	AnchorPoint = Vector2.new(0, 0),
-	Position = UDim2.new(0, 16, 0, 16),
-	Size = UDim2.fromOffset(104, 32),
-	Text = "ADMIN  [F4]",
-	TextSize = 12,
-	Parent = gui,
+Components.Button(gui, {
+	name = "OpenAdmin",
+	text = "👑 ADMIN  [F4]",
+	textSize = 14,
+	size = UDim2.fromOffset(128, 34),
+	position = UDim2.fromOffset(16, 16),
+	colour = Color3.fromRGB(150, 44, 52),
+	onActivated = function()
+		menu:Toggle()
+	end,
 })
-UIKit.corner(openBtn, UDim.new(0, 8))
-UIKit.stroke(openBtn, Color3.fromRGB(196, 64, 64), 1, 0.3)
-UIKit.hover(openBtn, Theme.Panel, Theme.PanelLight)
-openBtn.TextColor3 = Color3.fromRGB(226, 110, 110)
-openBtn.MouseButton1Click:Connect(function()
-	setOpen(not isOpen)
-end)
 
-setOpen(false)
+-- Keep the strip honest while it is open: anything else that moves these numbers (a kill,
+-- a purchase) shows up without pressing anything.
+task.spawn(function()
+	while gui.Parent do
+		task.wait(3)
+		if menu:IsOpen() then
+			refreshState()
+		end
+	end
+end)

@@ -630,7 +630,12 @@ function Hud:SetLevel(level: number, exp: number?, maxExp: number?)
 	self._levelValue = whole
 	self._level.Text = tostring(whole)
 	if exp and maxExp then
-		self._xp:SetFraction(maxExp > 0 and exp / maxExp or 0)
+		-- At the cap the bar is full, not empty: there is nothing left to fill, only prestige.
+		local okConfig, GameConfig = pcall(function()
+			return require(game:GetService("ReplicatedStorage"):WaitForChild("GameConfig", 2) :: ModuleScript) :: any
+		end)
+		local cap = okConfig and GameConfig and GameConfig.Leveling.MAX_LEVEL or math.huge
+		self._xp:SetFraction(whole >= cap and 1 or (maxExp > 0 and exp / maxExp or 0))
 	end
 	if previous and whole > previous then
 		pop(self._badge, 1.6)

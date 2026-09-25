@@ -317,12 +317,36 @@ do
 			local earned = type(b) == "table" and table.concat(b, ", ") or ""
 			local note = type(c) == "string" and c or nil
 			killFeed:Notice(("LEVEL %d"):format(level), note or earned)
+		elseif kind == "PrestigeReady" then
+			toast:Push({
+				title = "MAX LEVEL  -  PRESTIGE IS OPEN",
+				text = "Open the Level Road [Y] to prestige for coins, crystals, a title and +5% XP",
+				icon = "⭐",
+				colour = Color3.fromRGB(255, 206, 84),
+				duration = 8,
+			})
 		elseif kind == "Mastery" then
 			local weapon = tostring(a)
 			local tier = tostring(b)
 			local earned = type(c) == "table" and #c > 0 and ("  -  " .. table.concat(c, ", ")) or ""
 			killFeed:Notice("MASTERY", ("%s %s%s"):format(weapon, string.upper(tier), earned))
 		end
+	end)
+end
+
+-- Somebody prestiged: everyone hears about it, the way the kill feed calls out a streak.
+do
+	local okConfig, GameConfig = pcall(function()
+		return require(ReplicatedStorage:WaitForChild("GameConfig")) :: any
+	end)
+	Remote.get("GameRemotes", "PrestigeChanged").OnClientEvent:Connect(function(who: unknown, prestige: unknown)
+		local n = tonumber(prestige)
+		if typeof(who) ~= "Instance" or not n or n <= 0 then
+			return
+		end
+		local tier = okConfig and GameConfig.GetPrestigeTier(n) or { name = "" }
+		local name = who == player and "YOU" or string.upper((who :: Player).DisplayName)
+		killFeed:Notice("PRESTIGE " .. n, ("%s reached %s"):format(name, string.upper(tostring(tier.name))))
 	end)
 end
 

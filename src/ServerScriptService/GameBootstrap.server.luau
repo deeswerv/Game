@@ -7,6 +7,7 @@ local systems = {
 	"KillCredit",          -- kill attribution; others listen to its KillAwarded signal
 	"LevelSystem",         -- XP and levels, driven by KillCredit
 	"ShopService",         -- coin purchases, ownership, re-granting on spawn
+	"WalletService",       -- coins live on the profile now, so they save (legacy stores migrated once)
 	"AbilityService",      -- enables/disables ability scripts by ownership
 	"MeleeHandler",        -- generic melee combat for config-driven weapons
 	"CombatDeath",         -- ragdoll on death, thrown by whatever weapon killed you

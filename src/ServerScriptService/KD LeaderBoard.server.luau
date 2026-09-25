@@ -1,16 +1,6 @@
 local Players = game:GetService("Players")
-local dataStore = game:GetService("DataStoreService")
--- Guarded: GetDataStore throws in an unpublished place (a .rbxl opened from disk) and without
--- Studio API access. Unguarded, this script died on this line and no player ever got
--- leaderstats -- no Kills, no Deaths, no Coins, so no cash on the HUD. Every read and write
--- below is already in a pcall, so a nil store only means coins are not loaded or saved.
-local okStore, data = pcall(function()
-	return dataStore:GetDataStore("Stats")
-end)
-if not okStore then
-	warn("[Leaderstats] DataStores unavailable; coins will not load or save this session")
-	data = nil
-end
+-- Coins used to be loaded and saved here, from the "Stats" DataStore. They are on the
+-- player's profile now (WalletService), which migrated this store's figure once.
 
 -- This script owns leaderstats setup and Deaths.
 -- Kills are awarded by ServerScriptService.KillCredit, which tags the attacker onto
@@ -51,17 +41,9 @@ local function onPlayerAdded(player)
 	Coins.Value = 0
 	Coins.Parent = leaderstats
 
-	local ok, CoinsValue = pcall(function()
-		return data:GetAsync(player.UserId .. "-Coins")
-	end)
-
-	if ok then
-		if CoinsValue ~= nil then
-			Coins.Value = CoinsValue
-		end
-	else
-		warn("Could not load Coins for " .. player.Name .. ": " .. tostring(CoinsValue))
-	end
+	-- The balance is loaded (and saved) by WalletService, from the player's profile. This
+	-- used to load its own copy from the "Stats" store, racing a second legacy script that
+	-- loaded another copy from "SaveLeaderstats" -- whichever answered last won.
 
 	player.CharacterAdded:Connect(function(character)
 		onCharacterAdded(player, deaths, character)
@@ -75,21 +57,8 @@ local function onPlayerAdded(player)
 	end
 end
 
-local function onPlayerRemoving(player)
-	local stats = player:FindFirstChild("leaderstats")
-	local Coins = stats and stats:FindFirstChild("Coins")
-	if not Coins then
-		return
-	end
-
-	local success, errorMsg = pcall(function()
-		data:SetAsync(player.UserId .. "-Coins", Coins.Value)
-	end)
-
-	if not success then
-		warn("Could not save Coins for " .. player.Name .. ": " .. tostring(errorMsg))
-	end
-end
+-- Coins are saved with the profile by WalletService; nothing to write here any more.
+local function onPlayerRemoving(_player) end
 
 -- Connected once at the top level. Previously PlayerRemoving was connected inside
 -- PlayerAdded, so every join added another handler and one player leaving fired a

@@ -120,6 +120,30 @@ return function(World)
 	-- AchievementService.State: a few ready to claim, some part way, some done.
 	local AchievementConfig = World.require(rs:FindFirstChild("AchievementConfig"))
 	local claimedTitles = {}
+	-- The owner panel: this tester is the owner, with a profile that is not being saved (as
+	-- in Studio without API access), so the panel's warning shows.
+	R.serverFunctions.AdminCheck = function()
+		return true
+	end
+	R.serverFunctions.AdminCommand = function(name, args)
+		if name == "State" then
+			return {
+				ok = true, target = "TestPlayer", players = { "TestPlayer", "Guest_2" }, coins = 12450, kills = 37,
+				level = 14, maxLevel = 50, exp = 340, maxExp = 1000, prestige = 2, maxPrestige = 10, crystals = 85,
+				loaded = true, saving = false,
+			}
+		elseif name == "Waypoints" then
+			return { ok = true, waypoints = {
+				{ id = "Spawn", name = "Spawn / Lobby" }, { id = "Downtown", name = "Downtown" },
+				{ id = "Flats", name = "The Flats" }, { id = "Arena", name = "Duel: Neon Court" },
+			} }
+		end
+		return { ok = true, reason = tostring(name) .. " done (saved)" }
+	end
+	R.serverFunctions.PrestigeRequest = function()
+		return { ok = true, prestige = 3, reward = 10000, crystals = 30, title = "Gold Prestige", name = "Gold", xpBonus = 0.15 }
+	end
+
 	R.serverFunctions.AchievementAction = function(action, arg)
 		local list, done, ready = {}, 0, 0
 		for i, a in ipairs(AchievementConfig.List) do

@@ -1,14 +1,20 @@
 --!strict
 -- The level road: every level that pays something, in a line, with you on it.
 --
--- Levels 1-30 unlock weapons in the shop (GameConfig.ShopItems' levelRequired); from 31 every
--- level pays coins and the fives pay attachments, crystals and titles
+-- Levels 1-30 unlock weapons in the shop (GameConfig.ShopItems' levelRequired); from 31 to the
+-- cap (50) every level pays coins and most pay attachments, crystals and titles
 -- (ProgressionConfig.RewardFor). Both are already what the server pays -- this only lays
 -- them out, so the reason to play the next match is on screen: the next gun, three levels
 -- away.
 --
--- Draws from the shared configs; the only live input is the level and XP MainUI passes in.
+-- At the end of the road is prestige, and the card under it is where you take it: your
+-- emblem, what the next prestige pays (GameConfig.PrestigeReward, the same table the server
+-- pays from) and the button, which asks twice because it resets your level to 1.
+--
+-- Draws from the shared configs; the live inputs are the level and XP MainUI passes in and
+-- the Prestige attribute.
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Theme = require(script.Parent.Theme)
@@ -59,8 +65,9 @@ function LevelRoad.Nodes(): { Node }
 			end
 		end
 	end
+	local cap = okGame and type(GameConfig) == "table" and GameConfig.Leveling.MAX_LEVEL or 50
 	if okProgress and type(ProgressionConfig) == "table" then
-		for level = ProgressionConfig.FirstMilestoneLevel, 100 do
+		for level = ProgressionConfig.FirstMilestoneLevel, cap do
 			local special = ProgressionConfig.Milestones[level]
 			if special then
 				local reward = ProgressionConfig.RewardFor(level)
@@ -84,9 +91,17 @@ function LevelRoad.Nodes(): { Node }
 			end
 		end
 	end
+	-- The end of the road.
+	table.insert(nodes, {
+		level = cap, kind = "prestige", title = "PRESTIGE", detail = "Reset for rewards",
+		icon = "⭐", colour = Theme.Colour.Level,
+	})
 	table.sort(nodes, function(a, b)
 		if a.level ~= b.level then
 			return a.level < b.level
+		end
+		if (a.kind == "prestige") ~= (b.kind == "prestige") then
+			return b.kind == "prestige"
 		end
 		return a.title < b.title
 	end)
@@ -114,7 +129,7 @@ function LevelRoad.new(parent: Instance)
 		title = "Level Road",
 		subtitle = "Every level pays -- here is what is coming",
 		icon = "🛣",
-		size = UDim2.fromOffset(1000, 390),
+		size = UDim2.fromOffset(1000, 500),
 	})
 	self._menu = menu
 
@@ -180,10 +195,190 @@ function LevelRoad.new(parent: Instance)
 	filled.Parent = line
 	self._line, self._filled = line, filled
 
+	self:_buildPrestige(menu.content)
+
 	menu:OnOpen(function()
 		self:_render()
 	end)
+	Players.LocalPlayer:GetAttributeChangedSignal("Prestige"):Connect(function()
+		if menu:IsOpen() then
+			self:_render()
+		end
+	end)
 	return self
+end
+
+-- ------------------------------------------------------------------ prestige --
+
+local function gameConfig(): any?
+	local module = ReplicatedStorage:FindFirstChild("GameConfig")
+	if not module then
+		return nil
+	end
+	local ok, cfg = pcall(require, module :: ModuleScript)
+	return ok and cfg or nil
+end
+
+function LevelRoad:_buildPrestige(parent: GuiObject)
+	local card = Instance.new("Frame")
+	card.Name = "Prestige"
+	card.BackgroundColor3 = Theme.Colour.PanelRaised
+	card.BorderSizePixel = 0
+	card.Position = UDim2.fromOffset(0, CARD_H + 108)
+	card.Size = UDim2.new(1, 0, 0, 96)
+	card.Parent = parent
+	Components.Corner(card, 14)
+	self._prestigeStroke = Components.Stroke(card, Theme.Colour.Outline, 2)
+	Components.Gradient(card)
+
+	local okBadge, PrestigeBadge = pcall(function()
+		return require(ReplicatedStorage:WaitForChild("PrestigeBadge", 5) :: ModuleScript) :: any
+	end)
+	if okBadge and PrestigeBadge then
+		local badge = PrestigeBadge.Create(card, 80)
+		badge.root.Position = UDim2.fromOffset(10, 8)
+		self._emblem = badge
+	end
+
+	self._prestigeTitle = Components.Label(card, {
+		text = "PRESTIGE 0",
+		face = Theme.Face.HeavyItalic,
+		size = 26,
+		outline = 2.4,
+	})
+	self._prestigeTitle.Position = UDim2.fromOffset(104, 10)
+	self._prestigeTitle.Size = UDim2.fromOffset(560, 30)
+	self._prestigeTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+	self._prestigeReward = Components.Label(card, {
+		text = "",
+		font = Theme.Font.Bold,
+		size = Theme.Text.Body,
+		colour = Theme.Colour.Currency,
+		outline = 1.5,
+	})
+	self._prestigeReward.Position = UDim2.fromOffset(104, 42)
+	self._prestigeReward.Size = UDim2.fromOffset(580, 22)
+	self._prestigeReward.TextXAlignment = Enum.TextXAlignment.Left
+
+	self._prestigeNote = Components.Label(card, {
+		text = "",
+		font = Theme.Font.Medium,
+		size = Theme.Text.Small,
+		colour = Theme.Colour.TextDim,
+	})
+	self._prestigeNote.Position = UDim2.fromOffset(104, 66)
+	self._prestigeNote.Size = UDim2.fromOffset(580, 18)
+	self._prestigeNote.TextXAlignment = Enum.TextXAlignment.Left
+
+	self._armedUntil = 0
+	self._prestigeButton = Components.Button(card, {
+		name = "PrestigeButton",
+		text = "PRESTIGE",
+		textSize = 20,
+		size = UDim2.fromOffset(250, 58),
+		anchor = Vector2.new(1, 0.5),
+		position = UDim2.new(1, -18, 0.5, 0),
+		colour = Theme.Colour.Level,
+		onActivated = function()
+			self:_pressPrestige()
+		end,
+	})
+end
+
+function LevelRoad:_renderPrestige()
+	local cfg = gameConfig()
+	if not cfg or not self._prestigeButton then
+		return
+	end
+	local prestige = tonumber(Players.LocalPlayer:GetAttribute("Prestige")) or 0
+	local tier = cfg.GetPrestigeTier(prestige)
+	local cap = cfg.Leveling.MAX_LEVEL
+	local maxPrestige = cfg.Prestige.MAX_PRESTIGE
+	if self._emblem then
+		self._emblem:SetLevel(self._level)
+		self._emblem:SetPrestige(prestige)
+	end
+	self._prestigeStroke.Color = prestige > 0 and tier.colour or Theme.Colour.Outline
+	self._prestigeTitle.Text = string.format("PRESTIGE %d  ·  %s", prestige, string.upper(tier.name))
+	self._prestigeTitle.TextColor3 = prestige > 0 and tier.colour:Lerp(Color3.new(1, 1, 1), 0.3) or Theme.Colour.Text
+
+	local button = self._prestigeButton
+	if prestige >= maxPrestige then
+		self._prestigeReward.Text = "The highest prestige there is."
+		self._prestigeNote.Text = string.format("+%d%% XP on everything, for good",
+			math.floor(cfg.PrestigeXPMultiplier(prestige) * 100 - 100 + 0.5))
+		button:SetText("MAX PRESTIGE")
+		button:SetEnabled(false)
+		return
+	end
+	local nextTier = cfg.GetPrestigeTier(prestige + 1)
+	local pay = cfg.PrestigeReward(prestige + 1)
+	self._prestigeReward.Text = string.format("NEXT: %s  -  $%s  ·  💎 %d  ·  \"%s\"  ·  +%d%% XP forever",
+		string.upper(nextTier.name), commas(pay.coins), pay.crystals, pay.title, math.floor(pay.xpBonus * 100 + 0.5))
+	if self._level >= cap then
+		local armed = os.clock() < self._armedUntil
+		if armed then
+			self._prestigeNote.Text = "Press again to confirm: your level goes back to 1."
+			self._prestigeNote.TextColor3 = Theme.Colour.Warning
+		elseif not self._busyNote then
+			self._prestigeNote.Text = "Resets your level to 1. Weapons, attachments, coins, titles and stats all stay."
+			self._prestigeNote.TextColor3 = Theme.Colour.TextDim
+		end
+		button:SetText(armed and "CONFIRM PRESTIGE" or "PRESTIGE NOW")
+		button:SetEnabled(true)
+	else
+		self._prestigeNote.Text = string.format("Reach level %d to prestige  ·  %d level%s to go", cap, cap - self._level,
+			cap - self._level == 1 and "" or "s")
+		button:SetText("REACH LEVEL " .. cap)
+		button:SetEnabled(false)
+	end
+end
+
+function LevelRoad:_pressPrestige()
+	local cfg = gameConfig()
+	if not cfg or self._level < cfg.Leveling.MAX_LEVEL or self._prestiging then
+		return
+	end
+	-- Asks twice: it resets the level.
+	if os.clock() >= self._armedUntil then
+		self._armedUntil = os.clock() + 4
+		self:_renderPrestige()
+		task.delay(4.1, function()
+			if self._menu:IsOpen() then
+				self:_renderPrestige()
+			end
+		end)
+		return
+	end
+	self._armedUntil = 0
+	self._prestiging = true
+	self._prestigeButton:SetText("PRESTIGING...")
+	task.spawn(function()
+		local remotes = ReplicatedStorage:FindFirstChild("GameRemotes")
+		local request = remotes and remotes:FindFirstChild("PrestigeRequest")
+		local ok, result = false, nil
+		if request and request:IsA("RemoteFunction") then
+			ok, result = pcall(function()
+				return request:InvokeServer()
+			end)
+		end
+		self._prestiging = false
+		self._busyNote = true
+		if ok and type(result) == "table" and result.ok ~= false and result.prestige then
+			self._prestigeNote.Text = string.format("PRESTIGE %d!  +$%s, 💎 %d and the \"%s\" title", result.prestige,
+				commas(tonumber(result.reward) or 0), tonumber(result.crystals) or 0, tostring(result.title or ""))
+			self._prestigeNote.TextColor3 = Theme.Colour.Accent
+		else
+			self._prestigeNote.Text = type(result) == "table" and tostring(result.reason or "Could not prestige")
+				or "Could not prestige"
+			self._prestigeNote.TextColor3 = Theme.Colour.Danger
+		end
+		self:_renderPrestige()
+		task.delay(6, function()
+			self._busyNote = false
+		end)
+	end)
 end
 
 function LevelRoad:SetLevel(level: number, exp: number, maxExp: number)
@@ -227,7 +422,7 @@ local function card(parent: GuiObject, node: Node, x: number, state: string)
 	icon.Position = UDim2.new(0.5, 0, 0, 12)
 
 	local kind = Components.Label(tile, {
-		text = node.kind == "weapon" and "UNLOCK" or "REWARD",
+		text = node.kind == "weapon" and "UNLOCK" or node.kind == "prestige" and "THE FINISH" or "REWARD",
 		font = Theme.Font.Bold,
 		size = Theme.Text.Micro,
 		colour = Theme.Colour.TextDim,
@@ -283,9 +478,20 @@ function LevelRoad:_render()
 	table.clear(self._cards)
 
 	local level = self._level
+	local cfg = gameConfig()
+	local cap = cfg and cfg.Leveling.MAX_LEVEL or 50
 	self._number.Text = tostring(level)
-	self._bar:SetFraction(self._exp / self._maxExp)
-	self._xpText.Text = string.format("%s / %s XP", commas(self._exp), commas(self._maxExp))
+	if level >= cap then
+		self._bar:SetFraction(1)
+		self._xpText.Text = "MAX LEVEL"
+	else
+		self._bar:SetFraction(self._exp / self._maxExp)
+		self._xpText.Text = string.format("%s / %s XP", commas(self._exp), commas(self._maxExp))
+	end
+	if not self._busyNote then
+		self._prestigeNote.TextColor3 = Theme.Colour.TextDim
+	end
+	self:_renderPrestige()
 
 	local nodes = LevelRoad.Nodes()
 	local nextNode: Node? = nil
@@ -296,7 +502,9 @@ function LevelRoad:_render()
 			break
 		end
 	end
-	if nextNode then
+	if level >= cap then
+		self._next.Text = "MAX LEVEL  ·  PRESTIGE BELOW FOR THE NEXT EMBLEM"
+	elseif nextNode then
 		local away = nextNode.level - level
 		self._next.Text = string.format("NEXT: %s at level %d  ·  %d level%s to go", nextNode.title, nextNode.level, away,
 			away == 1 and "" or "s")

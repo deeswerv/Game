@@ -127,13 +127,52 @@ end
 
 local commands = {}
 
+-- Everything below that changes a player's standing goes through the path that SAVES it,
+-- then saves the profile at once. The panel used to write leaderstats and the Stats mirror
+-- directly: coins came back as an older copy from a legacy DataStore on the next join, and a
+-- level set this way never reached the Level attribute the shop reads, so the guns it should
+-- have unlocked stayed locked.
+local function lazy(name: string): any
+	return require(ServerScriptService:FindFirstChild(name) :: ModuleScript) :: any
+end
+
+local function saveNow(target: Player)
+	pcall(function()
+		lazy("PlayerDataManager"):SaveNow(target)
+	end)
+end
+
+local function replicaOf(target: Player): any?
+	local ok, replica = pcall(function()
+		return lazy("PlayerDataManager"):GetPlayerDataReplica(target):expect()
+	end)
+	return ok and replica or nil
+end
+
+local function money(n: number): string
+	local s = tostring(math.floor(n))
+	local out = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
+	return (out:gsub("^,", ""))
+end
+
 commands.SetCoins = function(player, args)
 	local target = targetOf(args.target) or player
-	local stats = target:FindFirstChild("leaderstats")
-	local coins = stats and stats:FindFirstChild("Coins")
-	if not coins then return { ok = false, reason = "No leaderstats yet" } end
-	coins.Value = math.clamp(math.floor(tonumber(args.value) or 0), 0, 1e9)
-	return { ok = true, reason = string.format("%s coins = %d", target.Name, coins.Value) }
+	local balance = lazy("WalletService").Set(target, tonumber(args.value) or 0)
+	if not balance then
+		return { ok = false, reason = "Their coins have not loaded yet" }
+	end
+	saveNow(target)
+	return { ok = true, reason = string.format("%s now has %s coins (saved)", target.Name, money(balance)) }
+end
+
+commands.AddCoins = function(player, args)
+	local target = targetOf(args.target) or player
+	local balance = lazy("WalletService").Add(target, tonumber(args.value) or 0)
+	if not balance then
+		return { ok = false, reason = "Their coins have not loaded yet" }
+	end
+	saveNow(target)
+	return { ok = true, reason = string.format("%s now has %s coins (saved)", target.Name, money(balance)) }
 end
 
 commands.SetKills = function(player, args)
@@ -145,42 +184,28 @@ commands.SetKills = function(player, args)
 	return { ok = true, reason = string.format("%s kills = %d", target.Name, kills.Value) }
 end
 
--- The HUD only redraws when it is told to. Writing the profile alone leaves the badge and
--- the XP bar showing the old numbers until something else happens to refresh them, which
--- makes an admin command look like it silently failed.
-local function pushProgression(target: Player, level: number, exp: number, maxExp: number)
-	local remotes = ReplicatedStorage:FindFirstChild("GameRemotes")
-	local xpGained = remotes and remotes:FindFirstChild("XPGained")
-	if xpGained and xpGained:IsA("RemoteEvent") then
-		xpGained:FireClient(target, 0, exp, maxExp, level)
-	end
-end
-
 commands.SetLevel = function(player, args)
 	local target = targetOf(args.target) or player
-	local GameConfig = require(ReplicatedStorage.GameConfig)
-	local level = math.clamp(math.floor(tonumber(args.value) or 1), 1, GameConfig.Leveling.MAX_LEVEL)
-	local maxExp = GameConfig.GetRequiredEXP(level)
-	local ok = pcall(function()
-		local PDM = require(ServerScriptService.PlayerDataManager)
-		local replica = PDM:GetPlayerDataReplica(target):expect()
-		replica:SetValue("Level", level)
-		replica:SetValue("EXP", 0)
-		replica:SetValue("MaxEXP", maxExp)
-	end)
-	local stats = target:FindFirstChild("Stats")
-	if stats then
-		for key, val in pairs({ Level = level, EXP = 0, MaxEXP = maxExp }) do
-			local v = stats:FindFirstChild(key)
-			if v and v:IsA("ValueBase") then
-				(v :: any).Value = val
-			end
-		end
+	local ok, level = lazy("LevelSystem").SetLevel(target, tonumber(args.value) or 1)
+	if not ok then
+		return { ok = false, reason = "Their data has not loaded yet" }
 	end
-	if ok then
-		pushProgression(target, level, 0, maxExp)
+	saveNow(target)
+	return { ok = true, reason = string.format("%s is level %d (saved)", target.Name, level) }
+end
+
+commands.AddLevels = function(player, args)
+	local target = targetOf(args.target) or player
+	local replica = replicaOf(target)
+	if not replica then
+		return { ok = false, reason = "Their data has not loaded yet" }
 	end
-	return { ok = ok, reason = ok and string.format("%s level = %d", target.Name, level) or "Data not ready" }
+	local ok, level = lazy("LevelSystem").SetLevel(target, (replica.Data.Level or 1) + (tonumber(args.value) or 1))
+	if not ok then
+		return { ok = false, reason = "Could not set the level" }
+	end
+	saveNow(target)
+	return { ok = true, reason = string.format("%s is level %d (saved)", target.Name, level) }
 end
 
 -- Sets the rank directly, without the level reset a real prestige performs. This is a
@@ -189,14 +214,11 @@ commands.SetPrestige = function(player, args)
 	local target = targetOf(args.target) or player
 	local GameConfig = require(ReplicatedStorage.GameConfig)
 	local prestige = math.clamp(math.floor(tonumber(args.value) or 0), 0, GameConfig.Prestige.MAX_PRESTIGE)
-	local ok = pcall(function()
-		local PDM = require(ServerScriptService.PlayerDataManager)
-		local replica = PDM:GetPlayerDataReplica(target):expect()
-		replica:SetValue("Prestige", prestige)
-	end)
-	if not ok then
-		return { ok = false, reason = "Data not ready" }
+	local replica = replicaOf(target)
+	if not replica then
+		return { ok = false, reason = "Their data has not loaded yet" }
 	end
+	replica:SetValue("Prestige", prestige)
 	-- The attribute is what every piece of UI actually reads.
 	target:SetAttribute("Prestige", prestige)
 	local remotes = ReplicatedStorage:FindFirstChild("GameRemotes")
@@ -204,8 +226,22 @@ commands.SetPrestige = function(player, args)
 	if changed and changed:IsA("RemoteEvent") then
 		changed:FireAllClients(target, prestige)
 	end
+	saveNow(target)
 	local tier = GameConfig.GetPrestigeTier(prestige)
-	return { ok = true, reason = string.format("%s prestige = %d (%s)", target.Name, prestige, tier.name) }
+	return { ok = true, reason = string.format("%s prestige = %d, %s (saved)", target.Name, prestige, tier.name) }
+end
+
+commands.SetCrystals = function(player, args)
+	local target = targetOf(args.target) or player
+	local replica = replicaOf(target)
+	if not replica then
+		return { ok = false, reason = "Their data has not loaded yet" }
+	end
+	local value = math.clamp(math.floor(tonumber(args.value) or 0), 0, 1e7)
+	replica:SetValue("Crystals", value)
+	target:SetAttribute("Crystals", value)
+	saveNow(target)
+	return { ok = true, reason = string.format("%s has %s crystals (saved)", target.Name, money(value)) }
 end
 
 -- Runs the genuine prestige path, level reset and all, so the real flow can be exercised
@@ -220,31 +256,81 @@ commands.DoPrestige = function(player, args)
 	if target == player and args.confirm ~= true then
 		return {
 			ok = false,
-			reason = "DoPrestige resets YOUR level to 1. Pass confirm=true to do it anyway, "
-				.. "or name another target to test the flow on.",
+			reason = "This resets YOUR level to 1. Press it again to confirm.",
+			confirm = true,
 		}
 	end
-	local LevelSystem = require(ServerScriptService.LevelSystem)
+	local LevelSystem = lazy("LevelSystem")
 	local ok, result = LevelSystem.Prestige(target)
 	if ok and type(result) == "table" then
-		return { ok = true, reason = string.format("%s -> prestige %d (%s), +%d coins",
-			target.Name, result.prestige, result.name, result.reward) }
+		saveNow(target)
+		return { ok = true, reason = string.format("%s -> prestige %d (%s), +%s coins",
+			target.Name, result.prestige, result.name, money(result.reward)) }
 	end
 	return { ok = false, reason = tostring(result) }
 end
 
+-- A weapon handed over from here is OWNED, the same as one bought: it is on the profile, in
+-- the inventory and back after a respawn or a rejoin. It used to be a loose copy dropped in
+-- the backpack, gone at the next death.
 commands.GiveWeapon = function(player, args)
 	local target = targetOf(args.target) or player
 	local id = tostring(args.value or "")
 	if not WeaponConfig.IsWeapon(id) then
 		return { ok = false, reason = "Unknown weapon: " .. id }
 	end
-	local template = ReplicatedStorage.storeitems:FindFirstChild(id)
-	if not template then return { ok = false, reason = "No template for " .. id } end
-	local backpack = target:FindFirstChildOfClass("Backpack")
-	if not backpack then return { ok = false, reason = "No backpack" } end
-	template:Clone().Parent = backpack
-	return { ok = true, reason = "Gave " .. id .. " to " .. target.Name }
+	local ShopService = lazy("ShopService")
+	ShopService.Grant(target, "OwnedItems", id)
+	pcall(function()
+		ShopService.EquipWeapon(target, id)
+	end)
+	saveNow(target)
+	return { ok = true, reason = "Gave " .. id .. " to " .. target.Name .. " (owned, saved)" }
+end
+
+commands.UnlockAllWeapons = function(player, args)
+	local target = targetOf(args.target) or player
+	local ShopService = lazy("ShopService")
+	local n = 0
+	for name in pairs(WeaponConfig.Weapons) do
+		if ShopService.Grant(target, "OwnedItems", name) then
+			n += 1
+		end
+	end
+	saveNow(target)
+	return { ok = true, reason = string.format("%s: %d weapons unlocked (saved)", target.Name, n) }
+end
+
+--- Everything the panel's header shows about the target: their numbers as the server has
+--- them, whether saving is really happening, and who else is here to pick from.
+commands.State = function(player, args)
+	local target = targetOf(args.target) or player
+	local GameConfig = require(ReplicatedStorage.GameConfig)
+	local replica = replicaOf(target)
+	local stats = target:FindFirstChild("leaderstats")
+	local coins = stats and stats:FindFirstChild("Coins") :: IntValue?
+	local kills = stats and stats:FindFirstChild("Kills") :: IntValue?
+	local names = {}
+	for _, p in ipairs(Players:GetPlayers()) do
+		table.insert(names, p.Name)
+	end
+	local data = replica and replica.Data or {}
+	return {
+		ok = true,
+		target = target.Name,
+		players = names,
+		coins = coins and coins.Value or 0,
+		kills = kills and kills.Value or 0,
+		level = data.Level or 1,
+		maxLevel = GameConfig.Leveling.MAX_LEVEL,
+		exp = data.EXP or 0,
+		maxExp = data.MaxEXP or 0,
+		prestige = data.Prestige or 0,
+		maxPrestige = GameConfig.Prestige.MAX_PRESTIGE,
+		crystals = tonumber(data.Crystals) or 0,
+		loaded = replica ~= nil,
+		saving = lazy("PlayerDataManager"):IsSaving(),
+	}
 end
 
 commands.SpawnNPC = function(player, args)
@@ -431,54 +517,6 @@ commands.Diagnostics = function()
 		string.format("players %d, uptime %d min", #Players:GetPlayers(), math.floor(time() / 60)),
 	}
 	return { ok = true, reason = table.concat(lines, "  |  ") }
-end
-
--- ----------------------------------------------------------------- coin data --
---
--- Coins predate the profile: they live in leaderstats and were persisted by TWO legacy
--- scripts writing two different DataStores, which can disagree with each other. This copies
--- the best of what exists onto the profile, where the rest of progression already lives.
---
--- Deliberately manual, and deliberately never lowers anything: it takes the HIGHEST of the
--- three sources, so running it twice is harmless and running it cannot cost anyone coins.
--- Nothing reads the profile figure yet -- flipping the game over to it is a separate step,
--- once you have run this and seen the numbers it reports.
-commands.MigrateCoins = function(player, args)
-	local DataStoreService = game:GetService("DataStoreService")
-	local target = targetOf(args.target) or player
-
-	local stats = target:FindFirstChild("leaderstats")
-	local coins = stats and stats:FindFirstChild("Coins")
-	local live = coins and coins.Value or 0
-
-	local legacyStats, legacySave = 0, 0
-	pcall(function()
-		local store = DataStoreService:GetDataStore("Stats")
-		legacyStats = tonumber(store:GetAsync(target.UserId .. "-Coins")) or 0
-	end)
-	pcall(function()
-		local store = DataStoreService:GetDataStore("SaveLeaderstats")
-		local saved = store:GetAsync(tostring(target.UserId))
-		if type(saved) == "table" then
-			legacySave = tonumber(saved.Coins) or 0
-		end
-	end)
-
-	local best = math.max(live, legacyStats, legacySave)
-	local PlayerDataManager = require(ServerScriptService.PlayerDataManager)
-	local ok, err = pcall(function()
-		local Replica = PlayerDataManager:GetPlayerDataReplica(target):expect()
-		Replica:SetValue("Coins", best)
-		Replica:SetValue("CoinsMigrated", true)
-	end)
-	if not ok then
-		return { ok = false, reason = "Profile write failed: " .. tostring(err) }
-	end
-	if coins then
-		coins.Value = best
-	end
-	return { ok = true, reason = string.format("%s: live %d, Stats store %d, SaveLeaderstats %d -> profile %d",
-		target.Name, live, legacyStats, legacySave, best) }
 end
 
 -- Keep godmode across respawns while it is on.

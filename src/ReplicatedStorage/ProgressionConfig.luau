@@ -66,35 +66,29 @@ end
 
 -- -------------------------------------------------------------- milestones --
 --
--- Levels 31 to 100. Every one of them pays coins that scale, so no level is empty, and the
--- multiples of five pay something you keep. Attachments come first (they change how a
--- weapon handles), then crystals and titles, because a reward that alters play is worth
--- more early and a reward that alters identity is worth more late.
---
--- The camo slots here are gone with the camo system. Every one of them now pays crystals,
--- sized so the ladder still climbs: the rungs that used to be a rare camo are worth more
--- than the ones that used to be a common.
+-- Levels 31 to 50 (the cap; see GameConfig.Leveling). Every one pays coins that scale, so no
+-- level is empty, and most of the rest pay something you keep: attachments first (they
+-- change how a weapon handles), then crystals and titles, because a reward that alters play
+-- is worth more early and one that alters identity is worth more late. Level 50 is the big
+-- one -- and the door to prestige.
 --
 -- Ids are real entries from AttachmentConfig; nothing here names an item that does not exist.
 ProgressionConfig.LevelCoinsBase = 150
-ProgressionConfig.LevelCoinsPerLevel = 25
+ProgressionConfig.LevelCoinsPerLevel = 60
 ProgressionConfig.FirstMilestoneLevel = 31
 
 ProgressionConfig.Milestones = {
-	[35] = { attachment = "Muzzle:Suppressor", note = "Quiet rounds: enemies hear half as far" },
-	[40] = { crystals = 8 },
-	[45] = { attachment = "Sight:Scope4x" },
-	[50] = { title = "Seasoned", crystals = 18 },
-	[55] = { attachment = "Magazine:Drum" },
-	[60] = { crystals = 12 },
-	[65] = { attachment = "Underbarrel:Bipod" },
-	[70] = { title = "Relentless", crystals = 25 },
-	[75] = { attachment = "Sight:Sniper" },
-	[80] = { crystals = 16 },
-	[85] = { attachment = "Stock:Skeleton" },
-	[90] = { title = "Warbound", crystals = 40 },
-	[95] = { attachment = "Underbarrel:Laser" },
-	[100] = { title = "Centurion", crystals = 80, coins = 10000 },
+	[33] = { attachment = "Muzzle:Suppressor", note = "Quiet rounds: enemies hear half as far" },
+	[35] = { crystals = 10 },
+	[37] = { attachment = "Sight:Scope4x" },
+	[39] = { attachment = "Magazine:Drum" },
+	[40] = { title = "Seasoned", crystals = 18 },
+	[42] = { attachment = "Underbarrel:Bipod" },
+	[44] = { attachment = "Sight:Sniper" },
+	[45] = { title = "Relentless", crystals = 25 },
+	[46] = { attachment = "Stock:Skeleton" },
+	[48] = { attachment = "Underbarrel:Laser" },
+	[50] = { title = "Centurion", crystals = 80, coins = 10000, note = "Max level -- prestige from the Level Road" },
 }
 
 --- What reaching `level` pays. Returns nil below the first milestone level, so levels 2-30

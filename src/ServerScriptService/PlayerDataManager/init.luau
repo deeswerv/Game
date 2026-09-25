@@ -72,6 +72,28 @@ function PlayerDataManager:GetPlayerProfile(Player: Player)
 end
 
 
+--- Write the profile to the DataStore now rather than at the next autosave. For changes
+--- worth not losing to a crash in the next thirty seconds -- an owner grant, a prestige.
+function PlayerDataManager:SaveNow(Player: Player): boolean
+	local profile = Profiles[Player]
+	if profile and profile:IsActive() then
+		local ok = pcall(function()
+			profile:Save()
+		end)
+		return ok
+	end
+	return false
+end
+
+--- Whether profiles are really being saved. False in Studio without API access, where
+--- ProfileService quietly runs on a mock store and nothing outlives the session. Can yield.
+function PlayerDataManager:IsSaving(): boolean
+	local ok, live = pcall(function()
+		return ProfileService.IsLive()
+	end)
+	return ok and live == true
+end
+
 local function PlayerAdded(Player: Player)
 	local StartTime = tick()
 	local Profile = ProfileStore:LoadProfileAsync("Player_" .. Player.UserId)

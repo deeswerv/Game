@@ -29,6 +29,8 @@ World.serverRemotes({
 		PurchaseCamo = "RemoteFunction", PurchaseAttachment = "RemoteFunction", PurchaseCosmetic = "RemoteFunction",
 		OwnershipChanged = "RemoteEvent", PromptPurchase = "RemoteEvent", QuestUpdated = "RemoteEvent",
 		ProgressionReward = "RemoteEvent", XPGained = "RemoteEvent", OpenVendor = "RemoteEvent",
+		AdminCheck = "RemoteFunction", AdminCommand = "RemoteFunction", PrestigeRequest = "RemoteFunction",
+		PrestigeChanged = "RemoteEvent", LevelUp = "RemoteEvent",
 		OpenDialogue = "RemoteEvent", QuestAction = "RemoteFunction",
 	},
 	Remotes = {
@@ -118,12 +120,37 @@ toggle(Enum.KeyCode.L)
 toggle(Enum.KeyCode.Y)
 shot("21_level_road")
 toggle(Enum.KeyCode.Y)
+
+-- 29. The end of the road: max level, Silver prestige, the prestige card armed.
+do
+	World.player:SetAttribute("Prestige", 2)
+	World.serverFire("GameRemotes", "XPGained", 0, 0, 20000, 50)
+	World.advance(0.3)
+	toggle(Enum.KeyCode.Y)
+	local road = World.playerGui:FindFirstChild("MainUIMenus")
+	local button = road and World.find(road, "PrestigeButton", "TextButton")
+	if button then
+		World.click(button)
+	end
+	shot("29_prestige", 0.4)
+	toggle(Enum.KeyCode.Y)
+	World.player:SetAttribute("Prestige", 0)
+	World.serverFire("GameRemotes", "XPGained", 0, 340, 1000, 14)
+	World.advance(0.3)
+end
 toggle(Enum.KeyCode.T)
 shot("24_travel")
 toggle(Enum.KeyCode.T)
 toggle(Enum.KeyCode.H)
 shot("25_achievements")
 toggle(Enum.KeyCode.H)
+
+-- 28. The owner panel (F4), on its first page.
+World.run(sps:FindFirstChild("AdminUI"))
+World.advance(0.6)
+toggle(Enum.KeyCode.F4)
+shot("28_owner", 0.6)
+toggle(Enum.KeyCode.F4)
 
 -- 27. The emote wheel, held open on the Props page.
 World.run(sps:FindFirstChild("EmoteWheel"))
