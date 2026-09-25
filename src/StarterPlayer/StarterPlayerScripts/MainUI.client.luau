@@ -34,6 +34,8 @@ local BossBar = require(Modules:WaitForChild("BossBar"))
 local Toast = require(Modules:WaitForChild("Toast"))
 local Contracts = require(Modules:WaitForChild("Contracts"))
 local WorldEvents = require(Modules:WaitForChild("WorldEvents"))
+local Bounties = require(Modules:WaitForChild("Bounties"))
+local LevelRoad = require(Modules:WaitForChild("LevelRoad"))
 local WeaponConfig = require(ReplicatedStorage:WaitForChild("WeaponConfig"))
 
 local StarterGui = game:GetService("StarterGui")
@@ -130,6 +132,15 @@ Remote.get("Remotes", "SupplyEvent").OnClientEvent:Connect(function(kind: unknow
 		worldEvents:Handle(kind, data)
 	end
 end)
+-- Streaks and bounties: the calls, the WANTED tags, your own price.
+local bounties = safe("Bounties", function()
+	return Bounties.new(screen, playerGui, toast)
+end)
+Remote.get("Remotes", "BountyEvent").OnClientEvent:Connect(function(kind: unknown, data: unknown)
+	if type(kind) == "string" then
+		bounties:Handle(kind, data)
+	end
+end)
 
 -- Remotes are held lazily (see UI.Modules.Remote): building the interface never waits on
 -- the server, and a service that failed to start costs its own feature, not the whole UI.
@@ -164,6 +175,7 @@ end)
 -- --------------------------------------------------------------- objective --
 
 local journalRef: any = nil      -- the quest journal, built with the menus further down
+local roadRef: any = nil         -- the level road, likewise
 
 -- QuestService already broadcasts the whole state on every change, so the card just redraws
 -- from it. Rewards are read out of QuestConfig here because the active-quest block in that
@@ -316,11 +328,26 @@ do
 	Remote.get("GameRemotes", "XPGained").OnClientEvent:Connect(function(amount: number, exp: number, maxExp: number, level: number)
 		local now = math.floor(tonumber(level) or 1)
 		hud:SetLevel(now, exp, maxExp)
+		if roadRef then
+			roadRef:SetLevel(now, tonumber(exp) or 0, tonumber(maxExp) or 1)
+		end
 		if lastLevel ~= nil and type(amount) == "number" and amount > 0 then
 			hud:XpPopup(amount)
 		end
 		if lastLevel ~= nil and now > lastLevel then
 			feedback:LevelUp(now)
+			-- What the new level opened up, straight from the level road.
+			for l = lastLevel + 1, now do
+				for _, node in ipairs(LevelRoad.At(l)) do
+					toast:Push({
+						title = "UNLOCKED  " .. node.title,
+						text = node.kind == "weapon" and "Now in the shop  [M]" or node.detail,
+						icon = node.icon,
+						colour = node.colour,
+						duration = 5,
+					})
+				end
+			end
 		end
 		lastLevel = now
 	end)
@@ -585,6 +612,11 @@ local journal = safe("Journal", function()
 end)
 journalRef = journal
 
+local road = safe("LevelRoad", function()
+	return LevelRoad.new(menuLayer)
+end)
+roadRef = road
+
 local contracts = safe("Contracts", function()
 	return Contracts.new(menuLayer, {
 		contractAction = remote("ContractAction"),
@@ -608,7 +640,7 @@ local NAV_ID = {
 	[profile] = "Profile", [daily] = "Daily", [journal] = "Journal",
 	[settings] = "Settings", [contracts] = "Contracts",
 }
-local PANELS = { inventory, market, workshop, profile, daily, journal, contracts, settings }
+local PANELS = { inventory, market, workshop, profile, daily, journal, contracts, road, settings }
 
 -- Opening one panel closes the others. Two full-screen menus stacked on each other is how a
 -- player loses track of what Escape is going to do.
@@ -629,9 +661,9 @@ end
 hud:OnShop(function()
 	openOnly(market)
 end)
--- The level diamond opens your profile card.
+-- The level diamond opens the level road: where you are, and what the next levels pay.
 hud:OnLevel(function()
-	openOnly(profile)
+	openOnly(road)
 end)
 
 -- Crystals: their own chip beside the cash, from an attribute the server publishes.
@@ -862,6 +894,10 @@ UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: 
 		openOnly(contracts)
 		return
 	end
+	if input.KeyCode == Enum.KeyCode.Y then
+		openOnly(road)
+		return
+	end
 
 	-- Slot keys are gameplay, so they stop at the edge of a menu.
 	if player:GetAttribute("UIOpen") == true then
@@ -898,6 +934,7 @@ local function refreshMenuState()
 	duel:SetVisible(clear)
 	bossBar:SetVisible(clear)
 	toast:SetVisible(clear)
+	bounties:SetVisible(clear)
 end
 refreshMenuState()
 player:GetAttributeChangedSignal("UIOpen"):Connect(refreshMenuState)

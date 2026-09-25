@@ -20,6 +20,7 @@ as uploaded.
 | **B / M / K / P / N** | Items, Shop, Armory, Profile, Daily reward |
 | **O** | Quest journal |
 | **L** | Daily contracts |
+| **Y** (or click the level diamond) | Level road: what every level unlocks, and what is next |
 | **E** (hold) | Open a supply drop |
 | **F1** | Settings: volumes, camera shake, field of view, crosshair colour |
 | **Right mouse** | Aim; with the Longshot (or a strong scope) you look through the scope |
@@ -27,6 +28,14 @@ as uploaded.
 | **Shift** or double-tap **W** | Sprint; **Ctrl** / **C** while sprinting slides |
 
 You can also queue by standing on one of the glowing **1V1 pads** near the spawn.
+
+## Streaks and bounties
+
+Out in the world, kills without dying build a streak: **KILLING SPREE** at 3, and at 5 you
+are **WANTED** -- everyone is told, a red tag with your price floats over you through walls,
+and the price climbs with every kill after (up to $4,000). Whoever takes a wanted player down
+collects the bounty and XP, and the server hears about it. Duels and practice dummies do not
+count.
 
 ## Downtown
 

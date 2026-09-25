@@ -35,7 +35,7 @@ World.serverRemotes({
 		MatchAction = "RemoteFunction", MatchUpdate = "RemoteEvent", RangeAction = "RemoteFunction",
 		ProfileRequest = "RemoteFunction", DailyAction = "RemoteFunction", BuildAction = "RemoteFunction",
 		StatAction = "RemoteFunction", SettingsAction = "RemoteFunction",
-		ContractAction = "RemoteFunction", ContractUpdate = "RemoteEvent", SupplyEvent = "RemoteEvent", WorldReward = "RemoteEvent",
+		ContractAction = "RemoteFunction", ContractUpdate = "RemoteEvent", SupplyEvent = "RemoteEvent", WorldReward = "RemoteEvent", BountyEvent = "RemoteEvent",
 		KillFeed = "RemoteEvent", KillFeedAll = "RemoteEvent", DeathReport = "RemoteEvent",
 		GunEffect = "RemoteEvent", NPCEffect = "RemoteEvent", GunAction = "RemoteEvent",
 		MeleeAction = "RemoteEvent", MeleeEffect = "RemoteEvent", AimUpdate = "RemoteEvent",
@@ -102,6 +102,18 @@ toggle(Enum.KeyCode.F1)
 toggle(Enum.KeyCode.L)
 shot("18_contracts")
 toggle(Enum.KeyCode.L)
+toggle(Enum.KeyCode.Y)
+shot("21_level_road")
+toggle(Enum.KeyCode.Y)
+
+-- A WANTED player nearby, and your own streak call.
+do
+	World.player:SetAttribute("Bounty", 1400)
+	World.serverFire("Remotes", "BountyEvent", "streak", { call = "WANTED", streak = 5, amount = 1400 })
+	shot("22_wanted", 0.5)
+	World.advance(4)
+	World.player:SetAttribute("Bounty", nil)
+end
 
 -- Contract news and a supply drop on the way.
 World.serverFire("Remotes", "ContractUpdate", "progress", {
