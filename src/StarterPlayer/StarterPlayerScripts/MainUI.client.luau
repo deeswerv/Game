@@ -762,6 +762,17 @@ do
 	end)
 end
 
+-- What is new, once per session: the district is one gate away and easy to miss.
+task.delay(9, function()
+	toast:Push({
+		title = "NEW: DOWNTOWN",
+		text = "Take the pink gate at the crossing",
+		icon = "🏙",
+		colour = Color3.fromRGB(255, 64, 170),
+		duration = 9,
+	})
+end)
+
 -- -------------------------------------------------------------- contracts --
 
 -- Contract news: a card for progress, the banner for a finished one, and the nav tile's

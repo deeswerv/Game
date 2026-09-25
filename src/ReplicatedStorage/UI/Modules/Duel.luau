@@ -761,8 +761,12 @@ function Duel:_showResults(state)
 	hg.Parent = headline
 	slam(headline, 2.2, 0.4)
 
+	local because = REASONS[tostring(state.reason)] or tostring(state.reason or "")
+	if type(state.map) == "string" and state.map ~= "" then
+		because = because ~= "" and (because .. "   ·   " .. state.map) or state.map
+	end
 	local reason = Components.Label(backdrop, {
-		text = REASONS[tostring(state.reason)] or tostring(state.reason or ""),
+		text = because,
 		font = Theme.Font.Bold,
 		size = 22,
 		colour = Theme.Colour.TextDim,
