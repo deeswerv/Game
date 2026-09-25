@@ -24,6 +24,15 @@ local RollFrontAnim = Hum:LoadAnimation(script:WaitForChild("RollFront"))
 local BackRollAnim = Hum:LoadAnimation(script:WaitForChild("BackRoll"))
 local LeftRollAnim = Hum:LoadAnimation(script:WaitForChild("RightRoll"))
 local RightRollAnim = Hum:LoadAnimation(script:WaitForChild("LeftRoll"))
+-- The trail everyone sees is drawn by the server (ServerScriptService.DashFX). Looked up
+-- lazily so a slow join can never stall the dash itself.
+local function fireTrail()
+	local remotes = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes")
+	local remote = remotes and remotes:FindFirstChild("DashEffect")
+	if remote and remote:IsA("RemoteEvent") then
+		remote:FireServer()
+	end
+end
 local DashDebounce = false
 local DashingDebounce = false
 local isAttacking = Char:WaitForChild("IsAttacking")
@@ -73,6 +82,7 @@ UIS.InputBegan:Connect(function(Input,IsTyping)
 					RollFrontAnim:Play()
 					DashingDebounce = true
 					d:Play()
+					fireTrail()
 					
 					delay(0.25,function()
 						DashingDebounce = false
@@ -88,6 +98,7 @@ UIS.InputBegan:Connect(function(Input,IsTyping)
 					
 					BackRollAnim:Play()
 					d:Play()
+					fireTrail()
 					
 					delay(0.25,function()
 						DashingDebounce = false
@@ -103,6 +114,7 @@ UIS.InputBegan:Connect(function(Input,IsTyping)
 					
 					LeftRollAnim:Play()
 					d2:Play()
+					fireTrail()
 					
 					delay(0.25,function()
 						DashingDebounce = false
@@ -116,6 +128,7 @@ UIS.InputBegan:Connect(function(Input,IsTyping)
 				elseif AKeyDown then
 					DashingDebounce = true
 					d2:Play()
+					fireTrail()
 					
 					RightRollAnim:Play()
 					
