@@ -181,17 +181,19 @@ type Pad = {
 	shown: string?,        -- what the label currently says, so it is only written on change
 }
 
-local function buildPad(parent: Instance, cf: CFrame, colour: Color3): Pad
+local function buildPad(parent: Instance, cf: CFrame, colour: Color3, plain: boolean): Pad
+	-- Plain pads (downtown) are painted rather than lit: the same rings, no glow.
+	local glow = plain and Enum.Material.SmoothPlastic or Enum.Material.Neon
 	decor(parent, "Rim", Enum.PartType.Cylinder, Vector3.new(0.24, PAD_SIZE, PAD_SIZE),
-		cf * CFrame.new(0, 0.1, 0) * FLAT, colour, Enum.Material.Neon)
+		cf * CFrame.new(0, 0.1, 0) * FLAT, colour, glow)
 	decor(parent, "Plate", Enum.PartType.Cylinder, Vector3.new(0.3, PAD_SIZE - 1, PAD_SIZE - 1),
 		cf * CFrame.new(0, 0.14, 0) * FLAT, PLATE, Enum.Material.Metal)
 	decor(parent, "Ring", Enum.PartType.Cylinder, Vector3.new(0.32, 5.2, 5.2),
-		cf * CFrame.new(0, 0.16, 0) * FLAT, colour, Enum.Material.Neon).Transparency = 0.35
+		cf * CFrame.new(0, 0.16, 0) * FLAT, colour, glow).Transparency = plain and 0 or 0.35
 	decor(parent, "Inner", Enum.PartType.Cylinder, Vector3.new(0.34, 4.4, 4.4),
 		cf * CFrame.new(0, 0.18, 0) * FLAT, PLATE, Enum.Material.Metal)
 	local core = decor(parent, "Core", Enum.PartType.Cylinder, Vector3.new(0.36, 2.2, 2.2),
-		cf * CFrame.new(0, 0.2, 0) * FLAT, colour, Enum.Material.Neon)
+		cf * CFrame.new(0, 0.2, 0) * FLAT, colour, glow)
 
 	local light = Instance.new("PointLight")
 	light.Color = colour
@@ -317,12 +319,15 @@ end)
 
 --- Another pair of pads (and their sign) at `cf` -- the duel hall downtown has its own. They
 --- queue into the same queue and are watched by the same loop as the pair by the spawn.
-function DuelPads.AddPair(parent: Instance, cf: CFrame)
+--- A pair of pads at `cf`. options.plain paints them instead of lighting them, and
+--- options.colours replaces the magenta/cyan pair.
+function DuelPads.AddPair(parent: Instance, cf: CFrame, options: { plain: boolean?, colours: { Color3 }? }?)
+	local o = options or {}
 	local model = Instance.new("Model")
 	model.Name = "DuelPads"
 	for index, side in ipairs({ -1, 1 }) do
-		local colour = index == 1 and MAGENTA or CYAN
-		table.insert(pads, buildPad(model, cf * CFrame.new(side * PAD_GAP / 2, 0, 0), colour))
+		local colour = (o.colours and o.colours[index]) or (index == 1 and MAGENTA or CYAN)
+		table.insert(pads, buildPad(model, cf * CFrame.new(side * PAD_GAP / 2, 0, 0), colour, o.plain == true))
 	end
 	buildSign(model, cf)
 	model.Parent = parent

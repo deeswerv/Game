@@ -42,6 +42,13 @@ for _, d in ipairs(folder:GetDescendants()) do
 	end
 end
 check(parts > 2500, ("%d parts"):format(parts))
+local glowing = 0
+for _, d in ipairs(folder:GetDescendants()) do
+	if d:IsA("BasePart") and d.Material.Name == "Neon" then
+		glowing += 1
+	end
+end
+check(glowing == 0, ("no neon downtown (%d glowing parts)"):format(glowing))
 
 local function inside(part, p: Vector3, margin: number?): boolean
 	local rel = part.CFrame:PointToObjectSpace(p)

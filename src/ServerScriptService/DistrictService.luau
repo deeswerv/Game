@@ -110,7 +110,9 @@ local function wire(folder: Instance)
 		local ok, DuelPads = pcall(require, ServerScriptService:FindFirstChild("DuelPads") :: ModuleScript)
 		if ok and type(DuelPads) == "table" and DuelPads.AddPair then
 			local at = site.Position - Vector3.new(0, site.Size.Y / 2, 0)
-			DuelPads.AddPair(folder, CFrame.new(at) * CFrame.Angles(0, math.rad(90), 0))
+			-- Painted in the hall's team colours, like the rest of downtown: no glow.
+			DuelPads.AddPair(folder, CFrame.new(at) * CFrame.Angles(0, math.rad(90), 0),
+				{ plain = true, colours = Downtown.PadColours })
 		end
 	end
 end

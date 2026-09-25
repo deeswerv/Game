@@ -40,13 +40,14 @@ count.
 
 ## Downtown
 
-Open **Travel** (T) and pick **Downtown**, a city district built block by block: an avenue
-from the arrival point to **ZEE TOWER**, **ZEE PLAZA** with its fountain and screen
-tower, **ZEE GUNS** and the **ARMORY** (walk up and press E to shop or customise), **ZEE GAS**
-and the **24/7** with the **CONTRACTS** board, the **DUEL HALL** with its own 1v1 pads, a
-basketball court, a pocket park, parked cars, street lamps and a skyline all round. Climb the
-fire escape on the apartments for a **rooftop stash** (once a day). Supply drops land in its
-streets too.
+Open **Travel** (T) and pick **Downtown**, a painted low-poly city district built block by
+block, with no neon anywhere: an avenue from the welcome wall to **ZEE TOWER**, **ZEE PLAZA**
+with its three-tier fountain, planted corners and finger post, **ZEE GUNS** and the **ARMORY**
+(walk up and press E to shop or customise), **ZEE GAS** and the **24/7** with the
+**CONTRACTS** board, the **DUEL HALL** (a blue-and-orange sports hall with its own 1v1 pads),
+a basketball court, a hedged pocket park, blossom trees, lanterns with flower baskets, parked
+cars and a skyline all round. Climb the fire escape on the apartments for a **rooftop stash**
+(once a day). Supply drops land in its streets too.
 
 **Turf war**: every few minutes while players are downtown, a crew (three Bandits, a Soldier
 and a Brute lieutenant) rolls in from one of the district's edges. Drive them out within four
