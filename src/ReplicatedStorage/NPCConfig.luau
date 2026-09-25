@@ -20,7 +20,9 @@ NPCConfig.Defaults = {
 	DeaggroRange = 90,          -- gives up past this
 	RequiresLineOfSight = true,
 	LeashRange = 120,           -- returns home if dragged further than this
-	RespawnTime = 12,
+	-- Slow on purpose: a cleared camp should STAY cleared long enough to feel like you won
+	-- it, not refill behind you while you are still reloading.
+	RespawnTime = 50,
 	CoinReward = 15,
 	XPReward = 15,              -- read by LevelSystem off the model; same default as before
 	LootTier = "Common",        -- a label for designers; LootProfile does the rolling
@@ -65,6 +67,17 @@ NPCConfig.Defaults = {
 	PatrolRadius = 14,          -- 0 stands at its post
 	Personality = 0.1,          -- +/- spread applied per spawn so no two are identical
 
+	-- ------------------------------------------------------------- tactics --
+	-- Read by AI.Tactics.
+	Voice = "Soldier",          -- which set of callouts it shouts (Soldier/Bandit/Guard/Brute)
+	Grenades = 0,               -- carried per life; thrown at targets hiding or camping
+	GrenadeDamage = 45,         -- at the centre, falling off to the edge; scales with level
+	GrenadeRadius = 14,
+	GrenadeRange = 60,
+	GrenadeCooldown = 14,
+	Medkits = 0,                -- bandages per life: hurt and out of sight, it patches up
+	Strafe = false,             -- sidesteps between bursts while holding its ground
+
 	-- Look. Kept as data so a new enemy type is still just a table entry: body colours,
 	-- an overall size, and a few welded blocks that say what it is at a glance.
 	Skin = Color3.fromRGB(198, 164, 128),
@@ -81,6 +94,9 @@ NPCConfig.Archetypes = {
 	-- and mask read as "rogue" instantly.
 	Grunt = {
 		DisplayName = "Bandit",
+		Voice = "Bandit",
+		Strafe = true,
+		RespawnTime = 50,
 		MaxHealth = 90,
 		WalkSpeed = 15,
 		Damage = 9,
@@ -135,7 +151,10 @@ NPCConfig.Archetypes = {
 		DeaggroRange = 120,
 		CoinReward = 22,
 		XPReward = 25,
-		RespawnTime = 18,
+		RespawnTime = 70,
+		Grenades = 1,
+		Medkits = 1,
+		Strafe = true,
 		Colour = Color3.fromRGB(96, 104, 76),
 		NameColour = Color3.fromRGB(226, 214, 160),
 		Weapon = "Redwood",
@@ -176,7 +195,8 @@ NPCConfig.Archetypes = {
 		DeaggroRange = 110,          -- it commits once it has seen you
 		CoinReward = 40,
 		XPReward = 40,
-		RespawnTime = 25,
+		RespawnTime = 100,
+		Voice = "Brute",
 		Colour = Color3.fromRGB(96, 52, 52),
 		NameColour = Color3.fromRGB(255, 90, 90),
 		Weapon = "Ironjaw",
@@ -210,6 +230,8 @@ NPCConfig.Archetypes = {
 	-- ground when rushed, and does not stay in one spot for long.
 	Marksman = {
 		DisplayName = "Marksman",
+		RespawnTime = 75,
+		Medkits = 1,
 		MaxHealth = 70,
 		WalkSpeed = 11,
 		Damage = 14,
@@ -265,7 +287,11 @@ NPCConfig.Archetypes = {
 		LeashRange = 150,
 		CoinReward = 60,
 		XPReward = 60,
-		RespawnTime = 45,
+		RespawnTime = 180,
+		Grenades = 2,
+		GrenadeCooldown = 10,
+		Medkits = 1,
+		Strafe = true,
 		Colour = Color3.fromRGB(40, 44, 52),
 		NameColour = Color3.fromRGB(196, 226, 255),
 		Weapon = "Warden",
@@ -311,7 +337,10 @@ NPCConfig.Archetypes = {
 		PreferredRange = 24,
 		AggroRange = 60,
 		CoinReward = 0,
-		RespawnTime = 20,
+		RespawnTime = 45,
+		Voice = "Guard",
+		Medkits = 1,
+		Strafe = true,
 		Colour = Color3.fromRGB(80, 110, 90),
 		NameColour = Color3.fromRGB(140, 230, 160),
 		Weapon = "Vantage",
@@ -341,6 +370,7 @@ NPCConfig.Archetypes = {
 	-- longer version of the same one.
 	Warlord = {
 		DisplayName = "Warlord",
+		Voice = "Brute",
 		-- A boss must not ALSO roll elite: its difficulty would then depend on a coin
 		-- flip, and two Warlords of the same zone would not be the same fight.
 		NeverElite = true,
@@ -422,10 +452,10 @@ NPCConfig.Spawns = {
 -- How the population is kept in bounds. A respawn that finds the world full, or a player
 -- standing on the spot, waits and tries again rather than piling in.
 NPCConfig.SpawnRules = {
-	MaxAlive = 40,               -- across the whole server, bosses and adds included
-	MinPlayerDistance = 28,      -- never appears closer than this to a living player
+	MaxAlive = 24,               -- across the whole server, bosses and adds included
+	MinPlayerDistance = 45,      -- never appears right in front of a living player
 	RetryDelay = 4,
-	MaxRetries = 45,             -- three minutes of waiting, then it gives up quietly
+	MaxRetries = 45,             -- three minutes of quick retries, then every 15 seconds
 	Clearance = Vector3.new(3, 5, 3),
 }
 
@@ -525,6 +555,7 @@ function NPCConfig.Levelled(cfg, level: number)
 	out.Level = level
 	out.MaxHealth = math.floor(cfg.MaxHealth * (1 + HEALTH_PER_LEVEL * steps) + 0.5)
 	out.Damage = cfg.Damage * (1 + DAMAGE_PER_LEVEL * steps)
+	out.GrenadeDamage = (cfg.GrenadeDamage or 0) * (1 + DAMAGE_PER_LEVEL * steps)
 	out.CoinReward = math.floor(cfg.CoinReward * (1 + REWARD_PER_LEVEL * steps) + 0.5)
 	out.XPReward = math.floor((cfg.XPReward or 15) * (1 + REWARD_PER_LEVEL * steps) + 0.5)
 	out.Accuracy = math.min(ACCURACY_CAP, (cfg.Accuracy or 0.5) + ACCURACY_PER_LEVEL * steps)

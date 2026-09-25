@@ -63,6 +63,27 @@ minutes and everyone who landed a hit is paid, with a bonus for the MVP.
   pillar of light, with a marker and distance on your screen. First to hold E on it keeps the
   cash, crystals and XP inside; about one in eight is a golden Elite drop worth double.
 
+## Enemies
+
+Enemies fight like a squad, not a row of turrets:
+
+- **They talk.** A "?" pops over one that heard something and is coming to look, a "!" when
+  it has seen you, and speech bubbles as the fight goes: *Contact!*, *Reloading!*,
+  *Flanking!*, *Man down!*, *Lost visual.* Soldiers, Bandits, Guards and Brutes each have
+  their own voice.
+- **Grenades.** Duck behind a wall, or camp one spot, and a Soldier or Elite lobs a grenade
+  at you ("Frag out!"). It flies on a real arc, lands, blinks and beeps faster and faster,
+  and a red marker plus a **GRENADE -- MOVE!** warning shows while you are in the blast.
+  Damage falls off with distance and a wall between you takes most of it.
+- **Suppression.** Rounds cracking past an enemy's head throw its aim off and send it
+  looking for cover.
+- **Patching up.** Hurt and out of your sight, a Soldier, Elite, Marksman or Guard stops to
+  bandage itself (a green bar over its head). Hit it again and the bandage is cancelled:
+  that is your moment to push.
+- **Strafing.** Holding its ground in a gunfight, an enemy sidesteps between bursts.
+- **Fewer, slower respawns.** Camps refill after 50 seconds to 3 minutes rather than 12, never
+  within 45 studs of a player, and at most 24 enemies are alive on a server.
+
 ## Gun handling
 
 - **Moving and jumping** open your cone; aiming steadies part of that (a scoped sniper on the
@@ -99,7 +120,7 @@ The **"+"** beside your cash opens the Shop.
 ## Testing without Studio
 
 `tools/uitest/` runs the whole interface under Lune and renders every screen -- see its
-README. Run it after any UI change: it catches the kind of error that stops a menu script
+README. `tactics.luau` checks the enemy grenades, patching up, suppression and callouts. Run it after any UI change: it catches the kind of error that stops a menu script
 half way through (which is what once hid the inventory, shop and side menu).
 
 ## What is in this repo

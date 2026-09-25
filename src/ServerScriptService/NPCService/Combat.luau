@@ -196,6 +196,10 @@ function Combat.Spread(agent, weapon, now: number, target: Model): number
 	if agent.flinchUntil and now < agent.flinchUntil then
 		cone *= 1.6
 	end
+	-- Rounds cracking past its head (Tactics.Suppress).
+	if agent.suppressedUntil and now < agent.suppressedUntil then
+		cone *= 1.7
+	end
 	return cone + (weapon.cfg.SpreadMin or 0) * 0.5
 end
 

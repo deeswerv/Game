@@ -71,7 +71,7 @@ if not noData then
 end
 
 local sps = World.service("StarterPlayer"):FindFirstChild("StarterPlayerScripts")
-local SCRIPTS = { "MainUI", "Killcam", "QuestUI", "PromptUI", "ChestUI" }
+local SCRIPTS = { "MainUI", "Killcam", "QuestUI", "PromptUI", "ChestUI", "NPCAnimator" }
 for _, name in ipairs(SCRIPTS) do
 	local template = sps:FindFirstChild(name)
 	if template then
@@ -151,6 +151,43 @@ local board = gui:FindFirstChild("PlayerBoard")
 check("Tab shows the player board", board ~= nil and board.Enabled)
 World.holdKey(Enum.KeyCode.Tab, false)
 World.advance(0.3)
+
+-- NPC tactics, as the server sends them: a callout, a mark, a grenade that lands and goes
+-- off near the player, and a bandage. Drawn by NPCAnimator; nothing may error.
+do
+	local npc = R.new("Model")
+	npc.Name = "Soldier"
+	local head = R.new("Part")
+	head.Name = "Head"
+	head.Parent = npc
+	npc.Parent = World.workspace
+	local V3 = require("@lune/roblox").Vector3
+	World.serverFire("Remotes", "NPCEffect", {
+		{ "Mark", npc, "!" },
+		{ "Callout", npc, "Frag out!", true },
+		-- A long fuse: the harness clock runs slower than real time under the whole UI.
+		{ "Grenade", npc, V3.new(0, 5, -20), V3.new(0, 1, 0), 8, 0.3, 4 },
+		{ "Heal", npc, 1 },
+	})
+	World.advance(0.3)
+	local bubbles = 0
+	for _, child in ipairs(gui:GetChildren()) do
+		if child:IsA("BillboardGui") then
+			bubbles += 1
+		end
+	end
+	check(("NPC mark, callout and bandage bar drawn (%d billboards)"):format(bubbles), bubbles >= 3)
+	World.advance(0.6)
+	local tactics = gui:FindFirstChild("NPCTactics")
+	local alert = tactics and tactics:FindFirstChild("GrenadeAlert")
+	check("a grenade landing close raises the warning", alert ~= nil and alert.Visible)
+	World.serverFire("Remotes", "NPCEffect", {
+		{ "Explode", V3.new(0, 1.2, 0), 14 },
+		{ "Healed", npc, 60 },
+	})
+	World.advance(4.5)
+	check("the warning clears once it has gone off", alert == nil or not alert.Visible)
+end
 
 World.advance(1)
 

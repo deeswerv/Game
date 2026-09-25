@@ -10,6 +10,8 @@
 --   combat:  Alert (noticed; turning, raising)   Engage (aiming, firing, holding a slot)
 --            Chase (closing, or following to where they were last seen)
 --            TakeCover / Reload / Retreat / Reposition
+--            Throw (a grenade at someone hiding or camping)
+--            PatchUp (bandaging, out of sight, until hit again)
 --   either:  Stunned (a heavy hit) and Dead
 --
 -- The rules that apply whatever state it is in -- a stun, the leash, noticing a target,
@@ -17,18 +19,22 @@
 
 local World = require(script.Parent.Parent.World)
 local Body = require(script.Parent.Parent.Body)
+local Effects = require(script.Parent.Parent.Effects)
 local Combat = require(script.Parent.Parent.Combat)
 local Perception = require(script.Parent.Perception)
 local Squad = require(script.Parent.Squad)
 local Cover = require(script.Parent.Cover)
+local Tactics = require(script.Parent.Tactics)
 
 local StateMachine = {}
 
 local CALM = { Idle = true, Patrol = true, Investigate = true, Search = true, Returning = true }
 local COMBAT = {
 	Alert = true, Engage = true, Chase = true, TakeCover = true, Reload = true,
-	Retreat = true, Reposition = true, Stunned = true,
+	Retreat = true, Reposition = true, Stunned = true, Throw = true, PatchUp = true,
 }
+-- Combat states that carry on to the end once started, even if the target slips out of view.
+local COMMITTED = { Throw = true, PatchUp = true }
 StateMachine.Combat = COMBAT
 
 local NEVER = -math.huge
@@ -118,6 +124,7 @@ local function tryCover(agent, now: number, info, forReload: boolean): boolean
 	end
 	agent.coverForReload = forReload
 	StateMachine.Set(agent, "TakeCover", now)
+	Tactics.Say(agent, now, forReload and "Reload" or "Cover")
 	return true
 end
 
@@ -171,6 +178,7 @@ STATES.Patrol = {
 
 STATES.Investigate = {
 	enter = function(agent, now)
+		Tactics.Mark(agent, "?")
 		local alert = agent.alert
 		agent.investigatePoint = alert and alert.position or nil
 		agent.alert = nil
@@ -208,6 +216,9 @@ STATES.Investigate = {
 
 STATES.Search = {
 	enter = function(agent, now)
+		if agent.lastCombatAt and now - agent.lastCombatAt < 3 then
+			Tactics.Say(agent, now, "Lost")
+		end
 		agent.searchCentre = agent.lastKnown or agent.root.Position
 		agent.searchUntil = now + (agent.cfg.SearchTime or 9)
 		agent.searchPoint = nil
@@ -219,6 +230,10 @@ STATES.Search = {
 	end,
 	update = function(agent, now)
 		Combat.Tidy(agent, now)
+		if Tactics.WantsHeal(agent, now, nil) then
+			StateMachine.Set(agent, "PatchUp", now)
+			return
+		end
 		if now >= agent.searchUntil then
 			agent.lastKnown = nil
 			StateMachine.Set(agent, "Returning", now)
@@ -284,6 +299,8 @@ STATES.Alert = {
 		local reaction = (cfg.ReactionTime or 0.45) * hurried * seasoned
 		agent.reactAt = now + reaction
 		agent.raiseAt = now + reaction * 0.5
+		Tactics.Mark(agent, "!")
+		Tactics.Say(agent, now, "Spot")
 	end,
 	update = function(agent, now, info)
 		if not info then
@@ -361,6 +378,12 @@ STATES.Engage = {
 			return
 		end
 
+		-- Dug in behind something, or camping one spot: flush them out.
+		if not agent.reloadUntil and Tactics.WantsGrenade(agent, now, info) then
+			StateMachine.Set(agent, "Throw", now)
+			return
+		end
+
 		if weapon.ammo <= 0 and not agent.reloadUntil then
 			if Combat.TrySwitch(agent, now, info.distance) then
 				return
@@ -382,9 +405,10 @@ STATES.Engage = {
 		Body.AimAt(agent, info.root.Position + Vector3.new(0, 1, 0))
 		Combat.Fire(agent, now, info.model, now >= (agent.fireReadyAt or 0))
 
-		-- Taking hits out in the open is the cue to find cover -- not every hit, and not again
-		-- straight after leaving it, or it spends the whole fight hiding.
-		if cfg.UsesCover and now - (agent.lastHurtAt or NEVER) < 1.2
+		-- Taking hits (or rounds cracking past) out in the open is the cue to find cover --
+		-- not every time, and not again straight after leaving it, or it spends the whole
+		-- fight hiding.
+		if cfg.UsesCover and (now - (agent.lastHurtAt or NEVER) < 1.2 or Tactics.Suppressed(agent, now))
 			and now - (agent.coverLeftAt or NEVER) > 4 + 6 * (cfg.Aggression or 0.5) then
 			if tryCover(agent, now, info, false) then
 				return
@@ -406,11 +430,21 @@ STATES.Engage = {
 		end
 
 		local slot = Squad.SlotFor(agent, info, now)
+		if agent.role == "Flank" and agent.saidRole ~= "Flank" then
+			Tactics.Say(agent, now, "Flank")
+		end
+		agent.saidRole = agent.role
 		local off = flatDistance(slot, agent.root.Position)
 		if off > 5 then
 			agent.nav:MoveTo(slot, (agent.role == "Push" or off > 25) and "run" or "walk")
 		else
-			agent.nav:Stop()
+			-- In its slot: sidestep between bursts rather than stand still to be shot.
+			local strafe = not agent.reloadUntil and Tactics.StrafePoint(agent, info, now) or nil
+			if strafe then
+				agent.nav:MoveTo(strafe, "walk")
+			else
+				agent.nav:Stop()
+			end
 		end
 	end,
 }
@@ -436,6 +470,11 @@ STATES.Chase = {
 				StateMachine.Set(agent, "Engage", now)
 				return
 			end
+		end
+
+		if ranged and not info.visible and not agent.reloadUntil and Tactics.WantsGrenade(agent, now, info) then
+			StateMachine.Set(agent, "Throw", now)
+			return
 		end
 
 		if not info.visible and flatDistance(info.lastPosition, agent.root.Position) < 4 then
@@ -514,6 +553,18 @@ STATES.TakeCover = {
 			return
 		end
 
+		-- Tucked in behind it: a moment to bandage up, or to lob one over.
+		if not agent.peeking then
+			if Tactics.WantsHeal(agent, now, info) then
+				StateMachine.Set(agent, "PatchUp", now)
+				return
+			end
+			if weapon and weapon.ranged and Tactics.WantsGrenade(agent, now, info) then
+				StateMachine.Set(agent, "Throw", now)
+				return
+			end
+		end
+
 		local peek = agent.coverPeek
 		if peek then
 			if agent.peeking then
@@ -552,6 +603,7 @@ STATES.TakeCover = {
 STATES.Reload = {
 	enter = function(agent, now)
 		Combat.StartReload(agent, now)
+		Tactics.Say(agent, now, "Reload")
 		-- Lower the weapon, and unless it is the charge-in type, step aside while doing it.
 		Body.SetStance(agent, false, false)
 		if agent.cfg.Behaviour ~= "Aggressive" and agent.cfg.Behaviour ~= "Brawler" then
@@ -581,6 +633,7 @@ STATES.Reload = {
 STATES.Retreat = {
 	enter = function(agent, now)
 		agent.retreatedAt = now
+		Tactics.Say(agent, now, "Retreat")
 		local info = agent.info
 		local threat = info and info.position or agent.lastKnown
 		local point: Vector3? = nil
@@ -635,6 +688,68 @@ STATES.Reposition = {
 		Body.SetStance(agent, false, true)
 		Body.Face(agent, nil)
 		agent.nav:MoveTo(point, "run")
+	end,
+}
+
+STATES.Throw = {
+	enter = function(agent, now)
+		agent.nav:Stop()
+		Combat.Fire(agent, now, nil, false)
+		Body.SetStance(agent, false, false)
+		agent.throwAt = now + 0.5
+		agent.throwDoneAt = nil
+		Tactics.Say(agent, now, "Grenade", true)
+		Effects.Send(agent.root.Position, "Throw", agent.model, 0.5, 0.4)
+	end,
+	exit = function(agent)
+		-- Interrupted before letting go (a stun, a death): the grenade stays in its pouch.
+		agent.throwAt = nil
+		agent.grenadePlan = nil
+	end,
+	update = function(agent, now, info)
+		local plan = agent.grenadePlan
+		if plan then
+			Body.Face(agent, plan.to)
+		end
+		if agent.throwAt and now >= agent.throwAt then
+			agent.throwAt = nil
+			Tactics.Release(agent, now)
+			agent.throwDoneAt = now + 0.4
+		end
+		if agent.throwDoneAt and now >= agent.throwDoneAt then
+			agent.fireReadyAt = now + (agent.cfg.AimTime or 0.25)
+			StateMachine.Set(agent, info and "Engage" or (agent.lastKnown and "Search" or "Returning"), now)
+		end
+	end,
+}
+
+STATES.PatchUp = {
+	enter = function(agent, now)
+		agent.nav:Stop()
+		Combat.Fire(agent, now, nil, false)
+		Body.SetStance(agent, false, false)
+		Body.Face(agent, nil)
+		Tactics.StartHeal(agent, now)
+	end,
+	exit = function(agent)
+		if agent.healDoneAt then
+			Tactics.CancelHeal(agent)
+		end
+	end,
+	update = function(agent, now, info)
+		-- Hit again: the bandage can wait.
+		if (agent.lastHurtAt or NEVER) > agent.stateAt then
+			StateMachine.Set(agent, info and "Engage" or (agent.lastKnown and "Search" or "Returning"), now)
+			return
+		end
+		if info then
+			Body.Face(agent, info.position)
+		end
+		if Tactics.UpdateHeal(agent, now) then
+			agent.healDoneAt = nil
+			StateMachine.Set(agent, info and (agent.coverPoint and "TakeCover" or "Engage")
+				or (agent.lastKnown and "Search" or "Returning"), now)
+		end
 	end,
 }
 
@@ -694,14 +809,25 @@ function StateMachine.Think(agent, now: number, agents)
 	end
 	agent.info = info
 
+	-- The one it was fighting just went down.
+	local last = agent.lastTargetModel
+	if last and last ~= (info and info.model) then
+		local humanoid = last.Parent and last:FindFirstChildOfClass("Humanoid")
+		if not humanoid or humanoid.Health <= 0 then
+			Tactics.Say(agent, now, "Kill")
+		end
+		agent.lastTargetModel = nil
+	end
+
 	if info then
 		agent.lastKnown = info.lastPosition
 		agent.lastCombatAt = now
+		agent.lastTargetModel = info.model
 		if CALM[agent.state] then
 			Squad.Alert(agent, info.model, info.position, now, agents)
 			StateMachine.Set(agent, "Alert", now)
 		end
-	elseif COMBAT[agent.state] then
+	elseif COMBAT[agent.state] and not COMMITTED[agent.state] then
 		StateMachine.Set(agent, agent.lastKnown and "Search" or "Returning", now)
 	elseif agent.alert and now - agent.alert.at < 10
 		and (agent.state == "Idle" or agent.state == "Patrol" or agent.state == "Returning") then

@@ -15,6 +15,7 @@
 --   AI.Navigator      pathfinding, waypoint following, getting unstuck
 --   AI.Squad          roles and spacing when several fight one target
 --   AI.Cover          finding somewhere to stand that a bullet cannot reach
+--   AI.Tactics        callouts, grenades, suppression, patching up, strafing
 --
 -- Every NPC is still driven from ONE shared tick rather than its own loop: a per-NPC
 -- Heartbeat connection is what makes crowds expensive. NPCs with no player nearby go
@@ -43,6 +44,7 @@ local Spawner = require(script.Spawner)
 local Perception = require(script.AI.Perception)
 local Navigator = require(script.AI.Navigator)
 local StateMachine = require(script.AI.StateMachine)
+local Tactics = require(script.AI.Tactics)
 
 local NPCService = {}
 
@@ -58,6 +60,10 @@ local SPAWN_TAG = "NPCSpawn"
 -- Live NPC state, keyed by model.
 local agents: { [Model]: any } = {}
 local nextId = 0
+
+Tactics.Agents = function()
+	return agents
+end
 
 local function liveCount(): number
 	local count = 0
@@ -208,6 +214,36 @@ function NPCService.Noise(position: Vector3, radius: number, source: Model?)
 	end
 end
 
+--- A player's volley: `origin` to each of `endPoints`. Any enemy those rounds cracked past
+--- without hitting is suppressed -- its aim goes, it says so, and it looks for cover.
+function NPCService.NearMiss(origin: Vector3, endPoints: { Vector3 }, source: Model?)
+	local now = os.clock()
+	local sourceFaction = factionOf(source)
+	for model, agent in pairs(agents) do
+		if agent.alive and not agent.dormant and model ~= source
+			and (not sourceFaction or NPCConfig.IsHostileTo(agent.cfg.Faction, sourceFaction)) then
+			local head = agent.root.Position + Vector3.new(0, 1.5 * agent.scale, 0)
+			for _, finish in ipairs(endPoints) do
+				local segment = finish - origin
+				local length = segment.Magnitude
+				if length > 1 then
+					local t = math.clamp((head - origin):Dot(segment) / (length * length), 0, 1)
+					local miss = (head - (origin + segment * t)).Magnitude
+					-- Close enough to hear, not so close it was a hit, and not stopped short of it.
+					if miss < 5 and miss > 1.4 and t < 0.999 then
+						Tactics.Suppress(agent, now)
+						if not agent.target and source then
+							Perception.Hear(agent, source, origin, now)
+							agent.nextPerceive = 0
+						end
+						break
+					end
+				end
+			end
+		end
+	end
+end
+
 -- NPCs hear each other's gunfire through the same door players' shots come in by.
 Combat.OnNoise = function(position: Vector3, radius: number, source: Model?)
 	NPCService.Noise(position, radius, source)
@@ -226,12 +262,16 @@ end
 local function scheduleRespawn(archetype: string, home: Vector3, delay: number)
 	task.delay(delay, function()
 		local rules = NPCConfig.SpawnRules
-		for _ = 1, rules.MaxRetries do
+		-- Never gives up: a post someone is camping stays empty while they camp it, and
+		-- fills again once they move on, rather than being lost for the rest of the server.
+		local tries = 0
+		while true do
 			if liveCount() < rules.MaxAlive and not Spawner.PlayerTooClose(home, rules.MinPlayerDistance) then
 				NPCService.Spawn(archetype, home)
 				return
 			end
-			task.wait(rules.RetryDelay)
+			tries += 1
+			task.wait(tries < rules.MaxRetries and rules.RetryDelay or 15)
 		end
 	end)
 end
@@ -340,6 +380,8 @@ function NPCService.Spawn(archetype: string, position: Vector3, options: { respa
 	agent.nav = Navigator.new(agent)
 	Body.CaptureRest(agent)
 	Combat.Setup(agent)
+	agent.grenadesLeft = cfg.Grenades or 0
+	agent.medkits = cfg.Medkits or 0
 	World.Register(model, cfg.Faction)
 	agents[model] = agent
 
@@ -498,6 +540,22 @@ function NPCService.OnDeath(model: Model)
 			weapon.tool:Destroy()
 		end
 	end
+
+	-- The nearest friend still fighting calls it.
+	local now = os.clock()
+	local nearest, nearestDistance = nil, 45
+	for _, other in pairs(agents) do
+		if other.alive and other.cfg.Faction == cfg.Faction and StateMachine.InCombat(other) then
+			local d = (other.root.Position - agent.root.Position).Magnitude
+			if d < nearestDistance then
+				nearest, nearestDistance = other, d
+			end
+		end
+	end
+	if nearest then
+		Tactics.Say(nearest, now, "ManDown")
+	end
+	Tactics.Forget(model)
 
 	-- Plays the death, then goes limp through CombatDeath, which also clears the body away.
 	Death.Play(agent)

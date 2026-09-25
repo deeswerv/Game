@@ -72,6 +72,20 @@ local function reportNoise(player: Player, origin: Vector3, cfg, tool: Tool)
 	end
 end
 
+-- Rounds cracking past an enemy's head suppress it (NPCService.NearMiss): its aim goes and
+-- it looks for cover. Every shot, not throttled like noise -- it is cheap, and a burst that
+-- walks onto someone should keep them pinned.
+local function reportNearMiss(player: Player, origin: Vector3, endPoints: { Vector3 })
+	if NPCService == nil then
+		local module = ServerScriptService:FindFirstChild("NPCService")
+		local ok, service = pcall(require, module)
+		NPCService = (ok and service) or false
+	end
+	if NPCService and NPCService.NearMiss and player.Character then
+		NPCService.NearMiss(origin, endPoints, player.Character)
+	end
+end
+
 -- Per-tool runtime state, keyed by the Tool instance so two players holding the same
 -- weapon type never share a cooldown.
 local state: { [Instance]: any } = {}
@@ -442,6 +456,7 @@ local function fire(player: Player, tool: Tool, cfg, aimPoint: Vector3, ads: boo
 	-- Everyone draws the tracer, muzzle flash and impact locally.
 	GunEffect:FireAllClients("Shot", player, tool, origin, endPoints, #wallHits > 0 and wallHits or nil)
 	reportNoise(player, origin, cfg, tool)
+	reportNearMiss(player, origin, endPoints)
 
 	-- And everyone sees what was hit flare, which is the clearest read that a shot landed.
 	if #struckList > 0 then

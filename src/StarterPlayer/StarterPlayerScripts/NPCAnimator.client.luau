@@ -22,6 +22,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local StarterPlayer = game:GetService("StarterPlayer")
+local TweenService = game:GetService("TweenService")
 
 local NPCAnimation = require(ReplicatedStorage:WaitForChild("NPCAnimation"))
 local PoseLayers = require(ReplicatedStorage:WaitForChild("PoseLayers"))
@@ -29,6 +30,7 @@ local ReloadAnimator = require(ReplicatedStorage:WaitForChild("ReloadAnimator"))
 local CombatFX = require(ReplicatedStorage:WaitForChild("CombatFX"))
 local WeaponConfig = require(ReplicatedStorage:WaitForChild("WeaponConfig"))
 local WeaponAudio = require(ReplicatedStorage:WaitForChild("WeaponAudio"))
+local ViewKick = require(ReplicatedStorage:WaitForChild("ViewKick"))
 
 local remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("NPCEffect") :: RemoteEvent
 local localPlayer = Players.LocalPlayer
@@ -637,6 +639,502 @@ handlers.Death = function(model, style, mirror)
 	end
 end
 
+-- ------------------------------------------------------------------ tactics --
+--
+-- What AI.Tactics decides, drawn: speech bubbles, the "?" and "!" marks, a grenade's flight
+-- and fuse, the blast, and the bandage bar. All local, all short-lived.
+
+local playerGui = localPlayer:WaitForChild("PlayerGui")
+local tacticsGui = Instance.new("ScreenGui")
+tacticsGui.Name = "NPCTactics"
+tacticsGui.ResetOnSpawn = false
+tacticsGui.IgnoreGuiInset = true
+tacticsGui.DisplayOrder = 6
+tacticsGui.Parent = playerGui
+
+local INK = Color3.fromRGB(24, 22, 28)
+local DANGER = Color3.fromRGB(232, 56, 52)
+local CALLOUT_RANGE = 90
+
+local function myRoot(): BasePart?
+	local character = localPlayer.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	return (root and root:IsA("BasePart")) and root or nil
+end
+
+local function headOf(model: any): BasePart?
+	if typeof(model) ~= "Instance" or not model:IsA("Model") then
+		return nil
+	end
+	local head = model:FindFirstChild("Head")
+	return (head and head:IsA("BasePart")) and head or nil
+end
+
+local function inRange(position: Vector3, range: number): boolean
+	local root = myRoot()
+	return not root or (root.Position - position).Magnitude <= range
+end
+
+local function corner(parent: Instance, radius: number)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, radius)
+	c.Parent = parent
+end
+
+local function stroke(parent: Instance, colour: Color3, thickness: number)
+	local st = Instance.new("UIStroke")
+	st.Color = colour
+	st.Thickness = thickness
+	st.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	st.Parent = parent
+end
+
+-- A billboard over a head, `lift` studs up, that pops in, holds and fades out.
+local function billboard(head: BasePart, size: UDim2, lift: number, life: number): (BillboardGui, UIScale)
+	local gui = Instance.new("BillboardGui")
+	gui.Adornee = head
+	gui.Size = size
+	gui.StudsOffsetWorldSpace = Vector3.new(0, lift, 0)
+	gui.MaxDistance = CALLOUT_RANGE
+	gui.LightInfluence = 0
+	gui.ResetOnSpawn = false
+	-- Straight under PlayerGui: a BillboardGui nested inside a ScreenGui does not draw.
+	gui.Parent = playerGui
+	local frame = Instance.new("Frame")
+	frame.Name = "Body"
+	frame.BackgroundTransparency = 1
+	frame.Size = UDim2.fromScale(1, 1)
+	frame.Parent = gui
+	local scale = Instance.new("UIScale")
+	scale.Scale = 0.3
+	scale.Parent = frame
+	TweenService:Create(scale, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	task.delay(life, function()
+		if gui.Parent then
+			TweenService:Create(scale, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 }):Play()
+			task.delay(0.22, function()
+				gui:Destroy()
+			end)
+		end
+	end)
+	return gui, scale
+end
+
+-- Weak keys: an NPC that dies and is cleaned away takes its entries with it.
+local bubbles: { [Model]: BillboardGui } = setmetatable({}, { __mode = "k" }) :: any
+local marks: { [Model]: BillboardGui } = setmetatable({}, { __mode = "k" }) :: any
+
+-- A speech bubble: white, dark lettering, a little tail; red for the urgent ones.
+handlers.Callout = function(model, text, urgent)
+	local head = headOf(model)
+	if not head or type(text) ~= "string" or not inRange(head.Position, CALLOUT_RANGE) then
+		return
+	end
+	local old = bubbles[model]
+	if old then
+		old:Destroy()
+	end
+	local width = math.clamp(#text * 9 + 30, 80, 280)
+	local gui = billboard(head, UDim2.fromOffset(width, 42), 3.2, 2.2)
+	bubbles[model] = gui
+	local body = gui:FindFirstChild("Body") :: Frame
+	local bubble = Instance.new("Frame")
+	bubble.BackgroundColor3 = urgent and DANGER or Color3.fromRGB(252, 250, 244)
+	bubble.Size = UDim2.new(1, 0, 0, 32)
+	bubble.Parent = body
+	corner(bubble, 12)
+	stroke(bubble, INK, 2.5)
+	local tail = Instance.new("Frame")
+	tail.AnchorPoint = Vector2.new(0.5, 0.5)
+	tail.Position = UDim2.new(0.5, 0, 0, 32)
+	tail.Size = UDim2.fromOffset(12, 12)
+	tail.Rotation = 45
+	tail.BackgroundColor3 = bubble.BackgroundColor3
+	tail.ZIndex = 0
+	tail.Parent = body
+	stroke(tail, INK, 2.5)
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.GothamBlack
+	label.TextSize = 17
+	label.Text = text
+	label.TextColor3 = urgent and Color3.new(1, 1, 1) or INK
+	label.ZIndex = 2
+	label.Parent = bubble
+end
+
+-- "?" heard something, "!" seen you.
+handlers.Mark = function(model, glyph)
+	local head = headOf(model)
+	if not head or type(glyph) ~= "string" or not inRange(head.Position, CALLOUT_RANGE) then
+		return
+	end
+	local old = marks[model]
+	if old then
+		old:Destroy()
+	end
+	local alarm = glyph == "!"
+	local gui = billboard(head, UDim2.fromOffset(40, 40), 5.6, alarm and 1.4 or 2)
+	marks[model] = gui
+	local body = gui:FindFirstChild("Body") :: Frame
+	local disc = Instance.new("Frame")
+	disc.BackgroundColor3 = alarm and DANGER or Color3.fromRGB(250, 196, 50)
+	disc.Size = UDim2.fromScale(1, 1)
+	disc.Parent = body
+	corner(disc, 20)
+	stroke(disc, INK, 3)
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.GothamBlack
+	label.TextSize = 28
+	label.Text = glyph
+	label.TextColor3 = alarm and Color3.new(1, 1, 1) or INK
+	label.Parent = disc
+end
+
+-- The arm coming over for a throw: the melee swing pose, without a weapon's whoosh.
+handlers.Throw = function(model, windup, recover)
+	local record = recordOf(model)
+	if record and type(windup) == "number" and type(recover) == "number" then
+		record.swing = { at = os.clock(), windup = windup, recover = recover, heavy = false }
+	end
+end
+
+local function sound(id: string, at: Vector3, volume: number, speed: number, range: number)
+	local holder = Instance.new("Part")
+	holder.Anchored = true
+	holder.CanCollide = false
+	holder.CanQuery = false
+	holder.CanTouch = false
+	holder.Transparency = 1
+	holder.Size = Vector3.new(0.2, 0.2, 0.2)
+	holder.CFrame = CFrame.new(at)
+	holder.Parent = workspace
+	local s = Instance.new("Sound")
+	s.SoundId = id
+	s.Volume = volume
+	s.PlaybackSpeed = speed
+	s.RollOffMaxDistance = range
+	s.Parent = holder
+	s:Play()
+	task.delay(4, function()
+		holder:Destroy()
+	end)
+end
+
+-- The "GRENADE" warning while one is lying near you.
+local alert = Instance.new("TextLabel")
+alert.Name = "GrenadeAlert"
+alert.AnchorPoint = Vector2.new(0.5, 0)
+alert.Position = UDim2.new(0.5, 0, 0, 150)
+alert.Size = UDim2.fromOffset(300, 46)
+alert.BackgroundColor3 = DANGER
+alert.Font = Enum.Font.GothamBlack
+alert.TextSize = 26
+alert.TextColor3 = Color3.new(1, 1, 1)
+alert.Text = "⚠  GRENADE  —  MOVE!"
+alert.Visible = false
+alert.Parent = tacticsGui
+corner(alert, 12)
+stroke(alert, INK, 3)
+local nearGrenades = 0
+
+-- A grenade: out of the hand on an arc, a bounce and a roll, then a fuse that blinks faster
+-- and faster. Where it lands gets a marker you can see through walls if you are close.
+handlers.Grenade = function(_model, from, to, apex, flight, fuse)
+	if typeof(from) ~= "Vector3" or typeof(to) ~= "Vector3" or type(apex) ~= "number"
+		or type(flight) ~= "number" or type(fuse) ~= "number" then
+		return
+	end
+	local shell = Instance.new("Part")
+	shell.Name = "Grenade"
+	shell.Shape = Enum.PartType.Ball
+	shell.Size = Vector3.new(0.9, 0.9, 0.9)
+	shell.Color = Color3.fromRGB(78, 94, 60)
+	shell.Material = Enum.Material.SmoothPlastic
+	shell.Anchored = true
+	shell.CanCollide = false
+	shell.CanQuery = false
+	shell.CanTouch = false
+	shell.CFrame = CFrame.new(from)
+	shell.Parent = workspace
+	local cap = Instance.new("Part")
+	cap.Size = Vector3.new(0.4, 0.3, 0.4)
+	cap.Color = Color3.fromRGB(46, 50, 44)
+	cap.Material = Enum.Material.SmoothPlastic
+	cap.Anchored = true
+	cap.CanCollide = false
+	cap.CanQuery = false
+	cap.CanTouch = false
+	cap.Parent = shell
+	local marker = Instance.new("BillboardGui")
+	marker.Adornee = shell
+	marker.Size = UDim2.fromOffset(34, 34)
+	marker.StudsOffsetWorldSpace = Vector3.new(0, 2.2, 0)
+	marker.AlwaysOnTop = true
+	marker.MaxDistance = 45
+	marker.Enabled = false
+	marker.ResetOnSpawn = false
+	marker.Parent = playerGui
+	local icon = Instance.new("TextLabel")
+	icon.Size = UDim2.fromScale(1, 1)
+	icon.BackgroundColor3 = DANGER
+	icon.Font = Enum.Font.GothamBlack
+	icon.TextSize = 22
+	icon.TextColor3 = Color3.new(1, 1, 1)
+	icon.Text = "!"
+	icon.Parent = marker
+	corner(icon, 17)
+	stroke(icon, INK, 3)
+
+	local start = os.clock()
+	local flat = Vector3.new(to.X - from.X, 0, to.Z - from.Z)
+	local roll = flat.Magnitude > 0.1 and flat.Unit * 1.4 or Vector3.zero
+	local spin = 0
+	local lastBeep = 0
+	local close = false
+	local connection
+	connection = RunService.RenderStepped:Connect(function(dt)
+		local t = os.clock() - start
+		local position: Vector3
+		if t < flight then
+			local u = t / flight
+			position = from:Lerp(to, u) + Vector3.new(0, 4 * apex * u * (1 - u), 0)
+			spin += dt * 14
+		else
+			local landed = t - flight
+			local r = math.clamp(landed / 0.35, 0, 1)
+			position = to + roll * (1 - (1 - r) ^ 2) + Vector3.new(0, math.sin(math.min(landed / 0.25, 1) * math.pi) * 0.5, 0)
+			spin += dt * 10 * (1 - r)
+			marker.Enabled = true
+			-- Blinks and beeps faster as the fuse burns down.
+			local left = fuse - landed
+			local rate = left > 0.6 and 0.4 or 0.12
+			if os.clock() - lastBeep > rate then
+				lastBeep = os.clock()
+				cap.Color = cap.Color == DANGER and Color3.fromRGB(46, 50, 44) or DANGER
+				sound("rbxasset://sounds/electronicpingshort.wav", position, 0.5, 1.6, 60)
+			end
+			local root = myRoot()
+			local near = root ~= nil and (root.Position - position).Magnitude < 17
+			if near ~= close then
+				close = near
+				nearGrenades += near and 1 or -1
+				alert.Visible = nearGrenades > 0
+			end
+			if landed >= fuse then
+				connection:Disconnect()
+				if close then
+					nearGrenades -= 1
+					alert.Visible = nearGrenades > 0
+				end
+				shell:Destroy()
+				marker:Destroy()
+				return
+			end
+		end
+		shell.CFrame = CFrame.new(position) * CFrame.Angles(spin, spin * 0.6, 0)
+		cap.CFrame = shell.CFrame * CFrame.new(0, 0.5, 0)
+	end)
+end
+
+-- The blast: a flash of fire, a ring of shockwave along the ground, smoke that rolls up,
+-- chunks of debris, a scorch mark, a boom -- and a shove to the camera if it was close.
+handlers.Explode = function(centre, radius)
+	if typeof(centre) ~= "Vector3" or type(radius) ~= "number" then
+		return
+	end
+	local function ball(colour: Color3, size: number, transparency: number): Part
+		local p = Instance.new("Part")
+		p.Shape = Enum.PartType.Ball
+		p.Size = Vector3.new(size, size, size)
+		p.Color = colour
+		p.Material = Enum.Material.SmoothPlastic
+		p.Transparency = transparency
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.CastShadow = false
+		p.CFrame = CFrame.new(centre)
+		p.Parent = workspace
+		return p
+	end
+	local function grow(p: BasePart, size: number, time: number, style: Enum.EasingStyle?)
+		local tween = TweenService:Create(p, TweenInfo.new(time, style or Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ Size = Vector3.new(size, size, size), Transparency = 1 })
+		tween.Completed:Once(function()
+			p:Destroy()
+		end)
+		tween:Play()
+	end
+	local fire = ball(Color3.fromRGB(255, 150, 50), 2, 0)
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 170, 90)
+	light.Range = radius * 2.2
+	light.Brightness = 6
+	light.Parent = fire
+	TweenService:Create(light, TweenInfo.new(0.35), { Brightness = 0 }):Play()
+	grow(fire, radius * 1.1, 0.3)
+	grow(ball(Color3.fromRGB(255, 236, 150), 1.5, 0), radius * 0.6, 0.18)
+	-- Shockwave along the ground.
+	local ring = Instance.new("Part")
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Size = Vector3.new(0.3, 2, 2)
+	ring.Color = Color3.fromRGB(246, 238, 222)
+	ring.Material = Enum.Material.SmoothPlastic
+	ring.Transparency = 0.3
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.CanQuery = false
+	ring.CanTouch = false
+	ring.CastShadow = false
+	ring.CFrame = CFrame.new(centre - Vector3.new(0, 1, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	ring.Parent = workspace
+	local wave = TweenService:Create(ring, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ Size = Vector3.new(0.3, radius * 2.4, radius * 2.4), Transparency = 1 })
+	wave.Completed:Once(function()
+		ring:Destroy()
+	end)
+	wave:Play()
+	-- Smoke rolling up.
+	for i = 1, 6 do
+		local a = i / 6 * math.pi * 2
+		local puff = ball(Color3.fromRGB(96, 92, 90):Lerp(Color3.fromRGB(150, 146, 140), (i % 3) / 2), 2.5, 0.1)
+		puff.CFrame = CFrame.new(centre + Vector3.new(math.cos(a) * 1.5, 0, math.sin(a) * 1.5))
+		local drift = TweenService:Create(puff, TweenInfo.new(1.4 + i * 0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			CFrame = CFrame.new(centre + Vector3.new(math.cos(a) * radius * 0.35, 4 + i % 3 * 2, math.sin(a) * radius * 0.35)),
+			Size = Vector3.new(6, 6, 6),
+			Transparency = 1,
+		})
+		drift.Completed:Once(function()
+			puff:Destroy()
+		end)
+		drift:Play()
+	end
+	-- Debris: low-poly chunks thrown out and falling.
+	for _ = 1, 8 do
+		local chunk = Instance.new("Part")
+		chunk.Size = Vector3.new(0.5, 0.5, 0.5) * (0.6 + math.random())
+		chunk.Color = Color3.fromRGB(70, 64, 58)
+		chunk.Material = Enum.Material.SmoothPlastic
+		chunk.Anchored = true
+		chunk.CanCollide = false
+		chunk.CanQuery = false
+		chunk.CanTouch = false
+		chunk.CFrame = CFrame.new(centre)
+		chunk.Parent = workspace
+		local velocity = Vector3.new(math.random() * 2 - 1, 0.9 + math.random() * 0.8, math.random() * 2 - 1).Unit
+			* (18 + math.random() * 14)
+		local born = os.clock()
+		local fly
+		fly = RunService.Heartbeat:Connect(function()
+			local t = os.clock() - born
+			if t > 0.9 then
+				fly:Disconnect()
+				chunk:Destroy()
+				return
+			end
+			chunk.CFrame = CFrame.new(centre + velocity * t + Vector3.new(0, -48 * t * t, 0)) * CFrame.Angles(t * 9, t * 6, 0)
+		end)
+	end
+	-- A scorch mark that fades.
+	local scorch = Instance.new("Part")
+	scorch.Shape = Enum.PartType.Cylinder
+	scorch.Size = Vector3.new(0.05, radius * 0.9, radius * 0.9)
+	scorch.Color = Color3.fromRGB(34, 30, 28)
+	scorch.Material = Enum.Material.SmoothPlastic
+	scorch.Transparency = 0.25
+	scorch.Anchored = true
+	scorch.CanCollide = false
+	scorch.CanQuery = false
+	scorch.CanTouch = false
+	scorch.CastShadow = false
+	scorch.CFrame = CFrame.new(centre - Vector3.new(0, 1.15, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	scorch.Parent = workspace
+	local fade = TweenService:Create(scorch, TweenInfo.new(6, Enum.EasingStyle.Linear), { Transparency = 1 })
+	fade.Completed:Once(function()
+		scorch:Destroy()
+	end)
+	fade:Play()
+	-- The boom, and the shove.
+	sound("rbxassetid://9117893517", centre, 1.2, 0.55, 260)
+	sound("rbxassetid://1112042117", centre, 1, 0.42, 260)
+	local root = myRoot()
+	if root then
+		local d = (root.Position - centre).Magnitude
+		if d < radius * 3.5 then
+			local strength = math.clamp(1 - d / (radius * 3.5), 0.15, 1)
+			ViewKick.Punch(-4 * strength, (math.random() - 0.5) * 3 * strength, (math.random() - 0.5) * 5 * strength,
+				0.45, 0.6)
+		end
+	end
+end
+
+-- Bandaging: a green bar over its head that fills; cancelled if it is hit.
+local heals: { [Model]: BillboardGui } = setmetatable({}, { __mode = "k" }) :: any
+
+handlers.Heal = function(model, duration)
+	local head = headOf(model)
+	if not head or type(duration) ~= "number" or not inRange(head.Position, CALLOUT_RANGE) then
+		return
+	end
+	local old = heals[model]
+	if old then
+		old:Destroy()
+	end
+	local gui = billboard(head, UDim2.fromOffset(120, 22), 4.4, duration + 0.2)
+	heals[model] = gui
+	local body = gui:FindFirstChild("Body") :: Frame
+	local back = Instance.new("Frame")
+	back.BackgroundColor3 = INK
+	back.Size = UDim2.fromScale(1, 1)
+	back.Parent = body
+	corner(back, 8)
+	stroke(back, Color3.new(1, 1, 1), 1.5)
+	local fill = Instance.new("Frame")
+	fill.BackgroundColor3 = Color3.fromRGB(80, 210, 110)
+	fill.Size = UDim2.fromScale(0, 1)
+	fill.Parent = back
+	corner(fill, 8)
+	TweenService:Create(fill, TweenInfo.new(duration, Enum.EasingStyle.Linear), { Size = UDim2.fromScale(1, 1) }):Play()
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.GothamBlack
+	label.TextSize = 13
+	label.Text = "✚ PATCHING UP"
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.ZIndex = 2
+	label.Parent = back
+end
+
+handlers.HealCancel = function(model)
+	if typeof(model) == "Instance" and model:IsA("Model") and heals[model] then
+		heals[model]:Destroy()
+		heals[model] = nil
+	end
+end
+
+handlers.Healed = function(model, amount)
+	handlers.HealCancel(model)
+	local head = headOf(model)
+	if head and type(amount) == "number" and inRange(head.Position, CALLOUT_RANGE) then
+		local gui = billboard(head, UDim2.fromOffset(90, 30), 4.4, 1)
+		local label = Instance.new("TextLabel")
+		label.BackgroundTransparency = 1
+		label.Size = UDim2.fromScale(1, 1)
+		label.Font = Enum.Font.GothamBlack
+		label.TextSize = 24
+		label.Text = "+" .. tostring(amount)
+		label.TextColor3 = Color3.fromRGB(90, 230, 120)
+		label.TextStrokeTransparency = 0.2
+		label.Parent = gui:FindFirstChild("Body")
+	end
+end
+
 remote.OnClientEvent:Connect(function(batch)
 	if type(batch) ~= "table" then
 		return
@@ -645,7 +1143,7 @@ remote.OnClientEvent:Connect(function(batch)
 		if type(event) == "table" then
 			local handler = handlers[event[1]]
 			if handler then
-				local ok, err = pcall(handler, event[2], event[3], event[4], event[5], event[6])
+				local ok, err = pcall(handler, table.unpack(event, 2))
 				if not ok then
 					warn("[NPCAnimator] " .. tostring(event[1]) .. ": " .. tostring(err))
 				end
