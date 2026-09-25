@@ -25,6 +25,7 @@ local Inventory = require(Modules:WaitForChild("Inventory"))
 local Market = require(Modules:WaitForChild("Market"))
 local Workshop = require(Modules:WaitForChild("Workshop"))
 local Nav = require(Modules:WaitForChild("Nav"))
+local Feedback = require(Modules:WaitForChild("Feedback"))
 local WeaponConfig = require(ReplicatedStorage:WaitForChild("WeaponConfig"))
 
 local StarterGui = game:GetService("StarterGui")
@@ -61,6 +62,7 @@ local Components = require(Modules:WaitForChild("Components"))
 Components.BindScale(screen)
 
 local hud = Hud.new(screen)
+local feedback = Feedback.new(playerGui)
 local killFeed = KillFeed.new(screen)
 local objective = Objective.new(screen)
 
@@ -157,7 +159,9 @@ local function equipSlot(index: number)
 	end
 end
 
-local hotbar = Hotbar.new(screen, equipSlot)
+-- The hotbar joins the HUD's weapon dock, so the slots and the ammo count share one row
+-- in the bottom-right corner the way the references lay them out.
+local hotbar = Hotbar.new(hud.dock, equipSlot)
 
 local function refreshHotbar()
 	local character = player.Character
@@ -237,8 +241,16 @@ task.spawn(function()
 	if not xpGained or not xpGained:IsA("RemoteEvent") then
 		return
 	end
+	-- The first message is the loaded profile, not a gain; only a rise after that is a
+	-- level-up worth celebrating.
+	local lastLevel: number? = nil
 	xpGained.OnClientEvent:Connect(function(_amount: number, exp: number, maxExp: number, level: number)
-		hud:SetLevel(level or 1, exp, maxExp)
+		local now = math.floor(tonumber(level) or 1)
+		hud:SetLevel(now, exp, maxExp)
+		if lastLevel ~= nil and now > lastLevel then
+			feedback:LevelUp(now)
+		end
+		lastLevel = now
 	end)
 end)
 
@@ -327,10 +339,19 @@ end
 local function onCharacter(character: Model)
 	clearCharacter()
 
+	feedback:Reset()
 	local humanoid = character:WaitForChild("Humanoid", 10)
 	if humanoid and humanoid:IsA("Humanoid") then
+		local lastHealth = humanoid.Health
 		local function refreshHealth()
 			hud:SetHealth(humanoid.Health, humanoid.MaxHealth)
+			-- The screen answers a hit: red from the edges, an arrow at the shooter, and the
+			-- world draining of colour as health runs low.
+			if humanoid.Health < lastHealth then
+				feedback:Damaged(lastHealth - humanoid.Health, humanoid.MaxHealth)
+			end
+			lastHealth = humanoid.Health
+			feedback:SetHealth(humanoid.Health, humanoid.MaxHealth)
 		end
 		refreshHealth()
 		track(humanoid.HealthChanged:Connect(refreshHealth))
@@ -380,6 +401,53 @@ player.CharacterRemoving:Connect(function()
 	hud:SetWeapon(nil)
 end)
 
+-- ---------------------------------------------------------------- threats --
+
+-- Shots that land near us are remembered with where they came from, so the hit indicator can
+-- point back along them. Both the players' remote and the NPCs' batched one are read; each
+-- only ever tells us things every client is already shown.
+local THREAT_RADIUS = 5
+
+local function nearMe(point: unknown): boolean
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	return typeof(point) == "Vector3" and root ~= nil and root:IsA("BasePart")
+		and ((point :: Vector3) - root.Position).Magnitude <= THREAT_RADIUS
+end
+
+task.spawn(function()
+	local remotes = ReplicatedStorage:WaitForChild("Remotes", 30)
+	local gunEffect = remotes and remotes:WaitForChild("GunEffect", 30)
+	if gunEffect and gunEffect:IsA("RemoteEvent") then
+		gunEffect.OnClientEvent:Connect(function(kind: unknown, shooter: unknown, _tool: unknown, origin: unknown, endPoints: unknown)
+			if kind ~= "Shot" or shooter == player or typeof(origin) ~= "Vector3" or type(endPoints) ~= "table" then
+				return
+			end
+			for _, point in ipairs(endPoints :: { any }) do
+				if nearMe(point) then
+					feedback:Threat(origin :: Vector3)
+					return
+				end
+			end
+		end)
+	end
+
+	local npcEffect = remotes and remotes:WaitForChild("NPCEffect", 30)
+	if npcEffect and npcEffect:IsA("RemoteEvent") then
+		npcEffect.OnClientEvent:Connect(function(batch: unknown)
+			if type(batch) ~= "table" then
+				return
+			end
+			for _, event in ipairs(batch :: { any }) do
+				-- { "Shot", model, origin, endPoint }
+				if type(event) == "table" and event[1] == "Shot" and typeof(event[3]) == "Vector3" and nearMe(event[4]) then
+					feedback:Threat(event[3])
+				end
+			end
+		end)
+	end
+end)
+
 -- ---------------------------------------------------------------- menus --
 
 -- Menus live in their own ScreenGui above the HUD, so a panel can never be drawn underneath
@@ -422,6 +490,15 @@ local workshop = Workshop.new(menuLayer, {
 	buildAction = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("BuildAction") :: RemoteFunction,
 })
 
+-- Forward-declared: the nav is built below, but opening a menu by hotkey should still retire
+-- that menu's first-time hint on the nav.
+local nav: any
+
+local NAV_ID = {
+	[inventory] = "Inventory", [market] = "Market", [workshop] = "Workshop",
+	[profile] = "Profile", [daily] = "Daily",
+}
+
 -- Opening one panel closes the others. Two full-screen menus stacked on each other is how a
 -- player loses track of what Escape is going to do.
 local function openOnly(target)
@@ -431,7 +508,15 @@ local function openOnly(target)
 		end
 	end
 	target:Toggle()
+	if nav and NAV_ID[target] then
+		nav:DismissHint(NAV_ID[target])
+	end
 end
+
+-- The "+" beside the cash goes straight to the shop, as it does in the references.
+hud:OnShop(function()
+	openOnly(market)
+end)
 
 -- The vendor NPC asks for the market by name, so walking up to the stall still opens it.
 task.spawn(function()
@@ -444,26 +529,27 @@ task.spawn(function()
 	end
 end)
 
-local nav = Nav.new(screen, {
-	{ id = "Inventory", label = "INVENTORY", key = "[B]", onActivated = function()
+-- Hints are the first-session teaching: the three things a new player should find first.
+nav = Nav.new(screen, {
+	{ id = "Inventory", label = "Items", key = "[B]", onActivated = function()
 		openOnly(inventory)
 	end },
-	{ id = "Market", label = "MARKET", key = "[M]", onActivated = function()
+	{ id = "Market", label = "Shop", key = "[M]", hint = "Unlock New Guns!", onActivated = function()
 		openOnly(market)
 	end },
-	{ id = "Workshop", label = "WORKSHOP", key = "[K]", onActivated = function()
+	{ id = "Workshop", label = "Armory", key = "[K]", onActivated = function()
 		openOnly(workshop)
 	end },
 	-- Not a menu: this one acts immediately rather than opening a panel, so it does not go
 	-- through openOnly.
-	{ id = "Duel", label = "DUEL", key = "[J]", onActivated = function()
+	{ id = "Duel", label = "1v1", key = "[J]", hint = "Queue A 1v1 Duel!", onActivated = function()
 		duel:Toggle()
 	end },
-	{ id = "Profile", label = "PROFILE", key = "[P]", onActivated = function()
+	{ id = "Profile", label = "Profile", key = "[P]", onActivated = function()
 		openOnly(profile)
 	end },
-	{ id = "Range", label = "RANGE", key = "[V]", onActivated = toggleRange },
-	{ id = "Daily", label = "DAILY", key = "[N]", onActivated = function()
+	{ id = "Range", label = "Range", key = "[V]", onActivated = toggleRange },
+	{ id = "Daily", label = "Daily", key = "[N]", hint = "Free Daily Reward!", onActivated = function()
 		openOnly(daily)
 	end },
 })
@@ -515,6 +601,7 @@ UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: 
 	end
 	if input.KeyCode == Enum.KeyCode.J then
 		duel:Toggle()
+		nav:DismissHint("Duel")
 		return
 	end
 	if input.KeyCode == Enum.KeyCode.P then

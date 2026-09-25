@@ -1,21 +1,19 @@
 --!strict
--- The navigation row: how you get into the menus.
+-- The navigation dock: how you get into the menus.
 --
--- Bottom centre, because the corners are already spoken for -- health left, weapon and hotbar
--- right -- and the middle of the screen is the one place nothing else is allowed to live.
+-- A column of chunky icon tiles down the right edge -- the corners are spoken for (vitals
+-- bottom-left, ammo and slots bottom-right, cash top-centre) and the middle of the screen is
+-- the one place nothing else is allowed to live.
 --
--- COMPACT TILES, not labelled buttons. Seven full-width pills came to roughly a thousand
--- pixels of chrome across the bottom edge -- more furniture than the rest of the HUD put
--- together. The same seven fit in about four hundred as squares. The references do this for
--- the same reason: a row of small squares reads as a toolbar you ignore until you want it,
--- where a row of words reads as a menu demanding to be read.
+-- Each tile is a big colour icon with its name under it and its key in the corner, the way
+-- the reference lobby dock reads: the picture is recognised before the word is read, and the
+-- key is learned by glancing at it.
 --
--- The keybind letter IS the icon. Not a compromise for want of artwork -- a single glyph is as
--- legible as a symbol at this size, needs no asset, and teaches the shortcut every time the
--- player glances at it.
---
--- Only pass entries for menus that exist; an item here for a system that is not built is
--- worse than no item at all.
+-- New players get speech-bubble hints on the tiles that matter first ("Unlock New Guns!"),
+-- which is how the references teach a first-time player where to go. A hint goes away the
+-- moment its tile is used, and all of them retire after the first couple of minutes.
+
+local TweenService = game:GetService("TweenService")
 
 local Theme = require(script.Parent.Theme)
 local Components = require(script.Parent.Components)
@@ -23,9 +21,75 @@ local Components = require(script.Parent.Components)
 local Nav = {}
 Nav.__index = Nav
 
-local TILE = 54
+local TILE = 58
+local GAP = 6
+local HINT_LIFETIME = 120
 
-export type Entry = { id: string, label: string, key: string?, onActivated: () -> () }
+local ICONS: { [string]: string } = {
+	Inventory = "🎒",
+	Market = "🛒",
+	Workshop = "🔧",
+	Duel = "⚔️",
+	Profile = "🏆",
+	Range = "🎯",
+	Daily = "🎁",
+}
+
+export type Entry = {
+	id: string, label: string, key: string?, icon: string?, hint: string?,
+	onActivated: () -> (),
+}
+
+local function buildHint(tile: GuiObject, text: string): Frame
+	local bubble = Instance.new("Frame")
+	bubble.Name = "Hint"
+	bubble.BackgroundColor3 = Color3.new(1, 1, 1)
+	bubble.BorderSizePixel = 0
+	bubble.AnchorPoint = Vector2.new(1, 0.5)
+	bubble.Position = UDim2.new(0, -14, 0.5, 0)
+	bubble.Size = UDim2.fromOffset(0, 30)
+	bubble.AutomaticSize = Enum.AutomaticSize.X
+	bubble.ZIndex = Theme.Layer.Tooltip
+	bubble.Parent = tile
+	Components.Corner(bubble, 6)
+	Components.Stroke(bubble, Theme.Colour.Outline, 2).Transparency = 0.1
+	Components.Padding(bubble, nil, 10, 0)
+
+	local label = Components.Label(bubble, {
+		text = text,
+		font = Theme.Font.Bold,
+		size = Theme.Text.Body,
+		colour = Theme.Colour.Outline,
+		autoSize = true,
+		outline = false,
+	})
+	label.AnchorPoint = Vector2.new(0, 0.5)
+	label.Position = UDim2.fromScale(0, 0.5)
+	label.ZIndex = Theme.Layer.Tooltip + 1
+
+	-- The pointer: a small rotated square poking out of the bubble toward the tile.
+	local pointer = Instance.new("Frame")
+	pointer.Name = "Pointer"
+	pointer.BackgroundColor3 = Color3.new(1, 1, 1)
+	pointer.BorderSizePixel = 0
+	pointer.AnchorPoint = Vector2.new(0.5, 0.5)
+	pointer.Position = UDim2.new(1, 10, 0.5, 0)
+	pointer.Size = UDim2.fromOffset(10, 10)
+	pointer.Rotation = 45
+	pointer.ZIndex = Theme.Layer.Tooltip
+	pointer.Parent = bubble
+
+	-- A gentle bob, so the eye finds it.
+	local rest = bubble.Position
+	local bob = TweenService:Create(bubble, TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+		Position = rest + UDim2.fromOffset(-6, 0),
+	})
+	bob:Play()
+	bubble.Destroying:Connect(function()
+		bob:Cancel()
+	end)
+	return bubble
+end
 
 function Nav.new(parent: GuiObject, entries: { Entry })
 	local self = setmetatable({}, Nav)
@@ -33,51 +97,119 @@ function Nav.new(parent: GuiObject, entries: { Entry })
 	local root = Instance.new("Frame")
 	root.Name = "Nav"
 	root.BackgroundTransparency = 1
-	root.AnchorPoint = Vector2.new(0.5, 1)
-	root.Position = UDim2.new(0.5, 0, 1, -Theme.Inset.Bottom)
-	root.Size = UDim2.fromOffset(0, TILE)
-	root.AutomaticSize = Enum.AutomaticSize.X
+	root.AnchorPoint = Vector2.new(1, 0.5)
+	root.Position = UDim2.new(1, -Theme.Inset.Side, 0.5, 20)
+	root.Size = UDim2.fromOffset(TILE, 0)
+	root.AutomaticSize = Enum.AutomaticSize.Y
 	root.Parent = parent
-	Components.List(root, Enum.FillDirection.Horizontal, Theme.Space.XS + 2,
-		Enum.HorizontalAlignment.Center)
+	Components.List(root, Enum.FillDirection.Vertical, GAP, Enum.HorizontalAlignment.Right)
 
 	self._root = root
-	self._buttons = {}
+	self._tiles = {}
+	self._hints = {}
 
 	for index, entry in ipairs(entries) do
-		local button = Components.Button(root, {
-			name = entry.id,
-			text = "",                      -- the tile's own labels do the talking
-			layoutOrder = index,
-			size = UDim2.fromOffset(TILE, TILE),
-			onActivated = entry.onActivated,
-		})
+		local tile = Instance.new("TextButton")
+		tile.Name = entry.id
+		tile.AutoButtonColor = false
+		tile.Text = ""
+		tile.BackgroundColor3 = Theme.Colour.Panel
+		tile.BackgroundTransparency = 0.3
+		tile.BorderSizePixel = 0
+		tile.Size = UDim2.fromOffset(TILE, TILE)
+		tile.LayoutOrder = index
+		tile.Parent = root
+		Components.Corner(tile, 12)
+		Components.Stroke(tile, Theme.Colour.Outline, 2).Transparency = 0.2
+		Components.Gradient(tile, Color3.new(1, 1, 1), Color3.fromRGB(140, 140, 146))
 
-		-- The key, large and centred high.
-		local glyph = Components.Label(button.instance, {
-			text = (entry.key or ""):gsub("[%[%]]", ""),
-			font = Theme.Font.Display,
-			size = Theme.Text.Large,
+		local scale = Instance.new("UIScale")
+		scale.Parent = tile
+
+		local icon = Components.Icon(tile, entry.icon or ICONS[entry.id] or "⭐", 28)
+		icon.AnchorPoint = Vector2.new(0.5, 0)
+		icon.Position = UDim2.new(0.5, 0, 0, 2)
+
+		local caption = Components.Label(tile, {
+			text = string.upper(entry.label),
+			font = Theme.Font.Bold,
+			size = 11,
 			align = Enum.TextXAlignment.Center,
 		})
-		glyph.Size = UDim2.new(1, 0, 0, 22)
-		glyph.Position = UDim2.fromOffset(0, 8)
+		caption.Size = UDim2.new(1, -2, 0, 12)
+		caption.Position = UDim2.new(0, 1, 1, -16)
+		caption.TextScaled = false
 
-		-- The name, small and quiet underneath.
-		local caption = Components.Label(button.instance, {
-			text = entry.label,
-			caps = true,
-			size = 9,
-			align = Enum.TextXAlignment.Center,
-			colour = Theme.Colour.TextMuted,
-		})
-		caption.Size = UDim2.new(1, -4, 0, 12)
-		caption.Position = UDim2.fromOffset(2, 33)
+		local key = (entry.key or ""):gsub("[%[%]]", "")
+		if key ~= "" then
+			local keycap = Components.Label(tile, {
+				text = key,
+				font = Theme.Font.Display,
+				size = 11,
+				colour = Theme.Colour.TextDim,
+			})
+			keycap.Size = UDim2.fromOffset(14, 12)
+			keycap.Position = UDim2.fromOffset(4, 2)
+		end
 
-		table.insert(self._buttons, button)
+		local connections = {
+			tile.MouseEnter:Connect(function()
+				TweenService:Create(scale, Theme.Tween.Hover, { Scale = 1.1 }):Play()
+				TweenService:Create(tile, Theme.Tween.Hover, { BackgroundTransparency = 0.05 }):Play()
+			end),
+			tile.MouseLeave:Connect(function()
+				TweenService:Create(scale, Theme.Tween.Hover, { Scale = 1 }):Play()
+				TweenService:Create(tile, Theme.Tween.Hover, { BackgroundTransparency = 0.3 }):Play()
+			end),
+			tile.MouseButton1Down:Connect(function()
+				TweenService:Create(scale, Theme.Tween.Press, { Scale = 0.94 }):Play()
+			end),
+			tile.Activated:Connect(function()
+				TweenService:Create(scale, Theme.Tween.Pop, { Scale = 1 }):Play()
+				self:DismissHint(entry.id)
+				entry.onActivated()
+			end),
+		}
+
+		if entry.hint then
+			self._hints[entry.id] = buildHint(tile, entry.hint)
+		end
+
+		table.insert(self._tiles, { instance = tile, connections = connections })
 	end
 
+	-- Hints are for the first minutes of a session, not forever.
+	task.delay(HINT_LIFETIME, function()
+		for id in pairs(self._hints) do
+			self:DismissHint(id)
+		end
+	end)
+
 	return self
+end
+
+--- Retire the hint on one tile -- called when the tile is used, or when its menu is opened
+--- some other way (a hotkey).
+function Nav:DismissHint(id: string)
+	local bubble = self._hints[id]
+	if not bubble then
+		return
+	end
+	self._hints[id] = nil
+	local info = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+	TweenService:Create(bubble, info, { BackgroundTransparency = 1 }):Play()
+	for _, d in ipairs(bubble:GetDescendants()) do
+		if d:IsA("TextLabel") then
+			TweenService:Create(d, info, { TextTransparency = 1 }):Play()
+		elseif d:IsA("Frame") then
+			TweenService:Create(d, info, { BackgroundTransparency = 1 }):Play()
+		elseif d:IsA("UIStroke") then
+			TweenService:Create(d, info, { Transparency = 1 }):Play()
+		end
+	end
+	task.delay(0.22, function()
+		bubble:Destroy()
+	end)
 end
 
 function Nav:SetVisible(visible: boolean)
@@ -85,8 +217,10 @@ function Nav:SetVisible(visible: boolean)
 end
 
 function Nav:Destroy()
-	for _, button in ipairs(self._buttons) do
-		button:Destroy()
+	for _, tile in ipairs(self._tiles) do
+		for _, c in ipairs(tile.connections) do
+			c:Disconnect()
+		end
 	end
 	self._root:Destroy()
 end

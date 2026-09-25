@@ -50,6 +50,10 @@ local baseFov = camera.FieldOfView
 -- into a per-frame delta so it composes with normal camera control instead of fighting it.
 local recoil = Vector2.new()
 
+-- A small field-of-view punch per shot, decaying every frame. Folded into the FOV target
+-- below rather than written to the camera, because this script is the FOV's one owner.
+local fovKick = 0
+
 -- ---------------------------------------------------------------- crosshair --
 
 local gui = Instance.new("ScreenGui")
@@ -59,57 +63,69 @@ gui.IgnoreGuiInset = true
 gui.Enabled = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
--- A single white dot, and nothing else.
+-- A centre dot and four short arms, every piece edged in dark so it reads against pale sky
+-- and dark walls alike -- the halo the old dot relied on disappeared against sand.
 --
--- The halo behind it is what keeps it readable: a bare dot disappears against pale sky and
--- against the sand, and this map has plenty of both. A soft white glow gives the dot an
--- edge over any background without drawing a visible ring around it.
-local glow = Instance.new("Frame")
-glow.Name = "ReticleGlow"
-glow.AnchorPoint = Vector2.new(0.5, 0.5)
-glow.Position = UDim2.fromScale(0.5, 0.5)
-glow.Size = UDim2.fromOffset(14, 14)
-glow.BackgroundColor3 = Color3.new(1, 1, 1)
-glow.BackgroundTransparency = 0.82
-glow.BorderSizePixel = 0
-glow.ZIndex = 2
-glow.Parent = gui
-local glowCorner = Instance.new("UICorner")
-glowCorner.CornerRadius = UDim.new(1, 0)
-glowCorner.Parent = glow
+-- The arms are the weapon talking: they sit at the gun's real spread (the same cone the
+-- server rolls, converted from degrees to pixels at the current FOV), bloom outward on every
+-- shot and settle back as the aim recovers. Aiming down sights fades them and leaves the dot.
+local CROSS_COLOUR = Color3.new(1, 1, 1)
+local CROSS_EDGE = Color3.fromRGB(10, 10, 14)
 
-local reticle = Instance.new("Frame")
+local function crossPiece(size: Vector2, round: boolean): Frame
+	local f = Instance.new("Frame")
+	f.AnchorPoint = Vector2.new(0.5, 0.5)
+	f.Position = UDim2.fromScale(0.5, 0.5)
+	f.Size = UDim2.fromOffset(size.X, size.Y)
+	f.BackgroundColor3 = CROSS_COLOUR
+	f.BorderSizePixel = 0
+	f.ZIndex = 3
+	f.Parent = gui
+	local c = Instance.new("UICorner")
+	c.CornerRadius = round and UDim.new(1, 0) or UDim.new(0, 1)
+	c.Parent = f
+	local e = Instance.new("UIStroke")
+	e.Color = CROSS_EDGE
+	e.Thickness = 1.3
+	e.Transparency = 0.15
+	e.Parent = f
+	return f
+end
+
+local reticle = crossPiece(Vector2.new(4, 4), true)
 reticle.Name = "Reticle"
-reticle.AnchorPoint = Vector2.new(0.5, 0.5)
-reticle.Position = UDim2.fromScale(0.5, 0.5)
-reticle.Size = UDim2.fromOffset(6, 6)
-reticle.BackgroundColor3 = Color3.new(1, 1, 1)
-reticle.BorderSizePixel = 0
-reticle.ZIndex = 3
-reticle.Parent = gui
-local dotCorner = Instance.new("UICorner")
-dotCorner.CornerRadius = UDim.new(1, 0)
-dotCorner.Parent = reticle
 
--- No spread arms: the dot IS the crosshair. The table stays empty so the spread update
--- further down simply has nothing to move, rather than needing a branch of its own.
+local ARM_LENGTH = 9
 local arms = {}
+for _, dir in ipairs({ Vector2.new(0, -1), Vector2.new(0, 1), Vector2.new(-1, 0), Vector2.new(1, 0) }) do
+	local size = dir.X == 0 and Vector2.new(2, ARM_LENGTH) or Vector2.new(ARM_LENGTH, 2)
+	local arm = crossPiece(size, false)
+	arm.Name = "Arm"
+	table.insert(arms, { frame = arm, dir = dir })
+end
 
--- The hitmarker is four short diagonal strokes that snap outward, not a letter. A glyph
--- reads as a typo at a glance; the four-stroke shape is the shooter convention because
--- it is legible in a single frame at the centre of a busy screen.
+-- Extra gap added by the last few shots, in pixels. Decays every frame.
+local bloom = 0
+
+-- The hitmarker is four short diagonal strokes that snap outward, not a letter: legible in
+-- a single frame at the centre of a busy screen. Outlined like the crosshair.
 local hitStrokes = {}
 for _, dir in ipairs({ Vector2.new(-1, -1), Vector2.new(1, -1), Vector2.new(-1, 1), Vector2.new(1, 1) }) do
 	local stroke = Instance.new("Frame")
 	stroke.AnchorPoint = Vector2.new(0.5, 0.5)
-	stroke.Size = UDim2.fromOffset(9, 2)
+	stroke.Size = UDim2.fromOffset(13, 3)
 	stroke.BackgroundColor3 = Color3.new(1, 1, 1)
 	stroke.BorderSizePixel = 0
 	stroke.BackgroundTransparency = 1
 	stroke.Rotation = (dir.X * dir.Y > 0) and 45 or -45
 	stroke.ZIndex = 5
 	stroke.Parent = gui
-	table.insert(hitStrokes, { frame = stroke, dir = dir })
+	local edge = Instance.new("UIStroke")
+	edge.Color = CROSS_EDGE
+	edge.Thickness = 1.3
+	edge.Transparency = 1
+	edge.Parent = stroke
+	table.insert(hitStrokes, { frame = stroke, dir = dir, edge = edge })
 end
 
 -- The ammo readout lives in StarterPlayerScripts.CombatHUD now, alongside the weapon
@@ -139,21 +155,31 @@ local function flashHitmarker(headshot: boolean, lethal: boolean?)
 		colour = Color3.new(1, 1, 1)
 	end
 
-	-- A kill spreads further and holds a beat longer, so a finished target is
+	-- A kill spreads further, grows, twists and holds a beat longer, so a finished target is
 	-- distinguishable from a hit without having to read the health bar.
-	local start = lethal and 7 or 5
-	local finish = lethal and 17 or 12
-	local life = lethal and 0.3 or 0.2
+	local start = lethal and 9 or 6
+	local finish = lethal and 22 or 13
+	local life = lethal and 0.38 or 0.22
+	local length = lethal and 18 or 13
 
 	for _, s in ipairs(hitStrokes) do
+		local base = (s.dir.X * s.dir.Y > 0) and 45 or -45
 		s.frame.BackgroundColor3 = colour
 		s.frame.BackgroundTransparency = 0
+		s.edge.Transparency = 0.1
+		s.frame.Size = UDim2.fromOffset(length, lethal and 4 or 3)
+		s.frame.Rotation = base
 		s.frame.Position = UDim2.new(0.5, s.dir.X * start, 0.5, s.dir.Y * start)
-		TweenService:Create(s.frame, TweenInfo.new(life, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		local info = TweenInfo.new(life, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		TweenService:Create(s.frame, info, {
 			BackgroundTransparency = 1,
 			Position = UDim2.new(0.5, s.dir.X * finish, 0.5, s.dir.Y * finish),
+			Rotation = base + (lethal and 20 or 0),
 		}):Play()
+		TweenService:Create(s.edge, info, { Transparency = 1 }):Play()
 	end
+	-- The arms flinch outward with the marker, so the whole crosshair answers the hit.
+	bloom = math.max(bloom, lethal and 10 or 5)
 
 	if HIT_SOUND.SoundId ~= "" then
 		-- Pitch carries the same information as the colour: low for a kill, high for a
@@ -219,7 +245,11 @@ GunEffect.OnClientEvent:Connect(function(kind, ...)
 		if type(models) == "table" then
 			for i, m in ipairs(models) do
 				if typeof(m) == "Instance" and m:IsA("Model") then
-					CombatFX.HitFlash(m, type(lethalFlags) == "table" and lethalFlags[i] == true or false)
+					local lethal = type(lethalFlags) == "table" and lethalFlags[i] == true or false
+					CombatFX.HitFlash(m, lethal)
+					if lethal then
+						CombatFX.KillBurst(m)
+					end
 				end
 			end
 		end
@@ -299,6 +329,8 @@ local function tryShoot()
 	-- Separate from recoil: recoil moves the aim and stays until pulled back down, this
 	-- is the jolt that always returns. Aiming damps it, the way bracing a weapon does.
 	ViewKick.Fire(profile.Kick * (ads and profile.AdsMultiplier or 1))
+	fovKick = math.min(fovKick + (ads and 0.5 or 1.4), 4)
+	bloom = math.min(bloom + 4, 16)
 
 	GunAction:FireServer("shoot", tool, aimPoint(), ads)
 
@@ -611,8 +643,10 @@ RunService.RenderStepped:Connect(function(dt)
 	-- gets dragged back out within a few frames -- which is exactly what was happening to the
 	-- sprint boost. One owner for the property; everyone else contributes to the target.
 	local sprintFov = player:GetAttribute("SprintFovAdd")
+	fovKick *= math.exp(-16 * dt)
 	local wantFov = ((cfg and ads) and cfg.AdsFov or baseFov)
 		+ (typeof(sprintFov) == "number" and sprintFov or 0)
+		+ fovKick
 	camera.FieldOfView += (wantFov - camera.FieldOfView) * math.clamp((cfg and cfg.AdsSpeed or 12) * dt, 0, 1)
 
 	-- Crosshair opens with spread.
@@ -622,12 +656,16 @@ RunService.RenderStepped:Connect(function(dt)
 		if ads then
 			spread *= cfg.AdsSpreadScale
 		end
-		-- Convert the cone angle to pixels at the current FOV.
+		-- Convert the cone angle to pixels at the current FOV, plus whatever the last shots
+		-- bloomed it by.
+		bloom = math.max(0, bloom - bloom * math.min(10 * dt, 1))
 		local pixelsPerDegree = camera.ViewportSize.Y / camera.FieldOfView
-		local gap = 5 + spread * pixelsPerDegree
+		local gap = 4 + spread * pixelsPerDegree + bloom + ARM_LENGTH / 2
+		local armFade = ads and 0.75 or 0
 		for _, arm in ipairs(arms) do
 			arm.frame.Position = UDim2.new(0.5, arm.dir.X * gap, 0.5, arm.dir.Y * gap)
+			arm.frame.BackgroundTransparency = armFade
 		end
-		reticle.BackgroundTransparency = ads and 0.15 or 0
+		reticle.BackgroundTransparency = 0
 	end
 end)

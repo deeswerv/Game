@@ -23,15 +23,16 @@ function Duel.new(parent: GuiObject, remotes)
 	local card = Instance.new("Frame")
 	card.Name = "Duel"
 	card.BackgroundColor3 = Theme.Colour.Panel
-	card.BackgroundTransparency = 0.12
+	card.BackgroundTransparency = 0.25
 	card.BorderSizePixel = 0
 	card.AnchorPoint = Vector2.new(1, 0)
 	card.Position = UDim2.new(1, -Theme.Inset.Side, 0, Theme.Inset.Top)
-	card.Size = UDim2.fromOffset(212, 74)
+	card.Size = UDim2.fromOffset(230, 84)
 	card.Visible = false
 	card.Parent = parent
 	Components.Corner(card, Theme.Radius.Card)
-	self._stroke = Components.Stroke(card)
+	Components.Gradient(card)
+	self._stroke = Components.Stroke(card, Theme.Colour.Stroke, 2.5)
 	self._card = card
 
 	self._heading = Components.Label(card, {
@@ -47,11 +48,11 @@ function Duel.new(parent: GuiObject, remotes)
 	self._main = Components.Label(card, {
 		text = "",
 		font = Theme.Font.Display,
-		size = Theme.Text.Title,
+		size = 30,
 		align = Enum.TextXAlignment.Center,
 	})
-	self._main.Size = UDim2.new(1, -16, 0, 28)
-	self._main.Position = UDim2.fromOffset(8, 24)
+	self._main.Size = UDim2.new(1, -16, 0, 32)
+	self._main.Position = UDim2.fromOffset(8, 25)
 
 	self._sub = Components.Label(card, {
 		text = "",
@@ -60,7 +61,7 @@ function Duel.new(parent: GuiObject, remotes)
 		align = Enum.TextXAlignment.Center,
 	})
 	self._sub.Size = UDim2.new(1, -16, 0, 16)
-	self._sub.Position = UDim2.fromOffset(8, 52)
+	self._sub.Position = UDim2.fromOffset(8, 60)
 
 	if remotes.matchUpdate then
 		remotes.matchUpdate.OnClientEvent:Connect(function(state)
@@ -78,16 +79,19 @@ end
 
 function Duel:_render(state)
 	if type(state) ~= "table" then
+		self._active = false
 		self._card.Visible = false
 		return
 	end
 
 	-- Not queued and not fighting: the card has nothing to say, so it says nothing.
 	if not state.in_match and not state.in_queue then
+		self._active = false
 		self._card.Visible = false
 		return
 	end
-	self._card.Visible = true
+	self._active = true
+	self._card.Visible = self._hidden ~= true
 
 	if state.in_queue then
 		self._heading.Text = "Searching"
@@ -137,7 +141,7 @@ end
 --- One key does both, because the answer to "what does J do right now" should always be
 --- "the opposite of what is on screen".
 function Duel:Toggle()
-	local action = self._card.Visible and "leave" or "queue"
+	local action = self._active and "leave" or "queue"
 	task.spawn(function()
 		local ok, state = pcall(function()
 			self._remotes.matchAction:InvokeServer(action)
@@ -150,10 +154,10 @@ function Duel:Toggle()
 end
 
 function Duel:SetVisible(visible: boolean)
-	-- Only hides a card that has something on it; never forces one up.
-	if not visible then
-		self._card.Visible = false
-	end
+	-- Hides the card under a menu and brings it back afterwards -- but only if it still has
+	-- something to say; it never forces an empty card up.
+	self._hidden = not visible
+	self._card.Visible = visible and self._active == true
 end
 
 function Duel:Destroy()

@@ -109,14 +109,17 @@ function CombatFX.MuzzleFlash(tool: Tool, colour: Color3)
 	-- A short, tight pop of light. Deliberately restrained: a bright wide light at the
 	-- barrel lights the shooter's own body and the wall behind them, which reads as a
 	-- lens flare rather than a gunshot and washes out the target you are aiming at.
+	-- Brighter and wider than it used to be: the flash has to light the space around the
+	-- shooter for a frame or two, or sustained fire reads as a toy. Still short, so it never
+	-- washes out the target.
 	local light = muzzle:FindFirstChild("Flash")
 	if light and light:IsA("PointLight") then
 		light.Color = colour
-		light.Range = 9
-		light.Brightness = 3.2
+		light.Range = 13
+		light.Brightness = 5
 		light.Shadows = false
 		light.Enabled = true
-		task.delay(0.04, function()
+		task.delay(0.05, function()
 			if light and light.Parent then
 				light.Brightness = 0
 				light.Enabled = false
@@ -130,15 +133,31 @@ function CombatFX.MuzzleFlash(tool: Tool, colour: Color3)
 
 	-- Hot core, pushed just clear of the barrel.
 	local core = decor(
-		Vector3.new(0.26, 0.26, 0.46),
-		origin * CFrame.new(0, 0, -0.3),
-		Color3.new(1, 1, 1):Lerp(colour, 0.35),
+		Vector3.new(0.42, 0.42, 0.75),
+		origin * CFrame.new(0, 0, -0.4),
+		Color3.new(1, 1, 1):Lerp(colour, 0.3),
 		Enum.Material.Neon
 	)
-	core.Transparency = 0.08
-	track(core, 0.05)
-	TweenService:Create(core, TweenInfo.new(0.045), {
-		Size = Vector3.new(0.04, 0.04, 0.16),
+	core.Transparency = 0.02
+	track(core, 0.06)
+	TweenService:Create(core, TweenInfo.new(0.055), {
+		Size = Vector3.new(0.06, 0.06, 0.22),
+		Transparency = 1,
+	}):Play()
+
+	-- A flat disc of light facing forward: the "bloom" a camera catches at the muzzle, and
+	-- the thing that makes a shot readable from the side as well as from behind.
+	local disc = decor(
+		Vector3.new(0.05, 1.05, 1.05),
+		origin * CFrame.new(0, 0, -0.25) * CFrame.Angles(0, math.pi / 2, 0),
+		colour:Lerp(Color3.new(1, 1, 1), 0.25),
+		Enum.Material.Neon
+	)
+	disc.Shape = Enum.PartType.Cylinder
+	disc.Transparency = 0.35
+	track(disc, 0.06)
+	TweenService:Create(disc, TweenInfo.new(0.05), {
+		Size = Vector3.new(0.02, 1.6, 1.6),
 		Transparency = 1,
 	}):Play()
 
@@ -148,24 +167,24 @@ function CombatFX.MuzzleFlash(tool: Tool, colour: Color3)
 	for i = 0, 2 do
 		local angle = roll + i * (math.pi * 2 / 3)
 		local petal = decor(
-			Vector3.new(0.08, 0.5, 0.08),
-			origin * CFrame.new(0, 0, -0.32) * CFrame.Angles(0, 0, angle) * CFrame.new(0, 0.21, 0),
+			Vector3.new(0.12, 0.85, 0.12),
+			origin * CFrame.new(0, 0, -0.42) * CFrame.Angles(0, 0, angle) * CFrame.new(0, 0.36, 0),
 			colour,
 			Enum.Material.Neon
 		)
-		petal.Transparency = 0.3
-		track(petal, 0.05)
-		TweenService:Create(petal, TweenInfo.new(0.04), {
-			Size = Vector3.new(0.02, 0.1, 0.02),
+		petal.Transparency = 0.15
+		track(petal, 0.06)
+		TweenService:Create(petal, TweenInfo.new(0.05), {
+			Size = Vector3.new(0.03, 0.18, 0.03),
 			Transparency = 1,
 		}):Play()
 	end
 
 	-- Smoke drifting off the barrel, which is what makes a burst read as sustained fire
 	-- rather than a string of unconnected flashes.
-	if math.random() < 0.55 then
+	if math.random() < 0.8 then
 		local smoke = decor(
-			Vector3.new(0.3, 0.3, 0.3),
+			Vector3.new(0.34, 0.34, 0.34),
 			origin * CFrame.new((math.random() - 0.5) * 0.2, 0.05, -0.5),
 			Color3.fromRGB(150, 148, 142),
 			Enum.Material.SmoothPlastic
@@ -443,6 +462,71 @@ local function burstImpact(template: Model, position: Vector3, facing: Vector3)
 	Debris:AddItem(burst, 0.8)
 end
 
+-- Bullet holes: a flat dark mark left on the surface, which is what makes a wall you have
+-- been shooting at look shot. Capped and short-lived so a long firefight cannot litter the
+-- map, and never left on a character.
+local MAX_HOLES = 48
+local HOLE_LIFETIME = 9
+local holes: { BasePart } = {}
+
+local function bulletHole(position: Vector3, normal: Vector3, surfaceColour: Color3)
+	while #holes >= MAX_HOLES do
+		local oldest = table.remove(holes, 1)
+		if oldest and oldest.Parent then
+			oldest:Destroy()
+		end
+	end
+	local size = 0.22 + math.random() * 0.08
+	local hole = decor(
+		Vector3.new(size, size, 0.02),
+		CFrame.lookAt(position + normal * 0.012, position + normal) * CFrame.Angles(0, 0, math.random() * math.pi),
+		surfaceColour:Lerp(Color3.fromRGB(12, 10, 10), 0.82),
+		Enum.Material.SmoothPlastic
+	)
+	hole.Name = "BulletHole"
+	hole.Transparency = 0.1
+	hole.Parent = bin
+	table.insert(holes, hole)
+	Debris:AddItem(hole, HOLE_LIFETIME + 1)
+	task.delay(HOLE_LIFETIME, function()
+		if hole.Parent then
+			TweenService:Create(hole, TweenInfo.new(1), { Transparency = 1 }):Play()
+		end
+	end)
+end
+
+--- A red puff off a body, instead of dust and a bullet hole. Stylised -- a few flat-shaded
+--- chunks, matching GoreEffects -- and short.
+local function fleshHit(position: Vector3, normal: Vector3)
+	local mist = decor(Vector3.new(0.5, 0.5, 0.5), CFrame.new(position + normal * 0.2),
+		Color3.fromRGB(190, 26, 34), Enum.Material.SmoothPlastic)
+	mist.Transparency = 0.25
+	track(mist, 0.28)
+	TweenService:Create(mist, TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = Vector3.new(1.3, 1.3, 1.3),
+		CFrame = CFrame.new(position + normal * 0.6),
+		Transparency = 1,
+	}):Play()
+	for _ = 1, 3 do
+		if not budget() then
+			break
+		end
+		local s = 0.1 + math.random() * 0.1
+		local chip = decor(Vector3.new(s, s, s),
+			CFrame.new(position + normal * 0.1) * CFrame.Angles(math.random() * 6, math.random() * 6, math.random() * 6),
+			Color3.fromRGB(150, 16, 24), Enum.Material.SmoothPlastic)
+		chip.Anchored = false
+		chip.AssemblyLinearVelocity = normal * (8 + math.random() * 8)
+			+ Vector3.new((math.random() - 0.5) * 8, 4 + math.random() * 4, (math.random() - 0.5) * 8)
+		track(chip, 0.6)
+		task.delay(0.35, function()
+			if chip.Parent then
+				TweenService:Create(chip, TweenInfo.new(0.25), { Transparency = 1 }):Play()
+			end
+		end)
+	end
+end
+
 function CombatFX.Impact(position: Vector3, origin: Vector3?, weaponName: string?)
 	-- The authored burst first, so it is not lost if the surface work bails on budget.
 	local template = authored(weaponName, "Impact")
@@ -459,6 +543,8 @@ function CombatFX.Impact(position: Vector3, origin: Vector3?, weaponName: string
 	local normal = Vector3.yAxis
 	local surfaceColour = Color3.fromRGB(150, 150, 150)
 	local group = "Soft"
+	local surfaceFound = false
+	local flesh = false
 
 	-- One short backtrack along the shot to recover the surface. Cheap, and without it
 	-- there is no normal to orient the burst against and no material to react to.
@@ -469,22 +555,34 @@ function CombatFX.Impact(position: Vector3, origin: Vector3?, weaponName: string
 			if hit then
 				normal = hit.Normal
 				group = MATERIAL_GROUP[hit.Material] or "Soft"
+				surfaceFound = true
 				if hit.Instance and hit.Instance:IsA("BasePart") then
 					surfaceColour = hit.Instance.Color
 				end
+				local model = hit.Instance and hit.Instance:FindFirstAncestorOfClass("Model")
+				flesh = model ~= nil and model:FindFirstChildOfClass("Humanoid") ~= nil
 			end
 		end
 	end
 
+	if flesh then
+		fleshHit(position, normal)
+		return
+	end
+
 	local spec = SURFACE[group]
 
-	-- The flash at the point of contact.
-	local spark = decor(Vector3.new(0.26, 0.26, 0.26), CFrame.new(position), spec.tint, Enum.Material.Neon)
-	track(spark, 0.1)
-	TweenService:Create(spark, TweenInfo.new(0.09), {
-		Size = Vector3.new(0.02, 0.02, 0.02),
+	-- The flash at the point of contact: big enough to find at thirty studs.
+	local spark = decor(Vector3.new(0.5, 0.5, 0.5), CFrame.new(position), spec.tint, Enum.Material.Neon)
+	track(spark, 0.12)
+	TweenService:Create(spark, TweenInfo.new(0.1), {
+		Size = Vector3.new(0.04, 0.04, 0.04),
 		Transparency = 1,
 	}):Play()
+
+	if surfaceFound then
+		bulletHole(position, normal, surfaceColour)
+	end
 
 	-- Dust standing off the surface, oriented to it. Scaled per material, so a metal
 	-- railing does not throw the same cloud as a dirt bank.
@@ -702,9 +800,17 @@ local function borrowLabel(): BillboardGui
 		text.Name = "Value"
 		text.Size = UDim2.fromScale(1, 1)
 		text.BackgroundTransparency = 1
-		text.Font = Enum.Font.GothamBlack
-		text.TextStrokeColor3 = Color3.fromRGB(8, 8, 12)
+		text.Font = Enum.Font.FredokaOne
+		text.TextStrokeTransparency = 1
 		text.Parent = bb
+		-- A proper thick outline rather than the thin built-in text stroke: the same dark
+		-- edge every number in the HUD wears.
+		local edge = Instance.new("UIStroke")
+		edge.Name = "Edge"
+		edge.Color = Color3.fromRGB(8, 8, 12)
+		edge.Thickness = 2.4
+		edge.LineJoinMode = Enum.LineJoinMode.Round
+		edge.Parent = text
 
 		pool[poolNext] = bb
 	end
@@ -732,21 +838,35 @@ function CombatFX.DamageNumber(position: Vector3, amount: number, headshot: bool
 	track(holder, 0.85)
 	bb.Adornee = holder
 
+	local size
 	if lethal then
-		text.TextColor3 = Color3.fromRGB(255, 86, 86)
-		text.TextSize = 30
+		text.TextColor3 = Color3.fromRGB(255, 60, 60)
+		size = 36
 	elseif headshot then
-		text.TextColor3 = Color3.fromRGB(255, 202, 92)
-		text.TextSize = 27
+		text.TextColor3 = Color3.fromRGB(255, 206, 60)
+		size = 32
 	else
 		text.TextColor3 = Color3.fromRGB(255, 255, 255)
-		text.TextSize = 22
+		size = 26
 	end
 
 	text.Text = headshot and ("%d!"):format(math.round(amount)) or tostring(math.round(amount))
 	text.TextTransparency = 0
-	text.TextStrokeTransparency = 0.4
+	local edge = text:FindFirstChild("Edge")
+	if edge and edge:IsA("UIStroke") then
+		edge.Transparency = 0
+		TweenService:Create(edge, TweenInfo.new(0.75, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			Transparency = 1,
+		}):Play()
+	end
 	bb.StudsOffset = Vector3.new(0, 0, 0)
+
+	-- Slammed in oversized, then settling: a number that pops reads as an impact, one that
+	-- merely appears reads as a label.
+	text.TextSize = math.floor(size * 1.6)
+	TweenService:Create(text, TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		TextSize = size,
+	}):Play()
 
 	-- Rises and fades. Tweening StudsOffset rather than moving the part keeps it steady
 	-- relative to the camera instead of drifting oddly when the player strafes.
@@ -755,8 +875,72 @@ function CombatFX.DamageNumber(position: Vector3, amount: number, headshot: bool
 	}):Play()
 	TweenService:Create(text, TweenInfo.new(0.75, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 		TextTransparency = 1,
-		TextStrokeTransparency = 1,
 	}):Play()
+end
+
+-- ---------------------------------------------------------------- kill burst --
+
+local KILL_GOLD = Color3.fromRGB(255, 208, 60)
+
+--- The moment a target goes down: a gold shockwave across the ground, shards flung out of
+--- the body and a flash of light -- the burst the references play on every elimination.
+--- Everyone sees it, which is the point: a kill should be readable across the map.
+function CombatFX.KillBurst(model: Model)
+	if not model or not model.Parent or not budget() then
+		return
+	end
+	local root = model:FindFirstChild("HumanoidRootPart") or model.PrimaryPart
+	if not root or not root:IsA("BasePart") then
+		return
+	end
+	local centre = root.Position
+
+	-- Shockwave ring, flat on the ground under the body.
+	groundParams.FilterDescendantsInstances = { bin, model }
+	local floor = workspace:Raycast(centre, Vector3.new(0, -8, 0), groundParams)
+	local ground = floor and floor.Position or (centre - Vector3.new(0, 2.8, 0))
+	local ring = decor(Vector3.new(0.15, 2, 2), CFrame.new(ground + Vector3.new(0, 0.1, 0)) * CFrame.Angles(0, 0, math.pi / 2),
+		KILL_GOLD, Enum.Material.Neon)
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Transparency = 0.2
+	track(ring, 0.45)
+	TweenService:Create(ring, TweenInfo.new(0.42, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = Vector3.new(0.05, 13, 13),
+		Transparency = 1,
+	}):Play()
+
+	-- Light pop.
+	local glow = decor(Vector3.new(0.2, 0.2, 0.2), CFrame.new(centre), KILL_GOLD, Enum.Material.Neon)
+	glow.Transparency = 1
+	local light = Instance.new("PointLight")
+	light.Color = KILL_GOLD
+	light.Range = 16
+	light.Brightness = 6
+	light.Shadows = false
+	light.Parent = glow
+	track(glow, 0.4)
+	TweenService:Create(light, TweenInfo.new(0.38, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Brightness = 0,
+	}):Play()
+
+	-- Star shards out of the chest, gold and white, spinning as they go.
+	for i = 1, 10 do
+		if not budget() then
+			break
+		end
+		local angle = (i / 10) * math.pi * 2 + math.random() * 0.5
+		local dir = Vector3.new(math.cos(angle), 0.35 + math.random() * 0.9, math.sin(angle)).Unit
+		local shard = decor(Vector3.new(0.22, 0.22, 0.9),
+			CFrame.lookAt(centre, centre + dir),
+			(i % 3 == 0) and Color3.new(1, 1, 1) or KILL_GOLD, Enum.Material.Neon)
+		track(shard, 0.5)
+		local reach = 4 + math.random() * 3
+		TweenService:Create(shard, TweenInfo.new(0.45, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+			CFrame = CFrame.lookAt(centre + dir * reach, centre + dir * (reach + 1)) * CFrame.Angles(0, 0, math.random() * 6),
+			Size = Vector3.new(0.05, 0.05, 0.3),
+			Transparency = 1,
+		}):Play()
+	end
 end
 
 return CombatFX

@@ -45,7 +45,10 @@ end
 -- Presets, so callers describe the event rather than tuning six numbers at the call site.
 function ViewKick.Fire(strength: number)
 	local s = math.clamp(strength, 0.2, 3)
-	ViewKick.Punch(0.85 * s, (math.random() - 0.5) * 0.7 * s, (math.random() - 0.5) * 0.9 * s, 0.13, 0.25 * s)
+	-- Sharper and a touch bigger than it was: the shot should thump the view, with a roll
+	-- that alternates side to side so a held trigger shakes rather than drifts.
+	local side = (math.random() < 0.5) and -1 or 1
+	ViewKick.Punch(1.25 * s, (math.random() - 0.5) * 0.8 * s, side * (0.5 + math.random() * 0.8) * s, 0.11, 0.3 * s)
 end
 
 function ViewKick.Land(strength: number)
