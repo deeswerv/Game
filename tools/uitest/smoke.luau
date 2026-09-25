@@ -114,7 +114,6 @@ for _, case in ipairs({
 	{ key = Enum.KeyCode.K, name = "armory (K)" },
 	{ key = Enum.KeyCode.P, name = "profile (P)" },
 	{ key = Enum.KeyCode.N, name = "daily (N)" },
-	{ key = Enum.KeyCode.L, name = "character (L)" },
 	{ key = Enum.KeyCode.O, name = "quests (O)" },
 	{ key = Enum.KeyCode.F1, name = "settings (F1)" },
 }) do

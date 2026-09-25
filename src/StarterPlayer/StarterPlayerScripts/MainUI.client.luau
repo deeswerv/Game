@@ -28,7 +28,6 @@ local Nav = require(Modules:WaitForChild("Nav"))
 local Feedback = require(Modules:WaitForChild("Feedback"))
 local Scoreboard = require(Modules:WaitForChild("Scoreboard"))
 local Remote = require(Modules:WaitForChild("Remote"))
-local Character = require(Modules:WaitForChild("Character"))
 local Journal = require(Modules:WaitForChild("Journal"))
 local Settings = require(Modules:WaitForChild("Settings"))
 local BossBar = require(Modules:WaitForChild("BossBar"))
@@ -564,12 +563,6 @@ local workshop = safe("Armory", function()
 	})
 end)
 
-local character = safe("Character", function()
-	return Character.new(menuLayer, {
-		statAction = remote("StatAction"),
-	})
-end)
-
 local journal = safe("Journal", function()
 	return Journal.new(menuLayer, {
 		questAction = gameRemote("QuestAction"),
@@ -591,10 +584,10 @@ local nav: any
 
 local NAV_ID = {
 	[inventory] = "Inventory", [market] = "Market", [workshop] = "Workshop",
-	[profile] = "Profile", [daily] = "Daily", [character] = "Character", [journal] = "Journal",
+	[profile] = "Profile", [daily] = "Daily", [journal] = "Journal",
 	[settings] = "Settings",
 }
-local PANELS = { inventory, market, workshop, profile, daily, character, journal, settings }
+local PANELS = { inventory, market, workshop, profile, daily, journal, settings }
 
 -- Opening one panel closes the others. Two full-screen menus stacked on each other is how a
 -- player loses track of what Escape is going to do.
@@ -615,21 +608,12 @@ end
 hud:OnShop(function()
 	openOnly(market)
 end)
--- The level diamond opens the Character panel, where the points it is nagging about go.
+-- The level diamond opens your profile card.
 hud:OnLevel(function()
-	openOnly(character)
+	openOnly(profile)
 end)
 
--- Unspent stat points: a red "+N" on the level diamond and a count on the Stats tile.
--- Crystals: their own chip beside the cash. Both are attributes the server publishes.
-local function refreshPoints()
-	local n = tonumber(player:GetAttribute("StatPoints")) or 0
-	hud:SetStatPoints(n)
-	if nav then
-		nav:SetBadge("Character", n)
-	end
-end
-player:GetAttributeChangedSignal("StatPoints"):Connect(refreshPoints)
+-- Crystals: their own chip beside the cash, from an attribute the server publishes.
 local function refreshCrystals()
 	hud:SetCrystals(tonumber(player:GetAttribute("Crystals")) or 0)
 end
@@ -662,9 +646,6 @@ nav = safe("Nav", function()
 		{ id = "Workshop", label = "Armory", key = "[K]", onActivated = function()
 			openOnly(workshop)
 		end },
-		{ id = "Character", label = "Stats", key = "[L]", onActivated = function()
-			openOnly(character)
-		end },
 		{ id = "Journal", label = "Quests", key = "[O]", onActivated = function()
 			openOnly(journal)
 		end },
@@ -681,7 +662,6 @@ nav = safe("Nav", function()
 		end },
 	})
 end)
-refreshPoints()
 
 -- --------------------------------------------------------------- feed --
 
@@ -745,10 +725,6 @@ UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: 
 	end
 	if input.KeyCode == Enum.KeyCode.N then
 		openOnly(daily)
-		return
-	end
-	if input.KeyCode == Enum.KeyCode.L then
-		openOnly(character)
 		return
 	end
 	if input.KeyCode == Enum.KeyCode.O then

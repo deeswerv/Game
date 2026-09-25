@@ -34,7 +34,6 @@ local ICONS: { [string]: string } = {
 	Profile = "🏆",
 	Range = "🎯",
 	Daily = "🎁",
-	Character = "💪",
 	Journal = "📜",
 	Settings = "⚙️",
 }

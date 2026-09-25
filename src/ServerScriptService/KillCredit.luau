@@ -11,9 +11,6 @@
 
 local Players = game:GetService("Players")
 local Debris = game:GetService("Debris")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local CharacterConfig = require(ReplicatedStorage:WaitForChild("CharacterConfig"))
 
 local KillCredit = {}
 
@@ -179,12 +176,6 @@ function KillCredit.Damage(humanoid: Humanoid?, amount: number, player: Player?,
 	-- Tag() bails out when there is no attacking player, so watch here too: an NPC
 	-- killed by another NPC still needs its death noticed.
 	watch(humanoid)
-	-- Strength (the Character panel) hits enemies harder -- NPCs and bosses only. Never another
-	-- player, so a duel stays a fair fight whatever anybody's level. Read from an attribute
-	-- only the server writes.
-	if player and not Players:GetPlayerFromCharacter(humanoid.Parent) then
-		amount *= 1 + CharacterConfig.Bonus("Strength", player:GetAttribute("Strength") :: number?)
-	end
 	local before = humanoid.Health
 	humanoid:TakeDamage(KillCredit.Mitigate(humanoid, amount))
 	local dealt = before - humanoid.Health

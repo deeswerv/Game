@@ -130,8 +130,7 @@ local function buildIdentity(self, parent: GuiObject)
 	local badge, level = Components.LevelBadge(holder, 50)
 	badge.LayoutOrder = 3
 
-	-- The diamond is a button into the Character panel, and wears a red "+N" while there are
-	-- stat points waiting to be spent -- the nudge that makes a level-up worth something.
+	-- The diamond is a button: it opens your profile card.
 	local levelButton = Instance.new("TextButton")
 	levelButton.Name = "LevelButton"
 	levelButton.BackgroundTransparency = 1
@@ -144,34 +143,6 @@ local function buildIdentity(self, parent: GuiObject)
 			self._onLevel()
 		end
 	end)
-	local points = Instance.new("Frame")
-	points.Name = "Points"
-	points.BackgroundColor3 = Theme.Colour.Danger
-	points.AnchorPoint = Vector2.new(0.5, 0.5)
-	points.Position = UDim2.new(1, -4, 0, 6)
-	points.Size = UDim2.fromOffset(0, 20)
-	points.AutomaticSize = Enum.AutomaticSize.X
-	points.Visible = false
-	points.ZIndex = 6
-	points.Parent = badge
-	Components.Corner(points, 10)
-	Components.Stroke(points, Theme.Colour.Outline, 2)
-	Components.Padding(points, nil, 5, 0)
-	local pointsText = Components.Label(points, {
-		text = "",
-		font = Theme.Font.Display,
-		size = 14,
-		autoSize = true,
-		outline = 1.6,
-	})
-	pointsText.AnchorPoint = Vector2.new(0, 0.5)
-	pointsText.Position = UDim2.fromScale(0, 0.5)
-	pointsText.ZIndex = 7
-	local pointsScale = Instance.new("UIScale")
-	pointsScale.Parent = points
-	TweenService:Create(pointsScale, TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-		{ Scale = 1.15 }):Play()
-	self._points, self._pointsText = points, pointsText
 
 	-- Crystals, the second currency: mined, looted from dailies and milestones.
 	local crystals = Instance.new("Frame")
@@ -461,21 +432,9 @@ function Hud:OnShop(handler: () -> ())
 	self._onShop = handler
 end
 
---- Clicking the level diamond opens whatever the controller says the character panel is.
+--- Clicking the level diamond opens whatever the controller says (the profile card).
 function Hud:OnLevel(handler: () -> ())
 	self._onLevel = handler
-end
-
---- Unspent stat points, shown as a red "+N" on the level diamond.
-function Hud:SetStatPoints(points: number)
-	local n = math.max(0, math.floor(points))
-	local was = self._pointsShown or 0
-	self._pointsShown = n
-	self._points.Visible = n > 0
-	self._pointsText.Text = "+" .. tostring(n)
-	if n > was then
-		pop(self._pointsText, 1.6)
-	end
 end
 
 function Hud:SetCrystals(amount: number)

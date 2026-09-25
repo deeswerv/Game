@@ -10,7 +10,6 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local GameConfig = require(ReplicatedStorage.GameConfig)
 local ProgressionConfig = require(ReplicatedStorage.ProgressionConfig)
-local CharacterConfig = require(ReplicatedStorage.CharacterConfig)
 local PlayerDataManager = require(ServerScriptService.PlayerDataManager)
 local KillCredit = require(ServerScriptService.KillCredit)
 local ShopService = require(ServerScriptService.ShopService)
@@ -216,6 +215,12 @@ local function onPlayerAdded(player: Player)
 		-- Published as an attribute so any UI -- the HUD badge, a player list, a nameplate --
 		-- can read someone's prestige without another remote or another round trip.
 		player:SetAttribute("Prestige", Replica.Data.Prestige or 0)
+		-- Crystals, for the HUD. Mines, dailies, milestones and mastery all pay them into the
+		-- profile; the attribute is how the client gets to see the balance.
+		player:SetAttribute("Crystals", tonumber(Replica.Data.Crystals) or 0)
+		Replica:ListenToChange("Crystals", function(value)
+			player:SetAttribute("Crystals", tonumber(value) or 0)
+		end)
 		XPGained:FireClient(player, 0, Replica.Data.EXP, Replica.Data.MaxEXP, Replica.Data.Level)
 	end):catch(function() end)
 end
@@ -282,11 +287,9 @@ local function applyVitality(player: Player, character: Model)
 		if not humanoid.Parent then
 			return
 		end
-		-- Defense, from the Character panel: +2% a point, capped (CharacterConfig). Never in a
-		-- duel -- the arena is a fair fight, so everyone there has the same health.
-		local inDuel = player:GetAttribute("DuelState") == "duel"
-		local bonus = inDuel and 0 or CharacterConfig.Bonus("Defense", Replica.Data.Defense)
-		local maximum = BASE_HEALTH * (1 + bonus)
+		-- Everyone has the same health. (The old Defense stat, which added to this, is gone
+		-- along with the rest of the stat system.)
+		local maximum = BASE_HEALTH
 		if math.abs(humanoid.MaxHealth - maximum) < 0.01 then
 			return
 		end

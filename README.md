@@ -18,7 +18,6 @@ as uploaded.
 | **J** | Queue for a duel, or cancel the queue (same as clicking PLAY) |
 | Hold **Tab** | Player board: levels, ranks, kills, deaths, who is dueling |
 | **B / M / K / P / N** | Items, Shop, Armory, Profile, Daily reward |
-| **L** | Character: spend stat points on Strength, Defense, Stamina (or click the level diamond) |
 | **O** | Quest journal |
 | **F1** | Settings: volumes, camera shake, field of view, crosshair colour |
 | **Right mouse** | Aim; with the Longshot (or a strong scope) you look through the scope |

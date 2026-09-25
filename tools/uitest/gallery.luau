@@ -91,16 +91,6 @@ toggle(Enum.KeyCode.N)
 shot("06_daily")
 toggle(Enum.KeyCode.N)
 
-toggle(Enum.KeyCode.L)
-shot("10_character")
--- Spend a point through the real button, then look again.
-local addOne = World.find(World.playerGui, "AddOne", "TextButton")
-if addOne then
-	World.click(addOne)
-	World.advance(0.5)
-end
-shot("10b_character_spent")
-toggle(Enum.KeyCode.L)
 toggle(Enum.KeyCode.O)
 shot("11_journal")
 toggle(Enum.KeyCode.O)

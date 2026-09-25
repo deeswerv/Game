@@ -82,33 +82,7 @@ return function(World)
 		return { ok = true, builds = {}, camos = {}, attachments = {} }
 	end
 
-	-- Character stats, spent the way CharacterService would.
-	local stats = { points = 6, stats = { Strength = 12, Defense = 8, Stamina = 4 }, level = 14, exp = 340,
-		maxExp = 1000, prestige = 0, max = 50, perLevel = 3, inDuel = false }
-	World.player:SetAttribute("StatPoints", stats.points)
 	World.player:SetAttribute("Crystals", 37)
-	R.serverFunctions.StatAction = function(action, id, count)
-		if action == "add" and stats.stats[id] then
-			local n = math.min(tonumber(count) or 1, stats.points, stats.max - stats.stats[id])
-			if n <= 0 then
-				return { ok = false, reason = "No stat points left", state = stats }
-			end
-			stats.stats[id] += n
-			stats.points -= n
-			World.player:SetAttribute("StatPoints", stats.points)
-			return { ok = true, spent = n, state = stats }
-		elseif action == "reset" then
-			local refund = 0
-			for k, v in pairs(stats.stats) do
-				refund += v
-				stats.stats[k] = 0
-			end
-			stats.points += refund
-			World.player:SetAttribute("StatPoints", stats.points)
-			return { ok = true, refunded = refund, state = stats }
-		end
-		return stats
-	end
 
 	local saved = {}
 	R.serverFunctions.SettingsAction = function(action, values)
