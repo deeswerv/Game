@@ -302,6 +302,11 @@ local function tryShoot()
 	if not tool or not cfg or tool:GetAttribute("Reloading") then
 		return
 	end
+	-- Holding Alt frees the cursor to click the HUD (ShiftLock); a click then is aimed at a
+	-- button, not at anybody, so it is never a shot.
+	if player:GetAttribute("CursorFree") == true then
+		return
+	end
 	if (tool:GetAttribute("Ammo") or 0) <= 0 then
 		-- Once per trigger pull, not once per frame. tryShoot runs every frame while the
 		-- button is held, so an unguarded click here would machine-gun the empty sound.
@@ -440,6 +445,9 @@ local function hookMelee(tool: Tool, wcfg)
 		end
 	end)
 	tool.Activated:Connect(function()
+		if player:GetAttribute("CursorFree") == true then
+			return
+		end
 		firing = true
 		MeleeAction:FireServer(tool)
 	end)

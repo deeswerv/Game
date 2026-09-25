@@ -212,6 +212,24 @@ local function sprintKeyDown(): boolean
 		or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
 end
 
+-- Holding Alt frees the cursor without leaving shift lock.
+--
+-- The lock is permanent, which is right for fighting and wrong for everything on screen that
+-- wants a click -- the PLAY diamond, the nav buttons -- because a cursor pinned to the centre
+-- of the screen can only ever click the centre of the screen. Alt is the key other Roblox
+-- shooters use for this, and it is otherwise unbound here. Only the cursor changes: the camera
+-- framing, sprint and the character turning with the camera all carry on as normal, so letting
+-- go drops you straight back into the fight. Polled, like Shift, so nothing that claims the key
+-- first can swallow it.
+local function cursorKeyDown(): boolean
+	if UserInputService:GetFocusedTextBox() then
+		return false
+	end
+	return UserInputService:IsKeyDown(Enum.KeyCode.LeftAlt)
+		or UserInputService:IsKeyDown(Enum.KeyCode.RightAlt)
+end
+local cursorFree = false
+
 -- Crouch is POLLED with a rising-edge check, for exactly the reason Shift is (see above):
 -- an InputBegan handler guarded by `processed` never saw the key, because something at
 -- CoreScript level had already claimed it. Measured: the slide silently never fired.
@@ -322,14 +340,30 @@ RunService:BindToRenderStep("TacticalCamera", Enum.RenderPriority.Camera.Value +
 		return
 	end
 
-	if UserInputService.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
-		UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+	-- Published for anything that must not treat a click on the HUD as a trigger pull.
+	local wantFree = cursorKeyDown()
+	if wantFree ~= cursorFree then
+		cursorFree = wantFree
+		player:SetAttribute("CursorFree", cursorFree)
 	end
 
-	-- The pointer is hidden entirely; WeaponController draws a centred white dot that
-	-- acts as the reticle, so an OS cursor on top of it would just be noise.
-	if UserInputService.MouseIconEnabled then
-		UserInputService.MouseIconEnabled = false
+	if cursorFree then
+		if UserInputService.MouseBehavior ~= Enum.MouseBehavior.Default then
+			UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+		end
+		if not UserInputService.MouseIconEnabled then
+			UserInputService.MouseIconEnabled = true
+		end
+	else
+		if UserInputService.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
+			UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+		end
+
+		-- The pointer is hidden entirely; WeaponController draws a centred white dot that
+		-- acts as the reticle, so an OS cursor on top of it would just be noise.
+		if UserInputService.MouseIconEnabled then
+			UserInputService.MouseIconEnabled = false
+		end
 	end
 
 	local hum, rootPart = humanoid, root

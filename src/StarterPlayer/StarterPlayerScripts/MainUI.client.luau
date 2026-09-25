@@ -26,6 +26,7 @@ local Market = require(Modules:WaitForChild("Market"))
 local Workshop = require(Modules:WaitForChild("Workshop"))
 local Nav = require(Modules:WaitForChild("Nav"))
 local Feedback = require(Modules:WaitForChild("Feedback"))
+local Scoreboard = require(Modules:WaitForChild("Scoreboard"))
 local WeaponConfig = require(ReplicatedStorage:WaitForChild("WeaponConfig"))
 
 local StarterGui = game:GetService("StarterGui")
@@ -35,11 +36,13 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 -- The old custom hotbar turned the Roblox backpack off and the new one replaces it, so this
 -- has to move with it -- otherwise deleting that script quietly hands the default backpack
--- back and the player ends up with two hotbars.
+-- back and the player ends up with two hotbars. The stock player list goes the same way: the
+-- Tab board below replaces it, and two lists on one key would fight over the corner.
 task.spawn(function()
 	for _ = 1, 10 do
 		local ok = pcall(function()
 			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
 		end)
 		if ok then
 			return
@@ -63,6 +66,19 @@ Components.BindScale(screen)
 
 local hud = Hud.new(screen)
 local feedback = Feedback.new(playerGui)
+local board = Scoreboard.new(playerGui)
+
+-- Held, not toggled: Tab shows the board for exactly as long as you want to look at it.
+UserInputService.InputBegan:Connect(function(input: InputObject)
+	if input.KeyCode == Enum.KeyCode.Tab and not UserInputService:GetFocusedTextBox() then
+		board:SetOpen(true)
+	end
+end)
+UserInputService.InputEnded:Connect(function(input: InputObject)
+	if input.KeyCode == Enum.KeyCode.Tab then
+		board:SetOpen(false)
+	end
+end)
 local killFeed = KillFeed.new(screen)
 local objective = Objective.new(screen)
 
@@ -561,6 +577,10 @@ nav = Nav.new(screen, {
 		openOnly(profile)
 	end },
 	{ id = "Range", label = "Range", key = "[V]", onActivated = toggleRange },
+	-- Touch has no Tab key, so the board is a tile too (a tap opens it, another shuts it).
+	{ id = "Players", label = "Players", key = "[Tab]", icon = "📋", onActivated = function()
+		board:Toggle()
+	end },
 	{ id = "Daily", label = "Daily", key = "[N]", hint = "Free Daily Reward!", onActivated = function()
 		openOnly(daily)
 	end },

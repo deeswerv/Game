@@ -24,7 +24,9 @@ local MatchService = {}
 
 MatchService.SCORE_TO_WIN = 3
 MatchService.TIME_LIMIT = 180        -- seconds; a duel that cannot end is a soft-lock
-MatchService.COUNTDOWN = 4
+MatchService.COUNTDOWN = 5            -- the VS screen, then 3 - 2 - 1
+-- Between rounds: both fighters back on their pads at full health, a short count, go.
+MatchService.ROUND_COUNTDOWN = 3
 
 local remotes = ReplicatedStorage:FindFirstChild("Remotes")
 if not remotes then
@@ -58,6 +60,9 @@ type Bout = {
 	winner: Player?,
 	dealt: { [Player]: number },   -- damage each duellist landed on the other
 	taken: { [Player]: number },
+	round: number,
+	countdownEnds: number,         -- when the current countdown says FIGHT
+	pendingReset: boolean,         -- a point was scored; reset once the loser is back
 }
 
 local queue: { Player } = {}
@@ -99,13 +104,24 @@ local function describe(player: Player)
 		secondsLeft = math.max(0, math.floor(math.min(bout.endsAt - now, MatchService.TIME_LIMIT))),
 		-- Seconds until the fight starts, while it has not.
 		countdown = bout.state == "countdown"
-			and math.max(0, math.ceil(bout.endsAt - MatchService.TIME_LIMIT - now)) or 0,
+			and math.max(0, math.ceil(bout.countdownEnds - now)) or 0,
+		round = bout.round,
 		won = bout.winner ~= nil and bout.winner == player or nil,
 	}
 end
 
 local function push(player: Player)
 	if player.Parent then
+		-- Everyone else's player board shows who is fighting and who is waiting; an attribute
+		-- replicates that to every client for free. Set on every push, so it can never drift
+		-- from the state the player's own screen was just sent.
+		local state: string? = nil
+		if boutOf[player] then
+			state = "duel"
+		elseif indexOf(queue, player) then
+			state = "queue"
+		end
+		player:SetAttribute("DuelState", state)
 		MatchUpdate:FireClient(player, describe(player))
 	end
 end
@@ -170,6 +186,87 @@ end
 
 -- ------------------------------------------------------------------ bout --
 
+local SHIELD_NAME = "DuelShield"
+
+--- Nobody can be hurt during a countdown. A ForceField is what Humanoid:TakeDamage already
+--- respects, and every damage path in the game goes through KillCredit.Damage, which uses it
+--- -- so this is one invisible instance rather than a check in every weapon. Invisible
+--- because the countdown already says "not yet"; a bubble on top would just be noise.
+local function shield(player: Player, on: boolean)
+	local character = player.Character
+	if not character then
+		return
+	end
+	local existing = character:FindFirstChild(SHIELD_NAME)
+	if on and not existing then
+		local field = Instance.new("ForceField")
+		field.Name = SHIELD_NAME
+		field.Visible = false
+		field.Parent = character
+	elseif not on and existing then
+		existing:Destroy()
+	end
+end
+
+--- Full health and full magazines, the way every round starts in the reference game.
+local function refresh(player: Player)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid and humanoid.Health > 0 then
+		humanoid.Health = humanoid.MaxHealth
+	end
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	for _, holder in ipairs({ character, backpack }) do
+		if holder then
+			for _, tool in ipairs(holder:GetChildren()) do
+				local full = tool:IsA("Tool") and tool:GetAttribute("MaxAmmo")
+				if type(full) == "number" and tool:GetAttribute("Reloading") ~= true then
+					tool:SetAttribute("Ammo", full)
+				end
+			end
+		end
+	end
+end
+
+--- The countdown in front of a round: shields up, count, then fight. `round` guards the
+--- delayed half, so a bout that ended or moved on meanwhile is left alone.
+local function countIn(bout: Bout, seconds: number)
+	bout.state = "countdown"
+	bout.countdownEnds = os.clock() + seconds
+	local round = bout.round
+	for _, p in ipairs(bout.players) do
+		shield(p, true)
+	end
+	pushAll(bout)
+	task.delay(seconds, function()
+		if bout.state == "countdown" and bout.round == round then
+			bout.state = "live"
+			for _, p in ipairs(bout.players) do
+				shield(p, false)
+			end
+			pushAll(bout)
+		end
+	end)
+end
+
+--- Next round: both back on their own pads, topped up, and counted in. The clock is pushed
+--- back by the count so the pause does not eat fighting time.
+local function nextRound(bout: Bout)
+	bout.pendingReset = false
+	for index, p in ipairs(bout.players) do
+		-- After a trade the other fighter may still be a body on the floor; their own respawn
+		-- puts them on their pad (onCharacterAdded), so a corpse is not dragged there.
+		local character = p.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if humanoid and humanoid.Health > 0 then
+			placeAt(p, ArenaService.SpawnCFrame(index))
+			refresh(p)
+		end
+	end
+	bout.endsAt += MatchService.ROUND_COUNTDOWN
+	countIn(bout, MatchService.ROUND_COUNTDOWN)
+end
+
 local function finish(bout: Bout, winner: Player?, reason: string)
 	if bout.state == "over" then
 		return
@@ -177,6 +274,9 @@ local function finish(bout: Bout, winner: Player?, reason: string)
 	bout.state = "over"
 	bout.winner = winner
 	bouts[bout.id] = nil
+	for _, p in ipairs(bout.players) do
+		shield(p, false)
+	end
 
 	for _, p in ipairs(bout.players) do
 		if p.Parent then
@@ -221,10 +321,22 @@ local function scorePoint(scorer: Player)
 		return
 	end
 	bout.score[scorer] = (bout.score[scorer] or 0) + 1
-	pushAll(bout)
 	if bout.score[scorer] >= MatchService.SCORE_TO_WIN then
+		pushAll(bout)
 		finish(bout, scorer, "score")
+		return
 	end
+	-- Not over: the next round starts when the loser is back on their feet (see
+	-- onCharacterAdded). The round number moves now so both screens can call the result.
+	-- Counted from the score, not incremented, so a trade (both die at once, both score)
+	-- still reads as one round later rather than skipping a number.
+	local total = 0
+	for _, points in pairs(bout.score) do
+		total += points
+	end
+	bout.round = total + 1
+	bout.pendingReset = true
+	pushAll(bout)
 end
 
 local function begin(a: Player, b: Player)
@@ -238,6 +350,9 @@ local function begin(a: Player, b: Player)
 		winner = nil,
 		dealt = { [a] = 0, [b] = 0 },
 		taken = { [a] = 0, [b] = 0 },
+		round = 1,
+		countdownEnds = os.clock() + MatchService.COUNTDOWN,
+		pendingReset = false,
 	}
 	bouts[bout.id] = bout
 
@@ -251,16 +366,9 @@ local function begin(a: Player, b: Player)
 		end
 		placeAt(p, ArenaService.SpawnCFrame(index))
 	end
-	pushAll(bout)
+	countIn(bout, MatchService.COUNTDOWN)
 
 	print(("[Match] bout %d: %s vs %s"):format(bout.id, a.Name, b.Name))
-
-	task.delay(MatchService.COUNTDOWN, function()
-		if bout.state == "countdown" then
-			bout.state = "live"
-			pushAll(bout)
-		end
-	end)
 end
 
 -- ------------------------------------------------------------------ queue --
@@ -333,8 +441,19 @@ local function onCharacterAdded(player: Player, character: Model)
 		return
 	end
 	character:WaitForChild("HumanoidRootPart", 10)
+	if boutOf[player] ~= bout or bout.state == "over" then
+		return
+	end
+	if bout.pendingReset then
+		nextRound(bout)
+		return
+	end
 	local index = indexOf(bout.players, player) or 1
 	placeAt(player, ArenaService.SpawnCFrame(index))
+	-- Respawning mid-countdown still gets the countdown's protection.
+	if bout.state == "countdown" then
+		shield(player, true)
+	end
 end
 
 local function onPlayer(player: Player)

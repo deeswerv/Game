@@ -1,11 +1,15 @@
 --!strict
 -- Duels, front to back, the way the reference game presents them:
 --
---   free roam   a big green PLAY diamond with "Click Play To Queue Up!" over it
+--   free roam   a big green PLAY diamond with "Click Play To Queue Up!" over it, and on a
+--               keyboard its key (J) and how to get a cursor out of shift lock (hold ALT)
 --   queued      the diamond turns gold and cancels; a small card says it is searching
---   countdown   3 - 2 - 1 - FIGHT! slammed into the middle of the screen
+--   countdown   the VS screen -- both fighters thrown in on red and blue slabs -- then
+--               3 - 2 - 1 - FIGHT! slammed into the middle of the screen
 --   live        a scoreboard across the top: your avatar and a red bar with your score, the
 --               clock, a blue bar with theirs and their avatar
+--   rounds      every point is a round: ROUND WON / ROUND LOST, then ROUND 2 (MATCH POINT,
+--               FINAL ROUND) and a fresh count while the server resets both fighters
 --   over        a results screen -- VICTORY / DEFEAT, both fighters' full-body avatars on
 --               name plates with their level diamonds, and the reference's stat tiles:
 --               Eliminations, Deaths, Damage Dealt, Damage Taken, KDR
@@ -15,6 +19,7 @@
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local Theme = require(script.Parent.Theme)
 local Components = require(script.Parent.Components)
@@ -28,6 +33,7 @@ local BLUE = Color3.fromRGB(40, 110, 255)
 local GOLD_TOP = Color3.fromRGB(255, 244, 150)
 local GOLD_BOTTOM = Color3.fromRGB(255, 166, 20)
 local RESULTS_TIME = 7
+local MATCH_ROUND_HOLD = 2.4
 
 export type Hooks = {
 	onScoreboard: ((visible: boolean) -> ())?,   -- the HUD makes room at the top
@@ -134,6 +140,54 @@ local function buildPlay(self, parent: GuiObject)
 	label.Size = UDim2.fromScale(1, 1)
 	label.ZIndex = 3
 
+	-- The shift-lock camera pins the cursor to the middle of the screen, so on a keyboard the
+	-- diamond says which key presses it, and a tip beside it says how to get a cursor back.
+	local keyboard = UserInputService.KeyboardEnabled
+	local key = Components.KeyCap(holder, "J", 26)
+	key.AnchorPoint = Vector2.new(0.5, 0.5)
+	key.Position = UDim2.new(0.5, 30, 0.5, 30)
+	key.ZIndex = 4
+	for _, d in ipairs(key:GetDescendants()) do
+		if d:IsA("GuiObject") then
+			d.ZIndex = 4
+		end
+	end
+	key.Visible = keyboard
+
+	local tip = Instance.new("Frame")
+	tip.Name = "CursorTip"
+	tip.BackgroundColor3 = Theme.Colour.Panel
+	tip.BackgroundTransparency = 0.15
+	tip.AnchorPoint = Vector2.new(0, 0.5)
+	tip.Position = UDim2.new(1, 8, 0.5, 0)
+	tip.Size = UDim2.fromOffset(0, 34)
+	tip.AutomaticSize = Enum.AutomaticSize.X
+	tip.Visible = keyboard
+	tip.Parent = holder
+	Components.Corner(tip, 8)
+	Components.Stroke(tip, Theme.Colour.Outline, 2)
+	Components.Padding(tip, nil, 8, 0)
+	local tipRow = Components.List(tip, Enum.FillDirection.Horizontal, 6)
+	tipRow.VerticalAlignment = Enum.VerticalAlignment.Center
+	Components.Label(tip, {
+		text = "HOLD", face = Theme.Face.Condensed, size = 17, autoSize = true, layoutOrder = 1, outline = 1.5,
+	})
+	Components.KeyCap(tip, "ALT", 22).LayoutOrder = 2
+	Components.Label(tip, {
+		text = "FOR MOUSE", face = Theme.Face.Condensed, size = 17, autoSize = true, layoutOrder = 3, outline = 1.5,
+	})
+	-- Once someone has used it they know; the tip goes quiet rather than nagging forever.
+	local player = Players.LocalPlayer
+	local tipConnection: RBXScriptConnection? = nil
+	tipConnection = player:GetAttributeChangedSignal("CursorFree"):Connect(function()
+		if player:GetAttribute("CursorFree") == true then
+			tip.Visible = false
+			if tipConnection then
+				tipConnection:Disconnect()
+			end
+		end
+	end)
+
 	-- The reference's speech bubble over the button.
 	local bubble = Instance.new("Frame")
 	bubble.Name = "Hint"
@@ -147,7 +201,7 @@ local function buildPlay(self, parent: GuiObject)
 	Components.Stroke(bubble, Theme.Colour.Outline, 2).Transparency = 0.1
 	Components.Padding(bubble, nil, 12, 0)
 	local hintText = Components.Label(bubble, {
-		text = "Click Play To Queue Up!",
+		text = UserInputService.KeyboardEnabled and "Click Play Or Press J To Queue Up!" or "Tap Play To Queue Up!",
 		font = Theme.Font.Bold,
 		size = 19,
 		colour = Theme.Colour.Outline,
@@ -352,21 +406,153 @@ local function buildCountdown(self, parent: GuiObject)
 	g.Rotation = 90
 	g.Parent = big
 
-	local versus = Components.Label(parent :: any, {
+	self._count, self._countGradient = big, g
+
+	-- ROUND WON / ROUND LOST / ROUND 2, and a smaller line under it (the score, MATCH POINT).
+	local banner = Components.Label(parent :: any, {
 		text = "",
 		face = Theme.Face.HeavyItalic,
+		size = 62,
+		align = Enum.TextXAlignment.Center,
+		outline = 5,
+	})
+	banner.Name = "RoundBanner"
+	banner.AnchorPoint = Vector2.new(0.5, 0.5)
+	-- Below the middle, not at the top: the player who just lost the round is looking at the
+	-- death card up there at that moment.
+	banner.Position = UDim2.fromScale(0.5, 0.64)
+	banner.Size = UDim2.fromOffset(820, 70)
+	banner.Visible = false
+	banner.ZIndex = Theme.Layer.Overlay
+	local bannerGradient = Instance.new("UIGradient")
+	bannerGradient.Rotation = 90
+	bannerGradient.Parent = banner
+
+	local sub = Components.Label(parent :: any, {
+		text = "",
+		face = Theme.Face.Condensed,
 		size = 30,
 		align = Enum.TextXAlignment.Center,
 		outline = 3,
 	})
-	versus.Name = "Versus"
-	versus.AnchorPoint = Vector2.new(0.5, 0.5)
-	versus.Position = UDim2.fromScale(0.5, 0.28)
-	versus.Size = UDim2.fromOffset(700, 40)
-	versus.Visible = false
-	versus.ZIndex = Theme.Layer.Overlay
+	sub.Name = "RoundSub"
+	sub.AnchorPoint = Vector2.new(0.5, 0.5)
+	sub.Position = UDim2.fromScale(0.5, 0.705)
+	sub.Size = UDim2.fromOffset(600, 34)
+	sub.Visible = false
+	sub.ZIndex = Theme.Layer.Overlay
 
-	self._count, self._countGradient, self._versus = big, g, versus
+	self._banner, self._bannerGradient, self._bannerSub = banner, bannerGradient, sub
+end
+
+-- The reference's VS screen: the two fighters thrown in from either side on red and blue
+-- slabs, full-body, name and level under each, and a gold VS slammed between them.
+local function versusSide(band: Frame, colour: Color3, left: boolean)
+	local slab = Instance.new("Frame")
+	slab.Name = left and "Left" or "Right"
+	slab.BackgroundColor3 = colour
+	slab.BorderSizePixel = 0
+	slab.AnchorPoint = Vector2.new(left and 1 or 0, 0.5)
+	slab.Size = UDim2.new(0.5, 80, 0, 200)
+	slab.Rotation = -4
+	slab.ZIndex = Theme.Layer.Overlay
+	slab.Parent = band
+	Components.Stroke(slab, Theme.Colour.Outline, 4)
+	local fade = Instance.new("UIGradient")
+	fade.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(120, 120, 130))
+	fade.Rotation = left and 0 or 180
+	fade.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.55),
+		NumberSequenceKeypoint.new(0.6, 0.05),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	fade.Parent = slab
+	-- A bright edge along the inner side, where the two slabs meet.
+	local edge = Instance.new("Frame")
+	edge.BackgroundColor3 = WHITE
+	edge.BorderSizePixel = 0
+	edge.AnchorPoint = Vector2.new(left and 1 or 0, 0)
+	edge.Position = left and UDim2.fromScale(1, 0) or UDim2.fromScale(0, 0)
+	edge.Size = UDim2.new(0, 6, 1, 0)
+	edge.ZIndex = Theme.Layer.Overlay + 1
+	edge.Parent = slab
+
+	-- Children of a rotated frame turn with it; the avatar and the name are turned back
+	-- upright so only the slab is slanted.
+	local avatar = Instance.new("ImageLabel")
+	avatar.Name = "Avatar"
+	avatar.BackgroundTransparency = 1
+	avatar.AnchorPoint = Vector2.new(0.5, 1)
+	avatar.Position = left and UDim2.new(1, -170, 1, 10) or UDim2.new(0, 170, 1, 10)
+	avatar.Size = UDim2.fromOffset(270, 270)
+	avatar.ScaleType = Enum.ScaleType.Fit
+	avatar.Rotation = 4
+	avatar.ZIndex = Theme.Layer.Overlay + 2
+	avatar.Parent = slab
+
+	local plate = Instance.new("Frame")
+	plate.Name = "Plate"
+	plate.BackgroundTransparency = 1
+	plate.AnchorPoint = Vector2.new(left and 1 or 0, 1)
+	plate.Position = left and UDim2.new(1, -320, 1, -24) or UDim2.new(0, 320, 1, -24)
+	plate.Size = UDim2.fromOffset(300, 44)
+	plate.Rotation = 4
+	plate.ZIndex = Theme.Layer.Overlay + 2
+	plate.Parent = slab
+	local badge, levelText = Components.LevelBadge(plate, 44)
+	badge.AnchorPoint = Vector2.new(left and 1 or 0, 0)
+	badge.Position = left and UDim2.fromScale(1, 0) or UDim2.fromScale(0, 0)
+	local name = Components.Label(plate, {
+		text = "",
+		face = Theme.Face.HeavyItalic,
+		size = 34,
+		align = left and Enum.TextXAlignment.Right or Enum.TextXAlignment.Left,
+		outline = 3,
+	})
+	name.AnchorPoint = Vector2.new(left and 1 or 0, 0)
+	name.Position = left and UDim2.new(1, -50, 0, 0) or UDim2.fromOffset(50, 0)
+	name.Size = UDim2.new(1, -50, 1, 0)
+	name.TextTruncate = Enum.TextTruncate.AtEnd
+	for _, d in ipairs(plate:GetDescendants()) do
+		if d:IsA("GuiObject") then
+			d.ZIndex = Theme.Layer.Overlay + 3
+		end
+	end
+
+	return { slab = slab, avatar = avatar, name = name, badge = badge, level = levelText }
+end
+
+local function buildVersus(self, parent: GuiObject)
+	local band = Instance.new("Frame")
+	band.Name = "VersusSplash"
+	band.BackgroundTransparency = 1
+	band.AnchorPoint = Vector2.new(0.5, 0.5)
+	band.Position = UDim2.fromScale(0.5, 0.5)
+	band.Size = UDim2.new(1, 0, 0, 220)
+	band.Visible = false
+	band.ZIndex = Theme.Layer.Overlay
+	band.Parent = parent
+
+	local left = versusSide(band, RED, true)
+	local right = versusSide(band, BLUE, false)
+
+	local vs = Components.Label(band, {
+		text = "VS",
+		face = Theme.Face.HeavyItalic,
+		size = 120,
+		align = Enum.TextXAlignment.Center,
+		outline = 7,
+	})
+	vs.AnchorPoint = Vector2.new(0.5, 0.5)
+	vs.Position = UDim2.fromScale(0.5, 0.5)
+	vs.Size = UDim2.fromOffset(260, 130)
+	vs.ZIndex = Theme.Layer.Overlay + 5
+	local g = Instance.new("UIGradient")
+	g.Color = ColorSequence.new(GOLD_TOP, GOLD_BOTTOM)
+	g.Rotation = 90
+	g.Parent = vs
+
+	self._vsBand, self._vsLeft, self._vsRight, self._vsText = band, left, right, vs
 end
 
 -- -------------------------------------------------------------- results --
@@ -588,6 +774,10 @@ function Duel:_showResults(state)
 	foot.Position = UDim2.new(0.5, 0, 1, -18)
 	foot.Size = UDim2.fromOffset(500, 20)
 
+	if won then
+		self:_confetti(backdrop)
+	end
+
 	local function close()
 		if self._results ~= gui then
 			return
@@ -613,6 +803,38 @@ function Duel:_showResults(state)
 	task.delay(RESULTS_TIME, close)
 end
 
+-- Paper falling over a win. Plain frames on tweens: a few dozen of them, alive for a few
+-- seconds, parented to the results screen so closing it takes them all away.
+local CONFETTI = {
+	Color3.fromRGB(255, 214, 40), Color3.fromRGB(255, 70, 90), Color3.fromRGB(60, 200, 255),
+	Color3.fromRGB(80, 230, 110), Color3.fromRGB(200, 90, 255), Color3.fromRGB(255, 255, 255),
+}
+
+function Duel:_confetti(parent: GuiObject)
+	local rng = Random.new()
+	for i = 1, 70 do
+		local bit = Instance.new("Frame")
+		bit.BorderSizePixel = 0
+		bit.BackgroundColor3 = CONFETTI[rng:NextInteger(1, #CONFETTI)]
+		bit.Size = UDim2.fromOffset(rng:NextInteger(7, 13), rng:NextInteger(12, 20))
+		bit.AnchorPoint = Vector2.new(0.5, 0.5)
+		bit.Position = UDim2.new(rng:NextNumber(0.02, 0.98), 0, 0, -rng:NextInteger(10, 260))
+		bit.Rotation = rng:NextNumber(0, 360)
+		bit.ZIndex = 20
+		bit.Parent = parent
+		local fall = rng:NextNumber(2.6, 4.4)
+		local drift = rng:NextInteger(-120, 120)
+		local info = TweenInfo.new(fall, Enum.EasingStyle.Sine, Enum.EasingDirection.In, 0, false, i * 0.012)
+		TweenService:Create(bit, info, {
+			Position = bit.Position + UDim2.new(0, drift, 1.1, 300),
+			Rotation = bit.Rotation + rng:NextNumber(-540, 540),
+		}):Play()
+		task.delay(fall + i * 0.012 + 0.1, function()
+			bit:Destroy()
+		end)
+	end
+end
+
 -- ------------------------------------------------------------------- api --
 
 function Duel.new(parent: GuiObject, remotes, hooks: Hooks?)
@@ -626,6 +848,7 @@ function Duel.new(parent: GuiObject, remotes, hooks: Hooks?)
 	buildQueueCard(self, parent)
 	buildScoreboard(self, parent)
 	buildCountdown(self, parent)
+	buildVersus(self, parent)
 
 	if remotes.matchUpdate then
 		remotes.matchUpdate.OnClientEvent:Connect(function(state)
@@ -663,7 +886,7 @@ function Duel:_apply()
 	local playVisible = not hidden and (mode == "idle" or mode == "queue")
 	self._play.Visible = playVisible
 	self._queueCard.Visible = not hidden and mode == "queue"
-	local boardVisible = not hidden and mode == "live"
+	local boardVisible = not hidden and (mode == "live" or (mode == "countdown" and (self._round or 1) > 1))
 	if self._board.Visible ~= boardVisible then
 		self._board.Visible = boardVisible
 		if self._hooks.onScoreboard then
@@ -685,22 +908,159 @@ function Duel:_apply()
 	self._playLabel.TextSize = queued and 24 or 34
 end
 
+local VS_HOLD = 2.1
+
+--- Throw the VS screen up for the opening count of a bout, and take it down again.
+function Duel:_splash(state)
+	local player = Players.LocalPlayer
+	local opponentId = tonumber(state.opponentUserId) or 0
+	local left, right = self._vsLeft, self._vsRight
+	left.avatar.Image = fullBody(player.UserId)
+	left.name.Text = player.DisplayName
+	local myLevel = levelOf(player.UserId)
+	left.badge.Visible = myLevel ~= nil
+	left.level.Text = myLevel and tostring(myLevel) or ""
+	right.avatar.Image = fullBody(opponentId)
+	right.name.Text = tostring(state.opponentName or "?")
+	local theirLevel = levelOf(opponentId)
+	right.badge.Visible = theirLevel ~= nil
+	right.level.Text = theirLevel and tostring(theirLevel) or ""
+
+	local token = {}
+	self._vsToken = token
+	self._vsUp = true
+	self._vsBand.Visible = true
+	local inInfo = TweenInfo.new(0.38, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+	left.slab.Position = UDim2.new(-0.1, 0, 0.5, 0)
+	right.slab.Position = UDim2.new(1.1, 0, 0.5, 0)
+	TweenService:Create(left.slab, inInfo, { Position = UDim2.new(0.5, 6, 0.5, 0) }):Play()
+	TweenService:Create(right.slab, inInfo, { Position = UDim2.new(0.5, -6, 0.5, 0) }):Play()
+	self._vsText.TextTransparency = 1
+	task.delay(0.22, function()
+		if self._vsToken ~= token then
+			return
+		end
+		fadeText(self._vsText, 0, 0.01)
+		slam(self._vsText, 3, 0.34)
+	end)
+
+	task.delay(VS_HOLD, function()
+		if self._vsToken ~= token then
+			return
+		end
+		self:_hideSplash(true)
+	end)
+end
+
+function Duel:_hideSplash(animated: boolean)
+	self._vsToken = nil
+	if not self._vsUp then
+		return
+	end
+	self._vsUp = false
+	local band = self._vsBand
+	if not animated then
+		band.Visible = false
+		return
+	end
+	local outInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+	TweenService:Create(self._vsLeft.slab, outInfo, { Position = UDim2.new(-0.1, 0, 0.5, 0) }):Play()
+	TweenService:Create(self._vsRight.slab, outInfo, { Position = UDim2.new(1.1, 0, 0.5, 0) }):Play()
+	fadeText(self._vsText, 1, 0.2)
+	task.delay(0.32, function()
+		if not self._vsUp then
+			band.Visible = false
+		end
+	end)
+	-- The count kept running under the splash; show where it has got to.
+	if self._mode == "countdown" and self._pendingCount then
+		self:_showCount(self._pendingCount)
+	end
+end
+
+function Duel:_showCount(n: number)
+	self._pendingCount = nil
+	self._count.Visible = true
+	self._count.Text = tostring(n)
+	self._countGradient.Color = ColorSequence.new(GOLD_TOP, GOLD_BOTTOM)
+	fadeText(self._count, 0, 0.01)
+	slam(self._count, 2.4, 0.3)
+end
+
+--- A big call across the top of the screen that clears itself.
+function Duel:_banner(text: string, top: Color3, bottom: Color3, subText: string?, subColour: Color3?, hold: number?)
+	local token = {}
+	self._bannerToken = token
+	self._banner.Text = text
+	self._bannerGradient.Color = ColorSequence.new(top, bottom)
+	self._banner.Visible = true
+	fadeText(self._banner, 0, 0.01)
+	slam(self._banner, 1.9, 0.32)
+	self._bannerSub.Visible = subText ~= nil
+	if subText then
+		self._bannerSub.Text = subText
+		self._bannerSub.TextColor3 = subColour or WHITE
+		fadeText(self._bannerSub, 0, 0.01)
+	end
+	task.delay(hold or 1.6, function()
+		if self._bannerToken ~= token then
+			return
+		end
+		fadeText(self._banner, 1, 0.3)
+		fadeText(self._bannerSub, 1, 0.3)
+		task.delay(0.32, function()
+			if self._bannerToken == token then
+				self._banner.Visible = false
+				self._bannerSub.Visible = false
+			end
+		end)
+	end)
+end
+
+function Duel:_clearBanner()
+	self._bannerToken = nil
+	self._banner.Visible = false
+	self._bannerSub.Visible = false
+end
+
 function Duel:_countdown(state)
 	local n = tonumber(state.countdown) or 0
-	self._versus.Visible = true
-	self._versus.Text = "VS  " .. string.upper(tostring(state.opponentName or "?"))
-	fadeText(self._versus, 0, 0.01)
+	local round = tonumber(state.round) or 1
+	local entering = self._mode ~= "countdown"
+	self._round = round
+
+	if entering then
+		self._lastCount = nil
+		if round <= 1 then
+			self:_splash(state)
+		else
+			-- Between rounds: ROUND N, and whether it could end here.
+			local target = tonumber(state.target) or 3
+			local you = tonumber(state.you) or 0
+			local them = tonumber(state.them) or 0
+			local sub, colour = nil, nil
+			if you == target - 1 and them == target - 1 then
+				sub, colour = "FINAL ROUND", Theme.Colour.Level
+			elseif you == target - 1 or them == target - 1 then
+				sub, colour = "MATCH POINT", you == target - 1 and Theme.Colour.Accent or Theme.Colour.Danger
+			end
+			self:_banner(string.format("ROUND %d", round), WHITE, Color3.fromRGB(190, 196, 210), sub, colour,
+				MATCH_ROUND_HOLD)
+		end
+	end
+
 	if n > 0 and n ~= self._lastCount then
 		self._lastCount = n
-		self._count.Visible = true
-		self._count.Text = tostring(n)
-		self._countGradient.Color = ColorSequence.new(GOLD_TOP, GOLD_BOTTOM)
-		fadeText(self._count, 0, 0.01)
-		slam(self._count, 2.4, 0.3)
+		if self._vsUp then
+			self._pendingCount = n      -- shown when the splash clears
+		else
+			self:_showCount(n)
+		end
 	end
 end
 
 function Duel:_fight()
+	self:_hideSplash(false)
 	self._lastCount = nil
 	self._count.Visible = true
 	self._count.Text = "FIGHT!"
@@ -714,11 +1074,9 @@ function Duel:_fight()
 			return
 		end
 		fadeText(self._count, 1, 0.3)
-		fadeText(self._versus, 1, 0.3)
 		task.delay(0.32, function()
 			if self._fightToken == token then
 				self._count.Visible = false
-				self._versus.Visible = false
 			end
 		end)
 	end)
@@ -735,11 +1093,25 @@ function Duel:_scoreboard(state)
 	self._theirs.avatar.Image = headshot(opponentId)
 	self._theirs.name.Text = tostring(state.opponentName or "?")
 
-	if self._lastYou ~= nil and you > self._lastYou then
+	local scored = self._lastYou ~= nil and you > self._lastYou
+	local conceded = self._lastThem ~= nil and them > self._lastThem
+	if scored then
 		slam(self._mine.bar, 1.25)
 	end
-	if self._lastThem ~= nil and them > self._lastThem then
+	if conceded then
 		slam(self._theirs.bar, 1.25)
+	end
+	-- The last point goes to the results screen instead of a banner.
+	local target = tonumber(state.target) or 3
+	if (scored or conceded) and you < target and them < target then
+		local line = string.format("%d  -  %d", you, them)
+		if scored and conceded then
+			self:_banner("TRADED", GOLD_TOP, GOLD_BOTTOM, line)
+		elseif scored then
+			self:_banner("ROUND WON", GOLD_TOP, GOLD_BOTTOM, line)
+		else
+			self:_banner("ROUND LOST", Color3.fromRGB(255, 130, 130), Color3.fromRGB(200, 20, 30), line)
+		end
 	end
 	self._lastYou, self._lastThem = you, them
 	self._mine.score.Text = tostring(you)
@@ -757,8 +1129,12 @@ function Duel:_render(state)
 	end
 	if state.in_match then
 		if state.state == "countdown" then
-			self._mode = "countdown"
 			self:_countdown(state)
+			self._mode = "countdown"
+			-- Between rounds the scoreboard stays up; only the opening count hides it.
+			if (tonumber(state.round) or 1) > 1 then
+				self:_scoreboard(state)
+			end
 		elseif state.state == "live" then
 			if self._mode == "countdown" then
 				self:_fight()
@@ -770,7 +1146,8 @@ function Duel:_render(state)
 				self._mode = "idle"
 				self._lastYou, self._lastThem = nil, nil
 				self._count.Visible = false
-				self._versus.Visible = false
+				self:_hideSplash(false)
+				self:_clearBanner()
 				self:_showResults(state)
 			end
 		end
@@ -809,7 +1186,9 @@ function Duel:Destroy()
 	self._queueCard:Destroy()
 	self._board:Destroy()
 	self._count:Destroy()
-	self._versus:Destroy()
+	self._banner:Destroy()
+	self._bannerSub:Destroy()
+	self._vsBand:Destroy()
 	if self._results then
 		self._results:Destroy()
 	end

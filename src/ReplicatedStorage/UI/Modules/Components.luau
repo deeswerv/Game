@@ -735,6 +735,37 @@ function Components.LevelBadge(parent: GuiObject, size: number): (Frame, TextLab
 	return holder, number
 end
 
+--- A keyboard key, drawn as one: a white cap with a darker lip under it and the key's name
+--- on top. Sized to the text, so "J" and "ALT" both come out right. Only makes sense on a
+--- keyboard, so callers hide it when UserInputService.KeyboardEnabled is false.
+function Components.KeyCap(parent: GuiObject, key: string, height: number?): Frame
+	local h = height or 24
+	local cap = Instance.new("Frame")
+	cap.Name = "KeyCap"
+	cap.BackgroundColor3 = Color3.fromRGB(150, 156, 170)       -- the lip
+	cap.Size = UDim2.fromOffset(0, h)
+	cap.AutomaticSize = Enum.AutomaticSize.X
+	cap.Parent = parent
+	corner(cap, math.max(4, math.floor(h * 0.22)))
+	stroke(cap, Theme.Colour.Outline, 2)
+
+	local face = Instance.new("TextLabel")
+	face.Name = "Face"
+	face.BackgroundColor3 = WHITE
+	face.Size = UDim2.new(0, 0, 1, -math.max(3, math.floor(h * 0.14)))
+	face.AutomaticSize = Enum.AutomaticSize.X
+	face.Font = Theme.Font.Display
+	face.TextSize = math.floor(h * 0.62)
+	face.TextColor3 = Theme.Colour.Outline
+	face.Text = key
+	face.Parent = cap
+	corner(face, math.max(4, math.floor(h * 0.22)))
+	padding(face, nil, math.max(6, math.floor(h * 0.3)), 0)
+
+	-- The cap's width follows its face; the lip shows along the bottom edge.
+	return cap
+end
+
 -- ------------------------------------------------------------- responsive --
 
 --- One UIScale per ScreenGui, driven by viewport changes only -- no polling. The design is
