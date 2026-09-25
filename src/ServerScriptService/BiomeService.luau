@@ -43,6 +43,20 @@ BiomeService.Biomes = {
 	},
 }
 
+-- Ground something else owns: the Flats battleground's courtyard (CoverService.Footprint).
+BiomeService.KeepClear = {
+	{ minX = -624, maxX = -521, minZ = 36, maxZ = 140 },
+}
+
+local function keptClear(x: number, z: number): boolean
+	for _, r in ipairs(BiomeService.KeepClear) do
+		if x >= r.minX and x <= r.maxX and z >= r.minZ and z <= r.maxZ then
+			return true
+		end
+	end
+	return false
+end
+
 BiomeService.Zones = {
 	Flats = { minX = -753, maxX = -381, minZ = -87, maxZ = 321, cx = -573, cz = 88, y = 6 },
 	Reach = { minX = -56,  maxX = 436,  minZ = 44,  maxZ = 560, cx = 244,  cz = 344, y = 10 },
@@ -163,7 +177,7 @@ function BiomeService.Build()
 			tries += 1
 			local x = zn.cx + rng:NextNumber(-170, 170)
 			local z = zn.cz + rng:NextNumber(-170, 170)
-			if x >= zn.minX and x <= zn.maxX and z >= zn.minZ and z <= zn.maxZ then
+			if x >= zn.minX and x <= zn.maxX and z >= zn.minZ and z <= zn.maxZ and not keptClear(x, z) then
 				local y = groundNear(x, z, zn.y + 40)
 				if y and y > -10 then
 					local hits = workspace:GetPartBoundsInBox(CFrame.new(x, y + 4, z), Vector3.new(6, 7, 6), overlap)

@@ -420,33 +420,31 @@ NPCConfig.Hostility = {
 	Guard = { Hostile = true },
 }
 
--- Spawn points. Positions are near the lobby spawn so encounters are findable.
--- The two factions face off in Map2, the 350 x 350 arena centred on (-573, 0, 88). Its
--- floor sits at y = 0.5 and NPCService drops them in from three studs up, so y = 1 lands
--- them on the deck.
+-- Spawn points: the Flats battleground (CoverService.Flats), the stone courtyard between
+-- Map 2's pillars, centred on (-573, 1.5, 88). The raiders hold their camp in the west, the
+-- town guard its post in the east; Flats.Posts has the same points in the battleground's own
+-- coordinates, and tools/uitest/flats.luau checks the two agree and that every post has room.
+-- NPCService drops them in from three studs up, so y = 1 lands them on the slab.
 --
--- The gap between the lines is deliberate. Aggro ranges are Brute 50, Grunt 55, Guard 60,
--- Marksman 95, so the front lines start ~37 studs apart -- inside everyone's range, which
--- is what makes them actually engage instead of standing around. The Marksman sits back
--- at 61 studs, still inside its own longer range, so it opens up from depth.
+-- Six raiders, not eight: the camp is meant to be cleared and to stay cleared for a while.
+-- The front lines start ~45 studs apart, inside everyone's aggro range, so they actually
+-- fight; the Marksman and the Elite sit back in the camp.
 --
 -- Parts tagged "NPCSpawn" with an Archetype attribute (and optionally Count) are spawned
 -- too, so new posts can be placed in Studio without touching this table.
 NPCConfig.Spawns = {
-	-- Hostile line, west.
-	{ archetype = "Brute",    position = Vector3.new(-588, 1, 88) },
-	{ archetype = "Grunt",    position = Vector3.new(-595, 1, 74) },
-	{ archetype = "Grunt",    position = Vector3.new(-600, 1, 88) },
-	{ archetype = "Grunt",    position = Vector3.new(-595, 1, 102) },
-	{ archetype = "Marksman", position = Vector3.new(-612, 1, 88) },
-	{ archetype = "Soldier",  position = Vector3.new(-603, 1, 64) },
-	{ archetype = "Soldier",  position = Vector3.new(-603, 1, 112) },
-	{ archetype = "Elite",    position = Vector3.new(-616, 1, 72) },
+	-- The raider camp, west.
+	{ archetype = "Brute",    position = Vector3.new(-595, 1, 88) },
+	{ archetype = "Grunt",    position = Vector3.new(-599, 1, 68) },
+	{ archetype = "Grunt",    position = Vector3.new(-599, 1, 108) },
+	{ archetype = "Marksman", position = Vector3.new(-611, 1, 72) },
+	{ archetype = "Soldier",  position = Vector3.new(-605, 1, 67) },
+	{ archetype = "Elite",    position = Vector3.new(-611, 1, 105) },
 
-	-- Guard line, east.
-	{ archetype = "Guard",    position = Vector3.new(-551, 1, 80) },
-	{ archetype = "Guard",    position = Vector3.new(-551, 1, 96) },
-	{ archetype = "Guard",    position = Vector3.new(-546, 1, 88) },
+	-- The guard post, east.
+	{ archetype = "Guard",    position = Vector3.new(-545, 1, 77) },
+	{ archetype = "Guard",    position = Vector3.new(-545, 1, 99) },
+	{ archetype = "Guard",    position = Vector3.new(-540, 1, 88) },
 }
 
 -- How the population is kept in bounds. A respawn that finds the world full, or a player

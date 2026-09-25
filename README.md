@@ -63,6 +63,23 @@ minutes and everyone who landed a hit is paid, with a bonus for the MVP.
   pillar of light, with a marker and distance on your screen. First to hold E on it keeps the
   cash, crystals and XP inside; about one in eight is a golden Elite drop worth double.
 
+## The Flats battleground
+
+The stone courtyard between Map 2's four pillars is where the raiders and the town guard
+fight it out, and it is built for it now rather than scattered with blocks:
+
+- **Raider camp** (west): a palisade of sharpened logs with a gate at the back (the Warlord
+  waits outside it), tents, a campfire, supply piles and log barricades.
+- **Guard post** (east): a crenellated stone wall with a gap, a watchtower you can climb by
+  its ramp, and a pavilion.
+- **The gatehouse** (centre): a ruined gateway across the line of fire. The doorway is the
+  short, exposed way through; round the broken walls is the long way.
+- **The walls** (north): overgrown low walls and a fallen tree, the fast flank.
+- **The terrace** (south): the high ground over the open middle, climbed from the far side.
+
+Six raiders hold the camp (down from eight). `lune run tools/uitest/flats.luau` checks every
+post has room, the ways through are open and the high ground can be reached.
+
 ## Enemies
 
 Enemies fight like a squad, not a row of turrets:
