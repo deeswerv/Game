@@ -68,6 +68,7 @@ return function(World, outPath: string)
 			n.bgT = inst.BackgroundTransparency
 			n.clips = inst.ClipsDescendants
 			n.auto = enumName(inst.AutomaticSize)
+			n.sizeConstraint = enumName(inst.SizeConstraint)
 			if inst:IsA("CanvasGroup") then
 				n.groupT = inst.GroupTransparency
 			end

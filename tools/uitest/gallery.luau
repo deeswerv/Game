@@ -35,14 +35,15 @@ World.serverRemotes({
 		ProfileRequest = "RemoteFunction", DailyAction = "RemoteFunction", BuildAction = "RemoteFunction",
 		StatAction = "RemoteFunction", SettingsAction = "RemoteFunction",
 		KillFeed = "RemoteEvent", KillFeedAll = "RemoteEvent", DeathReport = "RemoteEvent",
-		GunEffect = "RemoteEvent", NPCEffect = "RemoteEvent",
+		GunEffect = "RemoteEvent", NPCEffect = "RemoteEvent", GunAction = "RemoteEvent",
+		MeleeAction = "RemoteEvent", MeleeEffect = "RemoteEvent", AimUpdate = "RemoteEvent",
 	},
 })
 require("./fixtures")(World)
 
 local only = args[2]
 local sps = World.service("StarterPlayer"):FindFirstChild("StarterPlayerScripts")
-for _, name in ipairs({ "MainUI", "Killcam", "QuestUI" }) do
+for _, name in ipairs({ "MainUI", "Killcam", "QuestUI", "WeaponController" }) do
 	World.run(sps:FindFirstChild(name))
 end
 World.advance(1.5)
@@ -50,11 +51,11 @@ World.serverFire("GameRemotes", "XPGained", 0, 340, 1000, 14)
 World.advance(0.5)
 
 local shots = {}
-local function shot(name: string)
+local function shot(name: string, settle: number?)
 	if only and only ~= name then
 		return
 	end
-	World.advance(0.8)
+	World.advance(settle or 0.8)
 	local path = ("%s/%s.json"):format(outDir, name)
 	snapshot(World, path)
 	table.insert(shots, path)
@@ -107,6 +108,51 @@ toggle(Enum.KeyCode.F1)
 shot("12_settings")
 toggle(Enum.KeyCode.F1)
 
+-- Guns: the Longshot through its scope, and a shotgun's ring on a nearly empty magazine.
+local function equip(name: string)
+	local held = World.character:FindFirstChildOfClass("Tool")
+	if held then
+		R.fire(held, "Unequipped")
+		held.Parent = World.backpack
+	end
+	local source = World.service("ReplicatedStorage"):FindFirstChild("storeitems"):FindFirstChild(name)
+	local tool = source:Clone()
+	tool.Parent = World.backpack
+	World.advance(0.2)
+	tool.Parent = World.character
+	R.fire(tool, "Equipped")
+	World.advance(0.3)
+	return tool
+end
+do
+	local sniper = equip("Longshot")
+	sniper:SetAttribute("Ammo", 5)
+	sniper:SetAttribute("MaxAmmo", 5)
+	-- Aim: the right mouse button, as a player would.
+	local io = World.R.newInstance("InputObject")
+	World.force(io, "UserInputType", Enum.UserInputType.MouseButton2)
+	World.force(io, "KeyCode", Enum.KeyCode.Unknown)
+	R.fire(World.service("UserInputService"), "InputBegan", io, false)
+	World.advance(1.5)
+	shot("14_scope")
+	R.fire(World.service("UserInputService"), "InputEnded", io, false)
+	World.advance(0.6)
+	local shotgun = equip("Scattergun")
+	shotgun:SetAttribute("Ammo", 1)
+	shotgun:SetAttribute("MaxAmmo", 6)
+	World.advance(0.5)
+	shot("15_shotgun_low")
+	R.fire(World.service("Remotes" and "ReplicatedStorage"):FindFirstChild("Remotes"):FindFirstChild("GunEffect"), "OnClientEvent", "Hitmarker", true, false)
+	shot("16_headshot", 0.1)
+	shotgun:SetAttribute("Reloading", true)
+	World.advance(0.6)
+	shot("17_reloading")
+	shotgun:SetAttribute("Reloading", false)
+	R.fire(shotgun, "Unequipped")
+	shotgun.Parent = World.backpack
+	World.advance(0.3)
+end
+
 -- 7. The Tab board.
 World.holdKey(Enum.KeyCode.Tab, true)
 shot("07_board")
@@ -140,8 +186,7 @@ end
 
 -- 8. A kill: feed + ELIMINATED.
 World.serverFire("Remotes", "KillFeed", "Bandit", tool and tool.Name or "Warden")
-World.advance(0.3)
-shot("08_kill")
+shot("08_kill", 0.3)
 World.advance(2.5)
 
 -- 9. The death card. The character really dies first, as it would.

@@ -12,7 +12,7 @@ export type Setting = {
 	max: number,
 	step: number,
 	default: number,
-	format: string,        -- "percent" or "degrees"
+	format: string,        -- "percent", "degrees" or "colour" (an index into CrosshairColours)
 	hint: string,
 }
 
@@ -29,7 +29,19 @@ SettingsConfig.Schema = {
 		format = "percent", hint = "Recoil kick, landings, hits" },
 	{ id = "Fov", label = "FIELD OF VIEW", group = "CAMERA", min = 70, max = 100, step = 1, default = 70,
 		format = "degrees", hint = "Wider sees more; aiming still zooms" },
+	{ id = "Crosshair", label = "CROSSHAIR COLOUR", group = "COMBAT", min = 1, max = 6, step = 1, default = 1,
+		format = "colour", hint = "Dot, arms and shotgun ring" },
 } :: { Setting }
+
+-- The crosshair colours, by index. The panel names them; WeaponController draws them.
+SettingsConfig.CrosshairColours = {
+	{ name = "WHITE", colour = Color3.new(1, 1, 1) },
+	{ name = "GREEN", colour = Color3.fromRGB(80, 255, 120) },
+	{ name = "CYAN", colour = Color3.fromRGB(80, 230, 255) },
+	{ name = "PINK", colour = Color3.fromRGB(255, 100, 220) },
+	{ name = "YELLOW", colour = Color3.fromRGB(255, 230, 70) },
+	{ name = "RED", colour = Color3.fromRGB(255, 70, 70) },
+}
 
 function SettingsConfig.Get(id: string): Setting?
 	for _, setting in ipairs(SettingsConfig.Schema) do

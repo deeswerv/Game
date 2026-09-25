@@ -137,6 +137,15 @@ GameConfig.ShopItems = {
 		levelRequired = 30,
 	},
 	{
+		id = "Longshot",
+		name = "Longshot",
+		desc = "Bolt-action sniper. Five rounds, a real scope, and one shot to the head.",
+		price = 8800,
+		item = "Longshot",
+		image = "",
+		levelRequired = 22,
+	},
+	{
 		id = "Blackwood",
 		name = "Blackwood",
 		desc = "Walnut and blued steel. Seven pellets a shell and a very short argument.",

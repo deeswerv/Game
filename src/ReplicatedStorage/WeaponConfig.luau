@@ -321,6 +321,60 @@ WeaponConfig.Weapons = {
 		Knockback = 34,
 	},
 
+	-- The bolt-action sniper, and the reason a scope overlay exists. One body shot does not
+	-- quite kill a full-health player; one to the head always does. Slow to cycle, slow to
+	-- reload, useless from the hip -- and pinpoint through the glass. No falloff: a sniper
+	-- that loses damage with distance is a shotgun with a longer barrel.
+	Longshot = {
+		Type = "Gun",
+		Class = "Sniper",
+		Hold = "TwoHanded",
+		Slot = "Large",
+		Rarity = "Legendary",
+		Scoped = true,
+		Description = "Bolt-action sniper. Five rounds, a real scope, and one shot to the head.",
+		Damage = 90,
+		HeadshotMultiplier = 2.4,
+		FireRate = 1.25,
+		Automatic = false,
+		MagazineSize = 5,
+		ReloadTime = 2.8,
+		Range = 1000,
+		FalloffStart = 1000,
+		FalloffEnd = 1001,
+		FalloffMin = 1,
+		SpreadMin = 3.5,             -- from the hip it is a guess
+		SpreadMax = 7,
+		SpreadPerShot = 3,
+		SpreadRecovery = 4,
+		AdsSpreadScale = 0.01,       -- through the scope it goes where the reticle is
+		Recoil = {
+			Vertical = 4.2,
+			Horizontal = 0.8,
+			Kick = 1.6,
+			Recovery = 6,
+			AdsMultiplier = 0.45,
+			Climb = 0,
+			ClimbShots = 1,
+			Jitter = 0.1,
+			Wave = 0.9,
+		},
+		RecoilPitch = 4.2,
+		RecoilYaw = 0.8,
+		RecoilRecovery = 6,
+		RecoilKickback = 0.5,
+		AdsFov = 20,
+		AdsSpeed = 9,
+		AdsWalkSpeedScale = 0.45,
+		ChargePart = "Bolt",
+		ChargeWhenEmpty = false,
+		TracerColor = Color3.fromRGB(255, 220, 120),
+		TracerWidth = 0.14,
+		MuzzleFlashColor = Color3.fromRGB(255, 200, 120),
+		DeathKnockback = 95,
+		Knockback = 50,
+	},
+
 	-- Walnut-furniture pump gun. The forend is both the off hand's grip and the part the
 	-- reload racks, which is why ChargePart points at it.
 	Blackwood = {

@@ -123,6 +123,13 @@ function renderNode(n, parentInner, inLayout) {
   }
   st.width = sizeW;
   st.height = sizeH;
+  // RelativeYY / RelativeXX: both axes scale off one parent axis -- equal scales make a
+  // square, which is how a round scope lens stays round on a wide screen.
+  if (n.sizeConstraint === 'RelativeYY' && n.size[0] && n.size[1] === 0) {
+    st.width = 'auto'; st.aspectRatio = `${n.size[0]} / ${n.size[2] || 1}`;
+  } else if (n.sizeConstraint === 'RelativeXX' && n.size[2] && n.size[3] === 0) {
+    st.height = 'auto'; st.aspectRatio = `${n.size[0] || 1} / ${n.size[2]}`;
+  }
   if (auto === 'X' || auto === 'XY') {
     if (list || isText(n)) { st.width = 'max-content'; st.minWidth = sizeW; }
     else { const [w] = autoExtent(n); st.width = `max(${sizeW}, ${w}px)`; autoQueue.push([d, auto, n]); }

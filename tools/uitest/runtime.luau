@@ -1054,22 +1054,31 @@ ClassMethods.Tween = {
 		state[self].props.PlaybackState = roblox.Enum.PlaybackState.Playing
 		e.token = (e.token or 0) + 1
 		local token = e.token
-		-- Goals land immediately (so the screen is in its final state for the next check),
-		-- and Completed fires after the tween's time, as it would in the engine.
-		for k, v in pairs(goals) do
-			local ok, err = pcall(function()
-				target[k] = v
-			end)
-			if not ok then
-				report("tween", tostring(err))
+		-- Goals land when the tween finishes (no in-between frames are drawn), and Completed
+		-- fires then, as in the engine -- so a delayed fade-out has not happened yet when a
+		-- snapshot is taken straight after a hit.
+		local function land()
+			for k, v in pairs(goals) do
+				local ok, err = pcall(function()
+					target[k] = v
+				end)
+				if not ok then
+					report("tween", tostring(err))
+				end
 			end
 		end
 		local duration = (info.Time or 0) + (info.DelayTime or 0)
 		if info.RepeatCount and info.RepeatCount < 0 then
 			return      -- looping forever: never completes
 		end
+		if duration <= 0 then
+			land()
+		end
 		task.delay(math.min(duration, 5), function()
 			if e.token == token then
+				if duration > 0 then
+					land()
+				end
 				state[self].props.PlaybackState = roblox.Enum.PlaybackState.Completed
 				fire(self, "Completed", roblox.Enum.PlaybackState.Completed)
 			end

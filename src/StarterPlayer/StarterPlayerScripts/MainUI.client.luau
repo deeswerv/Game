@@ -317,6 +317,7 @@ end
 -- One table of connections per character. Respawning clears it before rebinding, which is the
 -- difference between a HUD that stays correct and one that slowly accumulates dead listeners.
 local characterConnections: { RBXScriptConnection } = {}
+local dead = false          -- PLAY stays down while the death card is up
 
 local function clearCharacter()
 	for _, c in ipairs(characterConnections) do
@@ -398,10 +399,12 @@ local function onCharacter(character: Model)
 	clearCharacter()
 
 	feedback:Reset()
-	duel:SetPlayAllowed(true)
+	dead = false
+	duel:SetPlayAllowed(player:GetAttribute("Scoped") ~= true)
 	local humanoid = character:WaitForChild("Humanoid", 10)
 	if humanoid and humanoid:IsA("Humanoid") then
 		track(humanoid.Died:Connect(function()
+			dead = true
 			duel:SetPlayAllowed(false)
 		end))
 		local lastHealth = humanoid.Health
@@ -781,13 +784,17 @@ end)
 -- ShiftLock about whether a menu is open.
 local function refreshMenuState()
 	local clear = player:GetAttribute("UIOpen") ~= true
+	-- Looking through a scope: the lens gets the middle of the screen to itself.
+	local scoped = player:GetAttribute("Scoped") == true
 	hud:SetVisible(clear)
 	hotbar:SetVisible(clear)
 	killFeed:SetVisible(clear)
-	nav:SetVisible(clear)
+	nav:SetVisible(clear and not scoped)
+	duel:SetPlayAllowed(not scoped and not dead)
 	objective:SetVisible(clear)
 	duel:SetVisible(clear)
 	bossBar:SetVisible(clear)
 end
 refreshMenuState()
 player:GetAttributeChangedSignal("UIOpen"):Connect(refreshMenuState)
+player:GetAttributeChangedSignal("Scoped"):Connect(refreshMenuState)

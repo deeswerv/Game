@@ -58,12 +58,17 @@ local function apply(id: string, value: number)
 		end
 	elseif id == "Fov" then
 		Players.LocalPlayer:SetAttribute("FovSetting", value)
+	elseif id == "Crosshair" then
+		Players.LocalPlayer:SetAttribute("CrosshairColour", value)
 	end
 end
 
 local function format(setting: SettingsConfig.Setting, value: number): string
 	if setting.format == "degrees" then
 		return string.format("%d°", math.floor(value + 0.5))
+	elseif setting.format == "colour" then
+		local entry = SettingsConfig.CrosshairColours[math.floor(value + 0.5)]
+		return entry and entry.name or "?"
 	end
 	return string.format("%d%%", math.floor(value * 100 + 0.5))
 end
@@ -107,7 +112,7 @@ local function row(self, parent: GuiObject, setting: SettingsConfig.Setting, ord
 		anchor = Vector2.new(0, 0.5),
 		position = UDim2.new(0, 270, 0.5, 0),
 		onActivated = function()
-			self:Set(setting.id, (self._values[setting.id] or setting.default) - setting.step * (setting.format == "degrees" and 5 or 2))
+			self:Set(setting.id, (self._values[setting.id] or setting.default) - setting.step * (setting.format == "degrees" and 5 or setting.format == "colour" and 1 or 2))
 		end,
 	})
 	minus.instance.Name = "Minus"
@@ -149,7 +154,7 @@ local function row(self, parent: GuiObject, setting: SettingsConfig.Setting, ord
 		anchor = Vector2.new(0, 0.5),
 		position = UDim2.new(0, 574, 0.5, 0),
 		onActivated = function()
-			self:Set(setting.id, (self._values[setting.id] or setting.default) + setting.step * (setting.format == "degrees" and 5 or 2))
+			self:Set(setting.id, (self._values[setting.id] or setting.default) + setting.step * (setting.format == "degrees" and 5 or setting.format == "colour" and 1 or 2))
 		end,
 	})
 	plus.instance.Name = "Plus"
@@ -208,7 +213,7 @@ function Settings.new(parent: Instance, remotes)
 		title = "Settings",
 		subtitle = "Sound, camera and view -- saved to your profile",
 		icon = "⚙️",
-		size = UDim2.fromOffset(760, 600),
+		size = UDim2.fromOffset(760, 660),
 	})
 	self._menu = menu
 
@@ -268,6 +273,15 @@ function Settings:_draw()
 		r.bar:SetFraction(fraction, false)
 		r.knob.Position = UDim2.fromScale(fraction, 0.5)
 		r.value.Text = format(setting, value)
+		-- A colour setting shows the colour itself: the bar, the knob and the name.
+		if setting.format == "colour" then
+			local entry = SettingsConfig.CrosshairColours[math.floor(value + 0.5)]
+			if entry then
+				r.bar:SetColour(entry.colour)
+				r.knob.BackgroundColor3 = entry.colour
+				r.value.TextColor3 = entry.colour
+			end
+		end
 	end
 end
 

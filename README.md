@@ -18,10 +18,22 @@ as uploaded.
 | **J** | Queue for a duel, or cancel the queue (same as clicking PLAY) |
 | Hold **Tab** | Player board: levels, ranks, kills, deaths, who is dueling |
 | **B / M / K / P / N** | Items, Shop, Armory, Profile, Daily reward |
+| **L** | Character: spend stat points on Strength, Defense, Stamina (or click the level diamond) |
+| **O** | Quest journal |
+| **F1** | Settings: volumes, camera shake, field of view, crosshair colour |
+| **Right mouse** | Aim; with the Longshot (or a strong scope) you look through the scope |
 | **V** | Go to (or leave) the gun range |
 | **Shift** or double-tap **W** | Sprint; **Ctrl** / **C** while sprinting slides |
 
 You can also queue by standing on one of the glowing **1V1 pads** near the spawn.
+
+The **"+"** beside your cash opens the Shop.
+
+## Testing without Studio
+
+`tools/uitest/` runs the whole interface under Lune and renders every screen -- see its
+README. Run it after any UI change: it catches the kind of error that stops a menu script
+half way through (which is what once hid the inventory, shop and side menu).
 
 ## What is in this repo
 
