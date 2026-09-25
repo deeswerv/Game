@@ -2,3 +2,4 @@
 sourcemap.json
 out/
 node_modules/
+tools/mapview/three/

@@ -1,0 +1,232 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Oswald:wght@700&display=block" rel="stylesheet">
+<style>html,body{margin:0;background:#000;overflow:hidden} canvas{display:block}</style>
+<script type="importmap">
+{ "imports": { "three": "./three/build/three.module.js", "three/addons/": "./three/examples/jsm/" } }
+</script>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const DATA = window.MAP;
+const W = 1280, H = 720;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = DATA.exposure ?? 1.0;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const mood = DATA.mood || 'day';
+const SKY = {
+  day: { top: 0x6fa6dc, bottom: 0xcfe3ef, hemi: [0xdfefff, 0x6b5f45, 1.1], sun: [0xfff2dc, 2.4] },
+  sunset: { top: 0x2e3a6e, bottom: 0xf3a060, hemi: [0xffd2a8, 0x3a3048, 0.9], sun: [0xffb070, 2.2] },
+  night: { top: 0x05060f, bottom: 0x1a1f3a, hemi: [0x5a6aa8, 0x101018, 0.55], sun: [0x9fb4ff, 0.6] },
+}[mood];
+
+// Sky: a big sphere with a vertical gradient.
+{
+  const g = new THREE.SphereGeometry(4000, 32, 16);
+  const top = new THREE.Color(SKY.top), bottom = new THREE.Color(SKY.bottom);
+  const cols = [];
+  const pos = g.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const t = THREE.MathUtils.clamp(pos.getY(i) / 4000 * 1.6 + 0.35, 0, 1);
+    const c = bottom.clone().lerp(top, t);
+    cols.push(c.r, c.g, c.b);
+  }
+  g.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+  scene.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, depthWrite: false })));
+}
+
+scene.add(new THREE.HemisphereLight(...SKY.hemi));
+const sun = new THREE.DirectionalLight(SKY.sun[0], SKY.sun[1]);
+scene.add(sun);
+scene.add(sun.target);
+
+// ------------------------------------------------------------------ parts --
+const MATS = {
+  Neon: null,
+  Glass: { roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.45 },
+  Metal: { roughness: 0.38, metalness: 0.65 },
+  DiamondPlate: { roughness: 0.35, metalness: 0.7 },
+  CorrodedMetal: { roughness: 0.7, metalness: 0.5 },
+  Foil: { roughness: 0.25, metalness: 0.8 },
+  SmoothPlastic: { roughness: 0.45, metalness: 0.0 },
+  Plastic: { roughness: 0.55, metalness: 0.0 },
+  Wood: { roughness: 0.8 }, WoodPlanks: { roughness: 0.85 },
+  Concrete: { roughness: 0.95 }, Asphalt: { roughness: 0.97 }, Slate: { roughness: 0.9 },
+  Brick: { roughness: 0.92 }, Cobblestone: { roughness: 0.95 }, Granite: { roughness: 0.85 },
+  Marble: { roughness: 0.3 }, Pebble: { roughness: 0.95 }, Sand: { roughness: 1 },
+  Grass: { roughness: 1 }, LeafyGrass: { roughness: 1 }, Fabric: { roughness: 1 }, Ice: { roughness: 0.1 },
+  ForceField: { roughness: 0.2, transparent: true, opacity: 0.25 },
+};
+function material(p) {
+  const color = new THREE.Color(`rgb(${p.c[0]},${p.c[1]},${p.c[2]})`);
+  const opacity = 1 - (p.t || 0);
+  if (p.m === 'Neon') {
+    // Neon is unlit and over-bright, which is what makes it bloom.
+    return new THREE.MeshBasicMaterial({ color: color.multiplyScalar(1.6), transparent: opacity < 1, opacity });
+  }
+  const spec = MATS[p.m] || { roughness: 0.6 };
+  const m = new THREE.MeshStandardMaterial({ color, roughness: spec.roughness ?? 0.6, metalness: spec.metalness ?? 0 });
+  const o = Math.min(opacity, spec.opacity ?? 1);
+  if (o < 1 || spec.transparent) { m.transparent = true; m.opacity = o; m.depthWrite = o > 0.6; }
+  if (p.rf) m.metalness = Math.max(m.metalness, p.rf * 0.8);
+  return m;
+}
+
+function wedgeGeometry(sx, sy, sz) {
+  // Roblox wedge: full bottom, vertical back face (+Z), slope rising from front-bottom.
+  const shape = new THREE.Shape();
+  shape.moveTo(-sz / 2, -sy / 2);
+  shape.lineTo(sz / 2, -sy / 2);
+  shape.lineTo(sz / 2, sy / 2);
+  shape.lineTo(-sz / 2, -sy / 2);
+  const g = new THREE.ExtrudeGeometry(shape, { depth: sx, bevelEnabled: false });
+  g.translate(0, 0, -sx / 2);
+  g.rotateY(-Math.PI / 2);   // extrude axis -> X, shape x -> Z
+  return g;
+}
+
+const geoCache = new Map();
+function geometry(p) {
+  const [sx, sy, sz] = p.z;
+  const key = `${p.s}|${sx.toFixed(3)}|${sy.toFixed(3)}|${sz.toFixed(3)}`;
+  if (geoCache.has(key)) return geoCache.get(key);
+  let g;
+  if (p.s === 'Ball') g = new THREE.SphereGeometry(Math.min(sx, sy, sz) / 2, 20, 14);
+  else if (p.s === 'Cylinder') { g = new THREE.CylinderGeometry(Math.min(sy, sz) / 2, Math.min(sy, sz) / 2, sx, 24); g.rotateZ(Math.PI / 2); }
+  else if (p.s === 'Wedge' || p.s === 'CornerWedge') g = wedgeGeometry(sx, sy, sz);
+  else g = new THREE.BoxGeometry(sx, sy, sz);
+  geoCache.set(key, g);
+  return g;
+}
+
+const bounds = new THREE.Box3();
+for (const p of DATA.parts) {
+  const mesh = new THREE.Mesh(geometry(p), material(p));
+  const m = new THREE.Matrix4().set(
+    p.r[0], p.r[1], p.r[2], p.p[0],
+    p.r[3], p.r[4], p.r[5], p.p[1],
+    p.r[6], p.r[7], p.r[8], p.p[2],
+    0, 0, 0, 1);
+  mesh.matrixAutoUpdate = false;
+  mesh.matrix.copy(m);
+  const isNeon = p.m === 'Neon';
+  mesh.castShadow = !isNeon && (p.t || 0) < 0.5;
+  mesh.receiveShadow = !isNeon;
+  scene.add(mesh);
+  if (p.z[0] < 400 && p.z[2] < 400) bounds.expandByPoint(new THREE.Vector3(...p.p));
+}
+
+// ------------------------------------------------------------------ lights --
+const lights = [...(DATA.lights || [])].sort((a, b) => b.b * b.range - a.b * a.range).slice(0, 28);
+for (const l of lights) {
+  const color = new THREE.Color(`rgb(${l.c[0]},${l.c[1]},${l.c[2]})`);
+  let light;
+  if (l.k === 'SpotLight' || l.k === 'SurfaceLight') {
+    light = new THREE.SpotLight(color, l.b * 30, l.range * 1.4, THREE.MathUtils.degToRad(Math.min(l.angle, 89)) , 0.5, 1.2);
+    light.position.set(...l.p);
+    light.target.position.set(l.p[0] + l.d[0] * 10, l.p[1] + l.d[1] * 10, l.p[2] + l.d[2] * 10);
+    scene.add(light.target);
+  } else {
+    light = new THREE.PointLight(color, l.b * 18, l.range * 1.3, 1.2);
+    light.position.set(...l.p);
+  }
+  scene.add(light);
+}
+
+// ------------------------------------------------------------------- signs --
+function signTexture(s, pxW, pxH) {
+  const c = document.createElement('canvas');
+  c.width = pxW; c.height = pxH;
+  const g = c.getContext('2d');
+  const text = s.text || '';
+  let size = pxH * 0.8;
+  g.font = `${size}px "Fredoka One"`;
+  while (g.measureText(text).width > pxW * 0.94 && size > 8) { size *= 0.92; g.font = `${size}px "Fredoka One"`; }
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  if (s.sc) {
+    g.shadowColor = `rgb(${s.sc})`; g.shadowBlur = size * 0.35;
+    g.lineWidth = size * 0.12; g.strokeStyle = `rgb(${s.sc})`;
+    g.strokeText(text, pxW / 2, pxH / 2);
+  }
+  g.shadowBlur = 0;
+  g.fillStyle = `rgba(${s.c},${1 - (s.tt || 0)})`;
+  g.fillText(text, pxW / 2, pxH / 2);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+const FACE_ROT = {
+  Front: [0, Math.PI, 0], Back: [0, 0, 0], Top: [-Math.PI / 2, 0, 0], Bottom: [Math.PI / 2, 0, 0],
+  Left: [0, -Math.PI / 2, 0], Right: [0, Math.PI / 2, 0],
+};
+const FACE_NORMAL = { Front: [0, 0, -1], Back: [0, 0, 1], Top: [0, 1, 0], Bottom: [0, -1, 0], Left: [-1, 0, 0], Right: [1, 0, 0] };
+function addSigns() {
+  for (const s of DATA.signs || []) {
+    if (!s.text) continue;
+    const pxW = Math.min(2048, Math.max(64, Math.round(s.w * 40))), pxH = Math.min(1024, Math.max(32, Math.round(s.h * 40)));
+    const mat = new THREE.MeshBasicMaterial({ map: signTexture(s, pxW, pxH), transparent: true, depthWrite: false });
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(s.w, s.h), mat);
+    const partRot = new THREE.Matrix4().set(s.r[0], s.r[1], s.r[2], 0, s.r[3], s.r[4], s.r[5], 0, s.r[6], s.r[7], s.r[8], 0, 0, 0, 0, 1);
+    const faceRot = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(...FACE_ROT[s.face] || FACE_ROT.Front));
+    const n = new THREE.Vector3(...(FACE_NORMAL[s.face] || FACE_NORMAL.Front)).applyMatrix4(partRot).multiplyScalar(0.03);
+    const m = new THREE.Matrix4().multiplyMatrices(partRot, faceRot);
+    m.setPosition(s.p[0] + n.x, s.p[1] + n.y, s.p[2] + n.z);
+    plane.matrixAutoUpdate = false;
+    plane.matrix.copy(m);
+    scene.add(plane);
+  }
+}
+
+// ------------------------------------------------------------------ camera --
+const camera = new THREE.PerspectiveCamera(60, W / H, 0.5, 9000);
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(W, H), mood === 'night' ? 0.9 : 0.5, 0.55, 0.82);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+const centre = bounds.getCenter(new THREE.Vector3());
+const span = bounds.getSize(new THREE.Vector3());
+const reach = Math.max(span.x, span.z, 40);
+sun.position.set(centre.x + reach * 0.6, centre.y + reach * 1.1, centre.z + reach * 0.35);
+sun.target.position.copy(centre);
+sun.castShadow = true;
+sun.shadow.mapSize.set(4096, 4096);
+const sc = sun.shadow.camera;
+sc.left = -reach; sc.right = reach; sc.top = reach; sc.bottom = -reach; sc.near = 1; sc.far = reach * 4;
+sun.shadow.bias = -0.0004;
+
+window.renderView = (i) => {
+  const cams = DATA.cameras && DATA.cameras.length ? DATA.cameras : [
+    { pos: [centre.x + reach * 0.7, centre.y + reach * 0.55, centre.z + reach * 0.7], look: [centre.x, centre.y, centre.z], fov: 50 },
+  ];
+  const c = cams[i % cams.length];
+  camera.fov = c.fov || 60;
+  camera.updateProjectionMatrix();
+  camera.position.set(...c.pos);
+  camera.lookAt(new THREE.Vector3(...c.look));
+  composer.render();
+  return cams.length;
+};
+
+document.fonts.ready.then(() => {
+  addSigns();
+  window.MAP_READY = true;
+});
+</script>
+</body>
+</html>
