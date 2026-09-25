@@ -58,6 +58,14 @@ local SaveStructure = {
 	DailyStreak = 0,
 	BestDailyStreak = 0,
 
+	-- Daily contracts (ContractService): the UTC day the current set belongs to, progress and
+	-- payment per contract id (dictionaries, so Replica never sees a gappy array), and the
+	-- lifetime count for the profile card.
+	ContractDay = 0,
+	ContractProgress = {},
+	ContractsPaid = {},
+	ContractsDone = 0,
+
 	-- How many times this player has reset their level at the cap. Drives the emblem shown
 	-- beside their name, and is the one number that never resets.
 	--

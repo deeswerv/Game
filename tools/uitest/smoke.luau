@@ -44,6 +44,7 @@ World.serverRemotes({
 		MatchAction = "RemoteFunction", MatchUpdate = "RemoteEvent", RangeAction = "RemoteFunction",
 		ProfileRequest = "RemoteFunction", DailyAction = "RemoteFunction", BuildAction = "RemoteFunction",
 		StatAction = "RemoteFunction", SettingsAction = "RemoteFunction",
+		ContractAction = "RemoteFunction", ContractUpdate = "RemoteEvent", SupplyEvent = "RemoteEvent",
 		KillFeed = "RemoteEvent", KillFeedAll = "RemoteEvent", DeathReport = "RemoteEvent",
 		GunEffect = "RemoteEvent", NPCEffect = "RemoteEvent", ChestEffect = "RemoteEvent",
 	},
@@ -116,6 +117,7 @@ for _, case in ipairs({
 	{ key = Enum.KeyCode.N, name = "daily (N)" },
 	{ key = Enum.KeyCode.O, name = "quests (O)" },
 	{ key = Enum.KeyCode.F1, name = "settings (F1)" },
+	{ key = Enum.KeyCode.L, name = "contracts (L)" },
 }) do
 	World.pressKey(case.key)
 	World.advance(0.6)

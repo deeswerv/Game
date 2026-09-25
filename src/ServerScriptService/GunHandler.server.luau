@@ -9,6 +9,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Debris = game:GetService("Debris")
+local CollectionService = game:GetService("CollectionService")
 
 local WeaponConfig = require(ReplicatedStorage.WeaponConfig)
 local GunHandling = require(ReplicatedStorage.GunHandling)
@@ -38,6 +39,20 @@ local RATE_GRACE = 0.02         -- absorb a little network jitter on fire rate
 -- it at the top would start the NPC world early, out of dependency order.
 local NPCService: any = nil
 local lastNoise: { [Player]: number } = {}
+
+-- Contracts count headshots and wallbangs, which only this script knows about. Required
+-- lazily for the same reason as NPCService.
+local ContractService: any = nil
+local function noteContract(player: Player, kind: string)
+	if ContractService == nil then
+		local module = ServerScriptService:FindFirstChild("ContractService")
+		local ok, service = pcall(require, module)
+		ContractService = (ok and service) or false
+	end
+	if ContractService and ContractService.Note then
+		ContractService.Note(player, kind)
+	end
+end
 
 local function reportNoise(player: Player, origin: Vector3, cfg, tool: Tool)
 	local now = os.clock()
@@ -378,6 +393,16 @@ local function fire(player: Player, tool: Tool, cfg, aimPoint: Vector3, ads: boo
 					-- way the round was travelling.
 					KillCredit.Damage(victim, damage, player, tool.Name, dir)
 					GunEffect:FireClient(player, "Hitmarker", headshot, lethal, wallbang)
+					-- Only against other players and fighters, not the practice targets.
+					if ContractService ~= false and victim.Parent and (Players:GetPlayerFromCharacter(victim.Parent)
+						or CollectionService:HasTag(victim.Parent, "GameNPC")) then
+						if headshot then
+							task.spawn(noteContract, player, "headshot")
+						end
+						if wallbang then
+							task.spawn(noteContract, player, "wallbang")
+						end
+					end
 					-- Only the shooter gets the number. Everyone seeing everyone's damage turns
 					-- a firefight into unreadable confetti.
 					GunEffect:FireClient(player, "Damage", hitPos, dealt, headshot, lethal, wallbang)

@@ -123,6 +123,9 @@ local function build(spec, index: number): Model
 	return model
 end
 
+-- Fired when a player mines a node: (player, amount). Contracts count these.
+CrystalService.Harvested = Instance.new("BindableEvent")
+
 --- Award crystals for a node, once.
 function CrystalService.Harvest(player: Player, model: Model, spec): boolean
 	if harvested[model] then
@@ -139,6 +142,7 @@ function CrystalService.Harvest(player: Player, model: Model, spec): boolean
 	local zone = CrystalConfig.Zones[spec.zone]
 	local amount = math.random(zone.yield[1], zone.yield[2])
 	replica:SetValue("Crystals", (replica.Data.Crystals or 0) + amount)
+	CrystalService.Harvested:Fire(player, amount)
 
 	-- Hide rather than destroy: the same model comes back, so nothing has to be rebuilt
 	-- and the prompt connection survives.

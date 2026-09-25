@@ -78,6 +78,21 @@ return function(World)
 		end
 		return status
 	end
+	-- ContractService.State: today's three, one part done, one paid.
+	R.serverFunctions.ContractAction = function(action)
+		return {
+			contracts = {
+				{ id = "hunter", tier = "Easy", title = "Hunter", text = "Eliminate 8 enemies", icon = "🎯",
+					target = 8, progress = 8, paid = true, reward = { coins = 700, xp = 350 } },
+				{ id = "marksman", tier = "Medium", title = "Marksman", text = "Land 10 headshots", icon = "🎖",
+					target = 10, progress = 6, paid = false, reward = { coins = 1400, xp = 700, crystals = 2 } },
+				{ id = "longshot", tier = "Hard", title = "Long Shot", text = "Get 4 kills from over 120 studs",
+					icon = "🔭", target = 4, progress = 1, paid = false, reward = { coins = 2600, xp = 1300, crystals = 5 } },
+			},
+			done = 1, bonus = { coins = 2500, xp = 1000, crystals = 5 }, bonusPaid = false,
+			secondsLeft = 5 * 3600 + 12 * 60, lifetime = 23,
+		}
+	end
 	R.serverFunctions.BuildAction = function(action)
 		return { ok = true, builds = {}, camos = {}, attachments = {} }
 	end

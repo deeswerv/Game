@@ -45,6 +45,8 @@ local systems = {
 	"StatsService",        -- deaths, weapon usage, and the record the profile card shows
 	"RangeService",        -- the gun range: damage and DPS read off the targets themselves
 	"DailyService",        -- the daily reward ladder, timed on the server
+	"ContractService",     -- three daily contracts, counted from what the server decides
+	"SupplyDropService",   -- a crate on a parachute every few minutes: a race across the map
 	"SettingsService",     -- saves the settings panel (volumes, camera shake, field of view)
 	"DuelPads",            -- 1v1 pads by the spawn: stand on one to queue (last: it looks for clear ground)
 }

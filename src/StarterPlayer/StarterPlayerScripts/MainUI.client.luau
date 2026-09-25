@@ -31,6 +31,9 @@ local Remote = require(Modules:WaitForChild("Remote"))
 local Journal = require(Modules:WaitForChild("Journal"))
 local Settings = require(Modules:WaitForChild("Settings"))
 local BossBar = require(Modules:WaitForChild("BossBar"))
+local Toast = require(Modules:WaitForChild("Toast"))
+local Contracts = require(Modules:WaitForChild("Contracts"))
+local WorldEvents = require(Modules:WaitForChild("WorldEvents"))
 local WeaponConfig = require(ReplicatedStorage:WaitForChild("WeaponConfig"))
 
 local StarterGui = game:GetService("StarterGui")
@@ -114,6 +117,18 @@ local objective = safe("Objective", function()
 end)
 local bossBar = safe("BossBar", function()
 	return BossBar.new(screen)
+end)
+local toast = safe("Toast", function()
+	return Toast.new(screen)
+end)
+-- Supply drops: the banner, the marker over the crate, and who looted it.
+local worldEvents = safe("WorldEvents", function()
+	return WorldEvents.new(toast, playerGui)
+end)
+Remote.get("Remotes", "SupplyEvent").OnClientEvent:Connect(function(kind: unknown, data: unknown)
+	if type(kind) == "string" then
+		worldEvents:Handle(kind, data)
+	end
 end)
 
 -- Remotes are held lazily (see UI.Modules.Remote): building the interface never waits on
@@ -570,6 +585,12 @@ local journal = safe("Journal", function()
 end)
 journalRef = journal
 
+local contracts = safe("Contracts", function()
+	return Contracts.new(menuLayer, {
+		contractAction = remote("ContractAction"),
+	})
+end)
+
 local settings = safe("Settings", function()
 	return Settings.new(menuLayer, {
 		settingsAction = remote("SettingsAction"),
@@ -585,9 +606,9 @@ local nav: any
 local NAV_ID = {
 	[inventory] = "Inventory", [market] = "Market", [workshop] = "Workshop",
 	[profile] = "Profile", [daily] = "Daily", [journal] = "Journal",
-	[settings] = "Settings",
+	[settings] = "Settings", [contracts] = "Contracts",
 }
-local PANELS = { inventory, market, workshop, profile, daily, journal, settings }
+local PANELS = { inventory, market, workshop, profile, daily, journal, contracts, settings }
 
 -- Opening one panel closes the others. Two full-screen menus stacked on each other is how a
 -- player loses track of what Escape is going to do.
@@ -649,6 +670,9 @@ nav = safe("Nav", function()
 		{ id = "Journal", label = "Quests", key = "[O]", onActivated = function()
 			openOnly(journal)
 		end },
+		{ id = "Contracts", label = "Contracts", key = "[L]", onActivated = function()
+			openOnly(contracts)
+		end },
 		{ id = "Profile", label = "Profile", key = "[P]", onActivated = function()
 			openOnly(profile)
 		end },
@@ -662,6 +686,67 @@ nav = safe("Nav", function()
 		end },
 	})
 end)
+
+-- -------------------------------------------------------------- contracts --
+
+-- Contract news: a card for progress, the banner for a finished one, and the nav tile's
+-- badge counting what is still to do today.
+do
+	local TIER = {
+		Easy = Color3.fromRGB(88, 214, 110),
+		Medium = Color3.fromRGB(70, 160, 255),
+		Hard = Color3.fromRGB(190, 110, 255),
+	}
+	local contractAction = remote("ContractAction")
+	local function refreshBadge()
+		task.spawn(function()
+			local ok, state = pcall(function()
+				return contractAction:InvokeServer("state")
+			end)
+			if ok and type(state) == "table" and type(state.contracts) == "table" then
+				nav:SetBadge("Contracts", #state.contracts - (tonumber(state.done) or 0))
+			end
+		end)
+	end
+	remote("ContractUpdate").OnClientEvent:Connect(function(kind: unknown, data: unknown)
+		if type(data) ~= "table" then
+			return
+		end
+		local info = data :: any
+		local colour = TIER[info.tier] or Color3.fromRGB(255, 196, 30)
+		if kind == "progress" then
+			local target = math.max(1, tonumber(info.target) or 1)
+			local progress = tonumber(info.progress) or 0
+			toast:Push({
+				title = string.upper(tostring(info.title or "Contract")),
+				text = string.format("%d / %d", progress, target),
+				icon = tostring(info.icon or "📋"),
+				colour = colour,
+				progress = progress / target,
+				duration = 2.6,
+			})
+		elseif kind == "complete" then
+			toast:Banner({
+				title = "CONTRACT COMPLETE",
+				subtitle = string.upper(tostring(info.title or "")) .. "     " .. Contracts.RewardText(info.reward),
+				colour = colour,
+				sound = "Ring",
+			})
+			refreshBadge()
+			if contracts:IsOpen() then
+				contracts:Refresh()
+			end
+		elseif kind == "bonus" then
+			toast:Banner({
+				title = "ALL CONTRACTS DONE",
+				subtitle = "BONUS     " .. Contracts.RewardText(info.reward),
+				colour = Color3.fromRGB(255, 196, 30),
+				sound = "Ring",
+			})
+		end
+	end)
+	task.delay(6, refreshBadge)
+end
 
 -- --------------------------------------------------------------- feed --
 
@@ -735,6 +820,10 @@ UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: 
 		openOnly(settings)
 		return
 	end
+	if input.KeyCode == Enum.KeyCode.L then
+		openOnly(contracts)
+		return
+	end
 
 	-- Slot keys are gameplay, so they stop at the edge of a menu.
 	if player:GetAttribute("UIOpen") == true then
@@ -770,6 +859,7 @@ local function refreshMenuState()
 	objective:SetVisible(clear)
 	duel:SetVisible(clear)
 	bossBar:SetVisible(clear)
+	toast:SetVisible(clear)
 end
 refreshMenuState()
 player:GetAttributeChangedSignal("UIOpen"):Connect(refreshMenuState)

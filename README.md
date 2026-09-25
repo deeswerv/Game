@@ -19,12 +19,24 @@ as uploaded.
 | Hold **Tab** | Player board: levels, ranks, kills, deaths, who is dueling |
 | **B / M / K / P / N** | Items, Shop, Armory, Profile, Daily reward |
 | **O** | Quest journal |
+| **L** | Daily contracts |
+| **E** (hold) | Open a supply drop |
 | **F1** | Settings: volumes, camera shake, field of view, crosshair colour |
 | **Right mouse** | Aim; with the Longshot (or a strong scope) you look through the scope |
 | **V** | Go to (or leave) the gun range |
 | **Shift** or double-tap **W** | Sprint; **Ctrl** / **C** while sprinting slides |
 
 You can also queue by standing on one of the glowing **1V1 pads** near the spawn.
+
+## Contracts and supply drops
+
+- **Daily contracts**: three jobs a day (one easy, one medium, one hard), the same set on every
+  server, from headshots and wallbangs to duel wins, long-range kills, Warlords and supply drops.
+  Each pays cash, XP and crystals the moment it is done, and finishing all three pays a bonus.
+  Progress pops up on the left; practice dummies do not count.
+- **Supply drops**: every four minutes a crate parachutes into one of the open zones under a
+  pillar of light, with a marker and distance on your screen. First to hold E on it keeps the
+  cash, crystals and XP inside; about one in eight is a golden Elite drop worth double.
 
 ## Gun handling
 

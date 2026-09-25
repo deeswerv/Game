@@ -36,6 +36,7 @@ local ICONS: { [string]: string } = {
 	Daily = "🎁",
 	Journal = "📜",
 	Settings = "⚙️",
+	Contracts = "🎯",
 }
 
 export type Entry = {

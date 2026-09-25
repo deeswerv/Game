@@ -8,6 +8,7 @@ local fs = require("@lune/fs")
 local process = require("@lune/process")
 local roblox = require("@lune/roblox")
 local World = require("./world")
+local Vector3 = require("@lune/roblox").Vector3
 local snapshot = require("./snapshot")
 local R = World.R
 local Enum = roblox.Enum
@@ -34,6 +35,7 @@ World.serverRemotes({
 		MatchAction = "RemoteFunction", MatchUpdate = "RemoteEvent", RangeAction = "RemoteFunction",
 		ProfileRequest = "RemoteFunction", DailyAction = "RemoteFunction", BuildAction = "RemoteFunction",
 		StatAction = "RemoteFunction", SettingsAction = "RemoteFunction",
+		ContractAction = "RemoteFunction", ContractUpdate = "RemoteEvent", SupplyEvent = "RemoteEvent",
 		KillFeed = "RemoteEvent", KillFeedAll = "RemoteEvent", DeathReport = "RemoteEvent",
 		GunEffect = "RemoteEvent", NPCEffect = "RemoteEvent", GunAction = "RemoteEvent",
 		MeleeAction = "RemoteEvent", MeleeEffect = "RemoteEvent", AimUpdate = "RemoteEvent",
@@ -97,6 +99,25 @@ toggle(Enum.KeyCode.O)
 toggle(Enum.KeyCode.F1)
 shot("12_settings")
 toggle(Enum.KeyCode.F1)
+toggle(Enum.KeyCode.L)
+shot("18_contracts")
+toggle(Enum.KeyCode.L)
+
+-- Contract news and a supply drop on the way.
+World.serverFire("Remotes", "ContractUpdate", "progress", {
+	id = "marksman", title = "Marksman", icon = "🎖", tier = "Medium", progress = 7, target = 10,
+})
+World.serverFire("Remotes", "SupplyEvent", "inbound", {
+	id = 1, position = Vector3.new(0, 4, -60), zone = "THE HARBOUR", landsIn = 16, golden = false,
+})
+shot("19_supply_inbound", 0.5)
+World.advance(4)
+World.serverFire("Remotes", "ContractUpdate", "complete", {
+	id = "marksman", title = "Marksman", icon = "🎖", tier = "Medium", reward = { coins = 1400, xp = 700, crystals = 2 },
+})
+shot("20_contract_complete", 0.5)
+World.advance(4)
+World.serverFire("Remotes", "SupplyEvent", "gone", { id = 1 })
 
 -- Guns: the Longshot through its scope, and a shotgun's ring on a nearly empty magazine.
 local function equip(name: string)
