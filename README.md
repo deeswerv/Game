@@ -47,6 +47,10 @@ basketball court, a pocket park, parked cars, street lamps and a skyline all rou
 fire escape on the apartments for a **rooftop stash** (once a day). Supply drops land in its
 streets too.
 
+**Turf war**: every few minutes while players are downtown, a crew (three Bandits, a Soldier
+and a Brute lieutenant) rolls in from one of the district's edges. Drive them out within four
+minutes and everyone who landed a hit is paid, with a bonus for the MVP.
+
 ## Contracts and supply drops
 
 - **Daily contracts**: three jobs a day (one easy, one medium, one hard), the same set on every

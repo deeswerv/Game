@@ -125,7 +125,12 @@ local toast = safe("Toast", function()
 end)
 -- Supply drops: the banner, the marker over the crate, and who looted it.
 local worldEvents = safe("WorldEvents", function()
-	return WorldEvents.new(toast, playerGui)
+	return WorldEvents.new(toast, playerGui, screen)
+end)
+Remote.get("Remotes", "TurfEvent").OnClientEvent:Connect(function(kind: unknown, data: unknown)
+	if type(kind) == "string" then
+		worldEvents:HandleTurf(kind, data)
+	end
 end)
 Remote.get("Remotes", "SupplyEvent").OnClientEvent:Connect(function(kind: unknown, data: unknown)
 	if type(kind) == "string" then

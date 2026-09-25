@@ -442,6 +442,8 @@ NPCConfig.Zones = {
 	{ id = "Harbour", name = "The Harbour", minX = -380, maxX = -46,  minZ = -87, maxZ = 321, level = { 1, 2 } },
 	{ id = "Flats",   name = "The Flats",   minX = -753, maxX = -381, minZ = -87, maxZ = 321, level = { 3, 5 } },
 	{ id = "Reach",   name = "The Reach",   minX = -56,  maxX = 436,  minZ = 44,  maxZ = 560, level = { 6, 9 } },
+	-- The Downtown district in the sky (DistrictService); only turf-war crews ever stand here.
+	{ id = "Downtown", name = "Downtown",   minX = -355, maxX = 45,   minZ = 1300, maxZ = 1700, level = { 4, 7 } },
 }
 
 -- Anywhere not inside a zone is treated as starter ground rather than erroring.

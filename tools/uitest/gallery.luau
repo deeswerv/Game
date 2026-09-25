@@ -35,7 +35,7 @@ World.serverRemotes({
 		MatchAction = "RemoteFunction", MatchUpdate = "RemoteEvent", RangeAction = "RemoteFunction",
 		ProfileRequest = "RemoteFunction", DailyAction = "RemoteFunction", BuildAction = "RemoteFunction",
 		StatAction = "RemoteFunction", SettingsAction = "RemoteFunction",
-		ContractAction = "RemoteFunction", ContractUpdate = "RemoteEvent", SupplyEvent = "RemoteEvent", WorldReward = "RemoteEvent", BountyEvent = "RemoteEvent",
+		ContractAction = "RemoteFunction", ContractUpdate = "RemoteEvent", SupplyEvent = "RemoteEvent", WorldReward = "RemoteEvent", BountyEvent = "RemoteEvent", TurfEvent = "RemoteEvent",
 		KillFeed = "RemoteEvent", KillFeedAll = "RemoteEvent", DeathReport = "RemoteEvent",
 		GunEffect = "RemoteEvent", NPCEffect = "RemoteEvent", GunAction = "RemoteEvent",
 		MeleeAction = "RemoteEvent", MeleeEffect = "RemoteEvent", AimUpdate = "RemoteEvent",
@@ -114,6 +114,15 @@ do
 	World.advance(4)
 	World.player:SetAttribute("Bounty", nil)
 end
+
+-- A turf war downtown.
+World.serverFire("Remotes", "TurfEvent", "start", { zone = "THE EAST TUNNEL", left = 5, total = 5, seconds = 240 })
+World.advance(1)
+World.serverFire("Remotes", "TurfEvent", "progress", { left = 3, total = 5, seconds = 201 })
+shot("23_turf_war", 0.5)
+World.advance(4)
+World.serverFire("Remotes", "TurfEvent", "won", { mvp = "Tester" })
+World.advance(4)
 
 -- Contract news and a supply drop on the way.
 World.serverFire("Remotes", "ContractUpdate", "progress", {

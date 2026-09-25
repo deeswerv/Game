@@ -35,11 +35,36 @@ local function commas(n: number): string
 	return (out:gsub("^,", ""))
 end
 
-function WorldEvents.new(toast: any, playerGui: Instance)
+function WorldEvents.new(toast: any, playerGui: Instance, screen: GuiObject?)
 	local self = setmetatable({}, WorldEvents)
 	self._toast = toast
 	self._gui = playerGui
 	self._markers = {} :: { [number]: Marker }
+
+	-- The turf war chip: how many of the crew are left, and the clock.
+	if screen then
+		local chip = Instance.new("Frame")
+		chip.Name = "TurfWar"
+		chip.BackgroundColor3 = Color3.fromRGB(20, 10, 12)
+		chip.BackgroundTransparency = 0.15
+		chip.BorderSizePixel = 0
+		chip.Position = UDim2.fromOffset(16, 76)
+		chip.Size = UDim2.fromOffset(250, 34)
+		chip.Visible = false
+		chip.Parent = screen
+		Components.Corner(chip, 10)
+		Components.Stroke(chip, Color3.fromRGB(236, 44, 52), 2.5)
+		local label = Components.Label(chip, {
+			text = "",
+			face = Theme.Face.Condensed,
+			size = 19,
+			align = Enum.TextXAlignment.Center,
+			outline = 2,
+		})
+		label.Size = UDim2.fromScale(1, 1)
+		self._turfChip, self._turfLabel = chip, label
+		self._turfEnds, self._turfLeft, self._turfTotal = 0, 0, 0
+	end
 
 	local accumulator = 0
 	self._connection = RunService.Heartbeat:Connect(function(dt)
@@ -154,6 +179,11 @@ function WorldEvents:_update()
 		from = camera.CFrame.Position
 	end
 	local skyHigh = from ~= nil and from.Y > 1500
+	if self._turfChip and self._turfChip.Visible then
+		local secs = math.max(0, math.floor(self._turfEnds - os.clock()))
+		self._turfLabel.Text = string.format("TURF WAR  ·  %d / %d LEFT  ·  %d:%02d", self._turfLeft,
+			self._turfTotal, secs // 60, secs % 60)
+	end
 	for _, marker in pairs(self._markers) do
 		marker.gui.Enabled = not inDuel and not skyHigh
 		if from then
@@ -164,6 +194,56 @@ function WorldEvents:_update()
 			local left = math.max(0, math.ceil(marker.landsAt - os.clock()))
 			marker.status.Text = left > 0 and ("LANDS IN " .. left .. "s") or (marker.golden and "ELITE SUPPLY" or "SUPPLY")
 		end
+	end
+end
+
+--- Handle one TurfEvent from the server.
+function WorldEvents:HandleTurf(kind: string, data: any)
+	if type(data) ~= "table" then
+		return
+	end
+	local red = Color3.fromRGB(236, 44, 52)
+	if kind == "start" then
+		self._turfLeft, self._turfTotal = tonumber(data.left) or 0, tonumber(data.total) or 0
+		self._turfEnds = os.clock() + (tonumber(data.seconds) or 240)
+		if self._turfChip then
+			self._turfChip.Visible = true
+		end
+		self._toast:Banner({
+			title = "TURF WAR",
+			subtitle = string.format("A CREW IS MOVING ON DOWNTOWN FROM %s", tostring(data.zone or "THE EDGE")),
+			colour = red,
+			sound = "Slam",
+		})
+	elseif kind == "progress" then
+		self._turfLeft = tonumber(data.left) or self._turfLeft
+		self._turfTotal = tonumber(data.total) or self._turfTotal
+		if tonumber(data.seconds) then
+			self._turfEnds = os.clock() + data.seconds
+		end
+	elseif kind == "won" then
+		if self._turfChip then
+			self._turfChip.Visible = false
+		end
+		self._toast:Banner({
+			title = "TURF DEFENDED",
+			subtitle = data.mvp and ("MVP  ·  " .. string.upper(tostring(data.mvp))) or "DOWNTOWN IS YOURS",
+			colour = Color3.fromRGB(255, 196, 40),
+			sound = "Ring",
+		})
+	elseif kind == "lost" then
+		if self._turfChip then
+			self._turfChip.Visible = false
+		end
+		self._toast:Push({ title = "The crew got away", text = "Downtown turf war over", icon = "⚔", colour = red })
+	elseif kind == "reward" then
+		self._toast:Push({
+			title = data.mvp and "TURF WAR MVP" or "TURF WAR PAYOUT",
+			text = string.format("+$%s   +%s XP", commas(tonumber(data.coins) or 0), commas(tonumber(data.xp) or 0)),
+			icon = data.mvp and "🏆" or "⚔",
+			colour = Color3.fromRGB(255, 196, 40),
+			duration = 6,
+		})
 	end
 end
 

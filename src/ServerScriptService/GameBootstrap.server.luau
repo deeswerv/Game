@@ -51,6 +51,7 @@ local systems = {
 	"SettingsService",     -- saves the settings panel (volumes, camera shake, field of view)
 	"DuelPads",            -- 1v1 pads by the spawn: stand on one to queue (last: it looks for clear ground)
 	"DistrictService",     -- Downtown: the city district through the pink gate, its shops, hall and stash
+	"TurfWarService",      -- a crew rolls into Downtown every few minutes; drive them out for a payout
 }
 
 for _, name in ipairs(systems) do
