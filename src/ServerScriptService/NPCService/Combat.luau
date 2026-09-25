@@ -200,6 +200,10 @@ function Combat.Spread(agent, weapon, now: number, target: Model): number
 	if agent.suppressedUntil and now < agent.suppressedUntil then
 		cone *= 1.7
 	end
+	-- Flashed: firing at where it last saw you, half blind.
+	if agent.blindUntil and now < agent.blindUntil then
+		cone *= 4
+	end
 	return cone + (weapon.cfg.SpreadMin or 0) * 0.5
 end
 

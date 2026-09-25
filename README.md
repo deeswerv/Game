@@ -49,8 +49,22 @@ The live game always saves.
 | **Right mouse** | Aim; with the Longshot (or a strong scope) you look through the scope |
 | **V** | Go to (or leave) the gun range |
 | **Shift** or double-tap **W** | Sprint; **Ctrl** / **C** while sprinting slides |
+| Hold **F** | Aim the selected throwable (an arc shows where it lands); let go to throw |
+| **X** | Switch throwable: Frag (from level 3), Flashbang (level 7), Smoke |
+| **Z** | Medkit: patch up 50 health over a second |
+| **G** (hold) | Emote wheel: scroll or click the tabs for five pages of emotes, 1-8 to pick |
 
 You can also queue by standing on one of the glowing **1V1 pads** near the spawn.
+
+## Utility and armour
+
+Every life (and every duel round) starts with a fresh kit: smoke and two medkits from the
+start, two frags from level 3, two flashbangs from level 7. Frags hurt anyone close, less
+through walls, and you take half of your own. A flashbang whites out the screen of anyone
+looking at it and blinds enemies for a few seconds (they stop seeing you and their aim goes).
+Enemies cannot see through smoke. The cyan bar over your health is armour: it soaks hits
+before your health does. Enemies drop armour plates (walk over them), and a duel gives both
+fighters 50 armour every round.
 
 ## Streaks and bounties
 

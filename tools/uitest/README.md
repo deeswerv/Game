@@ -24,7 +24,7 @@ lune run tools/uitest/gallery.luau -- out/ui && node tools/uitest/shoot.mjs out/
 ## Game-rule suites
 
 Each checks one system end to end and exits non-zero on a failure:
-`arenas`, `guns`, `contracts`, `district`, `flats`, `achievements`, `tactics`, `headlook`, `progression`
+`arenas`, `guns`, `contracts`, `district`, `flats`, `achievements`, `tactics`, `headlook`, `utility`, `progression`
 (levels, prestige, coins and the owner panel's commands) and `emotes`
 (the emote pack: the converted tracks against the pack's own keyframes, the server's
 attributes, the client posing a real rig, the props and the paged wheel).

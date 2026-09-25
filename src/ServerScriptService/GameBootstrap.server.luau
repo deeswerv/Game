@@ -38,6 +38,7 @@ local systems = {
 	"AvatarLook",          -- each player's own clothes, skin, hair and hats on the locked body
 	"EmoteService",         -- emote wheel; the server owns which emotes exist
 	"HeadLookService",     -- where each player is looking, so everyone sees heads turn
+	"UtilityService",      -- frags, flashbangs, smoke, medkits and armour plates
 	"CombatFeedService",   -- aim replication and the kill feed, both for the combat HUD
 	"WeaponBuildService",  -- per-player saved builds, camos, and dressing weapons on equip
 	"KillcamService",      -- tells the victim who killed them, and with what

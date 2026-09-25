@@ -147,11 +147,36 @@ local ARMOUR_TAKES = 0.65
 
 function KillCredit.Mitigate(humanoid: Humanoid?, amount: number): number
 	local model = humanoid and humanoid.Parent
-	local armour = model and model:GetAttribute("ArmorRating")
-	if type(armour) ~= "number" or armour <= 0 or amount <= 0 then
+	if not model or amount <= 0 then
 		return amount
 	end
-	return math.max(amount - armour, amount * (1 - ARMOUR_TAKES))
+	if model:FindFirstChildOfClass("ForceField") then
+		return 0
+	end
+	local rating = model:GetAttribute("ArmorRating")
+	if type(rating) == "number" and rating > 0 then
+		amount = math.max(amount - rating, amount * (1 - ARMOUR_TAKES))
+	end
+	-- A player's armour plates (UtilityService): they soak the hit whole until they run out.
+	local plates = model:GetAttribute("Armour")
+	if type(plates) == "number" and plates > 0 then
+		amount = math.max(0, amount - plates)
+	end
+	return amount
+end
+
+--- Take a hit out of a player's armour plates first. Returns what is left for their health.
+local function soakPlates(model: Instance?, amount: number): number
+	if not model or amount <= 0 or model:FindFirstChildOfClass("ForceField") then
+		return amount
+	end
+	local plates = model:GetAttribute("Armour")
+	if type(plates) ~= "number" or plates <= 0 then
+		return amount
+	end
+	local soaked = math.min(plates, amount)
+	model:SetAttribute("Armour", plates - soaked)
+	return amount - soaked
 end
 
 -- Apply damage and attribute it. Use this instead of humanoid:TakeDamage.
@@ -162,6 +187,12 @@ end
 function KillCredit.Damage(humanoid: Humanoid?, amount: number, player: Player?,
 	weapon: string?, direction: Vector3?)
 	if not humanoid or humanoid.Health <= 0 then
+		return
+	end
+	-- A shield (a duel's countdown) means no hit at all: not to health -- TakeDamage already
+	-- respects it -- and not to armour plates or the kill credit either.
+	local shielded = humanoid.Parent and humanoid.Parent:FindFirstChildOfClass("ForceField")
+	if shielded then
 		return
 	end
 
@@ -177,7 +208,13 @@ function KillCredit.Damage(humanoid: Humanoid?, amount: number, player: Player?,
 	-- killed by another NPC still needs its death noticed.
 	watch(humanoid)
 	local before = humanoid.Health
-	humanoid:TakeDamage(KillCredit.Mitigate(humanoid, amount))
+	-- NPC armour rating first (it trims every hit), then a player's plates (they soak it).
+	local model = humanoid.Parent
+	local rating = model and model:GetAttribute("ArmorRating")
+	if type(rating) == "number" and rating > 0 and amount > 0 then
+		amount = math.max(amount - rating, amount * (1 - ARMOUR_TAKES))
+	end
+	humanoid:TakeDamage(soakPlates(model, amount))
 	local dealt = before - humanoid.Health
 	if dealt > 0 then
 		KillCredit.Damaged:Fire(humanoid, dealt, player, weapon)

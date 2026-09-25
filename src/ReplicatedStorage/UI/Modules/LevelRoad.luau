@@ -65,6 +65,23 @@ function LevelRoad.Nodes(): { Node }
 			end
 		end
 	end
+	-- Utility that unlocks with a level: it goes straight into your kit.
+	local okUtility, UtilityConfig = pcall(require, ReplicatedStorage:WaitForChild("UtilityConfig", 5) :: ModuleScript)
+	if okUtility and type(UtilityConfig) == "table" then
+		for _, id in ipairs(UtilityConfig.Order) do
+			local t = UtilityConfig.Throwables[id]
+			if t and t.unlockLevel > 1 then
+				table.insert(nodes, {
+					level = t.unlockLevel,
+					kind = "gear",
+					title = string.upper(t.name),
+					detail = "In your kit: hold F",
+					icon = t.icon,
+					colour = t.colour,
+				})
+			end
+		end
+	end
 	local cap = okGame and type(GameConfig) == "table" and GameConfig.Leveling.MAX_LEVEL or 50
 	if okProgress and type(ProgressionConfig) == "table" then
 		for level = ProgressionConfig.FirstMilestoneLevel, cap do
@@ -422,7 +439,7 @@ local function card(parent: GuiObject, node: Node, x: number, state: string)
 	icon.Position = UDim2.new(0.5, 0, 0, 12)
 
 	local kind = Components.Label(tile, {
-		text = node.kind == "weapon" and "UNLOCK" or node.kind == "prestige" and "THE FINISH" or "REWARD",
+		text = (node.kind == "weapon" or node.kind == "gear") and "UNLOCK" or node.kind == "prestige" and "THE FINISH" or "REWARD",
 		font = Theme.Font.Bold,
 		size = Theme.Text.Micro,
 		colour = Theme.Colour.TextDim,

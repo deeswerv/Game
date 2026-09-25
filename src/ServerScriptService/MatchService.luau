@@ -218,6 +218,14 @@ local function refresh(player: Player)
 	if humanoid and humanoid.Health > 0 then
 		humanoid.Health = humanoid.MaxHealth
 	end
+	-- A fresh utility kit and the duel's even armour, every round.
+	local utility = game:GetService("ServerScriptService"):FindFirstChild("UtilityService")
+	if utility then
+		local ok, UtilityService = pcall(require, utility)
+		if ok and type(UtilityService) == "table" and UtilityService.Refill then
+			UtilityService.Refill(player)
+		end
+	end
 	local backpack = player:FindFirstChildOfClass("Backpack")
 	for _, holder in ipairs({ character, backpack }) do
 		if holder then

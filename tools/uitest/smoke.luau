@@ -47,7 +47,7 @@ World.serverRemotes({
 		ContractAction = "RemoteFunction", ContractUpdate = "RemoteEvent", SupplyEvent = "RemoteEvent", WorldReward = "RemoteEvent", BountyEvent = "RemoteEvent", TurfEvent = "RemoteEvent", TravelAction = "RemoteFunction", AchievementAction = "RemoteFunction", AchievementEvent = "RemoteEvent",
 		KillFeed = "RemoteEvent", KillFeedAll = "RemoteEvent", DeathReport = "RemoteEvent",
 		GunEffect = "RemoteEvent", NPCEffect = "RemoteEvent", ChestEffect = "RemoteEvent",
-		EmotePlay = "RemoteEvent", LookUpdate = "RemoteEvent",
+		EmotePlay = "RemoteEvent", LookUpdate = "RemoteEvent", UtilityAction = "RemoteEvent", UtilityEvent = "RemoteEvent",
 	},
 })
 
@@ -73,7 +73,7 @@ end
 
 local sps = World.service("StarterPlayer"):FindFirstChild("StarterPlayerScripts")
 local SCRIPTS = { "MainUI", "Killcam", "QuestUI", "PromptUI", "ChestUI", "NPCAnimator", "EmoteWheel", "EmoteAnimator",
-	"HeadLook", "AdminUI" }
+	"HeadLook", "AdminUI", "Utility" }
 for _, name in ipairs(SCRIPTS) do
 	local template = sps:FindFirstChild(name)
 	if template then

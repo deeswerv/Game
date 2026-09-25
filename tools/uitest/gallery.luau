@@ -41,7 +41,7 @@ World.serverRemotes({
 		KillFeed = "RemoteEvent", KillFeedAll = "RemoteEvent", DeathReport = "RemoteEvent",
 		GunEffect = "RemoteEvent", NPCEffect = "RemoteEvent", GunAction = "RemoteEvent",
 		MeleeAction = "RemoteEvent", MeleeEffect = "RemoteEvent", AimUpdate = "RemoteEvent",
-		EmotePlay = "RemoteEvent",
+		EmotePlay = "RemoteEvent", UtilityAction = "RemoteEvent", UtilityEvent = "RemoteEvent",
 	},
 })
 require("./fixtures")(World)
@@ -144,6 +144,15 @@ toggle(Enum.KeyCode.T)
 toggle(Enum.KeyCode.H)
 shot("25_achievements")
 toggle(Enum.KeyCode.H)
+
+-- 30. The utility tray with the arc drawn, and armour on the cyan segments.
+World.run(sps:FindFirstChild("Utility"))
+World.advance(0.4)
+World.serverFire("Remotes", "UtilityEvent", "kit", { Frag = 2, Flash = 1, Smoke = 1, Medkit = 2 })
+World.character:SetAttribute("MaxArmour", 75)
+World.character:SetAttribute("Armour", 50)
+World.advance(0.2)
+shot("30_utility", 0.4)
 
 -- 28. The owner panel (F4), on its first page.
 World.run(sps:FindFirstChild("AdminUI"))

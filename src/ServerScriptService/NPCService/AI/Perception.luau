@@ -7,7 +7,19 @@
 -- that goes stale after MemoryTime.
 
 local Players = game:GetService("Players")
+local ServerScriptService = game:GetService("ServerScriptService")
 local World = require(script.Parent.Parent.World)
+
+-- Standing smoke (a player's smoke grenade) blocks sight like a wall does. Optional: if the
+-- registry is not there, nothing is ever hidden by smoke.
+local SmokeField: any = nil
+do
+	local module = ServerScriptService:FindFirstChild("SmokeField")
+	if module then
+		local ok, value = pcall(require, module)
+		SmokeField = ok and value or nil
+	end
+end
 
 local Perception = {}
 
@@ -41,6 +53,9 @@ function Perception.CanSee(agent, target: Model): (boolean, Vector3?)
 		local part = target:FindFirstChild(name)
 		if part and part:IsA("BasePart") then
 			cast += 1
+			if SmokeField and SmokeField.Blocks(eye, part.Position) then
+				continue
+			end
 			local hit = workspace:Raycast(eye, part.Position - eye, params)
 			if not hit or hit.Instance:IsDescendantOf(target) then
 				return true, part.Position
@@ -77,6 +92,13 @@ function Perception.Update(agent, now: number, candidates)
 	local alert = now - (agent.lastCombatAt or -math.huge) < 8
 	if alert then
 		range *= 1.2
+	end
+	-- Flashed (a player's flashbang): it sees nothing new until its eyes come back.
+	if agent.blindUntil and now < agent.blindUntil then
+		for _, entry in pairs(agent.memory) do
+			entry.visible = false
+		end
+		return
 	end
 	local look = root.CFrame.LookVector
 	local flatLook = Vector3.new(look.X, 0, look.Z)
