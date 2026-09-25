@@ -63,6 +63,7 @@ type Bout = {
 	round: number,
 	countdownEnds: number,         -- when the current countdown says FIGHT
 	pendingReset: boolean,         -- a point was scored; reset once the loser is back
+	arena: string,                 -- which map (ArenaService) the bout is fought on
 }
 
 local queue: { Player } = {}
@@ -107,6 +108,8 @@ local function describe(player: Player)
 			and math.max(0, math.ceil(bout.countdownEnds - now)) or 0,
 		round = bout.round,
 		won = bout.winner ~= nil and bout.winner == player or nil,
+		map = ArenaService.Get(bout.arena).Name,
+		mapTagline = ArenaService.Get(bout.arena).Tagline,
 	}
 end
 
@@ -259,7 +262,7 @@ local function nextRound(bout: Bout)
 		local character = p.Character
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 		if humanoid and humanoid.Health > 0 then
-			placeAt(p, ArenaService.SpawnCFrame(index))
+			placeAt(p, ArenaService.SpawnCFrame(bout.arena, index))
 			refresh(p)
 		end
 	end
@@ -289,6 +292,7 @@ local function finish(bout: Bout, winner: Player?, reason: string)
 				won = winner ~= nil and winner == p or false,
 				draw = winner == nil,
 				reason = reason,
+				map = ArenaService.Get(bout.arena).Name,
 				opponentName = opponent and opponent.DisplayName or "?",
 				opponentUserId = opponent and opponent.UserId or 0,
 				target = MatchService.SCORE_TO_WIN,
@@ -309,6 +313,7 @@ local function finish(bout: Bout, winner: Player?, reason: string)
 		for _, p in ipairs(bout.players) do
 			release(p)
 		end
+		ArenaService.Release(bout.arena)
 	end)
 
 	print(("[Match] bout %d over: %s (%s)"):format(bout.id,
@@ -353,6 +358,7 @@ local function begin(a: Player, b: Player)
 		round = 1,
 		countdownEnds = os.clock() + MatchService.COUNTDOWN,
 		pendingReset = false,
+		arena = ArenaService.Claim({ a, b }),
 	}
 	bouts[bout.id] = bout
 
@@ -364,11 +370,11 @@ local function begin(a: Player, b: Player)
 		if root then
 			homeOf[p] = (root :: BasePart).CFrame
 		end
-		placeAt(p, ArenaService.SpawnCFrame(index))
+		placeAt(p, ArenaService.SpawnCFrame(bout.arena, index))
 	end
 	countIn(bout, MatchService.COUNTDOWN)
 
-	print(("[Match] bout %d: %s vs %s"):format(bout.id, a.Name, b.Name))
+	print(("[Match] bout %d: %s vs %s on %s"):format(bout.id, a.Name, b.Name, bout.arena))
 end
 
 -- ------------------------------------------------------------------ queue --
@@ -453,7 +459,7 @@ local function onCharacterAdded(player: Player, character: Model)
 		return
 	end
 	local index = indexOf(bout.players, player) or 1
-	placeAt(player, ArenaService.SpawnCFrame(index))
+	placeAt(player, ArenaService.SpawnCFrame(bout.arena, index))
 	-- Respawning mid-countdown still gets the countdown's protection.
 	if bout.state == "countdown" then
 		shield(player, true)

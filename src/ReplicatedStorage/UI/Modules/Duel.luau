@@ -554,7 +554,45 @@ local function buildVersus(self, parent: GuiObject)
 	g.Rotation = 90
 	g.Parent = vs
 
+	-- Where the fight is: the map's name on a dark plate under the slabs.
+	local plate = Instance.new("Frame")
+	plate.Name = "MapPlate"
+	plate.BackgroundColor3 = Color3.fromRGB(16, 17, 22)
+	plate.BackgroundTransparency = 0.1
+	plate.AnchorPoint = Vector2.new(0.5, 0)
+	plate.Position = UDim2.new(0.5, 0, 1, 18)
+	plate.Size = UDim2.fromOffset(420, 68)
+	plate.ZIndex = Theme.Layer.Overlay + 4
+	plate.Parent = band
+	Components.Corner(plate, 12)
+	Components.Stroke(plate, Theme.Colour.Outline, 3)
+	local mapName = Components.Label(plate, {
+		text = "",
+		face = Theme.Face.HeavyItalic,
+		size = 34,
+		align = Enum.TextXAlignment.Center,
+		outline = 3,
+	})
+	mapName.Position = UDim2.fromOffset(0, 4)
+	mapName.Size = UDim2.new(1, 0, 0, 38)
+	mapName.ZIndex = Theme.Layer.Overlay + 5
+	local mapGold = Instance.new("UIGradient")
+	mapGold.Color = ColorSequence.new(GOLD_TOP, GOLD_BOTTOM)
+	mapGold.Rotation = 90
+	mapGold.Parent = mapName
+	local tagline = Components.Label(plate, {
+		text = "",
+		size = 17,
+		colour = Theme.Colour.TextDim,
+		align = Enum.TextXAlignment.Center,
+		outline = 2,
+	})
+	tagline.Position = UDim2.fromOffset(0, 42)
+	tagline.Size = UDim2.new(1, 0, 0, 20)
+	tagline.ZIndex = Theme.Layer.Overlay + 5
+
 	self._vsBand, self._vsLeft, self._vsRight, self._vsText = band, left, right, vs
+	self._vsMap, self._vsMapName, self._vsTagline = plate, mapName, tagline
 end
 
 -- -------------------------------------------------------------- results --
@@ -933,6 +971,10 @@ function Duel:_splash(state)
 	local theirLevel = levelOf(opponentId)
 	right.badge.Visible = theirLevel ~= nil
 	right.level.Text = theirLevel and tostring(theirLevel) or ""
+	local mapName = type(state.map) == "string" and state.map or nil
+	self._vsMap.Visible = mapName ~= nil
+	self._vsMapName.Text = mapName or ""
+	self._vsTagline.Text = type(state.mapTagline) == "string" and string.upper(state.mapTagline) or ""
 
 	local token = {}
 	self._vsToken = token

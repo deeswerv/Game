@@ -26,6 +26,26 @@ as uploaded.
 
 You can also queue by standing on one of the glowing **1V1 pads** near the spawn.
 
+## Duel maps
+
+Every duel is fought on one of four maps, and a pair who just played one map gets a different
+one next. Two duels at once never share a map. The VS screen names the map.
+
+| Map | Look |
+| --- | --- |
+| **Neon Court** | Rooftop court at night, magenta and cyan neon, lit skyline |
+| **Dockyard** | Container quay at sunset: stacked boxes, a gantry with a hanging container, a ship and cranes across the water |
+| **Rooftops** | Tar roof over the city on a clear afternoon: stair huts, water towers, a raised HVAC deck, billboard and mural |
+| **Sakura Temple** | Temple courtyard at dusk: gate houses, torii, koi pond with an arched bridge, lanterns, bell tower, pagodas |
+
+Each map is lit its own way while you are in it (time of day, haze, colour grade), and
+everything goes back to the world's day/night cycle when you leave. Every map has 180-degree
+rotational symmetry, so both spawns see the same thing.
+
+The maps live in `src/ServerScriptService/ArenaService/` (one module per map, plus `Kit`).
+`tools/mapview/` renders any of them to PNGs, and `lune run tools/uitest/arenas.luau` checks
+every map's spawns, bounds and lighting.
+
 The **"+"** beside your cash opens the Shop.
 
 ## Testing without Studio

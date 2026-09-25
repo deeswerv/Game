@@ -31,7 +31,7 @@ WorldBake.Order = {
 	{ folder = "Mine",          module = "MineService" },
 	{ folder = "Crystals",      module = "CrystalService" },
 	{ folder = "BiomeDressing", module = "BiomeService" },
-	{ folder = "Arena",         module = "ArenaService" },
+	{ folder = "Arenas",        module = "ArenaService" },
 	{ folder = "Map2Cover",     module = "CoverService" },
 	{ folder = "TravelGates",   module = "TravelService" },
 	{ folder = "Landmarks",     module = "LandmarkService" },

@@ -52,6 +52,31 @@ local function ensureClouds()
 	return clouds
 end
 
+--- What the world looks like right now, as attributes on the things being lit. A client that
+--- lights a duel map its own way (ArenaMood) overrides these properties locally, and reads
+--- the attributes to put the world back exactly on the way out -- the properties themselves
+--- only replicate when they change, so they cannot be trusted to come back on their own.
+local function publish()
+	for _, key in ipairs({ "ClockTime", "Brightness", "Ambient", "OutdoorAmbient" }) do
+		Lighting:SetAttribute("World_" .. key, (Lighting :: any)[key])
+	end
+	if grade then
+		for _, key in ipairs({ "Brightness", "Contrast", "Saturation", "TintColor" }) do
+			grade:SetAttribute("World_" .. key, (grade :: any)[key])
+		end
+	end
+	if atmos then
+		for _, key in ipairs({ "Density", "Offset", "Haze", "Glare", "Color", "Decay" }) do
+			atmos:SetAttribute("World_" .. key, (atmos :: any)[key])
+		end
+	end
+	local clouds = workspace.Terrain:FindFirstChildOfClass("Clouds")
+	if clouds then
+		clouds:SetAttribute("World_Cover", clouds.Cover)
+		clouds:SetAttribute("World_Density", clouds.Density)
+	end
+end
+
 --- Apply the look for a given hour. Public so the time can be set directly when testing
 --- rather than waiting a quarter of an hour for dusk to come round.
 function AmbienceService.Apply(hour: number)
@@ -104,6 +129,8 @@ function AmbienceService.Apply(hour: number)
 			clouds.Density = attr("WeatherCloudDensity", AmbienceConfig.CLOUD_DENSITY)
 		end
 	end
+
+	publish()
 end
 
 --- Hold the clock where it is. Needed to look at a given hour at all: the cycle runs a

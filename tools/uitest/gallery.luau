@@ -194,6 +194,15 @@ World.advance(0.6)
 shot("09_death")
 World.advance(4)
 
+-- 10. A bout starting: the VS screen, with the map it is on.
+World.serverFire("Remotes", "MatchUpdate", {
+	in_match = true, state = "countdown", countdown = 5, round = 1, target = 3, you = 0, them = 0,
+	secondsLeft = 180, opponentName = "xXSniperXx", opponentUserId = 2,
+	map = "DOCKYARD", mapTagline = "Container quay at sunset",
+})
+shot("10_vs", 0.75)
+World.advance(3)
+
 print(("\n%d error(s)"):format(#R.errors))
 for _, line in ipairs(R.log) do
 	if line:find("failed to build") or line:find("%[UI%]") then

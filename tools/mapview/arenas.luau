@@ -3,7 +3,7 @@
 --
 --   lune run tools/mapview/arenas.luau -- <map id or "court"> out.json
 --
--- Maps live in src/ServerScriptService/Arenas/<Id>.luau (see ArenaService). Each is loaded the
+-- Maps live in src/ServerScriptService/ArenaService/<Id>.luau (see ArenaService). Each is loaded the
 -- way the engine would load it, with Roblox's datatypes, built into a Lune DataModel, and
 -- everything it made is exported with a set of cameras: a high overview and each spawn's
 -- eye-level view down the map.
@@ -85,15 +85,15 @@ end
 env.script = setmetatable({}, { __index = function(_, k)
 	if k == "Parent" then
 		return setmetatable({}, { __index = function(_, name)
-			return { __path = "src/ServerScriptService/Arenas/" .. name .. ".luau" }
+			return { __path = "src/ServerScriptService/ArenaService/" .. name .. ".luau" }
 		end })
 	end
 	return nil
 end })
 
-local root
+local root, map
 local spawns, centre, mood, exposure
-if id == "Court" and not fs.isFile("src/ServerScriptService/Arenas/Court.luau") then
+if id == "Court" and not fs.isFile("src/ServerScriptService/ArenaService/Court.luau") then
 	-- The original single arena: ArenaService builds itself when it loads.
 	local module = load("src/ServerScriptService/ArenaService.luau")
 	root = game.Workspace:FindFirstChild("Arena")
@@ -101,7 +101,7 @@ if id == "Court" and not fs.isFile("src/ServerScriptService/Arenas/Court.luau") 
 	spawns = { module.SpawnCFrame(1).Position, module.SpawnCFrame(2).Position }
 	mood = "night"
 else
-	local map = load("src/ServerScriptService/Arenas/" .. id .. ".luau")
+	map = load("src/ServerScriptService/ArenaService/" .. id .. ".luau")
 	local folder = roblox.Instance.new("Folder")
 	folder.Name = "Arena_" .. id
 	folder.Parent = game.Workspace
@@ -120,12 +120,19 @@ local data = Export.Parts(root, centre)
 data.mood = mood
 data.exposure = exposure
 local a, b = spawns[1] - centre, spawns[2] - centre
-local eye = roblox.Vector3.new(0, 4.5, 0)
+local hw, hl = 42, 60
+if map then
+	hw, hl = map.HalfWidth or hw, map.HalfLength or hl
+end
 data.cameras = {
-	{ pos = { 70, 75, 95 }, look = { 0, 0, 0 }, fov = 55 },
+	{ pos = { hw * 1.5, hl * 1.25, hl * 1.45 }, look = { 0, 0, 0 }, fov = 55 },
 	{ pos = { a.X, a.Y + 4.5, a.Z }, look = { b.X, b.Y + 3, b.Z }, fov = 70 },
 	{ pos = { b.X, b.Y + 4.5, b.Z }, look = { a.X, a.Y + 3, a.Z }, fov = 70 },
-	{ pos = { -95, 28, 0 }, look = { 0, 4, 0 }, fov = 55 },
+	-- From a high corner inside the map, across the middle.
+	{ pos = { -(hw - 3), 24, -(hl - 12) }, look = { hw * 0.3, 0, hl * 0.35 }, fov = 62 },
 }
+for _, extra in ipairs(map and map.Preview or {}) do
+	table.insert(data.cameras, extra)
+end
 fs.writeFile(outPath, serde.encode("json", data))
 print(("%s: %d parts, %d lights, %d signs"):format(id, #data.parts, #data.lights, #data.signs))
