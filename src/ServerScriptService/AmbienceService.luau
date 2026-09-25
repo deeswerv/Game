@@ -64,13 +64,16 @@ function AmbienceService.Apply(hour: number)
 	Lighting.OutdoorAmbient = AmbienceConfig.NIGHT_AMBIENT:Lerp(AmbienceConfig.DAY_AMBIENT, day)
 
 	local night = 1 - day
+	-- 0 at full day and full night, 1 halfway through dawn or dusk.
+	local golden = 1 - math.abs(day * 2 - 1)
 	Lighting.Ambient = baseAmbient:Lerp(AmbienceConfig.NIGHT_AMBIENT, night * 0.5)
 	if grade then
 		grade.Brightness = baseBrightness - AmbienceConfig.NIGHT_GRADE_DROP * night
 		grade.Contrast = baseContrast + AmbienceConfig.NIGHT_GRADE_CONTRAST * night
-		grade.Saturation = baseSaturation + AmbienceConfig.NIGHT_SATURATION * night
+		grade.Saturation = baseSaturation + AmbienceConfig.NIGHT_SATURATION * night + 0.08 * golden
 		grade.TintColor = baseTint:Lerp(AmbienceConfig.NIGHT_TINT,
 			night * AmbienceConfig.NIGHT_TINT_STRENGTH)
+			:Lerp(AmbienceConfig.GOLDEN_TINT, golden * AmbienceConfig.GOLDEN_STRENGTH)
 	end
 
 	if atmos and baseAtmos then
@@ -80,6 +83,7 @@ function AmbienceService.Apply(hour: number)
 		atmos.Haze = baseAtmos.Haze + (n.Haze - baseAtmos.Haze) * night
 		atmos.Glare = baseAtmos.Glare + (n.Glare - baseAtmos.Glare) * night
 		atmos.Color = baseAtmos.Color:Lerp(n.Color, night)
+			:Lerp(AmbienceConfig.GOLDEN_ATMOSPHERE, golden * AmbienceConfig.GOLDEN_STRENGTH)
 		atmos.Decay = baseAtmos.Decay:Lerp(n.Decay, night)
 
 		-- Weather rides ON TOP of the time of day, as offsets, so fog at midnight still

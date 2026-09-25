@@ -54,6 +54,12 @@ AmbienceConfig.NIGHT_ATMOSPHERE = {
 	Glare = 0.15,
 }
 
+-- Golden hour: dawn and dusk pass through a warm light instead of cutting straight from
+-- daylight to blue night. Strongest halfway through the cross-fade, gone at either end.
+AmbienceConfig.GOLDEN_TINT = Color3.fromRGB(255, 190, 140)
+AmbienceConfig.GOLDEN_STRENGTH = 0.45
+AmbienceConfig.GOLDEN_ATMOSPHERE = Color3.fromRGB(255, 196, 160)
+
 AmbienceConfig.CLOUD_COVER = 0.52
 AmbienceConfig.CLOUD_DENSITY = 0.62
 AmbienceConfig.CLOUD_COLOUR = Color3.fromRGB(255, 255, 255)
