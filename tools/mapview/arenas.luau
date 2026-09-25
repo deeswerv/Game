@@ -78,6 +78,13 @@ env.require = function(target)
 	if type(target) == "table" and target.__path then
 		return load(target.__path)
 	end
+	-- A real ModuleScript from the built place: load its source file instead.
+	if typeof(target) == "Instance" and target:IsA("ModuleScript") then
+		local path = "src/" .. target:GetFullName():gsub("%.", "/") .. ".luau"
+		if fs.isFile(path) then
+			return load(path)
+		end
+	end
 	return { Skip = function()
 		return false
 	end }
@@ -101,7 +108,7 @@ if id == "Court" and not fs.isFile("src/ServerScriptService/ArenaService/Court.l
 	spawns = { module.SpawnCFrame(1).Position, module.SpawnCFrame(2).Position }
 	mood = "night"
 else
-	map = load("src/ServerScriptService/ArenaService/" .. id .. ".luau")
+	map = load(id:match("%.luau$") and id or ("src/ServerScriptService/ArenaService/" .. id .. ".luau"))
 	local folder = roblox.Instance.new("Folder")
 	folder.Name = "Arena_" .. id
 	folder.Parent = game.Workspace
@@ -109,7 +116,7 @@ else
 	map.Build(folder, centre)
 	root = folder
 	spawns = {}
-	for _, offset in ipairs(map.Spawns) do
+	for _, offset in ipairs(map.Spawns or { map.Arrival or roblox.Vector3.new(0, 3, -40), roblox.Vector3.new(0, 3, 40) }) do
 		table.insert(spawns, centre + offset)
 	end
 	mood = map.Mood or "day"

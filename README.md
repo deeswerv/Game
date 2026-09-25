@@ -28,6 +28,16 @@ as uploaded.
 
 You can also queue by standing on one of the glowing **1V1 pads** near the spawn.
 
+## Downtown
+
+Take the **pink gate** at the spawn crossing to **Downtown**, a city district built block by
+block: an avenue from the gate to **ZEE TOWER**, **ZEE PLAZA** with its fountain and screen
+tower, **ZEE GUNS** and the **ARMORY** (walk up and press E to shop or customise), **ZEE GAS**
+and the **24/7** with the **CONTRACTS** board, the **DUEL HALL** with its own 1v1 pads, a
+basketball court, a pocket park, parked cars, street lamps and a skyline all round. Climb the
+fire escape on the apartments for a **rooftop stash** (once a day). Supply drops land in its
+streets too.
+
 ## Contracts and supply drops
 
 - **Daily contracts**: three jobs a day (one easy, one medium, one hard), the same set on every

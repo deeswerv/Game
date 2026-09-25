@@ -66,6 +66,9 @@ local SaveStructure = {
 	ContractsPaid = {},
 	ContractsDone = 0,
 
+	-- The UTC day the Downtown rooftop stash was last opened (once a day).
+	StashDay = 0,
+
 	-- How many times this player has reset their level at the cap. Drives the emblem shown
 	-- beside their name, and is the one number that never resets.
 	--

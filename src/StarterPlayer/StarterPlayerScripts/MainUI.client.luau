@@ -687,6 +687,44 @@ nav = safe("Nav", function()
 	})
 end)
 
+-- ----------------------------------------------------------- world doors --
+
+-- Downtown's shop doors and the contracts board carry a prompt that names a panel; walking
+-- up and pressing E opens it, exactly as the hotkey would. Rewards found in the world (the
+-- rooftop stash) come back as a banner.
+do
+	local ProximityPromptService = game:GetService("ProximityPromptService")
+	local PANEL_FOR = { Market = market, Workshop = workshop, Contracts = contracts, Inventory = inventory }
+	ProximityPromptService.PromptTriggered:Connect(function(prompt: ProximityPrompt, who: Player)
+		if who ~= player then
+			return
+		end
+		local target = PANEL_FOR[tostring(prompt:GetAttribute("OpenPanel") or "")]
+		if target then
+			openOnly(target)
+		end
+	end)
+
+	remote("WorldReward").OnClientEvent:Connect(function(data: unknown)
+		if type(data) ~= "table" then
+			return
+		end
+		local info = data :: any
+		if info.kind == "reward" then
+			toast:Banner({
+				title = tostring(info.title or "REWARD"),
+				subtitle = string.format("+$%s     +%s XP     +%s 💎", tostring(info.coins or 0), tostring(info.xp or 0),
+					tostring(info.crystals or 0)),
+				colour = Color3.fromRGB(255, 196, 30),
+				sound = "Ring",
+			})
+		else
+			toast:Push({ title = tostring(info.title or ""), text = info.text and tostring(info.text) or nil, icon = "📦",
+				colour = Color3.fromRGB(150, 156, 170) })
+		end
+	end)
+end
+
 -- -------------------------------------------------------------- contracts --
 
 -- Contract news: a card for progress, the banner for a finished one, and the nav tile's

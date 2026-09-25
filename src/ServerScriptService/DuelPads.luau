@@ -315,18 +315,9 @@ Players.PlayerRemoving:Connect(function(player)
 	joinedByPad[player] = nil
 end)
 
--- ------------------------------------------------------------------ start --
-
-task.spawn(function()
-	-- Let the rest of the world finish building first, so the clearance check sees it.
-	task.wait(2)
-	local origin = spawnPoint()
-	local cf = findSite(origin)
-	if not cf then
-		warn("[DuelPads] no clear, level spot near the spawn; pads not placed")
-		return
-	end
-
+--- Another pair of pads (and their sign) at `cf` -- the duel hall downtown has its own. They
+--- queue into the same queue and are watched by the same loop as the pair by the spawn.
+function DuelPads.AddPair(parent: Instance, cf: CFrame)
 	local model = Instance.new("Model")
 	model.Name = "DuelPads"
 	for index, side in ipairs({ -1, 1 }) do
@@ -334,8 +325,23 @@ task.spawn(function()
 		table.insert(pads, buildPad(model, cf * CFrame.new(side * PAD_GAP / 2, 0, 0), colour))
 	end
 	buildSign(model, cf)
-	model.Parent = workspace
-	print(("[DuelPads] placed at %s"):format(tostring(cf.Position)))
+	model.Parent = parent
+end
+
+-- ------------------------------------------------------------------ start --
+
+task.spawn(function()
+	-- Let the rest of the world finish building first, so the clearance check sees it.
+	task.wait(2)
+	local origin = spawnPoint()
+	local cf = findSite(origin)
+	if cf then
+		DuelPads.AddPair(workspace, cf)
+		print(("[DuelPads] placed at %s"):format(tostring(cf.Position)))
+	else
+		-- Other pads (the duel hall downtown) still work, so the watch loop runs regardless.
+		warn("[DuelPads] no clear, level spot near the spawn; lobby pads not placed")
+	end
 
 	while true do
 		task.wait(CHECK_INTERVAL)

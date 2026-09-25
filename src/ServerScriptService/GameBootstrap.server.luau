@@ -49,6 +49,7 @@ local systems = {
 	"SupplyDropService",   -- a crate on a parachute every few minutes: a race across the map
 	"SettingsService",     -- saves the settings panel (volumes, camera shake, field of view)
 	"DuelPads",            -- 1v1 pads by the spawn: stand on one to queue (last: it looks for clear ground)
+	"DistrictService",     -- Downtown: the city district through the pink gate, its shops, hall and stash
 }
 
 for _, name in ipairs(systems) do

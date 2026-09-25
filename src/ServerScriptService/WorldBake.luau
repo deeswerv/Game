@@ -35,6 +35,7 @@ WorldBake.Order = {
 	{ folder = "Map2Cover",     module = "CoverService" },
 	{ folder = "TravelGates",   module = "TravelService" },
 	{ folder = "Landmarks",     module = "LandmarkService" },
+	{ folder = "Downtown",      module = "DistrictService" },
 }
 
 function WorldBake.IsBaked(folderName: string): boolean

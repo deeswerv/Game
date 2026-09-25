@@ -43,6 +43,9 @@ TravelService.Pads = {
 	Flats      = { position = Vector3.new(-465, 1.00, 160), label = "The Flats",      radius = 7, gateRadius = 7 },
 	Reach      = { position = Vector3.new(145, 1.90, 375),  label = "The Reach",      radius = 7, gateRadius = 7 },
 	WatchPoint = { position = Vector3.new(-320, 6.00, 291), label = "The Watchpoint", radius = 7, gateRadius = 7 },
+	-- The Downtown district in the sky (DistrictService.CENTRE + Downtown.Arrival): its forecourt
+	-- is built to receive this pad.
+	Downtown   = { position = Vector3.new(-155, 1000.5, 1328), label = "Downtown",       radius = 9, gateRadius = 9 },
 }
 
 -- One entry per link. Each becomes two arches, one at either end, sharing a colour so the
@@ -51,6 +54,7 @@ TravelService.Routes = {
 	{ a = "Hub", b = "Flats",      colour = Color3.fromRGB(104, 204, 110) },
 	{ a = "Hub", b = "Reach",      colour = Color3.fromRGB(236, 178, 72) },
 	{ a = "Hub", b = "WatchPoint", colour = Color3.fromRGB(96, 170, 236) },
+	{ a = "Hub", b = "Downtown",   colour = Color3.fromRGB(255, 64, 170) },
 }
 
 local lastTravel: { [Player]: number } = {}
@@ -292,6 +296,14 @@ function TravelService.Send(player: Player, gate: Model): boolean
 
 	lastTravel[player] = now
 	local target = TravelService.Arrival(destId, gate:GetAttribute("TravelFrom") :: string?)
+	-- Ask for the far end to stream in first: Downtown is a thousand studs up, and arriving
+	-- before its streets have loaded is a fall.
+	pcall(function()
+		player:RequestStreamAroundAsync(target.Position, 3)
+	end)
+	if not char.Parent or humanoid.Health <= 0 then
+		return false
+	end
 	root.AssemblyLinearVelocity = Vector3.zero
 	root.AssemblyAngularVelocity = Vector3.zero
 	if char.PrimaryPart then

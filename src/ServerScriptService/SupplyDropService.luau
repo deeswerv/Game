@@ -34,6 +34,8 @@ SupplyDropService.Zones = {
 	{ name = "THE REACH", centre = Vector3.new(190, 6, 302), radius = 50 },
 	{ name = "SATELLITE ISLETS", centre = Vector3.new(-254, 66, 299), radius = 35 },
 	{ name = "MAP 2", centre = Vector3.new(-561, 24, 85), radius = 40 },
+	-- Downtown's streets and plaza only (maxRise keeps crates off the rooftops).
+	{ name = "DOWNTOWN", centre = Vector3.new(-155, 1000.5, 1500), radius = 150, maxRise = 3 },
 }
 
 SupplyDropService.Loot = {
@@ -104,7 +106,7 @@ local function findLanding(zone): Vector3?
 		local x, z = zone.centre.X + math.cos(angle) * r, zone.centre.Z + math.sin(angle) * r
 		local top = Vector3.new(x, zone.centre.Y + 300, z)
 		local hit = workspace:Raycast(top, Vector3.new(0, -600, 0), params)
-		if hit and hit.Normal.Y > 0.8 and math.abs(hit.Position.Y - zone.centre.Y) < 70 then
+		if hit and hit.Normal.Y > 0.8 and math.abs(hit.Position.Y - zone.centre.Y) < (zone.maxRise or 70) then
 			local ground = hit.Position
 			local solid = hit.Material ~= Enum.Material.Water
 			if hit.Instance:IsA("BasePart") and not hit.Instance:IsA("Terrain") then

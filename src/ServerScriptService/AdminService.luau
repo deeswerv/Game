@@ -39,6 +39,7 @@ local ADMIN_WAYPOINTS = {
 	{ id = "Dockyard", name = "Duel: Dockyard",    landing = Vector3.new(1000, 3004, -58) },
 	{ id = "Rooftops", name = "Duel: Rooftops",    landing = Vector3.new(2000, 3004, -51) },
 	{ id = "Temple",   name = "Duel: Sakura Temple", landing = Vector3.new(3000, 3004, -57) },
+	{ id = "Downtown", name = "Downtown",          landing = Vector3.new(-155, 1004, 1335) },
 	{ id = "DevRange", name = "Dev Range",       landing = Vector3.new(0, 2002, 10) },
 }
 
