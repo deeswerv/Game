@@ -356,6 +356,14 @@ function KillFeed:Eliminated(victim: string)
 		setTransparency(self._streak, 0)
 		self._streakScale.Scale = 1.8
 		self._streak.Rotation = math.random(-4, 4)
+		-- A chime that climbs with the streak: two notes for a double, up to five.
+		local notes = {}
+		for i = 1, math.min(self._streakCount, 5) do
+			notes[i] = 1.2 + (i - 1) * 0.18
+		end
+		task.delay(0.12, function()
+			UISound.Sequence("Ring", notes, 0.07, 0.7)
+		end)
 		TweenService:Create(self._streakScale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
 			{ Scale = 1 }):Play()
 	end

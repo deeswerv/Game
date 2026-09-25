@@ -10,6 +10,19 @@ To put it live, publish from that file with **File → Publish to Roblox As…**
 existing experience. Keep a copy of your current place first; `place/base.rbxl` is the original
 as uploaded.
 
+## Controls
+
+| Key | Does |
+| --- | --- |
+| Hold **Alt** | Free the mouse to click buttons (PLAY, the side menu) without leaving shift lock |
+| **J** | Queue for a duel, or cancel the queue (same as clicking PLAY) |
+| Hold **Tab** | Player board: levels, ranks, kills, deaths, who is dueling |
+| **B / M / K / P / N** | Items, Shop, Armory, Profile, Daily reward |
+| **V** | Go to (or leave) the gun range |
+| **Shift** or double-tap **W** | Sprint; **Ctrl** / **C** while sprinting slides |
+
+You can also queue by standing on one of the glowing **1V1 pads** near the spawn.
+
 ## What is in this repo
 
 | Path | What it is |
