@@ -39,6 +39,7 @@ World.serverRemotes({
 		KillFeed = "RemoteEvent", KillFeedAll = "RemoteEvent", DeathReport = "RemoteEvent",
 		GunEffect = "RemoteEvent", NPCEffect = "RemoteEvent", GunAction = "RemoteEvent",
 		MeleeAction = "RemoteEvent", MeleeEffect = "RemoteEvent", AimUpdate = "RemoteEvent",
+		EmotePlay = "RemoteEvent",
 	},
 })
 require("./fixtures")(World)
@@ -123,6 +124,22 @@ toggle(Enum.KeyCode.T)
 toggle(Enum.KeyCode.H)
 shot("25_achievements")
 toggle(Enum.KeyCode.H)
+
+-- 27. The emote wheel, held open on the Props page.
+World.run(sps:FindFirstChild("EmoteWheel"))
+World.advance(0.3)
+World.holdKey(Enum.KeyCode.G, true)
+World.advance(0.2)
+do
+	local wheel = World.playerGui:FindFirstChild("EmoteWheel")
+	local tab = wheel and World.find(wheel, "Props", "TextButton")
+	if tab then
+		World.click(tab)
+	end
+end
+shot("27_emotes", 0.4)
+World.holdKey(Enum.KeyCode.G, false)
+World.advance(0.4)
 
 -- A WANTED player nearby, and your own streak call.
 do

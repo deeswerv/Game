@@ -20,3 +20,19 @@ lune run tools/uitest/smoke.luau                    # everything up
 lune run tools/uitest/smoke.luau -- drop=PromptPurchase   # a server service failed to start
 lune run tools/uitest/gallery.luau -- out/ui && node tools/uitest/shoot.mjs out/ui out/ui/*.json
 ```
+
+## Game-rule suites
+
+Each checks one system end to end and exits non-zero on a failure:
+`arenas`, `guns`, `contracts`, `district`, `flats`, `achievements`, `tactics`, and `emotes`
+(the emote pack: the converted tracks against the pack's own keyframes, the server's
+attributes, the client posing a real rig, the props and the paged wheel).
+
+```sh
+lune run tools/uitest/emotes.luau
+```
+
+The emote data itself is generated: `lune run tools/emotes/convert.luau` rebuilds
+`src/ReplicatedStorage/EmoteData` from `assets/emotes/EmotePack_R15R6.rbxm`, and
+`lune run tools/emotes/render.luau -- out.json props` (then `node tools/mapview/shoot.mjs`)
+draws the prop emotes on the game's rig to check they fit.

@@ -168,6 +168,14 @@ for _, file in fresh do
 		name = table.remove(parts) :: string
 	end
 	local parent = ctx.find(table.concat(parts, "/"))
+	if not parent and #parts > 1 then
+		-- A new plain folder of modules (no init.luau): make the Folder it lives in.
+		local above = ctx.find(table.concat(parts, "/", 1, #parts - 1))
+		if above then
+			parent = ctx.new("Folder", above, { Name = parts[#parts] })
+			print(`created Folder {parent:GetFullName()}`)
+		end
+	end
 	assert(parent, `no instance for folder of new file {file}`)
 	ctx.script(parent, name, className, file)
 	print(`created {className} {parent:GetFullName()}.{name}`)
