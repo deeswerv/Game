@@ -28,6 +28,10 @@ local Nav = require(Modules:WaitForChild("Nav"))
 local Feedback = require(Modules:WaitForChild("Feedback"))
 local Scoreboard = require(Modules:WaitForChild("Scoreboard"))
 local Remote = require(Modules:WaitForChild("Remote"))
+local Character = require(Modules:WaitForChild("Character"))
+local Journal = require(Modules:WaitForChild("Journal"))
+local Settings = require(Modules:WaitForChild("Settings"))
+local BossBar = require(Modules:WaitForChild("BossBar"))
 local WeaponConfig = require(ReplicatedStorage:WaitForChild("WeaponConfig"))
 
 local StarterGui = game:GetService("StarterGui")
@@ -109,6 +113,9 @@ end)
 local objective = safe("Objective", function()
 	return Objective.new(screen)
 end)
+local bossBar = safe("BossBar", function()
+	return BossBar.new(screen)
+end)
 
 -- Remotes are held lazily (see UI.Modules.Remote): building the interface never waits on
 -- the server, and a service that failed to start costs its own feature, not the whole UI.
@@ -142,6 +149,8 @@ end)
 
 -- --------------------------------------------------------------- objective --
 
+local journalRef: any = nil      -- the quest journal, built with the menus further down
+
 -- QuestService already broadcasts the whole state on every change, so the card just redraws
 -- from it. Rewards are read out of QuestConfig here because the active-quest block in that
 -- payload carries only progress, not what it pays.
@@ -159,6 +168,9 @@ task.spawn(function()
 	end
 
 	Remote.get("GameRemotes", "QuestUpdated").OnClientEvent:Connect(function(state)
+		if journalRef then
+			journalRef:SetState(state)
+		end
 		local active = type(state) == "table" and state.active or nil
 		objective:Set(active, active and rewardsFor(active.id) or nil)
 	end)
@@ -386,8 +398,12 @@ local function onCharacter(character: Model)
 	clearCharacter()
 
 	feedback:Reset()
+	duel:SetPlayAllowed(true)
 	local humanoid = character:WaitForChild("Humanoid", 10)
 	if humanoid and humanoid:IsA("Humanoid") then
+		track(humanoid.Died:Connect(function()
+			duel:SetPlayAllowed(false)
+		end))
 		local lastHealth = humanoid.Health
 		local function refreshHealth()
 			hud:SetHealth(humanoid.Health, humanoid.MaxHealth)
@@ -545,19 +561,42 @@ local workshop = safe("Armory", function()
 	})
 end)
 
+local character = safe("Character", function()
+	return Character.new(menuLayer, {
+		statAction = remote("StatAction"),
+	})
+end)
+
+local journal = safe("Journal", function()
+	return Journal.new(menuLayer, {
+		questAction = gameRemote("QuestAction"),
+	})
+end)
+journalRef = journal
+
+local settings = safe("Settings", function()
+	return Settings.new(menuLayer, {
+		settingsAction = remote("SettingsAction"),
+	})
+end)
+-- Saved volumes, camera shake and field of view take effect on join, panel open or not.
+settings:Load()
+
 -- Forward-declared: the nav is built below, but opening a menu by hotkey should still retire
 -- that menu's first-time hint on the nav.
 local nav: any
 
 local NAV_ID = {
 	[inventory] = "Inventory", [market] = "Market", [workshop] = "Workshop",
-	[profile] = "Profile", [daily] = "Daily",
+	[profile] = "Profile", [daily] = "Daily", [character] = "Character", [journal] = "Journal",
+	[settings] = "Settings",
 }
+local PANELS = { inventory, market, workshop, profile, daily, character, journal, settings }
 
 -- Opening one panel closes the others. Two full-screen menus stacked on each other is how a
 -- player loses track of what Escape is going to do.
 local function openOnly(target)
-	for _, panel in ipairs({ inventory, market, workshop, profile, daily }) do
+	for _, panel in ipairs(PANELS) do
 		if panel ~= target then
 			panel:Close()
 		end
@@ -573,6 +612,26 @@ end
 hud:OnShop(function()
 	openOnly(market)
 end)
+-- The level diamond opens the Character panel, where the points it is nagging about go.
+hud:OnLevel(function()
+	openOnly(character)
+end)
+
+-- Unspent stat points: a red "+N" on the level diamond and a count on the Stats tile.
+-- Crystals: their own chip beside the cash. Both are attributes the server publishes.
+local function refreshPoints()
+	local n = tonumber(player:GetAttribute("StatPoints")) or 0
+	hud:SetStatPoints(n)
+	if nav then
+		nav:SetBadge("Character", n)
+	end
+end
+player:GetAttributeChangedSignal("StatPoints"):Connect(refreshPoints)
+local function refreshCrystals()
+	hud:SetCrystals(tonumber(player:GetAttribute("Crystals")) or 0)
+end
+player:GetAttributeChangedSignal("Crystals"):Connect(refreshCrystals)
+refreshCrystals()
 workshop:OnShop(function()
 	openOnly(market)
 end)
@@ -585,30 +644,41 @@ end)
 
 -- Hints are the first-session teaching: the three things a new player should find first.
 nav = safe("Nav", function()
+	-- Two columns; the tiles with a first-session hint (Shop, Daily) sit in the left one so
+	-- their bubbles point out into open screen rather than across a neighbour.
 	return Nav.new(screen, {
-	{ id = "Inventory", label = "Items", key = "[B]", onActivated = function()
-		openOnly(inventory)
-	end },
-	{ id = "Market", label = "Shop", key = "[M]", hint = "Unlock New Guns!", onActivated = function()
-		openOnly(market)
-	end },
-	{ id = "Workshop", label = "Armory", key = "[K]", onActivated = function()
-		openOnly(workshop)
-	end },
-	-- Duels are the PLAY diamond now (and J), so the dock no longer needs a tile for them.
-	{ id = "Profile", label = "Profile", key = "[P]", onActivated = function()
-		openOnly(profile)
-	end },
-	{ id = "Range", label = "Range", key = "[V]", onActivated = toggleRange },
-	-- Touch has no Tab key, so the board is a tile too (a tap opens it, another shuts it).
-	{ id = "Players", label = "Players", key = "[Tab]", icon = "📋", onActivated = function()
-		board:Toggle()
-	end },
-	{ id = "Daily", label = "Daily", key = "[N]", hint = "Free Daily Reward!", onActivated = function()
-		openOnly(daily)
-	end },
-})
+		{ id = "Market", label = "Shop", key = "[M]", hint = "Unlock New Guns!", onActivated = function()
+			openOnly(market)
+		end },
+		{ id = "Inventory", label = "Items", key = "[B]", onActivated = function()
+			openOnly(inventory)
+		end },
+		{ id = "Daily", label = "Daily", key = "[N]", hint = "Free Daily Reward!", onActivated = function()
+			openOnly(daily)
+		end },
+		{ id = "Workshop", label = "Armory", key = "[K]", onActivated = function()
+			openOnly(workshop)
+		end },
+		{ id = "Character", label = "Stats", key = "[L]", onActivated = function()
+			openOnly(character)
+		end },
+		{ id = "Journal", label = "Quests", key = "[O]", onActivated = function()
+			openOnly(journal)
+		end },
+		{ id = "Profile", label = "Profile", key = "[P]", onActivated = function()
+			openOnly(profile)
+		end },
+		-- Touch has no Tab key, so the board is a tile too (a tap opens it, another shuts it).
+		{ id = "Players", label = "Players", key = "[Tab]", icon = "📋", onActivated = function()
+			board:Toggle()
+		end },
+		{ id = "Range", label = "Range", key = "[V]", onActivated = toggleRange },
+		{ id = "Settings", label = "Settings", key = "[F1]", onActivated = function()
+			openOnly(settings)
+		end },
+	})
 end)
+refreshPoints()
 
 -- --------------------------------------------------------------- feed --
 
@@ -674,6 +744,18 @@ UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: 
 		openOnly(daily)
 		return
 	end
+	if input.KeyCode == Enum.KeyCode.L then
+		openOnly(character)
+		return
+	end
+	if input.KeyCode == Enum.KeyCode.O then
+		openOnly(journal)
+		return
+	end
+	if input.KeyCode == Enum.KeyCode.F1 then
+		openOnly(settings)
+		return
+	end
 
 	-- Slot keys are gameplay, so they stop at the edge of a menu.
 	if player:GetAttribute("UIOpen") == true then
@@ -705,6 +787,7 @@ local function refreshMenuState()
 	nav:SetVisible(clear)
 	objective:SetVisible(clear)
 	duel:SetVisible(clear)
+	bossBar:SetVisible(clear)
 end
 refreshMenuState()
 player:GetAttributeChangedSignal("UIOpen"):Connect(refreshMenuState)

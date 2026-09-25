@@ -84,6 +84,7 @@ local sprintLatched = false   -- set by double-tapping W, cleared when W is rele
 local lastForwardTap = 0
 local sprinting = false
 local baseWalkSpeed = 16
+local lastWalkSpeed = 16     -- the last value this script wrote, so a changed bonus is still ours
 local slideUntil = 0
 local slideReadyAt = 0
 local slideDir = Vector3.zero
@@ -117,6 +118,7 @@ local function onCharacterAdded(char: Model)
 	hum.CameraOffset = OFFSET_HIP
 	currentOffset = OFFSET_HIP
 	baseWalkSpeed = hum.WalkSpeed > 0 and hum.WalkSpeed or 16
+	lastWalkSpeed = baseWalkSpeed
 
 	sprinting = false
 	sprintLatched = false
@@ -413,12 +415,19 @@ RunService:BindToRenderStep("TacticalCamera", Enum.RenderPriority.Camera.Value +
 		player:SetAttribute("Sprinting", sprinting)
 	end
 
-	-- Only drive WalkSpeed between the two values this script owns. Anything else has
-	-- been set by another system -- a slow effect, a stun -- and must be left alone.
-	local sprintSpeed = baseWalkSpeed * SPRINT_MULTIPLIER
-	local want = sprinting and sprintSpeed or baseWalkSpeed
-	if hum.WalkSpeed ~= want and (hum.WalkSpeed == baseWalkSpeed or hum.WalkSpeed == sprintSpeed) then
+	-- Only drive WalkSpeed between the values this script owns. Anything else has been set by
+	-- another system -- a slow effect, a stun -- and must be left alone. Stamina (the
+	-- Character panel) raises the walking pace; the server publishes it as SpeedBonus and
+	-- zeroes it inside a duel, where everyone moves the same.
+	local bonus = tonumber(player:GetAttribute("SpeedBonus")) or 0
+	local walkSpeed = baseWalkSpeed * (1 + math.clamp(bonus, 0, 0.5))
+	local sprintSpeed = walkSpeed * SPRINT_MULTIPLIER
+	local want = sprinting and sprintSpeed or walkSpeed
+	local ours = hum.WalkSpeed == baseWalkSpeed or hum.WalkSpeed == lastWalkSpeed
+		or hum.WalkSpeed == walkSpeed or hum.WalkSpeed == sprintSpeed
+	if hum.WalkSpeed ~= want and ours then
 		hum.WalkSpeed = want
+		lastWalkSpeed = want
 	end
 
 	-- ---------------------------------------------------------------- framing --

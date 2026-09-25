@@ -49,6 +49,8 @@ local function watchPhases(model: Model, post)
 			if not fired[index] and fraction <= phase.at and health > 0 then
 				fired[index] = true
 				announce(("%s enters phase %d"):format(post.title, index + 1))
+				-- For the boss health bar: which phase, so it can call it out.
+				model:SetAttribute("Phase", index + 1)
 
 				-- Adds appear AROUND the boss, spread so they do not stack inside it.
 				local root = model:FindFirstChild("HumanoidRootPart")
@@ -85,6 +87,13 @@ function BossService.SpawnAt(post): Model?
 	end
 	model.Name = post.title
 	model:SetAttribute("Boss", true)
+	-- The boss bar marks where the phases turn over, and shows which one the fight is in.
+	local marks = {}
+	for _, phase in ipairs(BossService.Phases) do
+		table.insert(marks, tostring(phase.at))
+	end
+	model:SetAttribute("PhaseMarks", table.concat(marks, ","))
+	model:SetAttribute("Phase", 1)
 	live[post.zone] = model
 	watchPhases(model, post)
 	announce(post.title .. " stands at " .. post.zone)

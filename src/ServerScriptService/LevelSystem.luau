@@ -10,6 +10,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local GameConfig = require(ReplicatedStorage.GameConfig)
 local ProgressionConfig = require(ReplicatedStorage.ProgressionConfig)
+local CharacterConfig = require(ReplicatedStorage.CharacterConfig)
 local PlayerDataManager = require(ServerScriptService.PlayerDataManager)
 local KillCredit = require(ServerScriptService.KillCredit)
 local ShopService = require(ServerScriptService.ShopService)
@@ -270,7 +271,6 @@ end
 -- with the rest of progression now, and is re-applied on every spawn rather than only the
 -- first one of a session.
 local BASE_HEALTH = 100
-local HEALTH_PER_DEFENSE = 0.1
 
 local function applyVitality(player: Player, character: Model)
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
@@ -282,8 +282,11 @@ local function applyVitality(player: Player, character: Model)
 		if not humanoid.Parent then
 			return
 		end
-		local defense = tonumber(Replica.Data.Defense) or 0
-		local maximum = BASE_HEALTH * (1 + defense * HEALTH_PER_DEFENSE)
+		-- Defense, from the Character panel: +2% a point, capped (CharacterConfig). Never in a
+		-- duel -- the arena is a fair fight, so everyone there has the same health.
+		local inDuel = player:GetAttribute("DuelState") == "duel"
+		local bonus = inDuel and 0 or CharacterConfig.Bonus("Defense", Replica.Data.Defense)
+		local maximum = BASE_HEALTH * (1 + bonus)
 		if math.abs(humanoid.MaxHealth - maximum) < 0.01 then
 			return
 		end
@@ -295,9 +298,20 @@ local function applyVitality(player: Player, character: Model)
 	end):catch(function() end)
 end
 
+--- Re-apply health from Defense now -- after spending points, or entering or leaving a duel.
+function LevelSystem.ApplyVitality(player: Player)
+	local character = player.Character
+	if character then
+		task.spawn(applyVitality, player, character)
+	end
+end
+
 local function watchVitality(player: Player)
 	player.CharacterAdded:Connect(function(character)
 		applyVitality(player, character)
+	end)
+	player:GetAttributeChangedSignal("DuelState"):Connect(function()
+		LevelSystem.ApplyVitality(player)
 	end)
 	if player.Character then
 		task.spawn(applyVitality, player, player.Character)

@@ -25,9 +25,18 @@ local impulses: { Impulse } = {}
 -- impulses and turn the frame into a trigonometry benchmark.
 local MAX_LIVE = 12
 
+-- The player's CAMERA SHAKE setting (the Settings panel), 0 - 1. Scales every shove -- firing,
+-- landing, being hit -- but not recoil, which is aim you have to pull back, not shake.
+ViewKick.Intensity = 1
+
 --- Add a one-shot camera shove.
 --- pitch/yaw/roll are peak degrees; sway adds a small random wobble on top.
 function ViewKick.Punch(pitch: number, yaw: number, roll: number, duration: number, sway: number?)
+	local k = math.clamp(ViewKick.Intensity, 0, 1)
+	if k <= 0 then
+		return
+	end
+	pitch, yaw, roll, sway = pitch * k, yaw * k, roll * k, (sway or 0) * k
 	if #impulses >= MAX_LIVE then
 		table.remove(impulses, 1)
 	end

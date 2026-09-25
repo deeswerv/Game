@@ -232,12 +232,13 @@ hpValue.AnchorPoint = Vector2.new(1, 0)
 hpValue.Position = UDim2.fromScale(1, 0)
 hpValue.Size = UDim2.new(0, 72, 1, 0)
 
--- Countdown, bottom centre, clear of the card.
+-- Countdown, directly under the card: the bottom of the screen belongs to the ammo counter
+-- and hotbar, and the respawn line sat right on top of them there.
 local footer = Instance.new("Frame")
 footer.Name = "Footer"
 footer.BackgroundTransparency = 1
-footer.AnchorPoint = Vector2.new(0.5, 1)
-footer.Position = UDim2.new(0.5, 0, 1, -Theme.Inset.Bottom)
+footer.AnchorPoint = Vector2.new(0.5, 0)
+footer.Position = UDim2.new(0.5, 0, 0, 344)
 footer.Size = UDim2.fromOffset(340, 52)
 footer.Parent = screen
 

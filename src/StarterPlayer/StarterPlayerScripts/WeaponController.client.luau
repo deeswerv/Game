@@ -656,7 +656,11 @@ RunService.RenderStepped:Connect(function(dt)
 	-- sprint boost. One owner for the property; everyone else contributes to the target.
 	local sprintFov = player:GetAttribute("SprintFovAdd")
 	fovKick *= math.exp(-16 * dt)
-	local wantFov = ((cfg and ads) and cfg.AdsFov or baseFov)
+	-- FIELD OF VIEW from the Settings panel, when set, is the resting view; aiming still
+	-- narrows to the weapon's own ADS figure.
+	local fovSetting = player:GetAttribute("FovSetting")
+	local restFov = typeof(fovSetting) == "number" and fovSetting or baseFov
+	local wantFov = ((cfg and ads) and cfg.AdsFov or restFov)
 		+ (typeof(sprintFov) == "number" and sprintFov or 0)
 		+ fovKick
 	camera.FieldOfView += (wantFov - camera.FieldOfView) * math.clamp((cfg and cfg.AdsSpeed or 12) * dt, 0, 1)

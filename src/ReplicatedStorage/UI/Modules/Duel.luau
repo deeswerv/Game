@@ -891,7 +891,7 @@ end
 function Duel:_apply()
 	local mode = self._mode
 	local hidden = self._hidden
-	local playVisible = not hidden and (mode == "idle" or mode == "queue")
+	local playVisible = not hidden and not self._playBlocked and (mode == "idle" or mode == "queue")
 	self._play.Visible = playVisible
 	self._queueCard.Visible = not hidden and mode == "queue"
 	local boardVisible = not hidden and (mode == "live" or (mode == "countdown" and (self._round or 1) > 1))
@@ -1192,6 +1192,13 @@ function Duel:Toggle()
 			self:_render(state)
 		end
 	end)
+end
+
+--- PLAY steps aside while you are dead -- the death card has the middle of the screen --
+--- without hiding a live duel's scoreboard the way SetVisible would.
+function Duel:SetPlayAllowed(allowed: boolean)
+	self._playBlocked = not allowed
+	self:_apply()
 end
 
 function Duel:SetVisible(visible: boolean)

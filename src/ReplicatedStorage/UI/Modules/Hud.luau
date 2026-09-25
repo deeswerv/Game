@@ -130,6 +130,76 @@ local function buildIdentity(self, parent: GuiObject)
 	local badge, level = Components.LevelBadge(holder, 50)
 	badge.LayoutOrder = 3
 
+	-- The diamond is a button into the Character panel, and wears a red "+N" while there are
+	-- stat points waiting to be spent -- the nudge that makes a level-up worth something.
+	local levelButton = Instance.new("TextButton")
+	levelButton.Name = "LevelButton"
+	levelButton.BackgroundTransparency = 1
+	levelButton.Text = ""
+	levelButton.Size = UDim2.fromScale(1, 1)
+	levelButton.ZIndex = 5
+	levelButton.Parent = badge
+	levelButton.Activated:Connect(function()
+		if self._onLevel then
+			self._onLevel()
+		end
+	end)
+	local points = Instance.new("Frame")
+	points.Name = "Points"
+	points.BackgroundColor3 = Theme.Colour.Danger
+	points.AnchorPoint = Vector2.new(0.5, 0.5)
+	points.Position = UDim2.new(1, -4, 0, 6)
+	points.Size = UDim2.fromOffset(0, 20)
+	points.AutomaticSize = Enum.AutomaticSize.X
+	points.Visible = false
+	points.ZIndex = 6
+	points.Parent = badge
+	Components.Corner(points, 10)
+	Components.Stroke(points, Theme.Colour.Outline, 2)
+	Components.Padding(points, nil, 5, 0)
+	local pointsText = Components.Label(points, {
+		text = "",
+		font = Theme.Font.Display,
+		size = 14,
+		autoSize = true,
+		outline = 1.6,
+	})
+	pointsText.AnchorPoint = Vector2.new(0, 0.5)
+	pointsText.Position = UDim2.fromScale(0, 0.5)
+	pointsText.ZIndex = 7
+	local pointsScale = Instance.new("UIScale")
+	pointsScale.Parent = points
+	TweenService:Create(pointsScale, TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+		{ Scale = 1.15 }):Play()
+	self._points, self._pointsText = points, pointsText
+
+	-- Crystals, the second currency: mined, looted from dailies and milestones.
+	local crystals = Instance.new("Frame")
+	crystals.Name = "Crystals"
+	crystals.BackgroundColor3 = Theme.Colour.Panel
+	crystals.BackgroundTransparency = 0.35
+	crystals.Size = UDim2.fromOffset(0, 34)
+	crystals.AutomaticSize = Enum.AutomaticSize.X
+	crystals.LayoutOrder = 4
+	crystals.Visible = false
+	crystals.Parent = holder
+	Components.Corner(crystals, 10)
+	Components.Padding(crystals, nil, 8, 0)
+	local crystalRow = Components.List(crystals, Enum.FillDirection.Horizontal, 4)
+	crystalRow.VerticalAlignment = Enum.VerticalAlignment.Center
+	Components.Icon(crystals, "💎", 20).LayoutOrder = 1
+	local crystalText = Components.Label(crystals, {
+		text = "0",
+		font = Theme.Font.Display,
+		size = 22,
+		colour = Color3.fromRGB(130, 225, 255),
+		autoSize = true,
+		layoutOrder = 2,
+		outline = false,
+	})
+	Components.Outline(crystalText, 2.2, Color3.fromRGB(10, 50, 80), 0)
+	self._crystals, self._crystalText = crystals, crystalText
+
 	-- XP is a hairline under the pair. It is progress, not a headline.
 	local xpHolder = Instance.new("Frame")
 	xpHolder.Name = "XP"
@@ -389,6 +459,32 @@ end
 --- The "+" beside the cash opens whatever the controller says the shop is.
 function Hud:OnShop(handler: () -> ())
 	self._onShop = handler
+end
+
+--- Clicking the level diamond opens whatever the controller says the character panel is.
+function Hud:OnLevel(handler: () -> ())
+	self._onLevel = handler
+end
+
+--- Unspent stat points, shown as a red "+N" on the level diamond.
+function Hud:SetStatPoints(points: number)
+	local n = math.max(0, math.floor(points))
+	local was = self._pointsShown or 0
+	self._pointsShown = n
+	self._points.Visible = n > 0
+	self._pointsText.Text = "+" .. tostring(n)
+	if n > was then
+		pop(self._pointsText, 1.6)
+	end
+end
+
+function Hud:SetCrystals(amount: number)
+	local n = math.max(0, math.floor(amount))
+	self._crystals.Visible = n > 0
+	if self._crystalText.Text ~= tostring(n) then
+		self._crystalText.Text = tostring(n)
+		pop(self._crystals, 1.2)
+	end
 end
 
 function Hud:SetPlayerName(name: string)

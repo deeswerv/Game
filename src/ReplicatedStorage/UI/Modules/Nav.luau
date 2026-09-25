@@ -34,6 +34,9 @@ local ICONS: { [string]: string } = {
 	Profile = "🏆",
 	Range = "🎯",
 	Daily = "🎁",
+	Character = "💪",
+	Journal = "📜",
+	Settings = "⚙️",
 }
 
 export type Entry = {
@@ -100,14 +103,29 @@ function Nav.new(parent: GuiObject, entries: { Entry })
 	root.BackgroundTransparency = 1
 	root.AnchorPoint = Vector2.new(1, 0.5)
 	root.Position = UDim2.new(1, -Theme.Inset.Side, 0.5, 20)
-	root.Size = UDim2.fromOffset(TILE, 0)
+	-- One column while it fits; two once the dock grows past six, so the column never runs
+	-- down into the weapon dock in the bottom-right corner.
+	local columns = #entries > 6 and 2 or 1
+	root.Size = UDim2.fromOffset(TILE * columns + GAP * (columns - 1), 0)
 	root.AutomaticSize = Enum.AutomaticSize.Y
 	root.Parent = parent
-	Components.List(root, Enum.FillDirection.Vertical, GAP, Enum.HorizontalAlignment.Right)
+	if columns == 1 then
+		Components.List(root, Enum.FillDirection.Vertical, GAP, Enum.HorizontalAlignment.Right)
+	else
+		local grid = Instance.new("UIGridLayout")
+		grid.CellSize = UDim2.fromOffset(TILE, TILE)
+		grid.CellPadding = UDim2.fromOffset(GAP, GAP)
+		grid.FillDirection = Enum.FillDirection.Horizontal
+		grid.FillDirectionMaxCells = columns
+		grid.HorizontalAlignment = Enum.HorizontalAlignment.Right
+		grid.SortOrder = Enum.SortOrder.LayoutOrder
+		grid.Parent = root
+	end
 
 	self._root = root
 	self._tiles = {}
 	self._hints = {}
+	self._byId = {}
 
 	for index, entry in ipairs(entries) do
 		local tile = Instance.new("TextButton")
@@ -178,6 +196,7 @@ function Nav.new(parent: GuiObject, entries: { Entry })
 		end
 
 		table.insert(self._tiles, { instance = tile, connections = connections })
+		self._byId[entry.id] = tile
 	end
 
 	-- Hints are for the first minutes of a session, not forever.
@@ -212,6 +231,45 @@ function Nav:DismissHint(id: string)
 	task.delay(0.22, function()
 		bubble:Destroy()
 	end)
+end
+
+--- A red count on a tile's corner (unspent stat points, say). Zero hides it.
+function Nav:SetBadge(id: string, count: number)
+	local tile = self._byId[id]
+	if not tile then
+		return
+	end
+	local badge = tile:FindFirstChild("Badge")
+	if not badge then
+		local b = Instance.new("Frame")
+		b.Name = "Badge"
+		b.BackgroundColor3 = Theme.Colour.Danger
+		b.AnchorPoint = Vector2.new(0.5, 0.5)
+		b.Position = UDim2.new(1, -4, 0, 4)
+		b.Size = UDim2.fromOffset(0, 20)
+		b.AutomaticSize = Enum.AutomaticSize.X
+		b.ZIndex = 5
+		b.Parent = tile
+		Components.Corner(b, 10)
+		Components.Stroke(b, Theme.Colour.Outline, 2)
+		Components.Padding(b, nil, 5, 0)
+		local text = Components.Label(b, {
+			text = "",
+			font = Theme.Font.Display,
+			size = 14,
+			autoSize = true,
+			outline = 1.6,
+		})
+		text.Name = "Count"
+		text.AnchorPoint = Vector2.new(0, 0.5)
+		text.Position = UDim2.fromScale(0, 0.5)
+		text.ZIndex = 6
+		badge = b
+	end
+	local n = math.max(0, math.floor(count))
+	;(badge :: Frame).Visible = n > 0
+	local text = (badge :: Frame):FindFirstChild("Count") :: TextLabel
+	text.Text = n > 99 and "99+" or tostring(n)
 end
 
 function Nav:SetVisible(visible: boolean)

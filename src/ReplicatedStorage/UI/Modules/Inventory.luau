@@ -295,6 +295,7 @@ function Inventory:_fill(group: string)
 			locked = not owned,
 			layoutOrder = index,
 			onActivated = function()
+				self._picked = true
 				self:_select(name)
 			end,
 		})
@@ -313,10 +314,23 @@ function Inventory:_fill(group: string)
 		self._cardByName[name] = card
 	end
 
-	-- Never leave the detail side blank: keep the selection if it survived the filter,
-	-- otherwise fall to the first card.
-	if self._selected and table.find(names, self._selected) then
+	-- Never leave the detail side blank. Keep a selection the player made if it survived the
+	-- filter; otherwise open on the first gun they OWN. The first draw happens before
+	-- ownership arrives, and falling to "the first card" then parked the panel on a locked
+	-- Mythic every time it opened.
+	local firstOwned: string? = nil
+	for _, name in ipairs(names) do
+		if self._owned[name] then
+			firstOwned = name
+			break
+		end
+	end
+	local keep = self._selected and table.find(names, self._selected)
+		and (self._picked or self._owned[self._selected])
+	if keep then
 		self:_select(self._selected)
+	elseif firstOwned then
+		self:_select(firstOwned)
 	elseif names[1] then
 		self:_select(names[1])
 	end

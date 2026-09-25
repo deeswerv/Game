@@ -156,6 +156,11 @@ local SaveStructure = {
 	-- things they buy can be different in kind rather than just dearer.
 	Crystals = 0,
 
+	-- The player's own settings panel: volumes, camera shake, field of view. Stored as
+	-- numbers only, validated against SettingsService's schema on every write.
+	--   Settings = { Master = 0.8, Weapons = 1, World = 0.6, Interface = 1, Shake = 0.5, Fov = 80 }
+	Settings = {},
+
 	-- Names earned rather than bought: weapon mastery tiers and level milestones both pay
 	-- one. `EquippedTitle` is the one shown; an empty string means none.
 	--

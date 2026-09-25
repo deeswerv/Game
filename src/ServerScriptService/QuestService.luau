@@ -106,6 +106,9 @@ function QuestService.GetState(player: Player)
 		} or nil,
 		completedCount = #(data.CompletedQuests or {}),
 		totalQuests = #QuestConfig.Quests,
+		-- The ids themselves, for the quest journal's list. Copied: never hand out the profile.
+		completed = table.clone(data.CompletedQuests or {}),
+		level = levelOf(player),
 	}
 end
 
