@@ -163,6 +163,14 @@ Enemies fight like a squad, not a row of turrets:
 - **Wallbangs**: rifles and snipers put rounds through thin cover (glass, planks, crates) for
   reduced damage; hitting someone that way calls WALLBANG. Concrete stops everything.
 - The armory card shows Mobility, Penetration and both reload times for each weapon.
+- **Tracers leave the barrel you see.** Rounds are fired from the muzzle as your screen draws
+  it (the server checks it is close to you and not through a wall), and every client draws
+  every tracer from the gun as it sees it. A tracer is a hot streak that flies at its class's
+  speed -- pistols visibly travel, a sniper's round cracks across and leaves a vapour line --
+  and the impact lands when the round does. A fitted suppressor fires from the end of the can.
+- **Dark Matter headshots** play the gem-charge effect (assets/vfx/gemstoneCharge.rbxm) on the
+  head that was hit, for everyone. Any .rbxm dropped into assets/vfx is imported into
+  ReplicatedStorage.VFX on build; `lune run tools/uitest/tracers.luau` checks all of this.
 
 ## Duel maps
 

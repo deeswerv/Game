@@ -251,112 +251,390 @@ local function authored(weaponName: string?, effect: string): Model?
 	return (template and template:IsA("Model")) and template or nil
 end
 
--- How fast a round appears to travel. Not real ballistics -- real rifle rounds arrive in
--- three hundredths of a second over combat distances, which is indistinguishable from
--- instant. This is slow enough to read as a round crossing the gap and fast enough that it
--- still lands before you have finished pulling the trigger again.
-local TRACER_SPEED = 700      -- studs per second
-local TRACER_MAX_FLIGHT = 0.5 -- seconds; a very long shot still arrives promptly
-local STREAK_LENGTH = 14      -- how far the light trails behind the round
+-- ---------------------------------------------------------- where it fires --
 
---- A round that actually crosses the gap, drawing its own streak as it goes.
---
--- The built-in tracer draws the whole line at once, which reads as a laser: the eye gets no
--- sense of a thing travelling. This flies the authored head and tail from muzzle to target
--- and trails a streak behind them that is drawn from the muzzle and then shortens once the
--- round has outrun it -- so the light leaves the barrel, stretches, and is dragged after the
--- round rather than hanging in the air.
-local function flyTracer(template: Model, from: Vector3, to: Vector3, colour: Color3, width: number)
-	local delta = to - from
-	local length = delta.Magnitude
-	local dir = delta.Unit
-	local flight = math.min(length / TRACER_SPEED, TRACER_MAX_FLIGHT)
-
-	local round = template:Clone()
-	for _, p in ipairs(round:GetDescendants()) do
-		if p:IsA("BasePart") then
-			live += 1
-			Debris:AddItem(p, flight + 0.3)
-			task.delay(flight + 0.3, function()
-				live -= 1
-			end)
+--- Where the round leaves the weapon, as this client is drawing it right now.
+---
+--- The server's copy of a gun is not posed the way anyone sees it -- the arms, the aim and
+--- the sway are all applied client side -- so a position that came from the server is
+--- somewhere near the shooter, not at the barrel. Every tracer used to start there, and
+--- that is why they visibly came out of the air beside the gun rather than out of it.
+---
+--- A fitted muzzle device moves the point to the front of the device, so a suppressed
+--- rifle fires from the end of the can rather than from inside it.
+function CombatFX.MuzzleCFrame(tool: Instance?): CFrame?
+	if not tool or not tool.Parent then
+		return nil
+	end
+	local muzzle = tool:FindFirstChild("Muzzle")
+	if not muzzle or not muzzle:IsA("BasePart") then
+		return nil
+	end
+	local cf = muzzle.CFrame
+	local look = cf.LookVector
+	local fitted = tool:FindFirstChild("Attachments")
+	if fitted then
+		local reach = 0
+		for _, p in ipairs(fitted:GetChildren()) do
+			if p:IsA("BasePart") and string.sub(p.Name, 1, 7) == "Muzzle_" then
+				-- How far the device's front face sits past the marker, measured along the
+				-- bore whatever way the part itself is turned.
+				local half = math.abs(p.CFrame.RightVector:Dot(look)) * p.Size.X / 2
+					+ math.abs(p.CFrame.UpVector:Dot(look)) * p.Size.Y / 2
+					+ math.abs(p.CFrame.LookVector:Dot(look)) * p.Size.Z / 2
+				reach = math.max(reach, (p.Position - cf.Position):Dot(look) + half)
+			end
+		end
+		if reach > 0 then
+			cf += look * reach
 		end
 	end
-	round.Parent = bin
-
-	local streak = decor(Vector3.new(width * 0.9, width * 0.9, 0.2), CFrame.new(from),
-		Color3.new(1, 1, 1):Lerp(colour, 0.5), Enum.Material.Neon)
-	streak.Transparency = 0.3
-	track(streak, flight + 0.3)
-
-	local started = os.clock()
-	local conn: RBXScriptConnection
-	conn = RunService.Heartbeat:Connect(function()
-		local a = math.clamp((os.clock() - started) / flight, 0, 1)
-		local head = from + dir * (length * a)
-		if round.PrimaryPart or round:FindFirstChildWhichIsA("BasePart") then
-			round:PivotTo(CFrame.lookAt(head, head + dir))
-		end
-		-- The streak starts at the muzzle and is let go of once the round is far enough out.
-		local behind = math.max(0, length * a - STREAK_LENGTH)
-		local tail = from + dir * behind
-		local seg = head - tail
-		local segLen = seg.Magnitude
-		if segLen > 0.05 and streak.Parent then
-			streak.Size = Vector3.new(width * 0.9, width * 0.9, segLen)
-			streak.CFrame = CFrame.lookAt(tail + seg / 2, head)
-		end
-		if a >= 1 then
-			conn:Disconnect()
-			if streak.Parent then
-				TweenService:Create(streak, TweenInfo.new(0.1), { Transparency = 1 }):Play()
-			end
-			for _, p in ipairs(round:GetDescendants()) do
-				if p:IsA("BasePart") then
-					TweenService:Create(p, TweenInfo.new(0.12), { Transparency = 1 }):Play()
-				end
-			end
-		end
-	end)
-	-- A safety net: if the frame loop is ever interrupted, nothing is left flying.
-	task.delay(flight + 0.4, function()
-		if conn.Connected then
-			conn:Disconnect()
-		end
-		if round.Parent then
-			round:Destroy()
-		end
-	end)
+	return cf
 end
 
---- The round in flight. Bright core with a dimmer, wider sheath so it reads at distance.
-function CombatFX.Tracer(from: Vector3, to: Vector3, colour: Color3, width: number, weaponName: string?)
+--- The same, as a point, falling back to where the server said the shot came from.
+---
+--- The fallback is used when the weapon is not somewhere this client can draw it (dropped,
+--- not streamed in) or when the drawn gun is implausibly far from the server's origin, which
+--- happens for a frame after a teleport or a respawn and would otherwise fire a tracer across
+--- the map.
+function CombatFX.MuzzlePoint(tool: Instance?, fallback: Vector3?): Vector3?
+	local cf = CombatFX.MuzzleCFrame(tool)
+	if not cf then
+		return fallback
+	end
+	if fallback and (cf.Position - fallback).Magnitude > 14 then
+		return fallback
+	end
+	return cf.Position
+end
+
+-- ------------------------------------------------------------------ flight --
+--
+-- A tracer is a round you can see, so it is drawn as one: a short hot streak that leaves the
+-- barrel, crosses the gap at the speed the weapon throws it, and is swallowed by whatever it
+-- hits. The streak is two camera-facing beams -- a thin white-hot core and a wider coloured
+-- sheath -- that taper from the head back to nothing at the tail, which is the shape the
+-- eye actually sees when something bright moves fast. The old tracer drew the whole line at
+-- once and faded it, which reads as a laser pointer.
+--
+-- Speeds are not real ballistics. A real rifle round crosses a duel arena in a hundredth of a
+-- second, which is indistinguishable from a line. These are slow enough to watch and fast
+-- enough that the round lands before the next trigger pull, and every weapon class throws at
+-- its own pace, so a sniper's round cracks across the map while a pistol's visibly travels.
+
+local TRACER_MAX_FLIGHT = 0.3 -- seconds; a very long shot is sped up to arrive promptly
+
+-- Per class: studs per second, and how long the streak is. A pellet is short and slow; a
+-- sniper's round is a long needle of light.
+local BALLISTICS: { [string]: { speed: number, streak: number, trail: number } } = {
+	Pistol = { speed = 620, streak = 7, trail = 0 },
+	SMG = { speed = 760, streak = 8, trail = 0 },
+	Rifle = { speed = 980, streak = 12, trail = 0 },
+	Shotgun = { speed = 560, streak = 4.5, trail = 0 },
+	Sniper = { speed = 1700, streak = 26, trail = 0.9 },
+}
+local DEFAULT_BALLISTICS = BALLISTICS.Rifle
+
+local WeaponConfig: any = nil
+local function ballisticsFor(weaponName: string?)
+	if not weaponName then
+		return DEFAULT_BALLISTICS
+	end
+	-- Required on first use: WeaponConfig is data and loads nothing back, but keeping this
+	-- module's load order independent of it costs nothing.
+	if WeaponConfig == nil then
+		local module = ReplicatedStorage:FindFirstChild("WeaponConfig")
+		local ok, loaded = pcall(function()
+			return (require :: any)(module)
+		end)
+		WeaponConfig = (module and ok) and loaded or false
+	end
+	local cfg = WeaponConfig and WeaponConfig.Get(weaponName)
+	local b = (cfg and BALLISTICS[cfg.Class]) or DEFAULT_BALLISTICS
+	if cfg and (type(cfg.TracerSpeed) == "number" or type(cfg.TracerStreak) == "number") then
+		b = {
+			speed = cfg.TracerSpeed or b.speed,
+			streak = cfg.TracerStreak or b.streak,
+			trail = b.trail,
+		}
+	end
+	return b
+end
+
+-- One anchored, invisible part carries every beam endpoint. Attachments on a part at the
+-- world origin are positioned in world space directly, and one host means a shotgun blast
+-- costs sixteen attachments rather than eight parts and eight welds.
+local host: Part? = nil
+local function beamHost(): Part
+	if host and host.Parent then
+		return host
+	end
+	local p = Instance.new("Part")
+	p.Name = "TracerHost"
+	p.Size = Vector3.new(0.05, 0.05, 0.05)
+	p.CFrame = CFrame.new()
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.CastShadow = false
+	p.Transparency = 1
+	p.Parent = bin
+	host = p
+	return p
+end
+
+local function point(at: Vector3): Attachment
+	local a = Instance.new("Attachment")
+	a.Position = at
+	a.Parent = beamHost()
+	return a
+end
+
+-- A camera-facing ribbon from a0 (the tail) to a1 (the head). No texture: flat colour,
+-- which is what sits with low-poly art.
+local function ribbon(a0: Attachment, a1: Attachment, colour: Color3, tailWidth: number,
+	headWidth: number, transparency: NumberSequence): Beam
+	local b = Instance.new("Beam")
+	b.Attachment0 = a0
+	b.Attachment1 = a1
+	b.Color = ColorSequence.new(colour)
+	b.Width0 = tailWidth
+	b.Width1 = headWidth
+	b.Transparency = transparency
+	b.LightEmission = 1
+	b.LightInfluence = 0
+	b.FaceCamera = true
+	b.Segments = 1
+	b.Parent = a0.Parent
+	return b
+end
+
+-- Tail to head: nothing at the tail, hottest at the head.
+local CORE_FADE = NumberSequence.new({
+	NumberSequenceKeypoint.new(0, 1),
+	NumberSequenceKeypoint.new(0.45, 0.6),
+	NumberSequenceKeypoint.new(1, 0),
+})
+local SHEATH_FADE = NumberSequence.new({
+	NumberSequenceKeypoint.new(0, 1),
+	NumberSequenceKeypoint.new(0.6, 0.86),
+	NumberSequenceKeypoint.new(1, 0.5),
+})
+
+type Flight = {
+	from: Vector3,
+	dir: Vector3,
+	length: number,
+	speed: number,
+	streak: number,
+	started: number,
+	tail: Attachment,
+	head: Attachment,
+	beams: { Beam },
+	tip: BasePart?,
+	round: Model?,
+	-- The faint vapour line a heavy round leaves hanging along its whole path.
+	trail: Beam?,
+	trailStart: Attachment?,
+	trailEnd: Attachment?,
+	trailStrength: number,
+	landed: number?,
+	frames: number,
+}
+
+local flights: { Flight } = {}
+local flightLoop: RBXScriptConnection? = nil
+
+local function dropFlight(f: Flight)
+	for _, b in ipairs(f.beams) do
+		b:Destroy()
+	end
+	f.tail:Destroy()
+	f.head:Destroy()
+	if f.tip then
+		f.tip:Destroy()
+		live -= 1
+	end
+	if f.round then
+		f.round:Destroy()
+	end
+	if f.trail then
+		f.trail:Destroy()
+	end
+	if f.trailStart then
+		f.trailStart:Destroy()
+	end
+	if f.trailEnd then
+		f.trailEnd:Destroy()
+	end
+	live -= 1
+end
+
+-- How long the vapour line hangs after the round lands.
+local TRAIL_LINGER = 0.45
+-- How long the streak stays joined to the barrel before it detaches and flies.
+local MUZZLE_HOLD = 0.035
+
+local function stepFlights()
+	local now = os.clock()
+	local i = 1
+	while i <= #flights do
+		local f = flights[i]
+		-- Never less than a frame of travel, so a point-blank shot still shows its streak
+		-- for the one frame it exists instead of starting and ending at the muzzle.
+		local travelled = math.max(now - f.started, 1 / 60) * f.speed
+		local headAt = math.min(travelled, f.length)
+		-- The tail keeps flying after the head has stopped, so the streak is swallowed by
+		-- the impact rather than hanging at the wall and fading.
+		local tailAt = math.clamp(travelled - f.streak, 0, headAt)
+		-- For its first moment the streak is held to the barrel. A rifle round covers
+		-- sixteen studs in one frame at 60 fps, so without this the first thing ever drawn
+		-- is a streak already floating clear of the gun -- which is exactly the "tracers do
+		-- not line up with the barrel" look. Held, it visibly leaves the muzzle.
+		f.frames += 1
+		if f.frames <= 1 or now - f.started < MUZZLE_HOLD then
+			tailAt = 0
+		end
+		local head = f.from + f.dir * headAt
+		f.head.Position = head
+		f.tail.Position = f.from + f.dir * tailAt
+		if f.tip then
+			f.tip.CFrame = CFrame.new(head)
+			f.tip.Transparency = travelled >= f.length and 1 or 0
+		end
+		if f.round then
+			f.round:PivotTo(CFrame.lookAt(head, head + f.dir))
+		end
+
+		local done = tailAt >= f.length - 1e-3
+		if f.trail and f.trailEnd then
+			f.trailEnd.Position = head
+			if done and not f.landed then
+				f.landed = now
+			end
+			local faded = f.landed and math.clamp((now - f.landed) / TRAIL_LINGER, 0, 1) or 0
+			local base = 1 - f.trailStrength * 0.16 * (1 - faded)
+			f.trail.Transparency = NumberSequence.new(math.clamp(base, 0, 1))
+			done = faded >= 1
+		end
+
+		if done then
+			dropFlight(f)
+			flights[i] = flights[#flights]
+			flights[#flights] = nil
+		else
+			i += 1
+		end
+	end
+	if #flights == 0 and flightLoop then
+		flightLoop:Disconnect()
+		flightLoop = nil
+	end
+end
+
+--- Launches one round from `from` to `to`. Returns how long it takes to arrive, so the
+--- impact can be timed to the moment it lands.
+local function launch(from: Vector3, to: Vector3, colour: Color3, width: number, weaponName: string?,
+	template: Model?): number
 	local delta = to - from
 	local length = delta.Magnitude
+	local b = ballisticsFor(weaponName)
+	local speed = math.max(b.speed, length / TRACER_MAX_FLIGHT)
+	local flight = length / speed
 	if length < 0.2 or not budget() then
-		return
+		return flight
 	end
+	live += 1
 
-	local template = authored(weaponName, "Tracer")
+	local dir = delta.Unit
+	local tail = point(from)
+	local head = point(from)
+	local hot = Color3.new(1, 1, 1):Lerp(colour, 0.35)
+	local beams = {
+		ribbon(tail, head, colour, width * 0.5, width * 3.4, SHEATH_FADE),
+		ribbon(tail, head, hot, width * 0.15, width * 1.1, CORE_FADE),
+	}
+
+	local f: Flight = {
+		from = from,
+		dir = dir,
+		length = length,
+		speed = speed,
+		streak = b.streak,
+		started = os.clock(),
+		tail = tail,
+		head = head,
+		beams = beams,
+		tip = nil,
+		round = nil,
+		trail = nil,
+		trailStart = nil,
+		trailEnd = nil,
+		trailStrength = b.trail,
+		landed = nil,
+		frames = 0,
+	}
+
 	if template then
-		flyTracer(template, from, to, colour, width)
-		return
+		-- An authored round rides the head of the streak.
+		local round = template:Clone()
+		round:PivotTo(CFrame.lookAt(from, from + dir))
+		round.Parent = bin
+		f.round = round
+	elseif budget() then
+		-- The glint at the head of the round: the one point of solid light the streak grows
+		-- out of. Without it the streak's head is a soft edge and reads as a smear.
+		local tip = decor(Vector3.new(width * 1.3, width * 1.3, width * 1.3), CFrame.new(from), hot,
+			Enum.Material.Neon)
+		tip.Shape = Enum.PartType.Ball
+		tip.Parent = bin
+		live += 1
+		f.tip = tip
 	end
 
-	local cf = CFrame.lookAt(from + delta / 2, to)
+	if b.trail > 0 then
+		local s = point(from)
+		local e = point(from)
+		f.trailStart = s
+		f.trailEnd = e
+		f.trail = ribbon(s, e, Color3.fromRGB(226, 228, 232), width * 0.9, width * 1.6,
+			NumberSequence.new(1))
+	end
 
-	-- A thin bright line with only a hint of a sheath. The point of a tracer is to say
-	-- where the round went; a fat glowing beam says it louder than the shot itself and
-	-- turns sustained fire into a wall of light you cannot see the enemy through.
-	local core = decor(Vector3.new(width * 0.8, width * 0.8, length), cf, Color3.new(1, 1, 1):Lerp(colour, 0.55), Enum.Material.Neon)
-	core.Transparency = 0.15
-	track(core, 0.07)
-	TweenService:Create(core, TweenInfo.new(0.065), { Transparency = 1 }):Play()
+	table.insert(flights, f)
+	if not flightLoop then
+		flightLoop = RunService.Heartbeat:Connect(stepFlights)
+	end
+	-- A safety net: if the frame loop is ever starved, nothing is left in the air.
+	task.delay(flight + TRAIL_LINGER + 1, function()
+		local at = table.find(flights, f)
+		if at then
+			dropFlight(f)
+			table.remove(flights, at)
+		end
+	end)
+	return flight
+end
 
-	local glow = decor(Vector3.new(width * 1.7, width * 1.7, length), cf, colour, Enum.Material.Neon)
-	glow.Transparency = 0.82
-	track(glow, 0.07)
-	TweenService:Create(glow, TweenInfo.new(0.065), { Transparency = 1 }):Play()
+--- The round in flight, from the barrel to where it landed.
+---
+--- Returns the flight time in seconds, so the caller can land the impact when the round
+--- does rather than before it has left the gun.
+function CombatFX.Tracer(from: Vector3, to: Vector3, colour: Color3, width: number, weaponName: string?): number
+	return launch(from, to, colour, width, weaponName, authored(weaponName, "Tracer"))
+end
+
+--- How long a round from `from` to `to` is in the air, without drawing anything.
+function CombatFX.FlightTime(from: Vector3, to: Vector3, weaponName: string?): number
+	local length = (to - from).Magnitude
+	return length / math.max(ballisticsFor(weaponName).speed, length / TRACER_MAX_FLIGHT)
+end
+
+--- How many rounds are in the air on this client right now. For tests.
+function CombatFX.InFlight(): number
+	return #flights
 end
 
 -- ------------------------------------------------------------------ impact --
@@ -991,6 +1269,152 @@ function CombatFX.CashBurst(position: Vector3)
 			end
 		end)
 	end
+end
+
+-- --------------------------------------------------------- authored bursts --
+--
+-- Imported effects live in ReplicatedStorage.VFX (tools/patches/050_vfx.luau puts them there,
+-- switched off). They follow their plugin's convention: each ParticleEmitter says when it
+-- fires (EmitDelay), how many it throws at once (EmitCount) and how long it streams for at its
+-- own Rate (EmitDuration). An effect is therefore a timeline, not a single puff -- the gem
+-- charge draws in for most of a second and then bursts -- and it is played as authored.
+
+local function scaledSequence(seq: NumberSequence, k: number): NumberSequence
+	local points = {}
+	for _, p in ipairs(seq.Keypoints) do
+		table.insert(points, NumberSequenceKeypoint.new(p.Time, p.Value * k, p.Envelope * k))
+	end
+	return NumberSequence.new(points)
+end
+
+-- Every size, speed and distance in an effect, multiplied. The imports are authored at ability
+-- scale -- a five-stud core and a twenty-stud shock ring -- and a headshot wants the same
+-- effect at the size of a head.
+local function rescale(root: Instance, k: number)
+	if math.abs(k - 1) < 1e-3 then
+		return
+	end
+	for _, d in ipairs(root:GetDescendants()) do
+		if d:IsA("ParticleEmitter") then
+			d.Size = scaledSequence(d.Size, k)
+			d.Speed = NumberRange.new(d.Speed.Min * k, d.Speed.Max * k)
+			d.Acceleration *= k
+		elseif d:IsA("Beam") then
+			d.Width0 *= k
+			d.Width1 *= k
+			d.CurveSize0 *= k
+			d.CurveSize1 *= k
+		elseif d:IsA("Attachment") then
+			d.CFrame = d.CFrame.Rotation + d.CFrame.Position * k
+		end
+	end
+end
+
+-- How long a beam in an effect stays up: through the emitters' streaming phase, then faded.
+local BEAM_FADE = 0.2
+
+--- Plays ReplicatedStorage.VFX.<name> at `at`.
+---
+--- `follow`, when given, is a part the effect rides for its whole life -- a headshot's
+--- effect stays on the head it hit as the body falls. `scale` shrinks or grows the whole
+--- effect. Returns how long it lasts, or nil when there is no such effect.
+function CombatFX.PlayVFX(name: string, at: Vector3, follow: BasePart?, scale: number?): number?
+	local folder = ReplicatedStorage:FindFirstChild("VFX")
+	local template = folder and folder:FindFirstChild(name)
+	if not template then
+		return nil
+	end
+	local fx = template:Clone()
+	rescale(fx, scale or 1)
+	local anchor: BasePart? = if fx:IsA("BasePart") then fx else fx:FindFirstChildWhichIsA("BasePart", true)
+	if not anchor then
+		fx:Destroy()
+		return nil
+	end
+	anchor.Anchored = true
+	anchor.Transparency = 1
+	anchor.CFrame = CFrame.new(at)
+	fx.Parent = bin
+
+	local longest = 0
+	local streaming = 0
+	local beams: { Beam } = {}
+	for _, d in ipairs(fx:GetDescendants()) do
+		if d:IsA("ParticleEmitter") then
+			local emitter = d
+			local delay = tonumber(emitter:GetAttribute("EmitDelay")) or 0
+			local count = tonumber(emitter:GetAttribute("EmitCount")) or 0
+			local duration = tonumber(emitter:GetAttribute("EmitDuration")) or 0
+			-- An emitter that says nothing at all fires once, rather than silently never.
+			if count <= 0 and duration <= 0 and emitter:GetAttribute("EmitCount") == nil
+				and emitter:GetAttribute("EmitDuration") == nil then
+				count = 1
+			end
+			emitter.Enabled = false
+			task.delay(delay, function()
+				if not emitter.Parent then
+					return
+				end
+				if count > 0 then
+					emitter:Emit(math.floor(count + 0.5))
+				end
+				if duration > 0 then
+					emitter.Enabled = true
+					task.delay(duration, function()
+						if emitter.Parent then
+							emitter.Enabled = false
+						end
+					end)
+				end
+			end)
+			streaming = math.max(streaming, delay + duration)
+			longest = math.max(longest, delay + duration + emitter.Lifetime.Max)
+		elseif d:IsA("Beam") then
+			table.insert(beams, d)
+		end
+	end
+
+	-- Beams carry no timing of their own; they stand for as long as anything is streaming,
+	-- then fade, so the charge's ribbons go out as the burst goes off.
+	local base: { [Beam]: NumberSequence } = {}
+	for _, beam in ipairs(beams) do
+		base[beam] = beam.Transparency
+		beam.Enabled = true
+	end
+	local fadeFrom = streaming
+	longest = math.max(longest, fadeFrom + BEAM_FADE)
+
+	local started = os.clock()
+	local conn: RBXScriptConnection? = nil
+	if follow or #beams > 0 then
+		conn = RunService.Heartbeat:Connect(function()
+			local t = os.clock() - started
+			if follow and follow.Parent then
+				anchor.CFrame = CFrame.new(follow.Position)
+			end
+			if #beams > 0 then
+				local fade = math.clamp((t - fadeFrom) / BEAM_FADE, 0, 1)
+				for _, beam in ipairs(beams) do
+					if fade >= 1 then
+						beam.Enabled = false
+					elseif fade > 0 then
+						local points = {}
+						for _, p in ipairs(base[beam].Keypoints) do
+							table.insert(points, NumberSequenceKeypoint.new(p.Time, p.Value + (1 - p.Value) * fade))
+						end
+						beam.Transparency = NumberSequence.new(points)
+					end
+				end
+			end
+		end)
+	end
+	task.delay(longest + 0.1, function()
+		if conn then
+			conn:Disconnect()
+		end
+		fx:Destroy()
+	end)
+	return longest
 end
 
 return CombatFX

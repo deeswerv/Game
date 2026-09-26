@@ -1018,6 +1018,12 @@ WeaponConfig.Variants = {
 			MuzzleFlashColor = Color3.fromRGB(176, 123, 255),
 			TracerColor = Color3.fromRGB(106, 43, 255),
 			TracerWidth = 0.1,
+			-- A headshot with it plays the imported gem charge (ReplicatedStorage.VFX) on the
+			-- head it hit: the crystal draws in, then bursts. Authored at ability size, so it
+			-- is played at half scale -- big enough to read across an arena, not so big it
+			-- hides the body falling.
+			HeadshotVFX = "gemstoneCharge",
+			HeadshotVFXScale = 0.5,
 		},
 	},
 }

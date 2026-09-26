@@ -543,11 +543,14 @@ handlers.Shot = function(model, origin, endPoint)
 	-- NPCs get the authored effects too, so a bandit carrying a Mastery Weapon fires the
 	-- same round a player does.
 	local weaponName = tool and tool.Name
-	CombatFX.Tracer(origin, endPoint,
+	-- From the barrel as this client draws the fighter, not the server's origin: the server
+	-- does not pose an NPC's arms, so its muzzle is not where anyone sees the gun.
+	local from = CombatFX.MuzzlePoint(tool, origin) or origin
+	local flight = CombatFX.Tracer(from, endPoint,
 		wcfg and wcfg.TracerColor or Color3.fromRGB(255, 220, 150),
 		wcfg and wcfg.TracerWidth or 0.08,
 		weaponName)
-	CombatFX.Impact(endPoint, origin, weaponName)
+	task.delay(flight, CombatFX.Impact, endPoint, origin, weaponName)
 end
 
 handlers.Reload = function(model, tool, needsCharge, duration)

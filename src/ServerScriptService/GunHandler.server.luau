@@ -27,6 +27,10 @@ if not GunEffect then
 end
 
 local MAX_ORIGIN_DRIFT = 24     -- studs the muzzle may be from the shooter
+-- How far the barrel the client drew may be from the server's idea of the shooter's head.
+-- A held barrel is two to three studs from the head; the rest is movement the server has
+-- not heard about yet at a few hundred milliseconds of ping.
+local CLIENT_MUZZLE_REACH = 8
 local RATE_GRACE = 0.02         -- absorb a little network jitter on fire rate
 
 -- ------------------------------------------------------------------ noise --
@@ -297,7 +301,45 @@ local function embedded(point: Vector3, rayParams: RaycastParams): boolean
 	return false
 end
 
-local function fire(player: Player, tool: Tool, cfg, aimPoint: Vector3, ads: boolean)
+--- The barrel the shooter's own screen drew, if it can be believed.
+---
+--- The server's copy of the weapon is not posed the way it is drawn: the aim, the arms and
+--- the sway all happen client side. Tracing from the server's muzzle meant the round left
+--- from somewhere beside the gun the player was looking down, and a shot lined up past a
+--- corner could clip the corner. The client sends where its barrel is, and the round goes
+--- from there -- but only if it is close to the shooter and nothing solid stands between
+--- their head and it, so a barrel poking through a wall cannot shoot from the far side.
+local function drawnMuzzle(character: Model, claimed: any): Vector3?
+	if typeof(claimed) ~= "Vector3" then
+		return nil
+	end
+	-- NaN and infinity both fail a comparison with themselves or a finite bound.
+	if claimed.X ~= claimed.X or claimed.Y ~= claimed.Y or claimed.Z ~= claimed.Z then
+		return nil
+	end
+	local head = character:FindFirstChild("Head")
+	if not head or not head:IsA("BasePart") then
+		return nil
+	end
+	local offset = claimed - head.Position
+	if not (offset.Magnitude <= CLIENT_MUZZLE_REACH) then
+		return nil
+	end
+	if offset.Magnitude < 0.05 then
+		return claimed
+	end
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { character, workspace:FindFirstChild("Debris") }
+	local blocked = workspace:Raycast(head.Position, offset, params)
+	if blocked then
+		-- The barrel is through something. Fire from this side of it.
+		return blocked.Position - offset.Unit * 0.1
+	end
+	return claimed
+end
+
+local function fire(player: Player, tool: Tool, cfg, aimPoint: Vector3, ads: boolean, claimedMuzzle: any)
 	local st = stateFor(tool, cfg)
 	if st.reloading then
 		return
@@ -328,7 +370,7 @@ local function fire(player: Player, tool: Tool, cfg, aimPoint: Vector3, ads: boo
 	if not muzzle or not muzzle:IsA("BasePart") then
 		return
 	end
-	local origin = muzzle.Position
+	local origin = drawnMuzzle(character, claimedMuzzle) or muzzle.Position
 
 	local root = character:FindFirstChild("HumanoidRootPart")
 	if root and root:IsA("BasePart") and (origin - root.Position).Magnitude > MAX_ORIGIN_DRIFT then
@@ -407,6 +449,10 @@ local function fire(player: Player, tool: Tool, cfg, aimPoint: Vector3, ads: boo
 					-- way the round was travelling.
 					KillCredit.Damage(victim, damage, player, tool.Name, dir)
 					GunEffect:FireClient(player, "Hitmarker", headshot, lethal, wallbang)
+					-- A weapon with its own headshot effect shows it to everyone, on the head.
+					if headshot and type(cfg.HeadshotVFX) == "string" then
+						GunEffect:FireAllClients("HeadshotVFX", tool.Name, hitPos, model)
+					end
 					-- Only against other players and fighters, not the practice targets.
 					if ContractService ~= false and victim.Parent and (Players:GetPlayerFromCharacter(victim.Parent)
 						or CollectionService:HasTag(victim.Parent, "GameNPC")) then
@@ -468,7 +514,7 @@ local function fire(player: Player, tool: Tool, cfg, aimPoint: Vector3, ads: boo
 	end
 end
 
-GunAction.OnServerEvent:Connect(function(player, action, tool, aimPoint, ads)
+GunAction.OnServerEvent:Connect(function(player, action, tool, aimPoint, ads, muzzleAt)
 	-- Only an equipped Tool (parented to the character) can act, and only one the
 	-- config knows about.
 	if typeof(tool) ~= "Instance" or not tool:IsA("Tool") then
@@ -489,7 +535,7 @@ GunAction.OnServerEvent:Connect(function(player, action, tool, aimPoint, ads)
 		if typeof(aimPoint) ~= "Vector3" then
 			return
 		end
-		fire(player, tool, cfg, aimPoint, ads == true)
+		fire(player, tool, cfg, aimPoint, ads == true, muzzleAt)
 	elseif action == "reload" then
 		reload(player, tool, cfg)
 	end

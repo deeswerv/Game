@@ -495,18 +495,37 @@ GunEffect.OnClientEvent:Connect(function(kind, ...)
 		-- The weapon's name is passed so a gun that shipped its own tracer and impact
 		-- geometry uses those; anything else falls through to the built-in effects.
 		local weaponName = tool and tool.Name
+		-- The round leaves the barrel as THIS client is drawing it. The server's origin is
+		-- where its own unposed copy of the gun was, which is beside the barrel rather than
+		-- at it; it is only the fallback for a gun this client cannot see.
+		local from = CombatFX.MuzzlePoint(tool, origin) or origin
 		for _, p in ipairs(endPoints) do
-			CombatFX.Tracer(origin, p, wcfg.TracerColor, wcfg.TracerWidth, weaponName)
-			CombatFX.Impact(p, origin, weaponName)
+			-- The impact lands when the round does, not the moment it leaves the gun.
+			local flight = CombatFX.Tracer(from, p, wcfg.TracerColor, wcfg.TracerWidth, weaponName)
+			task.delay(flight, CombatFX.Impact, p, origin, weaponName)
 		end
-		-- Where rounds went through a wall: the entry holes.
+		-- Where rounds went through a wall: the entry holes, as the round reaches each one.
 		if type(wallHits) == "table" then
+			local first = endPoints[1]
+			local total = first and (first - from).Magnitude or 0
+			local flight = first and CombatFX.FlightTime(from, first, weaponName) or 0
 			for _, p in ipairs(wallHits) do
 				if typeof(p) == "Vector3" then
-					CombatFX.Impact(p, origin, weaponName)
+					local share = total > 0 and math.clamp((p - from).Magnitude / total, 0, 1) or 0
+					task.delay(flight * share, CombatFX.Impact, p, origin, weaponName)
 				end
 			end
 		end
+	elseif kind == "HeadshotVFX" then
+		local weaponName, position, model = ...
+		local wcfg = type(weaponName) == "string" and WeaponConfig.Get(weaponName)
+		if not wcfg or type(wcfg.HeadshotVFX) ~= "string" or typeof(position) ~= "Vector3" then
+			return
+		end
+		local found = if typeof(model) == "Instance" then model:FindFirstChild("Head") else nil
+		local head: BasePart? = if found and found:IsA("BasePart") then found else nil
+		CombatFX.PlayVFX(wcfg.HeadshotVFX, head and head.Position or position, head,
+			type(wcfg.HeadshotVFXScale) == "number" and wcfg.HeadshotVFXScale or 1)
 	elseif kind == "Hitmarker" then
 		local headshot, lethal, wallbang = ...
 		flashHitmarker(headshot == true, lethal == true, wallbang == true)
@@ -624,7 +643,11 @@ local function tryShoot()
 	fovKick = math.min(fovKick + (ads and 0.5 or 1.4), 4)
 	bloom = math.min(bloom + 4, 16)
 
-	GunAction:FireServer("shoot", tool, aimPoint(), ads)
+	-- The barrel as it is drawn on this screen goes with the shot, so the round the server
+	-- traces leaves from where the player can see the gun rather than from the server's
+	-- unposed copy of it. The server checks it is plausible before using it.
+	local muzzleAt = CombatFX.MuzzlePoint(tool)
+	GunAction:FireServer("shoot", tool, aimPoint(), ads, muzzleAt)
 
 	-- Played HERE, not when the server's broadcast comes back.
 	--
