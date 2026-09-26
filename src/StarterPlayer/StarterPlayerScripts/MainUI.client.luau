@@ -609,7 +609,8 @@ local market = safe("Shop", function()
 		PurchaseItem = gameRemote("PurchaseItem"),
 		PurchaseCamo = gameRemote("PurchaseCamo"),
 		PurchaseAttachment = gameRemote("PurchaseAttachment"),
-		PurchaseCosmetic = gameRemote("PurchaseCosmetic"),
+		PurchaseVFX = gameRemote("PurchaseVFX"),
+		VFXAction = gameRemote("VFXAction"),
 		ownershipChanged = gameRemote("OwnershipChanged"),
 		promptPurchase = gameRemote("PromptPurchase"),
 	})

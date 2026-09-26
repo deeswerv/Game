@@ -34,6 +34,7 @@ World.serverRemotes({
 	GameRemotes = {
 		GetOwnership = "RemoteFunction", LoadoutAction = "RemoteFunction", PurchaseItem = "RemoteFunction",
 		PurchaseCamo = "RemoteFunction", PurchaseAttachment = "RemoteFunction", PurchaseCosmetic = "RemoteFunction",
+		PurchaseVFX = "RemoteFunction", VFXAction = "RemoteFunction",
 		PurchaseAbility = "RemoteFunction", OwnershipChanged = "RemoteEvent", PromptPurchase = "RemoteEvent",
 		PerksChanged = "RemoteEvent", QuestUpdated = "RemoteEvent", QuestAction = "RemoteFunction",
 		OpenDialogue = "RemoteEvent", ProgressionReward = "RemoteEvent", XPGained = "RemoteEvent",

@@ -189,7 +189,10 @@ check(not again and tostring(why):find("50") ~= nil, "not again until level 50 (
 print("XP")
 profile.Prestige = 2
 LevelSystem.AwardXP(player, 50)
-check(profile.EXP == 55, ("with two prestiges, 50 XP is worth 55 (%d)"):format(profile.EXP))
+local expected = math.floor(50 * GameConfig.Leveling.XP_RATE * 1.10 + 0.5)
+check(profile.EXP == expected, ("at the game's XP rate and two prestiges, 50 XP is worth %d (%d)")
+	:format(expected, profile.EXP))
+check(GameConfig.Leveling.XP_RATE == 1.5 and GameConfig.ShownXP(120) == 180, "XP is paid at 1.5x, and shown that way")
 profile.Prestige = 1
 LevelSystem.AwardXP(player, 10000000)
 check(profile.Level == 50 and profile.EXP == 0, "a huge award stops at the cap, bar empty")

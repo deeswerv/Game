@@ -13,6 +13,8 @@ local TweenService = game:GetService("TweenService")
 
 local Theme = require(script.Parent.Theme)
 local Components = require(script.Parent.Components)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local GameConfig = require(ReplicatedStorage:WaitForChild("GameConfig"))
 
 local Objective = {}
 Objective.__index = Objective
@@ -153,7 +155,7 @@ function Objective:Set(active, rewards)
 		if rewards then
 			if tonumber(rewards.xp) then
 				table.insert(self._chips, Components.Chip(self._rewards,
-					"XP +" .. tostring(rewards.xp), Theme.Colour.Xp, { layoutOrder = 1 }))
+					"XP +" .. tostring(GameConfig.ShownXP(rewards.xp)), Theme.Colour.Xp, { layoutOrder = 1 }))
 			end
 			if tonumber(rewards.coins) then
 				table.insert(self._chips, Components.Chip(self._rewards,

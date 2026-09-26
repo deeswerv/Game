@@ -17,6 +17,7 @@ local WeaponConfig = require(ReplicatedStorage.WeaponConfig)
 local CamoConfig = require(ReplicatedStorage.CamoConfig)
 local AttachmentConfig = require(ReplicatedStorage.AttachmentConfig)
 local CosmeticConfig = require(ReplicatedStorage.CosmeticConfig)
+local VFXConfig = require(ReplicatedStorage.VFXConfig)
 local PlayerDataManager = require(ServerScriptService.PlayerDataManager)
 local ReputationService = require(ServerScriptService.ReputationService)
 
@@ -350,7 +351,7 @@ function ShopService.Grant(player: Player, field: string, id: string): boolean
 	end
 	if field ~= "OwnedItems" and field ~= "OwnedCamos"
 		and field ~= "OwnedAttachments" and field ~= "OwnedAbilities"
-		and field ~= "OwnedCosmetics" then
+		and field ~= "OwnedCosmetics" and field ~= "OwnedVFX" then
 		return false
 	end
 
@@ -423,6 +424,12 @@ function ShopService.AttemptPurchase(player: Player, kind: string, id: string)
 			entry = { name = item.name, price = item.price, levelRequired = 1 }
 		end
 		field = "OwnedCosmetics"
+	elseif kind == "vfx" then
+		local item = VFXConfig.Get(id)
+		if item then
+			entry = { name = item.name, price = item.price, levelRequired = 1 }
+		end
+		field = "OwnedVFX"
 	elseif kind == "attachment" then
 		-- Sent as "Slot:Id", which is also how ownership is stored.
 		local slot, optionId = id:match("^(%a+):(%w+)$")
@@ -543,6 +550,21 @@ PurchaseCosmetic.OnServerInvoke = function(player, id)
 	return result
 end
 
+local PurchaseVFX = ensureRemote("RemoteFunction", "PurchaseVFX")
+PurchaseVFX.OnServerInvoke = function(player, id)
+	local result = ShopService.AttemptPurchase(player, "vfx", typeof(id) == "string" and id or "")
+	-- Straight into its slot if the slot is empty: bought and not showing reads as broken.
+	if result and result.ok then
+		task.spawn(function()
+			local ok, VFXService = pcall(require, ServerScriptService.VFXService)
+			if ok and type(VFXService) == "table" then
+				VFXService.EquipIfEmpty(player, id)
+			end
+		end)
+	end
+	return result
+end
+
 local PurchaseAttachment = ensureRemote("RemoteFunction", "PurchaseAttachment")
 PurchaseAttachment.OnServerInvoke = function(player, id)
 	return ShopService.AttemptPurchase(player, "attachment", id)
@@ -593,10 +615,13 @@ function ShopService.GetOwnership(player: Player)
 			OwnedAbilities = Replica.Data.OwnedAbilities or {},
 			OwnedCamos = Replica.Data.OwnedCamos or {},
 			OwnedAttachments = Replica.Data.OwnedAttachments or {},
+			OwnedCosmetics = Replica.Data.OwnedCosmetics or {},
+			OwnedVFX = Replica.Data.OwnedVFX or {},
 		}
 	end)
 	if not ok then
-		return { OwnedItems = {}, OwnedAbilities = {}, OwnedCamos = {}, OwnedAttachments = {} }
+		return { OwnedItems = {}, OwnedAbilities = {}, OwnedCamos = {}, OwnedAttachments = {}, OwnedCosmetics = {},
+			OwnedVFX = {} }
 	end
 	return result
 end

@@ -17,6 +17,7 @@ local GunHandling = require(ReplicatedStorage:WaitForChild("GunHandling"))
 local ReloadAnimator = require(ReplicatedStorage:WaitForChild("ReloadAnimator"))
 local ViewKick = require(ReplicatedStorage:WaitForChild("ViewKick"))
 local CombatFX = require(ReplicatedStorage:WaitForChild("CombatFX"))
+local VFXConfig = require(ReplicatedStorage:WaitForChild("VFXConfig"))
 local WeaponAudio = require(ReplicatedStorage:WaitForChild("WeaponAudio"))
 local UISound = require(ReplicatedStorage:WaitForChild("UI"):WaitForChild("Modules"):WaitForChild("UISound"))
 
@@ -479,6 +480,24 @@ local function fireFeedback(tool: Tool, wcfg)
 	end
 end
 
+-- Rounds seen per shooter, so a Prismatic tracer changes colour shot to shot.
+local shotsSeen: { [Player]: number } = setmetatable({}, { __mode = "k" }) :: any
+
+-- Bought kill effects, played on the body for everyone. The remote is made by VFXService, so it
+-- is waited for off the main path: this script must not stall on it.
+task.spawn(function()
+	local vfxEvent = Remotes:WaitForChild("VFXEvent", 30)
+	if not vfxEvent or not vfxEvent:IsA("RemoteEvent") then
+		return
+	end
+	vfxEvent.OnClientEvent:Connect(function(kind, id, model, position)
+		if kind == "kill" and type(id) == "string" and typeof(position) == "Vector3" then
+			local body = if typeof(model) == "Instance" and model:IsA("Model") then model else nil
+			CombatFX.KillEffect(id, position, body)
+		end
+	end)
+end)
+
 -- Effects for every player's shots, including our own.
 GunEffect.OnClientEvent:Connect(function(kind, ...)
 	if kind == "Shot" then
@@ -499,9 +518,21 @@ GunEffect.OnClientEvent:Connect(function(kind, ...)
 		-- where its own unposed copy of the gun was, which is beside the barrel rather than
 		-- at it; it is only the fallback for a gun this client cannot see.
 		local from = CombatFX.MuzzlePoint(tool, origin) or origin
+		-- The shooter's bought tracer (VFXConfig), if they have one equipped: its colour, its
+		-- width and its streak, on every gun that does not ship its own.
+		local colour, width, style = wcfg.TracerColor, wcfg.TracerWidth, nil
+		if typeof(shooter) == "Instance" and shooter:IsA("Player") and not CombatFX.HasOwnTracer(weaponName) then
+			shotsSeen[shooter] = (shotsSeen[shooter] or 0) + 1
+			local look = VFXConfig.TracerStyle(shooter:GetAttribute("VFX_Tracer"), shotsSeen[shooter])
+			if look then
+				colour = look.colour or colour
+				width = width * (look.width or 1)
+				style = { streak = look.streak, trail = look.trail }
+			end
+		end
 		for _, p in ipairs(endPoints) do
 			-- The impact lands when the round does, not the moment it leaves the gun.
-			local flight = CombatFX.Tracer(from, p, wcfg.TracerColor, wcfg.TracerWidth, weaponName)
+			local flight = CombatFX.Tracer(from, p, colour, width, weaponName, style)
 			task.delay(flight, CombatFX.Impact, p, origin, weaponName)
 		end
 		-- Where rounds went through a wall: the entry holes, as the round reaches each one.

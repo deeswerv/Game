@@ -35,6 +35,7 @@ local systems = {
 	"QuestService",        -- quests, the giver NPC, and kill tracking
 	"CrystalService",       -- crystal nodes; a reason to look at the world
 	"CosmeticService",      -- hats and backs over the locked body; massless, never block shots
+	"VFXService",           -- kill effects and tracers bought in the shop: equipping, and playing kills
 	"AvatarLook",          -- each player's own clothes, skin, hair and hats on the locked body
 	"EmoteService",         -- emote wheel; the server owns which emotes exist
 	"HeadLookService",     -- where each player is looking, so everyone sees heads turn

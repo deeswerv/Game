@@ -25,7 +25,7 @@ local GameConfig = require(ReplicatedStorage:WaitForChild("GameConfig"))
 local WeaponConfig = require(ReplicatedStorage:WaitForChild("WeaponConfig"))
 local WeaponPreview = require(ReplicatedStorage:WaitForChild("WeaponPreview"))
 local AttachmentConfig = require(ReplicatedStorage:WaitForChild("AttachmentConfig"))
-local CosmeticConfig = require(ReplicatedStorage:WaitForChild("CosmeticConfig"))
+local VFXConfig = require(ReplicatedStorage:WaitForChild("VFXConfig"))
 
 local player = Players.LocalPlayer
 
@@ -38,11 +38,11 @@ local CARD = Vector2.new(292, 196)
 -- Weapons deliberately have no coin remote -- a variant is bought with Robux through
 -- Roblox's own prompt, or earned, never bought with coins.
 local SHELVES = {
-	{ id = "Weapons",     label = "Guns",        icon = nil,  preview = "Warden", field = "OwnedItems",       remote = "PurchaseItem" },
-	{ id = "Mastery",     label = "Mastery",     icon = "⭐", field = "OwnedVariants",    remote = nil },
-	{ id = "Attachments", label = "Attachments", icon = "🔧", field = "OwnedAttachments", remote = "PurchaseAttachment" },
-	{ id = "Style",       label = "Style",       icon = "🎩", field = "OwnedCosmetics",   remote = "PurchaseCosmetic" },
-	{ id = "Robux",       label = "Cash",        icon = "💰", field = nil,                remote = nil },
+	{ id = "Weapons",     label = "Guns",        icon = nil,  preview = "Warden", field = "OwnedItems",       remote = "PurchaseItem", equip = false },
+	{ id = "Mastery",     label = "Mastery",     icon = "⭐", field = "OwnedVariants",    remote = nil, equip = false },
+	{ id = "Attachments", label = "Attachments", icon = "🔧", field = "OwnedAttachments", remote = "PurchaseAttachment", equip = false },
+	{ id = "VFX",         label = "VFX",         icon = "✨", field = "OwnedVFX",         remote = "PurchaseVFX", equip = true },
+	{ id = "Robux",       label = "Cash",        icon = "💰", field = nil,                remote = nil, equip = false },
 }
 
 local SLOT_ICON = {
@@ -111,20 +111,30 @@ local function attachmentCatalog()
 	return entries
 end
 
-local function cosmeticCatalog()
+--- Kill effects and tracers (VFXConfig). Kill effects first, then tracers, each by rarity.
+local function vfxCatalog()
 	local entries = {}
-	for _, item in ipairs(CosmeticConfig.Items) do
-		table.insert(entries, {
-			id = item.id,
-			name = item.name,
-			desc = string.format("%s  -  worn on the %s", item.rarity, string.lower(item.slot)),
-			price = item.price,
-			rarity = item.rarity,
-			levelRequired = 1,
-			icon = string.lower(item.slot) == "hat" and "🎩" or "🎒",
-		})
+	for _, slot in ipairs(VFXConfig.Slots) do
+		local shelf = {}
+		for _, item in ipairs(VFXConfig.Items) do
+			if item.slot == slot then
+				table.insert(shelf, {
+					id = item.id,
+					name = item.name,
+					desc = string.upper(VFXConfig.SlotLabels[slot] or slot) .. "  -  " .. item.desc,
+					price = item.price,
+					rarity = item.rarity,
+					levelRequired = 1,
+					icon = item.icon,
+					slot = slot,
+				})
+			end
+		end
+		table.sort(shelf, byRarityThenPrice)
+		for _, entry in ipairs(shelf) do
+			table.insert(entries, entry)
+		end
 	end
-	table.sort(entries, byRarityThenPrice)
 	return entries
 end
 
@@ -190,7 +200,7 @@ local CATALOGUES = {
 	Weapons = weaponCatalog,
 	Mastery = masteryCatalog,
 	Attachments = attachmentCatalog,
-	Style = cosmeticCatalog,
+	VFX = vfxCatalog,
 	Robux = robuxCatalog,
 }
 
@@ -269,6 +279,15 @@ function Market.new(parent: Instance, remotes)
 		end)
 	end
 
+	-- Equipping a VFX (here or anywhere) redraws its shelf, so EQUIPPED moves with it.
+	for _, slot in ipairs(VFXConfig.Slots) do
+		player:GetAttributeChangedSignal(VFXConfig.Attribute[slot]):Connect(function()
+			if menu:IsOpen() and self._menu._category == "VFX" then
+				self:_fill("VFX")
+			end
+		end)
+	end
+
 	-- Standing can move while the shop is open, and the prices on screen must move with it.
 	for _, attribute in ipairs({ "ShopPriceMultiplier", "TownStanding" }) do
 		player:GetAttributeChangedSignal(attribute):Connect(function()
@@ -315,7 +334,7 @@ end
 function Market:_refreshStanding()
 	local standing = player:GetAttribute("TownStanding")
 	local mult = player:GetAttribute("ShopPriceMultiplier")
-	local line = "Unlock new guns, gear and style"
+	local line = "Unlock new guns, gear and VFX"
 	local colour = Theme.Colour.TextDim
 	if type(mult) == "number" and mult <= 0 then
 		line, colour = "The town will not trade with you", Theme.Colour.Danger
@@ -481,7 +500,16 @@ function Market:_buildCard(shelf, entry, index: number)
 	-- ------------------------------------------------------------- action --
 
 	local label, enabled, colour = "", true, Theme.Colour.Accent
-	if entry.robux then
+	local equipped = shelf.equip and entry.slot ~= nil
+		and player:GetAttribute(VFXConfig.Attribute[entry.slot]) == entry.id
+	if shelf.equip and owned then
+		-- Owned VFX: the button puts it on, or (when it is on) takes it off.
+		if equipped then
+			label, colour = "EQUIPPED", Theme.Colour.AccentDim
+		else
+			label, colour = "EQUIP", Theme.Colour.Accent
+		end
+	elseif entry.robux then
 		if entry.ready == false then
 			label, enabled = "SOON", false
 		else
@@ -539,6 +567,21 @@ function Market:_buildCard(shelf, entry, index: number)
 end
 
 function Market:_buy(shelf, entry, button, price: number)
+	-- An owned VFX: equip it, or take it off if it is the one on.
+	if shelf.equip and self:_owns(shelf.field, entry.id) then
+		local action = self._remotes.VFXAction
+		if not action or not entry.slot then
+			return
+		end
+		local on = player:GetAttribute(VFXConfig.Attribute[entry.slot]) == entry.id
+		task.spawn(function()
+			pcall(function()
+				action:InvokeServer("equip", entry.slot, if on then nil else entry.id)
+			end)
+			self:_fill("VFX")
+		end)
+		return
+	end
 	if entry.robux then
 		-- Roblox owns this transaction; we only ask for the prompt.
 		if self._remotes.promptPurchase and entry.ready ~= false then

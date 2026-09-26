@@ -536,11 +536,21 @@ end
 
 --- Launches one round from `from` to `to`. Returns how long it takes to arrive, so the
 --- impact can be timed to the moment it lands.
+export type TracerStyle = { streak: number?, trail: number? }
+
 local function launch(from: Vector3, to: Vector3, colour: Color3, width: number, weaponName: string?,
-	template: Model?): number
+	template: Model?, style: TracerStyle?): number
 	local delta = to - from
 	local length = delta.Magnitude
 	local b = ballisticsFor(weaponName)
+	-- A bought tracer (VFXConfig) lengthens the streak or adds a vapour line; never the speed.
+	if style then
+		b = {
+			speed = b.speed,
+			streak = b.streak * (style.streak or 1),
+			trail = math.max(b.trail, style.trail or 0),
+		}
+	end
 	local speed = math.max(b.speed, length / TRACER_MAX_FLIGHT)
 	local flight = length / speed
 	if length < 0.2 or not budget() then
@@ -622,8 +632,18 @@ end
 ---
 --- Returns the flight time in seconds, so the caller can land the impact when the round
 --- does rather than before it has left the gun.
-function CombatFX.Tracer(from: Vector3, to: Vector3, colour: Color3, width: number, weaponName: string?): number
-	return launch(from, to, colour, width, weaponName, authored(weaponName, "Tracer"))
+---
+--- `style` is a bought tracer's look (VFXConfig) -- the caller has already applied its colour
+--- and width. A weapon with its own authored tracer keeps it: that look is what the weapon is.
+function CombatFX.Tracer(from: Vector3, to: Vector3, colour: Color3, width: number, weaponName: string?,
+	style: TracerStyle?): number
+	local template = authored(weaponName, "Tracer")
+	return launch(from, to, colour, width, weaponName, template, if template then nil else style)
+end
+
+--- Whether a weapon ships its own tracer (so a bought tracer does not apply to it).
+function CombatFX.HasOwnTracer(weaponName: string?): boolean
+	return authored(weaponName, "Tracer") ~= nil
 end
 
 --- How long a round from `from` to `to` is in the air, without drawing anything.
@@ -1269,6 +1289,213 @@ function CombatFX.CashBurst(position: Vector3)
 			end
 		end)
 	end
+end
+
+-- ------------------------------------------------------------ kill effects --
+--
+-- The kill effects the shop sells (VFXConfig, "Kill" slot). Each plays on the body of someone
+-- the owner eliminated, for everyone. Built from parts like everything else here, short, and
+-- centred on the body so it reads as what happened to THEM.
+
+local function groundUnder(centre: Vector3, model: Instance?): Vector3
+	groundParams.FilterDescendantsInstances = { bin, model :: any }
+	local floor = workspace:Raycast(centre, Vector3.new(0, -8, 0), groundParams)
+	return floor and floor.Position or (centre - Vector3.new(0, 2.8, 0))
+end
+
+local function flash(at: Vector3, colour: Color3, range: number, brightness: number, fade: number)
+	local glow = decor(Vector3.new(0.2, 0.2, 0.2), CFrame.new(at), colour, Enum.Material.Neon)
+	glow.Transparency = 1
+	local light = Instance.new("PointLight")
+	light.Color = colour
+	light.Range = range
+	light.Brightness = brightness
+	light.Shadows = false
+	light.Parent = glow
+	track(glow, fade + 0.05)
+	TweenService:Create(light, TweenInfo.new(fade, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ Brightness = 0 }):Play()
+end
+
+local CONFETTI = {
+	Color3.fromRGB(255, 84, 120), Color3.fromRGB(255, 206, 64), Color3.fromRGB(80, 210, 255),
+	Color3.fromRGB(130, 230, 110), Color3.fromRGB(190, 120, 255),
+}
+
+local killEffects: { [string]: (centre: Vector3, model: Model?) -> () } = {}
+
+-- The body breaks into angular shards in its own colours, which fly out and drop.
+killEffects.KillShatter = function(centre: Vector3, model: Model?)
+	local colours = { Color3.fromRGB(230, 232, 240) }
+	if model then
+		for _, name in ipairs({ "UpperTorso", "LowerTorso", "Head", "RightUpperLeg" }) do
+			local p = model:FindFirstChild(name)
+			if p and p:IsA("BasePart") then
+				table.insert(colours, p.Color)
+			end
+		end
+	end
+	flash(centre, Color3.fromRGB(220, 236, 255), 14, 5, 0.3)
+	for i = 1, 16 do
+		if not budget() then
+			break
+		end
+		local angle = (i / 16) * math.pi * 2 + math.random() * 0.4
+		local dir = Vector3.new(math.cos(angle), 0.2 + math.random() * 0.9, math.sin(angle)).Unit
+		local size = 0.3 + math.random() * 0.45
+		local shard = decor(Vector3.new(size, size * 0.7, size * 1.3),
+			CFrame.new(centre + Vector3.new(0, math.random() * 1.6 - 0.6, 0))
+				* CFrame.Angles(math.random() * 6, math.random() * 6, math.random() * 6),
+			colours[math.random(1, #colours)], Enum.Material.SmoothPlastic)
+		track(shard, 0.95)
+		local out = centre + dir * (3 + math.random() * 3)
+		local land = groundUnder(out + Vector3.new(0, 2, 0), model) + Vector3.new(0, size * 0.35, 0)
+		TweenService:Create(shard, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			CFrame = CFrame.new(out) * CFrame.Angles(math.random() * 6, math.random() * 6, math.random() * 6),
+		}):Play()
+		task.delay(0.3, function()
+			if shard.Parent then
+				TweenService:Create(shard, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+					CFrame = CFrame.new(land) * CFrame.Angles(0, math.random() * 6, 0),
+				}):Play()
+				TweenService:Create(shard, TweenInfo.new(0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.In, 0, false, 0.3),
+					{ Transparency = 1 }):Play()
+			end
+		end)
+	end
+end
+
+-- A party popper: confetti bursts up and flutters down, spinning.
+killEffects.KillConfetti = function(centre: Vector3, model: Model?)
+	flash(centre, Color3.fromRGB(255, 220, 160), 12, 4, 0.25)
+	local ground = groundUnder(centre, model)
+	for i = 1, 34 do
+		if not budget() then
+			break
+		end
+		local angle = math.random() * math.pi * 2
+		local spread = 1.5 + math.random() * 4
+		local peak = centre + Vector3.new(math.cos(angle) * spread, 3 + math.random() * 4, math.sin(angle) * spread)
+		local bit = decor(Vector3.new(0.34, 0.04, 0.22), CFrame.new(centre) * CFrame.Angles(math.random() * 6, 0, 0),
+			CONFETTI[(i - 1) % #CONFETTI + 1], Enum.Material.SmoothPlastic)
+		track(bit, 1.6)
+		TweenService:Create(bit, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			CFrame = CFrame.new(peak) * CFrame.Angles(math.random() * 6, math.random() * 6, math.random() * 6),
+		}):Play()
+		local rest = Vector3.new(peak.X + (math.random() - 0.5) * 2, ground.Y + 0.05, peak.Z + (math.random() - 0.5) * 2)
+		task.delay(0.35, function()
+			if bit.Parent then
+				TweenService:Create(bit, TweenInfo.new(1.1, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {
+					CFrame = CFrame.new(rest) * CFrame.Angles(math.random() * 6, math.random() * 6, math.random() * 6),
+				}):Play()
+				TweenService:Create(bit, TweenInfo.new(0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.In, 0, false, 0.9),
+					{ Transparency = 1 }):Play()
+			end
+		end)
+	end
+end
+
+-- Lightning: three jagged bolts come down on the body, a white-blue flash, a scorch.
+killEffects.KillLightning = function(centre: Vector3, model: Model?)
+	local bolt = Color3.fromRGB(180, 220, 255)
+	flash(centre + Vector3.new(0, 3, 0), bolt, 26, 9, 0.45)
+	local ground = groundUnder(centre, model)
+	for strike = 1, 3 do
+		task.delay((strike - 1) * 0.07, function()
+			local top = centre + Vector3.new((math.random() - 0.5) * 4, 34, (math.random() - 0.5) * 4)
+			local points = { top }
+			local steps = 7
+			for k = 1, steps - 1 do
+				local t = k / steps
+				local p = top:Lerp(centre, t)
+				table.insert(points, p + Vector3.new((math.random() - 0.5) * 3.2, 0, (math.random() - 0.5) * 3.2))
+			end
+			table.insert(points, centre)
+			for k = 1, #points - 1 do
+				if not budget() then
+					break
+				end
+				local a, b = points[k], points[k + 1]
+				local seg = decor(Vector3.new(0.28, 0.28, (b - a).Magnitude + 0.1), CFrame.lookAt((a + b) / 2, b), bolt,
+					Enum.Material.Neon)
+				track(seg, 0.3)
+				TweenService:Create(seg, TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+					{ Transparency = 1, Size = Vector3.new(0.08, 0.08, seg.Size.Z) }):Play()
+			end
+		end)
+	end
+	if budget() then
+		local scorch = decor(Vector3.new(0.1, 4, 4), CFrame.new(ground + Vector3.new(0, 0.06, 0)) * CFrame.Angles(0, 0, math.pi / 2),
+			Color3.fromRGB(30, 30, 36), Enum.Material.SmoothPlastic)
+		scorch.Shape = Enum.PartType.Cylinder
+		scorch.Transparency = 0.2
+		track(scorch, 1.6)
+		TweenService:Create(scorch, TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0, false, 0.3),
+			{ Transparency = 1 }):Play()
+	end
+end
+
+-- The void: a dark sphere opens on the body, purple shards are dragged into it, it collapses.
+killEffects.KillVoid = function(centre: Vector3, _model: Model?)
+	local purple = Color3.fromRGB(150, 70, 255)
+	if budget() then
+		local core = decor(Vector3.new(0.4, 0.4, 0.4), CFrame.new(centre), Color3.fromRGB(16, 8, 30), Enum.Material.SmoothPlastic)
+		core.Shape = Enum.PartType.Ball
+		track(core, 0.95)
+		TweenService:Create(core, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+			{ Size = Vector3.new(5, 5, 5) }):Play()
+		task.delay(0.55, function()
+			if core.Parent then
+				TweenService:Create(core, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+					{ Size = Vector3.new(0.1, 0.1, 0.1) }):Play()
+			end
+		end)
+		local rim = decor(Vector3.new(0.5, 0.5, 0.5), CFrame.new(centre), purple, Enum.Material.Neon)
+		rim.Shape = Enum.PartType.Ball
+		rim.Transparency = 0.7
+		track(rim, 0.95)
+		TweenService:Create(rim, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+			{ Size = Vector3.new(5.8, 5.8, 5.8) }):Play()
+		task.delay(0.55, function()
+			if rim.Parent then
+				TweenService:Create(rim, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+					{ Size = Vector3.new(0.1, 0.1, 0.1), Transparency = 1 }):Play()
+			end
+		end)
+	end
+	for i = 1, 12 do
+		if not budget() then
+			break
+		end
+		local dir = Vector3.new(math.random() - 0.5, math.random() - 0.3, math.random() - 0.5).Unit
+		local from = centre + dir * (6 + math.random() * 3)
+		local shard = decor(Vector3.new(0.2, 0.2, 1.2), CFrame.lookAt(from, centre), purple, Enum.Material.Neon)
+		track(shard, 0.7)
+		TweenService:Create(shard, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0, false, i * 0.015), {
+			CFrame = CFrame.lookAt(centre + dir * 0.3, centre),
+			Size = Vector3.new(0.05, 0.05, 0.2),
+			Transparency = 0.6,
+		}):Play()
+	end
+	task.delay(0.85, function()
+		flash(centre, purple, 18, 7, 0.35)
+	end)
+end
+
+-- The imported gem charge (assets/vfx), on the body.
+killEffects.KillGemstone = function(centre: Vector3, model: Model?)
+	local root = model and (model:FindFirstChild("HumanoidRootPart") or model:FindFirstChild("UpperTorso"))
+	CombatFX.PlayVFX("gemstoneCharge", centre, if root and root:IsA("BasePart") then root else nil, 0.7)
+end
+
+--- Play a bought kill effect (VFXConfig id) on a body. Returns whether it knew the effect.
+function CombatFX.KillEffect(id: string, centre: Vector3, model: Model?): boolean
+	local play = killEffects[id]
+	if not play then
+		return false
+	end
+	play(centre, model)
+	return true
 end
 
 -- --------------------------------------------------------- authored bursts --

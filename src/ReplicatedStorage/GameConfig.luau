@@ -31,6 +31,12 @@ GameConfig.Leveling = {
 	-- makes every other system in the game feel like a side activity.
 	XP_PER_QUEST = 120,
 	XP_PER_CHEST = { Common = 15, Uncommon = 30, Rare = 60, Epic = 110, Legendary = 200 },
+
+	-- Every XP award in the game -- kills, quests, contracts, chests, turf wars, the stash --
+	-- is worth this much more, applied in one place (LevelSystem.AwardXP). The amounts written
+	-- in the configs stay readable as the base rate; anything that SHOWS a reward's XP runs it
+	-- through GameConfig.ShownXP so the number on screen is the number you get.
+	XP_RATE = 1.5,
 }
 
 -- ------------------------------------------------------------------ prestige --
@@ -92,6 +98,11 @@ function GameConfig.PrestigeReward(n: number)
 		title = tier.name .. " Prestige",
 		xpBonus = cfg.XP_BONUS_PER_PRESTIGE * n,
 	}
+end
+
+--- A reward's XP as it will actually be paid (the global XP rate applied, before prestige).
+function GameConfig.ShownXP(amount: number?): number
+	return math.floor((tonumber(amount) or 0) * GameConfig.Leveling.XP_RATE + 0.5)
 end
 
 --- How much every XP award is multiplied by at `prestige`.

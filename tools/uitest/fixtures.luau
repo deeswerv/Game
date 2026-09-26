@@ -41,6 +41,7 @@ return function(World)
 			OwnedCamos = {},
 			OwnedAttachments = {},
 			OwnedCosmetics = {},
+			OwnedVFX = { "KillShatter", "TracerGold" },
 			OwnedVariants = {},
 		}
 	end

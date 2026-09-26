@@ -112,8 +112,9 @@ function LevelSystem.AwardXP(player: Player, amount: number)
 		if data.Level >= Cfg.MAX_LEVEL then
 			return
 		end
-		-- Every prestige makes all XP worth a little more, wherever it came from.
-		amount = math.max(1, math.floor(amount * GameConfig.PrestigeXPMultiplier(data.Prestige or 0) + 0.5))
+		-- The game's XP rate, then every prestige on top, wherever the XP came from.
+		amount = math.max(1, math.floor(amount * (Cfg.XP_RATE or 1)
+			* GameConfig.PrestigeXPMultiplier(data.Prestige or 0) + 0.5))
 
 		local level = data.Level
 		local exp = data.EXP + amount

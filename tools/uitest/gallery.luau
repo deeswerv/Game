@@ -27,6 +27,7 @@ World.serverRemotes({
 	GameRemotes = {
 		GetOwnership = "RemoteFunction", LoadoutAction = "RemoteFunction", PurchaseItem = "RemoteFunction",
 		PurchaseCamo = "RemoteFunction", PurchaseAttachment = "RemoteFunction", PurchaseCosmetic = "RemoteFunction",
+		PurchaseVFX = "RemoteFunction", VFXAction = "RemoteFunction",
 		OwnershipChanged = "RemoteEvent", PromptPurchase = "RemoteEvent", QuestUpdated = "RemoteEvent",
 		ProgressionReward = "RemoteEvent", XPGained = "RemoteEvent", OpenVendor = "RemoteEvent",
 		AdminCheck = "RemoteFunction", AdminCommand = "RemoteFunction", PrestigeRequest = "RemoteFunction",
@@ -97,6 +98,14 @@ shot("02_inventory")
 toggle(Enum.KeyCode.B)
 toggle(Enum.KeyCode.M)
 shot("03_shop")
+-- The VFX shelf: two owned (one equipped), the rest for sale.
+World.player:SetAttribute("VFX_Kill", "KillShatter")
+local vfxTab = World.find(World.playerGui, "VFX", "TextButton")
+if vfxTab then
+	World.click(vfxTab)
+	World.advance(0.4)
+end
+shot("31_vfx_shop")
 toggle(Enum.KeyCode.M)
 toggle(Enum.KeyCode.K)
 shot("04_armory")

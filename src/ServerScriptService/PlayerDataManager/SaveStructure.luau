@@ -171,6 +171,13 @@ local SaveStructure = {
 	OwnedCosmetics = {},
 	EquippedCosmetics = {},
 
+	-- VFX bought in the shop (VFXConfig): kill effects and tracers, and which is in each slot.
+	--
+	--   OwnedVFX = { "KillShatter", "TracerGold" }
+	--   EquippedVFX = { Kill = "KillShatter", Tracer = "TracerGold" }
+	OwnedVFX = {},
+	EquippedVFX = {},
+
 	-- Crystals prised out of nodes in the world. A second currency deliberately kept
 	-- separate from coins: coins come from killing, crystals come from looking, so the
 	-- things they buy can be different in kind rather than just dearer.

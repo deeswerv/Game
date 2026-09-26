@@ -17,6 +17,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local TweenService = game:GetService("TweenService")
 
 local LevelSystem = require(ServerScriptService.LevelSystem)
+local GameConfig = require(ReplicatedStorage.GameConfig)
 
 local SupplyDropService = {}
 
@@ -300,7 +301,7 @@ local function award(player: Player, golden: boolean)
 	if okContracts and type(ContractService) == "table" and ContractService.Note then
 		ContractService.Note(player, "supply")
 	end
-	return { coins = coins, crystals = crystals, xp = loot.xp, golden = golden }
+	return { coins = coins, crystals = crystals, xp = GameConfig.ShownXP(loot.xp), golden = golden }
 end
 
 --- Drop one crate now. Returns the landing position, or nil if no zone had room.

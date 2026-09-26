@@ -18,6 +18,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local WorldBake = require(ServerScriptService.WorldBake)
 local LevelSystem = require(ServerScriptService.LevelSystem)
+local GameConfig = require(ReplicatedStorage.GameConfig)
 local PlayerDataManager = require(ServerScriptService.PlayerDataManager)
 local Downtown = require(script.Downtown)
 
@@ -75,7 +76,8 @@ local function openStash(player: Player, stash: BasePart)
 	replica:SetValue("Crystals", (tonumber(replica.Data.Crystals) or 0) + reward.crystals)
 	task.spawn(LevelSystem.AwardXP, player, reward.xp)
 	worldReward:FireClient(player, {
-		kind = "reward", title = "ROOFTOP STASH", coins = reward.coins, crystals = reward.crystals, xp = reward.xp,
+		kind = "reward", title = "ROOFTOP STASH", coins = reward.coins, crystals = reward.crystals,
+		xp = GameConfig.ShownXP(reward.xp),
 	})
 	print(("[Downtown] %s opened the rooftop stash"):format(player.Name))
 	local okC, ContractService = pcall(require, ServerScriptService:FindFirstChild("ContractService") :: ModuleScript)

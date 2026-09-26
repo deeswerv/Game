@@ -16,6 +16,7 @@ local Components = require(script.Parent.Components)
 local Menu = require(script.Parent.Menu)
 local UISound = require(script.Parent.UISound)
 local QuestConfig = require(ReplicatedStorage:WaitForChild("QuestConfig"))
+local GameConfig = require(ReplicatedStorage:WaitForChild("GameConfig"))
 
 local Journal = {}
 Journal.__index = Journal
@@ -64,7 +65,7 @@ local function rewardsInto(parent: GuiObject, rewards, big: boolean?)
 	end
 	if rewards.xp and rewards.xp > 0 then
 		order += 1
-		rewardChip(parent, "⭐", string.format("%d XP", rewards.xp), Theme.Colour.Xp:Lerp(WHITE, 0.3), order, big)
+		rewardChip(parent, "⭐", string.format("%d XP", GameConfig.ShownXP(rewards.xp)), Theme.Colour.Xp:Lerp(WHITE, 0.3), order, big)
 	end
 	if rewards.crystals and rewards.crystals > 0 then
 		order += 1

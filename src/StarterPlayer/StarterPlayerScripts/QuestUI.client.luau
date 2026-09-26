@@ -7,6 +7,7 @@ local TweenService = game:GetService("TweenService")
 
 local UIKit = require(ReplicatedStorage.UIKit)
 local UIState = require(game:GetService("ReplicatedStorage"):WaitForChild("UIState"))
+local GameConfig = require(ReplicatedStorage:WaitForChild("GameConfig"))
 local Theme = UIKit.Theme
 
 local player = Players.LocalPlayer
@@ -206,7 +207,7 @@ local function renderDialogue(giverName: string, node)
 			table.insert(pays, string.format("%d coins", o.coins))
 		end
 		if o.xp then
-			table.insert(pays, string.format("%d XP", o.xp))
+			table.insert(pays, string.format("%d XP", GameConfig.ShownXP(o.xp)))
 		end
 		if o.crystals then
 			table.insert(pays, string.format("%d crystals", o.crystals))

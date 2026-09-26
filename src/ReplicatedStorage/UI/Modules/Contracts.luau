@@ -10,6 +10,8 @@
 local Theme = require(script.Parent.Theme)
 local Components = require(script.Parent.Components)
 local Menu = require(script.Parent.Menu)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local GameConfig = require(ReplicatedStorage:WaitForChild("GameConfig"))
 
 local Contracts = {}
 Contracts.__index = Contracts
@@ -39,7 +41,7 @@ local function rewardText(reward: any): string
 	if type(reward) ~= "table" then
 		return ""
 	end
-	local parts = { "$" .. commas(tonumber(reward.coins) or 0), commas(tonumber(reward.xp) or 0) .. " XP" }
+	local parts = { "$" .. commas(tonumber(reward.coins) or 0), commas(GameConfig.ShownXP(reward.xp)) .. " XP" }
 	if tonumber(reward.crystals) and reward.crystals > 0 then
 		table.insert(parts, "💎 " .. tostring(reward.crystals))
 	end

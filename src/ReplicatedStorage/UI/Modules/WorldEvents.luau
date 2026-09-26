@@ -14,6 +14,12 @@ local TweenService = game:GetService("TweenService")
 local Theme = require(script.Parent.Theme)
 local Components = require(script.Parent.Components)
 
+-- Turf war threat levels, as the HUD writes them.
+local NUMERALS = { "I", "II", "III", "IV", "V" }
+local function numeral(n: any): string
+	return NUMERALS[math.clamp(math.floor(tonumber(n) or 1), 1, #NUMERALS)]
+end
+
 local WorldEvents = {}
 WorldEvents.__index = WorldEvents
 
@@ -181,8 +187,8 @@ function WorldEvents:_update()
 	local skyHigh = from ~= nil and from.Y > 1500
 	if self._turfChip and self._turfChip.Visible then
 		local secs = math.max(0, math.floor(self._turfEnds - os.clock()))
-		self._turfLabel.Text = string.format("TURF WAR  ·  %d / %d LEFT  ·  %d:%02d", self._turfLeft,
-			self._turfTotal, secs // 60, secs % 60)
+		self._turfLabel.Text = string.format("TURF WAR %s  ·  %d / %d LEFT  ·  %d:%02d", numeral(self._turfThreat),
+			self._turfLeft, self._turfTotal, secs // 60, secs % 60)
 	end
 	for _, marker in pairs(self._markers) do
 		marker.gui.Enabled = not inDuel and not skyHigh
@@ -203,6 +209,9 @@ function WorldEvents:HandleTurf(kind: string, data: any)
 		return
 	end
 	local red = Color3.fromRGB(236, 44, 52)
+	if tonumber(data.threat) then
+		self._turfThreat = tonumber(data.threat)
+	end
 	if kind == "start" then
 		self._turfLeft, self._turfTotal = tonumber(data.left) or 0, tonumber(data.total) or 0
 		self._turfEnds = os.clock() + (tonumber(data.seconds) or 240)
@@ -211,7 +220,8 @@ function WorldEvents:HandleTurf(kind: string, data: any)
 		end
 		self._toast:Banner({
 			title = "TURF WAR",
-			subtitle = string.format("A CREW IS MOVING ON DOWNTOWN FROM %s", tostring(data.zone or "THE EDGE")),
+			subtitle = string.format("THREAT %s  ·  A CREW OF %d IS MOVING ON DOWNTOWN FROM %s", numeral(data.threat),
+				tonumber(data.total) or 0, tostring(data.zone or "THE EDGE")),
 			colour = red,
 			sound = "Slam",
 		})
@@ -227,7 +237,8 @@ function WorldEvents:HandleTurf(kind: string, data: any)
 		end
 		self._toast:Banner({
 			title = "TURF DEFENDED",
-			subtitle = data.mvp and ("MVP  ·  " .. string.upper(tostring(data.mvp))) or "DOWNTOWN IS YOURS",
+			subtitle = (data.mvp and ("MVP  ·  " .. string.upper(tostring(data.mvp))) or "DOWNTOWN IS YOURS")
+				.. "  ·  THREAT RISES TO " .. numeral(data.threat),
 			colour = Color3.fromRGB(255, 196, 40),
 			sound = "Ring",
 		})
@@ -235,11 +246,13 @@ function WorldEvents:HandleTurf(kind: string, data: any)
 		if self._turfChip then
 			self._turfChip.Visible = false
 		end
-		self._toast:Push({ title = "The crew got away", text = "Downtown turf war over", icon = "⚔", colour = red })
+		self._toast:Push({ title = "The crew got away",
+			text = "Downtown turf war over  ·  threat falls to " .. numeral(data.threat), icon = "⚔", colour = red })
 	elseif kind == "reward" then
 		self._toast:Push({
 			title = data.mvp and "TURF WAR MVP" or "TURF WAR PAYOUT",
-			text = string.format("+$%s   +%s XP", commas(tonumber(data.coins) or 0), commas(tonumber(data.xp) or 0)),
+			text = string.format("+$%s   +%s XP   +%s 💎   ·   THREAT %s", commas(tonumber(data.coins) or 0),
+				commas(tonumber(data.xp) or 0), commas(tonumber(data.crystals) or 0), numeral(data.threat)),
 			icon = data.mvp and "🏆" or "⚔",
 			colour = Color3.fromRGB(255, 196, 40),
 			duration = 6,

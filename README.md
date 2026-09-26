@@ -85,9 +85,18 @@ a basketball court, a hedged pocket park, blossom trees, lanterns with flower ba
 cars and a skyline all round. Climb the fire escape on the apartments for a **rooftop stash**
 (once a day). Supply drops land in its streets too.
 
-**Turf war**: every few minutes while players are downtown, a crew (three Bandits, a Soldier
-and a Brute lieutenant) rolls in from one of the district's edges. Drive them out within four
-minutes and everyone who landed a hit is paid, with a bonus for the MVP.
+**Turf war**: a minute after someone arrives downtown, and then every four and a half minutes
+while anyone is there, a crew rolls in from one of the district's edges. Drive them out and
+everyone who landed a hit is paid, with half as much again for the MVP. Downtown remembers:
+every crew driven out raises the **THREAT** (I to V) -- the next crew is bigger (5 up to 10:
+more Bandits and Soldiers, a second Brute at V), the clock longer and the payout 25% higher per
+level; a crew that gets away lowers it. The HUD shows the threat on the banner and the chip.
+
+**XP** is paid at 1.5x across the game (kills, quests, contracts, chests, turf wars, the stash,
+supply drops) -- one rate in `GameConfig.Leveling.XP_RATE`, and every reward shows what it pays.
+
+A plan for growing Downtown into a much larger RPG district is written up as a ready-to-use
+prompt in `docs/prompts/downtown-expansion.md`.
 
 ## Contracts and supply drops
 
@@ -168,6 +177,12 @@ Enemies fight like a squad, not a row of turrets:
   every tracer from the gun as it sees it. A tracer is a hot streak that flies at its class's
   speed -- pistols visibly travel, a sniper's round cracks across and leaves a vapour line --
   and the impact lands when the round does. A fitted suppressor fires from the end of the can.
+- **VFX shelf** in the shop (it replaced Style): five **kill effects** (Shatter, Confetti,
+  Thunderstrike, Void, Gem Charge) that play on anyone you eliminate, and five **tracers**
+  (Crimson, Gold Rush, Plasma, Toxic, Prismatic) that change how your rounds look -- colour,
+  width, streak length, a haze. Everyone sees them. Buy one and it goes straight on; owned ones
+  show EQUIP / EQUIPPED. Mastery Weapons keep their own tracer. Hats and backs you already own
+  are still yours to wear. `lune run tools/uitest/vfx.luau` checks it.
 - **Dark Matter headshots** play the gem-charge effect (assets/vfx/gemstoneCharge.rbxm) on the
   head that was hit, for everyone. Any .rbxm dropped into assets/vfx is imported into
   ReplicatedStorage.VFX on build; `lune run tools/uitest/tracers.luau` checks all of this.

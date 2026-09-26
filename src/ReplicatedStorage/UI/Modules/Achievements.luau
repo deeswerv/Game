@@ -11,6 +11,8 @@ local Theme = require(script.Parent.Theme)
 local Components = require(script.Parent.Components)
 local Menu = require(script.Parent.Menu)
 local UISound = require(script.Parent.UISound)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local GameConfig = require(ReplicatedStorage:WaitForChild("GameConfig"))
 
 local Achievements = {}
 Achievements.__index = Achievements
@@ -36,7 +38,7 @@ local function rewardText(reward: any): string
 	end
 	local parts = { "$" .. commas(tonumber(reward.coins) or 0) }
 	if tonumber(reward.xp) and reward.xp > 0 then
-		table.insert(parts, commas(reward.xp) .. " XP")
+		table.insert(parts, commas(GameConfig.ShownXP(reward.xp)) .. " XP")
 	end
 	if tonumber(reward.crystals) and reward.crystals > 0 then
 		table.insert(parts, "💎 " .. tostring(reward.crystals))
