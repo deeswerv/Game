@@ -96,7 +96,12 @@ colour while you are there. The places:
 - **THE ALLEY** behind the gas station: brick backs with fire escapes, dumpsters, pallets and
   boxes to fight round, bin bags, washing strung overhead, a muscle car, a red light over the
   back door, tags on the walls and yellow bollards at the mouth;
-- a basketball court, a hedged pocket park, parked cars and a skyline all round.
+- a basketball court, a hedged pocket park, parked cars and a skyline all round;
+- on every street: traffic lights at the plaza crossings (ZEE AVE / MAIN ST on the blades),
+  phone booths, mailboxes and news stands, bike racks, planters, parking meters by the parked
+  cars, manholes, rainbow bunting strung across the road, cafe umbrellas in the plaza, a taco
+  truck and an ice-cream van, rooftop billboards, balconies with flower boxes, set-back crowns
+  and beacon masts on the skyline towers, and brick bridges over the tunnels (EAST END / WEST END).
 
 Climb the fire escape on the apartments for a **rooftop stash** (once a day). Supply drops land
 in its streets too. `lune run tools/mapview/audit.luau -- json <export>` checks it for z-fighting
@@ -114,6 +119,25 @@ driven out raises the **THREAT** (I to V) -- the next crew is bigger (5 up to 10
 Soldiers, a second Brute at V), the clock longer and the payout 25% higher per level; a crew
 that holds its patch lowers it. The HUD chip follows the nearest war; wars near you get a
 banner, ones across town a notice.
+
+**The Downtown chapter** (RPG). **The Fixer** stands in ZEE PLAZA by the finger post (press E).
+They run their own job chain, separate from the Quartermaster's (one job at a time, from
+either): *Rooftop Run* (get onto the apartment roof), *The Car Park*, *Alley Cats* (six crew in
+the alley), *Park Life*, *Full Court Press*, *Turn Up the Heat* (two wars at threat III+) and
+*The Kingpin* -- then a repeatable paid job, *Street Sweep* (win two wars). Each pays cash, XP,
+crystals and **Street Cred**.
+
+**Street Cred** is your standing with Downtown: +8 for every war you help win (+4 more as MVP),
+the Fixer's jobs, +20 for the Kingpin, -3 when a crew holds a patch you fought for. A known name
+is paid more -- **Friendly (30+) takes 10% more from every turf war, Honoured (75+) 25% more** --
+and the Fixer talks to you differently. The payout toast shows the Cred and the bonus.
+
+**The Kingpin.** Win a turf war at threat V and the one who runs the crews steps out onto that
+patch: a white-suited gunfighter boss with a health bar, who calls in backup at two thirds and
+one third health. You have five minutes. Everyone who hurt them shares a $5,000 / 3,000 XP /
+12-crystal bounty (half again for the MVP) and Street Cred; the crews scatter (threat back to
+III). Left alone, the Kingpin walks away. They rest ten minutes between appearances.
+`lune run tools/uitest/turf.luau` and `tools/uitest/fixer.luau` check all of it.
 
 **XP** is paid at 1.5x across the game (kills, quests, contracts, chests, turf wars, the stash,
 supply drops) -- one rate in `GameConfig.Leveling.XP_RATE`, and every reward shows what it pays.
@@ -140,9 +164,10 @@ and what is new. **PLAY** (or Space / Enter) drops you in; the **1V1 DUEL**, **D
 
 ## Achievements
 
-25 long-term goals in four groups -- Combat, Duels, World, Progress -- from First Blood to
+27 long-term goals in four groups -- Combat, Duels, World, Progress -- from First Blood to
 Legend (1,000 takedowns), Champion (50 duel wins), Explorer (all six places), Warlord Slayer,
-Street Defender (turf wars) and Completionist. They count themselves from what the server
+Street Defender (turf wars), Kingpin Slayer, Street Legend (Honoured Street Cred) and
+Completionist. They count themselves from what the server
 already decides; an unlock pops a banner and a badge on the Awards tile, and the reward
 (cash, XP, crystals, often a **title**) is claimed in the panel (H), where you also choose
 the title you wear. `lune run tools/uitest/achievements.luau` checks the list and the counting.

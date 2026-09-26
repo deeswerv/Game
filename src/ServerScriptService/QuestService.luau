@@ -69,8 +69,10 @@ local function levelOf(player: Player): number
 	return (lv and lv:IsA("ValueBase")) and (lv :: any).Value or 1
 end
 
--- What the client needs to draw the tracker and the dialogue.
-function QuestService.GetState(player: Player)
+-- What the client needs to draw the tracker and the dialogue. `giver` picks whose offer is
+-- shown (the Quartermaster unless said otherwise); the active quest is the same for all --
+-- one job at a time, whoever gave it.
+function QuestService.GetState(player: Player, giver: string?)
 	local replica = profileOf(player)
 	if not replica then
 		return nil
@@ -79,7 +81,7 @@ function QuestService.GetState(player: Player)
 	local completed = completedSet(data)
 
 	local active = data.CurrentQuest ~= "" and QuestConfig.Get(data.CurrentQuest) or nil
-	local offer = QuestConfig.NextAvailable("Quartermaster", levelOf(player), completed)
+	local offer = QuestConfig.NextAvailable(giver or "Quartermaster", levelOf(player), completed)
 
 	return {
 		active = active and {
@@ -102,10 +104,12 @@ function QuestService.GetState(player: Player)
 			-- without showing the number would be indefensible.
 			cost = offer.cost,
 			crystals = offer.rewards.crystals,
+			rep = offer.rewards.rep,
 			repeatable = offer.repeatable,
 		} or nil,
 		completedCount = #(data.CompletedQuests or {}),
 		totalQuests = #QuestConfig.Quests,
+		giver = giver or "Quartermaster",
 		-- The ids themselves, for the quest journal's list. Copied: never hand out the profile.
 		completed = table.clone(data.CompletedQuests or {}),
 		level = levelOf(player),
@@ -123,8 +127,8 @@ end
 -- condition, and a choice it sends back is re-checked against the node it claims to come
 -- from, so a forged "accept" is just an unknown choice on a node that does not offer it.
 
-local function contextFor(player: Player)
-	local state = QuestService.GetState(player)
+local function contextFor(player: Player, giverId: string?)
+	local state = QuestService.GetState(player, giverId)
 	return {
 		state = state,
 		level = levelOf(player),
@@ -242,7 +246,7 @@ function QuestService.ResolveNode(player: Player, giverId: string, nodeId: strin
 	if not node then
 		return nil
 	end
-	local ctx = contextFor(player)
+	local ctx = contextFor(player, giverId)
 	local choices = {}
 	for _, choice in ipairs(node.choices) do
 		if requirementsMet(choice.requires, ctx) then
@@ -268,7 +272,7 @@ function QuestService.Choose(player: Player, giverId: string, nodeId: string, ch
 			break
 		end
 	end
-	if not chosen or not requirementsMet(chosen.requires, contextFor(player)) then
+	if not chosen or not requirementsMet(chosen.requires, contextFor(player, giverId)) then
 		return { ok = false, reason = "You can't say that" }
 	end
 
@@ -278,7 +282,7 @@ function QuestService.Choose(player: Player, giverId: string, nodeId: string, ch
 	elseif action.kind == "Goto" then
 		return { ok = true, next = QuestService.ResolveNode(player, giverId, action.node) }
 	elseif action.kind == "AcceptQuest" then
-		local state = QuestService.GetState(player)
+		local state = QuestService.GetState(player, giverId)
 		local offer = state and state.offer
 		if not offer then
 			return { ok = false, reason = "Nothing on offer" }
@@ -393,12 +397,20 @@ local function complete(player: Player, replica, quest)
 	if quest.rewards.crystals then
 		CrystalService.Award(player, quest.rewards.crystals)
 	end
+	-- Street Cred: standing with Downtown, for the Fixer's work.
+	if quest.rewards.rep then
+		local value = ReputationService.Add(player, "Downtown", quest.rewards.rep)
+		if value then
+			player:SetAttribute("StreetCred", value)
+		end
+	end
 
 	QuestUpdated:FireClient(player, QuestService.GetState(player), {
 		completed = quest.title,
 		coins = quest.rewards.coins,
 		xp = quest.rewards.xp,
 		crystals = quest.rewards.crystals,
+		rep = quest.rewards.rep,
 	})
 end
 
@@ -422,6 +434,10 @@ function QuestService.ObjectiveMatches(obj, victimArchetype: string?, ctx): bool
 			return false
 		end
 		return obj.archetype == nil or obj.archetype == "Any" or obj.archetype == victimArchetype
+	elseif obj.kind == "KillCrew" then
+		-- A turf-war crew member (TurfWarService stamps TurfCrew and TurfZone on them).
+		return victimArchetype ~= nil and ctx ~= nil and ctx.crew == true
+			and (obj.zone == nil or ctx.turf == obj.zone)
 	end
 	-- Reach and anything unknown are not advanced by kills.
 	return false
@@ -475,10 +491,49 @@ KillCredit.KillAwarded.Event:Connect(function(killer: Player, victimHumanoid: Hu
 		ctx = {
 			elite = model:GetAttribute("Elite") == true,
 			zone = model:GetAttribute("Zone"),
+			crew = model:GetAttribute("TurfCrew") == true,
+			turf = model:GetAttribute("TurfZone"),
 		}
 	end
 	task.spawn(QuestService.RegisterKill, killer, archetype, ctx)
 end)
+
+-- ------------------------------------------------------------------- events --
+--
+-- Things other services tell the quest tracker about, that are not kills: a turf war won
+-- (TurfWarService, with which patch and at what threat).
+
+--- Does this event count toward this objective? Pulled out, like ObjectiveMatches, so the
+--- rules can be tested without a profile.
+function QuestService.EventMatches(obj, kind: string, detail): boolean
+	if kind == "turf" and obj.kind == "TurfWin" then
+		detail = detail or {}
+		if obj.zone and detail.zone ~= obj.zone then
+			return false
+		end
+		return (tonumber(detail.threat) or 1) >= (obj.minThreat or 1)
+	end
+	return false
+end
+
+function QuestService.RegisterEvent(player: Player, kind: string, detail)
+	local replica = profileOf(player)
+	if not replica then
+		return
+	end
+	local data = replica.Data
+	local quest = data.CurrentQuest ~= "" and QuestConfig.Get(data.CurrentQuest) or nil
+	if not quest or not QuestService.EventMatches(quest.objective, kind, detail) then
+		return
+	end
+	local progress = (data.QuestProgress or 0) + 1
+	if progress >= quest.objective.count then
+		complete(player, replica, quest)
+	else
+		replica:SetValue("QuestProgress", progress)
+		push(player)
+	end
+end
 
 -- ------------------------------------------------------------------- travel --
 --
@@ -522,7 +577,11 @@ function QuestService.RegisterReach(player: Player)
 	end
 
 	-- Horizontal distance only: standing on a roof above the marker still counts as having
-	-- got there, and the islands sit at wildly different heights.
+	-- got there, and the islands sit at wildly different heights. A rooftop objective says
+	-- how high you have to be (minY), so the street under it does not count.
+	if obj.minY and root.Position.Y < obj.minY then
+		return
+	end
 	local here = Vector3.new(root.Position.X, 0, root.Position.Z)
 	local there = Vector3.new(obj.position.X, 0, obj.position.Z)
 	if (here - there).Magnitude <= (obj.radius or 60) then
@@ -635,8 +694,9 @@ local function buildGiver(name: string, spec)
 	-- Reuse a rig from the world as the body, same as the merchant does.
 	local template
 	for _, d in ipairs(workspace:GetChildren()) do
+		-- Never another quest giver: that clone would bring their signpost along with it.
 		if d:IsA("Model") and d:FindFirstChildOfClass("Humanoid") and d:FindFirstChild("Head")
-			and not Players:GetPlayerFromCharacter(d) then
+			and not Players:GetPlayerFromCharacter(d) and d.Name:sub(1, 11) ~= "QuestGiver_" then
 			template = d
 			break
 		end
@@ -656,6 +716,10 @@ local function buildGiver(name: string, spec)
 			or s:IsA("BillboardGui") or s:IsA("ProximityPrompt") then
 			s:Destroy()
 		end
+	end
+	local oldSign = npc:FindFirstChild("Signpost")
+	if oldSign then
+		oldSign:Destroy()
 	end
 
 	local hum = npc:FindFirstChildOfClass("Humanoid")
@@ -731,7 +795,7 @@ local function buildGiver(name: string, spec)
 
 		prompt.Triggered:Connect(function(player)
 			OpenDialogue:FireClient(player, name, spec.displayName,
-				QuestService.GetState(player), QuestService.ResolveNode(player, name))
+				QuestService.GetState(player, name), QuestService.ResolveNode(player, name))
 		end)
 	end
 end

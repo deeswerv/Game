@@ -24,6 +24,18 @@
 --
 -- The crew are ordinary NPCs (NPCService.Spawn, no respawn), so they fight, take cover,
 -- drop loot and count for contracts and streaks like any other enemy.
+--
+-- STREET CRED. Standing with Downtown (the "Downtown" reputation faction): every war you
+-- help win adds to it (more for the MVP), the Fixer's jobs add to it, a crew that holds a
+-- patch you fought for takes a little off. A known name gets paid more: Friendly (30+)
+-- takes a tenth more from every war, Honoured (75+) a quarter more. Published on the
+-- player as the StreetCred attribute.
+--
+-- THE KINGPIN. Win a war at threat V and the one who runs the crews steps out onto that
+-- patch -- a boss with a health bar, two phases that call in backup, and five minutes before
+-- they walk away. Everyone who hurt them shares a big payout (MVP bonus) and Street Cred;
+-- the crews scatter and the threat drops back to III. Then it is ten minutes before they
+-- will come out again.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -57,6 +69,23 @@ TurfWarService.MAX_THREAT = 5
 TurfWarService.REWARD = { coins = 1100, xp = 800, crystals = 2 }
 TurfWarService.REWARD_PER_THREAT = 0.25
 TurfWarService.MVP_BONUS = 0.5
+
+-- Street Cred.
+TurfWarService.CRED_FACTION = "Downtown"
+TurfWarService.CRED = { win = 8, mvp = 4, lost = -3, kingpin = 20 }
+-- What standing adds to a war's payout, by band (ReputationService.Band).
+TurfWarService.CRED_BONUS = { Honoured = 0.25, Friendly = 0.1 }
+
+-- The Kingpin.
+TurfWarService.KINGPIN_TIME = 300
+TurfWarService.KINGPIN_COOLDOWN = 600
+TurfWarService.KINGPIN_REWARD = { coins = 5000, xp = 3000, crystals = 12 }
+TurfWarService.KINGPIN_PHASES = {
+	{ at = 0.66, adds = { "Soldier", "Grunt", "Grunt" } },
+	{ at = 0.33, adds = { "Soldier", "Soldier", "Brute" } },
+}
+-- Where the threat goes once the Kingpin falls (the crews scatter), or walks away.
+TurfWarService.THREAT_AFTER_KINGPIN = 3
 
 -- The clock everything is timed on. A test swaps it for one it can wind forward.
 TurfWarService.Clock = os.clock
@@ -213,6 +242,54 @@ local function remaining(war: War): number
 		end
 	end
 	return n
+end
+
+-- Services required on first use, so this module's load order does not depend on them.
+local function service(name: string): any
+	local module = ServerScriptService:FindFirstChild(name)
+	if not module then
+		return nil
+	end
+	local ok, loaded = pcall(require, module :: ModuleScript)
+	return if ok and type(loaded) == "table" then loaded else nil
+end
+
+--- A player's Street Cred and its band.
+function TurfWarService.Cred(player: Player): (number, string)
+	local Reputation = service("ReputationService")
+	if not Reputation then
+		return 0, "Neutral"
+	end
+	local value = Reputation.Get(player, TurfWarService.CRED_FACTION)
+	return value, Reputation.Band(value)
+end
+
+--- Move a player's Street Cred and publish it. Returns the new value.
+function TurfWarService.AddCred(player: Player, delta: number): number
+	local Reputation = service("ReputationService")
+	local value = Reputation and Reputation.Add(player, TurfWarService.CRED_FACTION, delta)
+	if value then
+		player:SetAttribute("StreetCred", value)
+		local Contracts = service("ContractService")
+		if Contracts and Contracts.Note then
+			task.spawn(Contracts.Note, player, "streetcred", value)
+		end
+		return value
+	end
+	return (TurfWarService.Cred(player))
+end
+
+--- The fraction a band adds to a war's payout.
+function TurfWarService.CredBonus(band: string): number
+	return TurfWarService.CRED_BONUS[band] or 0
+end
+
+local function scaled(reward: { coins: number, xp: number, crystals: number }, k: number)
+	return {
+		coins = math.floor(reward.coins * k + 0.5),
+		xp = math.floor(reward.xp * k + 0.5),
+		crystals = reward.crystals,
+	}
 end
 
 local function pay(player: Player, reward: { coins: number, xp: number, crystals: number })
@@ -402,12 +479,22 @@ local function finish(turf: Turf, war: War, won: boolean)
 		for player, dealt in pairs(war.damage) do
 			if player.Parent and dealt > 0 then
 				local mvp = player == best
-				local reward = TurfWarService.RewardFor(war.level, mvp)
+				-- A known name gets paid more: the band the player is in BEFORE this win.
+				local _, band = TurfWarService.Cred(player)
+				local bonus = TurfWarService.CredBonus(band)
+				local reward = scaled(TurfWarService.RewardFor(war.level, mvp), 1 + bonus)
 				pay(player, reward)
-				local okC, ContractService = pcall(require, ServerScriptService:FindFirstChild("ContractService") :: ModuleScript)
-				if okC and type(ContractService) == "table" and ContractService.Note then
+				local ContractService = service("ContractService")
+				if ContractService and ContractService.Note then
 					task.spawn(ContractService.Note, player, "turf")
 				end
+				local QuestService = service("QuestService")
+				if QuestService and QuestService.RegisterEvent then
+					task.spawn(QuestService.RegisterEvent, player, "turf", { zone = zone.id, threat = war.level })
+				end
+				local credGain = TurfWarService.CRED.win + (if mvp then TurfWarService.CRED.mvp else 0)
+				local cred = TurfWarService.AddCred(player, credGain)
+				local _, newBand = TurfWarService.Cred(player)
 				turfEvent:FireClient(player, "reward", {
 					id = zone.id,
 					zone = zone.name,
@@ -416,6 +503,10 @@ local function finish(turf: Turf, war: War, won: boolean)
 					crystals = reward.crystals,
 					mvp = mvp,
 					threat = war.level,
+					cred = credGain,
+					credTotal = cred,
+					band = newBand,
+					bonus = bonus,
 				})
 			end
 		end
@@ -423,6 +514,10 @@ local function finish(turf: Turf, war: War, won: boolean)
 		turfEvent:FireAllClients("won", { id = zone.id, zone = zone.name, position = turf.centre,
 			mvp = best and best.DisplayName or nil, threat = threat, cooldown = TurfWarService.COOLDOWN })
 		print(("[Turf] %s defended; threat now %d"):format(zone.name, threat))
+		-- Broken at the top of the scale: the one who runs them comes out to settle it.
+		if war.level >= TurfWarService.MAX_THREAT then
+			TurfWarService.SummonKingpin(turf.zone.id)
+		end
 	else
 		for humanoid, model in pairs(war.crew) do
 			if humanoid.Parent and humanoid.Health > 0 and model.Parent then
@@ -430,6 +525,12 @@ local function finish(turf: Turf, war: War, won: boolean)
 			end
 		end
 		TurfWarService.SetThreat(war.level - 1)
+		-- Those who fought for it and lost it lose a little face.
+		for player, dealt in pairs(war.damage) do
+			if player.Parent and dealt > 0 then
+				task.spawn(TurfWarService.AddCred, player, TurfWarService.CRED.lost)
+			end
+		end
 		turfEvent:FireAllClients("lost", { id = zone.id, zone = zone.name, position = turf.centre, threat = threat,
 			cooldown = TurfWarService.COOLDOWN })
 		print(("[Turf] the crew held %s; threat now %d"):format(zone.name, threat))
@@ -537,6 +638,9 @@ function TurfWarService.IsActive(zoneId: string?): boolean
 	return false
 end
 
+-- The Kingpin's own step, defined with the rest of the Kingpin further down.
+local stepKingpin: (now: number) -> ()
+
 --- One look round: cooled-down patches reopen, a player standing on an open one starts its
 --- war, running wars are counted down and settled, and the signs are brought up to date.
 function TurfWarService.Step()
@@ -576,9 +680,190 @@ function TurfWarService.Step()
 		end
 		refreshMarker(turf, now)
 	end
+	stepKingpin(now)
+end
+
+-- ------------------------------------------------------------ the kingpin --
+
+type Kingpin = {
+	model: Model,
+	humanoid: Humanoid,
+	zone: Zone,
+	centre: Vector3,
+	endsAt: number,
+	damage: { [Player]: number },
+	phase: number,
+}
+
+local kingpin: Kingpin? = nil
+local kingpinReadyAt = 0
+
+KillCredit.Damaged.Event:Connect(function(humanoid: Humanoid, dealt: number, attacker: Player?)
+	local k = kingpin
+	if k and humanoid == k.humanoid and attacker and type(dealt) == "number" then
+		k.damage[attacker] = (k.damage[attacker] or 0) + dealt
+	end
+end)
+
+--- Is the Kingpin out (and where)?
+function TurfWarService.KingpinOut(): (boolean, string?)
+	local k = kingpin
+	return k ~= nil, k and k.zone.id or nil
+end
+
+--- Bring the Kingpin out onto a patch. False if they are already out, resting, or could not
+--- be spawned.
+function TurfWarService.SummonKingpin(zoneId: string): boolean
+	local turf = byId[zoneId]
+	local now = TurfWarService.Clock()
+	if not turf or kingpin or now < kingpinReadyAt then
+		return false
+	end
+	local NPCService = service("NPCService")
+	if not NPCService or not NPCService.Spawn then
+		return false
+	end
+	local model = NPCService.Spawn("Kingpin", turf.centre + Vector3.new(0, 1, 0), { respawn = false, ignoreCap = true })
+	local humanoid = model and model:FindFirstChildOfClass("Humanoid")
+	if not model or not humanoid then
+		return false
+	end
+	model.Name = "The Kingpin"
+	-- The boss bar picks it up by these, as it does a Warlord.
+	model:SetAttribute("Boss", true)
+	model:SetAttribute("Kingpin", true)
+	model:SetAttribute("TurfZone", zoneId)
+	local marks = {}
+	for _, phase in ipairs(TurfWarService.KINGPIN_PHASES) do
+		table.insert(marks, tostring(phase.at))
+	end
+	model:SetAttribute("PhaseMarks", table.concat(marks, ","))
+	model:SetAttribute("Phase", 1)
+	kingpin = {
+		model = model,
+		humanoid = humanoid,
+		zone = turf.zone,
+		centre = turf.centre,
+		endsAt = now + TurfWarService.KINGPIN_TIME,
+		damage = {},
+		phase = 1,
+	}
+	turfEvent:FireAllClients("kingpin", { stage = "arrive", id = zoneId, zone = turf.zone.name, position = turf.centre,
+		seconds = TurfWarService.KINGPIN_TIME })
+	print("[Turf] the Kingpin is out at " .. turf.zone.name)
+	return true
+end
+
+local function endKingpin(defeated: boolean)
+	local k = kingpin
+	if not k then
+		return
+	end
+	kingpin = nil
+	kingpinReadyAt = TurfWarService.Clock() + TurfWarService.KINGPIN_COOLDOWN
+	if defeated then
+		local best, bestDamage = nil, 0
+		for player, dealt in pairs(k.damage) do
+			if player.Parent and dealt > bestDamage then
+				best, bestDamage = player, dealt
+			end
+		end
+		for player, dealt in pairs(k.damage) do
+			if player.Parent and dealt > 0 then
+				local mvp = player == best
+				local reward = scaled(TurfWarService.KINGPIN_REWARD, if mvp then 1 + TurfWarService.MVP_BONUS else 1)
+				pay(player, reward)
+				local cred = TurfWarService.AddCred(player, TurfWarService.CRED.kingpin)
+				local Contracts = service("ContractService")
+				if Contracts and Contracts.Note then
+					task.spawn(Contracts.Note, player, "kingpin")
+				end
+				local _, band = TurfWarService.Cred(player)
+				turfEvent:FireClient(player, "reward", {
+					id = k.zone.id, zone = k.zone.name, kingpin = true,
+					coins = reward.coins, xp = GameConfig.ShownXP(reward.xp), crystals = reward.crystals,
+					mvp = mvp, threat = TurfWarService.MAX_THREAT, cred = TurfWarService.CRED.kingpin, credTotal = cred,
+					band = band,
+				})
+			end
+		end
+		TurfWarService.SetThreat(TurfWarService.THREAT_AFTER_KINGPIN)
+		turfEvent:FireAllClients("kingpin", { stage = "defeated", id = k.zone.id, zone = k.zone.name,
+			position = k.centre, mvp = best and best.DisplayName or nil, threat = threat })
+		print("[Turf] the Kingpin is down; threat now " .. threat)
+	else
+		if k.model.Parent then
+			k.model:Destroy()
+		end
+		TurfWarService.SetThreat(TurfWarService.MAX_THREAT - 1)
+		turfEvent:FireAllClients("kingpin", { stage = "escaped", id = k.zone.id, zone = k.zone.name,
+			position = k.centre, threat = threat })
+		print("[Turf] the Kingpin walked away")
+	end
+end
+
+stepKingpin = function(now: number)
+	local k = kingpin
+	if not k then
+		return
+	end
+	local health = k.humanoid.Health
+	if not k.humanoid.Parent or health <= 0 then
+		endKingpin(true)
+		return
+	end
+	-- Phases: backup called in round the Kingpin as their health crosses each mark.
+	local fraction = health / math.max(k.humanoid.MaxHealth, 1)
+	local nextPhase = TurfWarService.KINGPIN_PHASES[k.phase]
+	if nextPhase and fraction <= nextPhase.at then
+		k.phase += 1
+		k.model:SetAttribute("Phase", k.phase)
+		local NPCService = service("NPCService")
+		local root = k.model:FindFirstChild("HumanoidRootPart")
+		local centre = if root and root:IsA("BasePart") then root.Position else k.centre
+		for i, archetype in ipairs(nextPhase.adds) do
+			local angle = i / #nextPhase.adds * math.pi * 2
+			local at = centre + Vector3.new(math.cos(angle) * 10, 1, math.sin(angle) * 10)
+			if NPCService and NPCService.Spawn then
+				local add = NPCService.Spawn(archetype, at, { respawn = false, ignoreCap = true })
+				if add then
+					add:SetAttribute("TurfCrew", true)
+					add:SetAttribute("TurfZone", k.zone.id)
+				end
+			end
+		end
+		turfEvent:FireAllClients("kingpin", { stage = "phase", id = k.zone.id, zone = k.zone.name, phase = k.phase })
+	end
+	if now >= k.endsAt then
+		endKingpin(false)
+	end
 end
 
 TurfWarService.SetThreat(1)
+
+-- Street Cred on the player from the start, for the HUD and the Fixer.
+local function publishCred(player: Player)
+	task.spawn(function()
+		for _ = 1, 20 do
+			if not player.Parent then
+				return
+			end
+			local Reputation = service("ReputationService")
+			local ok, value = pcall(function()
+				return Reputation and Reputation.Get(player, TurfWarService.CRED_FACTION)
+			end)
+			if ok and type(value) == "number" then
+				player:SetAttribute("StreetCred", value)
+				return
+			end
+			task.wait(0.5)
+		end
+	end)
+end
+Players.PlayerAdded:Connect(publishCred)
+for _, player in ipairs(Players:GetPlayers()) do
+	publishCred(player)
+end
 
 task.spawn(function()
 	while true do

@@ -44,7 +44,12 @@ that already works.
   its crew; a finished war puts that patch on a 180 s cooldown; wars on different patches run
   side by side. It has a district-wide **THREAT level I-V**: each defence raises it (bigger crew:
   5 → 10 NPCs, longer clock, payout +25% per level), a loss lowers it. Ground rings and signs
-  live in `workspace.TurfZones`. `CENTRE` is duplicated in the file. HUD: `UI/Modules/WorldEvents.luau`.
+  live in `workspace.TurfZones`. `CENTRE` is duplicated in the file. A threat-V win summons the
+  **Kingpin** boss (phases, bounty, threat back to III); every win/loss moves **Street Cred**
+  (reputation faction "Downtown"), which scales turf payouts (+10% Friendly, +25% Honoured).
+- `QuestConfig` / `DialogueConfig` -- **the Fixer** (ZEE PLAZA) runs a 7-job Downtown chain plus
+  a repeatable contract, using the objective kinds `KillCrew`, `TurfWin` (zone / minThreat) and
+  `Reach` with `minY` (rooftops); `QuestService.RegisterEvent(player, "turf", {zone, threat})`. HUD: `UI/Modules/WorldEvents.luau`.
 - `src/ReplicatedStorage/NPCConfig.luau` -- archetypes `Grunt` (Bandit), `Soldier`, `Brute`,
   `Marksman`, `Elite`, `Guard` (Town Guard), `Warlord`; zone table with
   `{ id = "Downtown", minX = -355, maxX = 45, minZ = 1300, maxZ = 1700, level = { 4, 7 } }`

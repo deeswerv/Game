@@ -288,12 +288,16 @@ function Profile:_render(s)
 	local streakText = streak > 0 and string.format("  ·  %d win streak", streak)
 		or streak < 0 and string.format("  ·  %d lost in a row", -streak)
 		or ""
-	self._record.Text = string.format("%d W  ·  %d L  ·  %d D%s%s",
+	-- Street Cred: standing with Downtown, published by the server (TurfWarService).
+	local cred = tonumber(Players.LocalPlayer:GetAttribute("StreetCred")) or 0
+	local credBand = if cred >= 75 then "Honoured" elseif cred >= 30 then "Friendly" else nil
+	self._record.Text = string.format("%d W  ·  %d L  ·  %d D%s%s  ·  %d Street Cred%s",
 		math.floor(tonumber(s.wins) or 0),
 		math.floor(tonumber(s.losses) or 0),
 		math.floor(tonumber(s.draws) or 0),
 		streakText,
-		(tonumber(s.prestige) or 0) > 0 and string.format("  ·  prestige %d", s.prestige) or "")
+		(tonumber(s.prestige) or 0) > 0 and string.format("  ·  prestige %d", s.prestige) or "",
+		math.floor(cred), if credBand then (" (" .. credBand .. ")") else "")
 
 	local unlock = type(s.nextUnlock) == "table" and s.nextUnlock or nil
 	self._unlock.Text = unlock

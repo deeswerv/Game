@@ -71,6 +71,20 @@ local function rewardsInto(parent: GuiObject, rewards, big: boolean?)
 		order += 1
 		rewardChip(parent, "💎", string.format("%d", rewards.crystals), Color3.fromRGB(120, 220, 255), order, big)
 	end
+	if rewards.rep and rewards.rep > 0 then
+		order += 1
+		rewardChip(parent, "🌆", string.format("+%d CRED", rewards.rep), Color3.fromRGB(255, 208, 72), order, big)
+	end
+end
+
+-- "the Quartermaster", "the Fixer": a giver's name for the middle of a sentence.
+local function giverName(quest): string
+	local giver = QuestConfig.Givers[quest.giver or "Quartermaster"]
+	local name = tostring(giver and giver.displayName or quest.giver or "Quartermaster")
+	if name:sub(1, 4) == "The " then
+		name = name:sub(5)
+	end
+	return "the " .. name
 end
 
 function Journal.new(parent: Instance, remotes)
@@ -83,7 +97,7 @@ function Journal.new(parent: Instance, remotes)
 	local menu = Menu.new(parent, {
 		id = "Journal",
 		title = "Quests",
-		subtitle = "Contracts from the Quartermaster -- and what they pay",
+		subtitle = "Jobs from the Quartermaster and the Fixer -- and what they pay",
 		icon = "📜",
 		size = UDim2.fromOffset(1000, 560),
 	})
@@ -393,7 +407,7 @@ function Journal:_draw()
 	self._status.BackgroundColor3 = status.colour
 	self._statusText.Text = status.icon .. "  " .. status.text
 	self._title.Text = quest.title
-	self._giver.Text = "From the " .. tostring(quest.giver or "Quartermaster")
+	self._giver.Text = "From " .. giverName(quest)
 	self._brief.Text = quest.summary or ""
 	self._objective.Text = quest.objective and quest.objective.label or ""
 
@@ -418,11 +432,14 @@ function Journal:_draw()
 	if key == "active" then
 		self._hint.Text = "Finish the objective -- the reward pays out the moment it's done."
 	elseif key == "available" then
-		self._hint.Text = "Talk to the " .. tostring(quest.giver or "Quartermaster") .. " in the lobby to take this contract."
+		local giver = QuestConfig.Givers[quest.giver or "Quartermaster"]
+		self._hint.Text = "Talk to " .. giverName(quest) .. " " .. tostring(giver and giver.where or "in the lobby")
+			.. " to take this job."
 	elseif key == "locked" then
 		self._hint.Text = string.format("Reach level %d to unlock this contract.", quest.levelRequired or 1)
 	else
-		self._hint.Text = "Done. The Quartermaster remembers."
+		local name = giverName(quest)
+		self._hint.Text = "Done. " .. name:sub(1, 1):upper() .. name:sub(2) .. " remembers."
 	end
 	self._abandon.instance.Visible = key == "active"
 end

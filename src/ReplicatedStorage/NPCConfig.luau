@@ -324,6 +324,66 @@ NPCConfig.Archetypes = {
 		},
 	},
 
+	-- The Downtown boss (TurfWarService): steps out when the crews have been driven off at
+	-- threat V. A gunfighter, not a brawler -- it keeps its distance, uses cover, throws
+	-- grenades and patches itself up -- in a white suit and a hat, so nobody mistakes it.
+	Kingpin = {
+		DisplayName = "The Kingpin",
+		NeverElite = true,
+		MaxHealth = 820,
+		WalkSpeed = 14,
+		Damage = 10,
+		Ranged = true,
+		AttackRange = 90,
+		PreferredRange = 34,
+		AggroRange = 110,
+		DeaggroRange = 170,
+		LeashRange = 120,
+		CoinReward = 1500,
+		XPReward = 500,
+		RespawnTime = 900,
+		Grenades = 3,
+		GrenadeCooldown = 9,
+		Medkits = 2,
+		Strafe = true,
+		Colour = Color3.fromRGB(236, 232, 222),
+		NameColour = Color3.fromRGB(255, 208, 72),
+		Weapon = "Warden",
+		Secondary = "Sentinel",
+		DropChance = 1.0,
+		Scale = 1.3,
+		Behaviour = "Tactical",
+		Accuracy = 0.72,
+		HeadAimChance = 0.12,
+		ReactionTime = 0.28,
+		AimTime = 0.16,
+		FieldOfView = 170,
+		UsesCover = true,
+		Burst = { 4, 7 },
+		BurstPause = { 0.35, 0.6 },
+		Aggression = 0.65,
+		RetreatHealth = 0,
+		ReloadThreshold = 0.4,
+		Armor = 2,
+		Voice = "Brute",
+		Skin = Color3.fromRGB(150, 110, 86),
+		Shirt = Color3.fromRGB(240, 236, 226),
+		Pants = Color3.fromRGB(226, 222, 212),
+		Sleeves = true,
+		Accents = {
+			{ part = "Head", size = Vector3.new(1.9, 0.14, 1.9), offset = Vector3.new(0, 0.42, 0),
+			  colour = Color3.fromRGB(34, 30, 30) },                       -- hat brim
+			{ part = "Head", size = Vector3.new(1.2, 0.62, 1.2), offset = Vector3.new(0, 0.76, 0),
+			  colour = Color3.fromRGB(34, 30, 30) },                       -- hat crown
+			{ part = "Head", size = Vector3.new(1.22, 0.16, 1.22), offset = Vector3.new(0, 0.54, 0),
+			  colour = Color3.fromRGB(214, 44, 48) },                      -- hat band
+			{ part = "UpperTorso", size = Vector3.new(0.9, 0.9, 0.12), offset = Vector3.new(0, 0.1, -0.56),
+			  colour = Color3.fromRGB(214, 44, 48) },                      -- shirt and tie
+			{ part = "UpperTorso", size = Vector3.new(1.4, 0.16, 0.14), offset = Vector3.new(0, 0.55, -0.58),
+			  colour = Color3.fromRGB(250, 204, 60) },                     -- gold chain
+		},
+	},
+
 	-- Friendly patrol that fights Hostiles; proves NPC-vs-NPC combat. Now actually fires the
 	-- pistol it carries rather than walking up and clubbing with it.
 	Guard = {

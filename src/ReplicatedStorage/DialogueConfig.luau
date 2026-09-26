@@ -150,6 +150,95 @@ DialogueConfig.Trees = {
 	},
 }
 
+-- Downtown's fixer. Standing here is Street Cred: the "Downtown" faction.
+DialogueConfig.Trees.Fixer = {
+	entry = "root",
+	nodes = {
+		root = {
+			body = {
+				{ requires = { hasActive = true },
+				  text = "You're on a job -- {quest}, {progress} of {goal}. Finish it, then we talk." },
+				{ requires = { hasOffer = true, minRep = { faction = "Downtown", value = 75 } },
+				  text = "Well, look who it is. The whole street knows your name. @offer" },
+				{ requires = { hasOffer = true, minRep = { faction = "Downtown", value = 30 } },
+				  text = "Good to see you around. @offer" },
+				{ requires = { hasOffer = true }, text = "@offer" },
+				{ requires = { minRep = { faction = "Downtown", value = 75 } },
+				  text = "Nothing left I can ask of you. Downtown's quiet because of you -- for now." },
+				{ text = "Nothing for you yet. Come back when you've got a few more levels on you." },
+			},
+			choices = {
+				{ id = "accept",   text = "I'll take it.",               requires = { hasOffer = true }, action = { kind = "AcceptQuest" } },
+				{ id = "progress", text = "How am I doing?",             requires = { hasActive = true }, action = { kind = "Goto", node = "progress" } },
+				{ id = "abandon",  text = "I'm dropping this one.",      requires = { hasActive = true }, action = { kind = "Goto", node = "confirmAbandon" } },
+				{ id = "cred",     text = "What's my name worth down here?", action = { kind = "Goto", node = "cred" } },
+				{ id = "turf",     text = "How do the turf wars work?",  action = { kind = "Goto", node = "turf" } },
+				{ id = "kingpin",  text = "Who runs these crews?",       action = { kind = "Goto", node = "kingpin" } },
+				{ id = "leave",    text = "Later.",                      action = { kind = "Close" } },
+			},
+		},
+
+		progress = {
+			body = {
+				{ requires = { hasActive = true },
+				  text = "{quest}. {objective} -- {progress} of {goal}. Pays {coins} coins and {xp} experience." },
+				{ text = "You're not carrying anything." },
+			},
+			choices = {
+				{ id = "back",  text = "Right.", action = { kind = "Goto", node = "root" } },
+				{ id = "leave", text = "Later.", action = { kind = "Close" } },
+			},
+		},
+
+		confirmAbandon = {
+			body = {
+				{ requires = { hasActive = true }, text = "Walk away from {quest}? The progress goes with it." },
+				{ text = "There's nothing to walk away from." },
+			},
+			choices = {
+				{ id = "confirm", text = "Drop it.", requires = { hasActive = true }, action = { kind = "AbandonQuest" } },
+				{ id = "back",    text = "No -- I'll finish it.", action = { kind = "Goto", node = "root" } },
+			},
+		},
+
+		cred = {
+			body = {
+				{ requires = { minRep = { faction = "Downtown", value = 75 } },
+				  text = "Street Cred? You're a legend. Crews pay you a quarter more just to leave them be -- that's what winning a war earns you now." },
+				{ requires = { minRep = { faction = "Downtown", value = 30 } },
+				  text = "People know you. Win a war and the street tips you a tenth on top. Keep going -- legends get a quarter." },
+				{ text = "Nobody knows you yet. Win turf wars, finish my jobs, take down the big one -- that's how a name gets made. A known name gets paid more." },
+			},
+			choices = {
+				{ id = "back",  text = "Back.",  action = { kind = "Goto", node = "root" } },
+				{ id = "leave", text = "Later.", action = { kind = "Close" } },
+			},
+		},
+
+		turf = {
+			body = {
+				{ text = "Four patches -- the car park, the courts, the alley, the park. Red ring means a crew's waiting: step in and they come. Win, and the patch goes quiet for a few minutes. Every win pushes the threat up and the next crew comes bigger -- and pays better." },
+			},
+			choices = {
+				{ id = "back",  text = "Back.",  action = { kind = "Goto", node = "root" } },
+				{ id = "leave", text = "Later.", action = { kind = "Close" } },
+			},
+		},
+
+		kingpin = {
+			body = {
+				{ requires = { minLevel = 12 },
+				  text = "The Kingpin. Never seen without a hat. Push the threat all the way to five and win, and the Kingpin comes out to settle it -- with backup. Drop them and the crews scatter." },
+				{ text = "Someone at the top keeps sending them. You're not ready to meet them. Get some levels first." },
+			},
+			choices = {
+				{ id = "back",  text = "Back.",  action = { kind = "Goto", node = "root" } },
+				{ id = "leave", text = "Later.", action = { kind = "Close" } },
+			},
+		},
+	},
+}
+
 function DialogueConfig.Tree(giverId: string)
 	return DialogueConfig.Trees[giverId]
 end

@@ -55,6 +55,7 @@ local reported = {
 	place = "AchievementService", boss = "ContractService", supply = "SupplyDropService",
 	turf = "TurfWarService", stash = "DistrictService", crystal = "ContractService", bounty = "BountyService",
 	contract = "ContractService", level = "AchievementService", achievement = "AchievementService",
+	kingpin = "TurfWarService", streetcred = "TurfWarService",
 }
 for kind in pairs(Config.Kinds()) do
 	local where = reported[kind]

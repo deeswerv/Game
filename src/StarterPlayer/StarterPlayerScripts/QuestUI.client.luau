@@ -212,6 +212,9 @@ local function renderDialogue(giverName: string, node)
 		if o.crystals then
 			table.insert(pays, string.format("%d crystals", o.crystals))
 		end
+		if o.rep then
+			table.insert(pays, string.format("+%d Street Cred", o.rep))
+		end
 		local line = string.format("Reward:  %s        Objective:  %s x%d",
 			table.concat(pays, "   ·   "), o.label, o.goal)
 		-- The price goes first. A contract is charged the moment it is accepted, so it has
@@ -291,8 +294,20 @@ QuestUpdated.OnClientEvent:Connect(function(newState, completion)
 	renderTracker()
 
 	if completion then
-		toast.Text = string.format("Quest complete — %s   (+%d coins, +%d XP)",
-			completion.completed, completion.coins or 0, completion.xp or 0)
+		local got = {}
+		if completion.coins then
+			table.insert(got, string.format("+%d coins", completion.coins))
+		end
+		if completion.xp then
+			table.insert(got, string.format("+%d XP", GameConfig.ShownXP(completion.xp)))
+		end
+		if completion.crystals then
+			table.insert(got, string.format("+%d crystals", completion.crystals))
+		end
+		if completion.rep then
+			table.insert(got, string.format("+%d Street Cred", completion.rep))
+		end
+		toast.Text = string.format("Quest complete — %s   (%s)", tostring(completion.completed), table.concat(got, ", "))
 		toast.TextTransparency = 0
 		task.delay(3, function()
 			TweenService:Create(toast, TweenInfo.new(0.6), { TextTransparency = 1 }):Play()

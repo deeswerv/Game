@@ -274,6 +274,9 @@ check(reward ~= nil and reward.mvp == true and reward.coins == 1650, "the fighte
 check(coins.Value - before == 1650, ("coins +%d"):format(coins.Value - before))
 check(reward and reward.xp == GameConfig.ShownXP(1200), "and XP, shown at the rate it pays")
 check(Turf.Threat() == 2, "the threat rises")
+check(reward and reward.cred == Turf.CRED.win + Turf.CRED.mvp and player:GetAttribute("StreetCred") == reward.cred,
+	("Street Cred for the win and the MVP (%s)"):format(tostring(player:GetAttribute("StreetCred"))))
+check(reward and reward.bonus == 0 and reward.band == "Neutral", "an unknown name gets no bonus yet")
 check(Turf.Status("Courts") == "active", "the other war carries on")
 local _, cool = Turf.Status("CarPark")
 check(math.abs(cool - Turf.COOLDOWN) < 1, ("cooling down for %ds"):format(cool))
@@ -304,6 +307,89 @@ check(#crewOf("CarPark") == #Turf.CrewFor(3), ("bigger at threat III (%d)"):form
 now += Turf.DURATION + Turf.DURATION_PER_THREAT * 2 + 1
 Turf.Step()
 check(Turf.Status("CarPark") == "cooldown" and #crewOf("CarPark") == 0, "out of time: the crew leaves")
+
+-- --------------------------------------------------------------- street cred --
+
+print("street cred")
+check(Turf.CredBonus("Friendly") == 0.1 and Turf.CredBonus("Honoured") == 0.25 and Turf.CredBonus("Neutral") == 0,
+	"a known name is paid a tenth more, a legend a quarter")
+Turf.AddCred(player, 80)
+local credNow, band = Turf.Cred(player)
+check(band == "Honoured" and player:GetAttribute("StreetCred") == credNow, ("Honoured at %d"):format(credNow))
+
+-- --------------------------------------------------------------- the kingpin --
+
+print("the kingpin")
+-- A war at threat V, won.
+Turf.SetThreat(5)
+now += Turf.COOLDOWN + 1
+standAt(zone("CarPark").offset)
+Turf.Step()
+check(Turf.Status("CarPark") == "active" and #crewOf("CarPark") == 10, "a threat V crew of ten")
+table.clear(sent)
+before = coins.Value
+for _, model in ipairs(crewOf("CarPark")) do
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	KillCredit.Damaged:Fire(humanoid, 100, player)
+	humanoid.Health = 0
+end
+Turf.Step()
+reward = turfSent("reward", "CarPark")
+local expected = math.floor(Turf.RewardFor(5, true).coins * 1.25 + 0.5)
+check(reward ~= nil and reward.bonus == 0.25 and coins.Value - before == expected,
+	("Honoured: the war pays a quarter more ($%d)"):format(coins.Value - before))
+local out, where = Turf.KingpinOut()
+check(out and where == "CarPark", "winning at threat V brings the Kingpin out onto that patch")
+local arrive = nil
+for _, e in ipairs(sent) do
+	if e.name == "TurfEvent" and e.args[1] == "kingpin" and e.args[2].stage == "arrive" then
+		arrive = e.args[2]
+	end
+end
+check(arrive ~= nil and arrive.zone == "THE CAR PARK" and arrive.seconds == Turf.KINGPIN_TIME, "everyone is told, with the clock")
+local boss = nil
+for _, s in ipairs(NPCService.spawned) do
+	if s.archetype == "Kingpin" and s.model.Parent then
+		boss = s.model
+	end
+end
+check(boss ~= nil and boss:GetAttribute("Boss") == true and boss:GetAttribute("PhaseMarks") == "0.66,0.33",
+	"a boss the health bar knows, with its phase marks")
+check(not Turf.SummonKingpin("Park"), "only one Kingpin at a time")
+
+local bossHumanoid = boss:FindFirstChildOfClass("Humanoid")
+KillCredit.Damaged:Fire(bossHumanoid, 40, player)
+local spawnedBefore = #NPCService.spawned
+bossHumanoid.Health = 60
+Turf.Step()
+check(boss:GetAttribute("Phase") == 2 and #NPCService.spawned - spawnedBefore == #Turf.KINGPIN_PHASES[1].adds,
+	"two thirds down: phase two, and backup is called in")
+bossHumanoid.Health = 30
+Turf.Step()
+check(boss:GetAttribute("Phase") == 3, "one third: phase three")
+before = coins.Value
+local credBefore = Turf.Cred(player)
+table.clear(sent)
+bossHumanoid.Health = 0
+Turf.Step()
+reward = nil
+for _, e in ipairs(sent) do
+	if e.name == "TurfEvent" and e.args[1] == "reward" and e.args[2].kingpin then
+		reward = e.args[2]
+	end
+end
+check(reward ~= nil and reward.mvp and coins.Value - before == math.floor(Turf.KINGPIN_REWARD.coins * 1.5 + 0.5),
+	("the Kingpin down: the bounty, with the MVP share ($%d)"):format(coins.Value - before))
+check(Turf.Cred(player) - credBefore == math.min(Turf.CRED.kingpin, 100 - credBefore), "and Street Cred")
+check(Turf.Threat() == Turf.THREAT_AFTER_KINGPIN, ("the crews scatter: threat back to %d"):format(Turf.Threat()))
+check(not (Turf.KingpinOut()), "and the Kingpin is gone")
+check(not Turf.SummonKingpin("Park"), "not back for a while")
+
+now += Turf.KINGPIN_COOLDOWN + 1
+check(Turf.SummonKingpin("Park"), "until the cooldown is up")
+now += Turf.KINGPIN_TIME + 1
+Turf.Step()
+check(not (Turf.KingpinOut()) and Turf.Threat() == Turf.MAX_THREAT - 1, "left alone too long, the Kingpin walks away")
 
 print(failures == 0 and "\27[32mall turf checks passed\27[0m" or ("\27[31m%d failed\27[0m"):format(failures))
 require("@lune/process").exit(failures == 0 and 0 or 1)

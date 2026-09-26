@@ -10,6 +10,10 @@ local QuestConfig = {}
 -- KillElite -> kill `count` elites, of any archetype
 -- KillInZone-> kill `count` NPCs inside `zone`; `archetype` narrows it as above
 -- Reach     -> be inside `zone` (preferred), or within `radius` studs of `position`
+--              (`minY`, if given, also asks you to be at least that high -- on a roof)
+-- KillCrew  -> kill `count` turf-war crew; `zone` narrows it to one patch (TurfWarService)
+-- TurfWin   -> win `count` turf wars; `zone` narrows it to one patch, `minThreat` to wars
+--              fought at that threat level or higher (TurfWarService reports them)
 --
 -- The last three read attributes NPCService and the zone table already provide, so they
 -- needed no new tracking -- only somewhere to look.
@@ -105,6 +109,88 @@ QuestConfig.Quests = {
 	},
 }
 
+-- ----------------------------------------------------------- downtown --
+--
+-- The Fixer's chain: the Downtown story, taught through the district's own systems -- the
+-- rooftop stash, the four turf patches, the threat level, and at the top of it, the Kingpin.
+-- `rewards.rep` is Street Cred (standing with the "Downtown" faction).
+local DOWNTOWN = Vector3.new(-155, 1000, 1500)
+for _, q in ipairs({
+	{
+		id = "RooftopRun",
+		title = "Rooftop Run",
+		giver = "Fixer",
+		levelRequired = 1,
+		summary = "Climb the fire escape on the red-brick apartments and get up on the roof.",
+		dialogue = "New face. Before anybody down here trusts you, show me you can get around. The red-brick apartments by the courts -- up the fire escape, onto the roof. There's a stash up there too, if you're quick about it.",
+		objective = { kind = "Reach", position = DOWNTOWN + Vector3.new(103, 44.5, 80), radius = 16, minY = DOWNTOWN.Y + 42,
+			count = 1, label = "Reach the apartment roof" },
+		rewards = { coins = 400, xp = 250, rep = 5 },
+	},
+	{
+		id = "TakeTheCarPark",
+		title = "The Car Park",
+		giver = "Fixer",
+		levelRequired = 3,
+		summary = "A crew holds the car park behind ZEE GUNS. Step onto their patch and drive them out.",
+		dialogue = "The car park behind ZEE GUNS. A crew sits on it like they own it. Walk onto the red ring and they'll come to you -- put every one of them down.",
+		objective = { kind = "TurfWin", zone = "CarPark", count = 1, label = "Win the turf war at THE CAR PARK" },
+		rewards = { coins = 1200, xp = 900, crystals = 2, rep = 10 },
+	},
+	{
+		id = "AlleyCats",
+		title = "Alley Cats",
+		giver = "Fixer",
+		levelRequired = 5,
+		summary = "The alley behind the gas station breeds crews. Thin them out.",
+		dialogue = "That alley behind the gas station? Dumpsters, fire escapes and a lot of people who don't want to be found. Put six of the crew down back there.",
+		objective = { kind = "KillCrew", zone = "Alley", count = 6, label = "Crew defeated in THE ALLEY" },
+		rewards = { coins = 1500, xp = 1100, crystals = 2, rep = 10 },
+	},
+	{
+		id = "ParkLife",
+		title = "Park Life",
+		giver = "Fixer",
+		levelRequired = 7,
+		summary = "They've taken Rainbow Park. Take it back.",
+		dialogue = "Families used to sit by that waterfall. Now there's a crew on the stage. Win it back and the whole street will hear about it.",
+		objective = { kind = "TurfWin", zone = "Park", count = 1, label = "Win the turf war at THE PARK" },
+		rewards = { coins = 1800, xp = 1300, crystals = 3, rep = 10 },
+	},
+	{
+		id = "FullCourt",
+		title = "Full Court Press",
+		giver = "Fixer",
+		levelRequired = 9,
+		summary = "The courts are the last patch they hold. Clear them.",
+		dialogue = "The courts under the apartments. Last patch they've got. Clear it and they'll have to send someone who matters.",
+		objective = { kind = "TurfWin", zone = "Courts", count = 1, label = "Win the turf war at THE COURTS" },
+		rewards = { coins = 2200, xp = 1600, crystals = 3, rep = 10 },
+	},
+	{
+		id = "TurnUpTheHeat",
+		title = "Turn Up the Heat",
+		giver = "Fixer",
+		levelRequired = 12,
+		summary = "Win two turf wars at threat III or higher.",
+		dialogue = "Every crew you break, the next one comes back bigger. Good. Push it -- win two wars with the threat at three or more and the one at the top will have to show their face.",
+		objective = { kind = "TurfWin", minThreat = 3, count = 2, label = "Turf wars won at threat III+" },
+		rewards = { coins = 3500, xp = 2600, crystals = 5, rep = 12 },
+	},
+	{
+		id = "TheKingpin",
+		title = "The Kingpin",
+		giver = "Fixer",
+		levelRequired = 15,
+		summary = "Win a war at threat V and the Kingpin steps out. End it.",
+		dialogue = "This is it. Drive the threat to five and win -- the Kingpin will come out to settle it personally. White suit, hat, never alone. Put them down and Downtown is ours.",
+		objective = { kind = "Kill", archetype = "Kingpin", count = 1, label = "Defeat the Kingpin" },
+		rewards = { coins = 8000, xp = 6000, crystals = 15, rep = 20 },
+	},
+}) do
+	table.insert(QuestConfig.Quests, q)
+end
+
 -- Where the quest giver stands.
 --
 -- On the grass inside the bend in the main path, facing back across it toward the market
@@ -117,6 +203,16 @@ QuestConfig.Givers = {
 		lookAt = Vector3.new(-75, 1.0, 153),
 		colour = Color3.fromRGB(78, 96, 120),
 		signText = "QUESTS",
+		where = "in the lobby",
+	},
+	-- Downtown's fixer, in ZEE PLAZA by the finger post, looking at the fountain.
+	Fixer = {
+		displayName = "The Fixer",
+		position = DOWNTOWN + Vector3.new(-14, 0.5, -30),
+		lookAt = DOWNTOWN + Vector3.new(0, 0.5, 0),
+		colour = Color3.fromRGB(128, 64, 170),
+		signText = "JOBS",
+		where = "in ZEE PLAZA, Downtown",
 	},
 }
 
@@ -158,6 +254,15 @@ QuestConfig.Contracts = {
 		dialogue = "Sixty thousand. Six of their best, by name. Bring me that and I will call us square -- until the next one.",
 		objective = { kind = "Kill", archetype = "Elite", count = 6, label = "Elites put down" },
 		rewards = { xp = 48000, crystals = 30 },
+	},
+	-- The Fixer's repeatable job: pay up front, win two wars anywhere, keep the streets clean.
+	{
+		id = "Contract_Sweep", title = "Street Sweep", giver = "Fixer",
+		levelRequired = 10, cost = 4000, repeatable = true,
+		summary = "Win two turf wars, anywhere downtown. Paid for up front.",
+		dialogue = "Four thousand buys the job. Win me two turf wars, any patch, and the street pays you back in ways money doesn't.",
+		objective = { kind = "TurfWin", count = 2, label = "Turf wars won" },
+		rewards = { xp = 4200, crystals = 6, rep = 6 },
 	},
 }
 

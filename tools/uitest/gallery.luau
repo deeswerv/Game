@@ -227,6 +227,15 @@ World.serverFire("Remotes", "TurfEvent", "won", { id = "CarPark", zone = "THE CA
 World.serverFire("Remotes", "TurfEvent", "lost", { id = "Park", zone = "THE PARK", threat = 2 })
 World.advance(4)
 
+-- The Kingpin steps out, and the bounty with Street Cred.
+World.serverFire("Remotes", "TurfEvent", "kingpin", { stage = "arrive", id = "CarPark", zone = "THE CAR PARK",
+	seconds = 300, position = Vector3.new(0, 0, -20) })
+World.advance(0.6)
+World.serverFire("Remotes", "TurfEvent", "reward", { id = "CarPark", zone = "THE CAR PARK", kingpin = true,
+	coins = 7500, xp = 4500, crystals = 18, mvp = true, threat = 5, cred = 20, band = "Honoured", bonus = 0 })
+shot("33_kingpin", 0.5)
+World.advance(4)
+
 -- Contract news and a supply drop on the way.
 World.serverFire("Remotes", "ContractUpdate", "progress", {
 	id = "marksman", title = "Marksman", icon = "🎖", tier = "Medium", progress = 7, target = 10,

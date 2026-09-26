@@ -302,14 +302,63 @@ function WorldEvents:HandleTurf(kind: string, data: any)
 		self._toast:Push({ title = "The crew held " .. zone,
 			text = "Turf war over  ·  threat falls to " .. numeral(data.threat), icon = "⚔", colour = red })
 	elseif kind == "reward" then
+		local money = string.format("+$%s   +%s XP   +%s 💎", commas(tonumber(data.coins) or 0),
+			commas(tonumber(data.xp) or 0), commas(tonumber(data.crystals) or 0))
+		if tonumber(data.bonus) and data.bonus > 0 then
+			money ..= string.format("   (+%d%%)", math.floor(data.bonus * 100 + 0.5))
+		end
 		self._toast:Push({
-			title = data.mvp and "TURF WAR MVP" or "TURF WAR PAYOUT",
-			text = string.format("+$%s   +%s XP   +%s 💎   ·   THREAT %s", commas(tonumber(data.coins) or 0),
-				commas(tonumber(data.xp) or 0), commas(tonumber(data.crystals) or 0), numeral(data.threat)),
-			icon = data.mvp and "🏆" or "⚔",
+			title = if data.kingpin then (data.mvp and "KINGPIN BOUNTY · MVP" or "KINGPIN BOUNTY")
+				else (data.mvp and "TURF WAR MVP" or "TURF WAR PAYOUT"),
+			text = money,
+			icon = if data.kingpin then "🎩" elseif data.mvp then "🏆" else "⚔",
 			colour = Color3.fromRGB(255, 196, 40),
-			duration = 6,
+			duration = 7,
 		})
+		-- Street Cred gets its own line: what you gained, where it leaves you, and what that pays.
+		local gained = tonumber(data.cred)
+		if gained and gained ~= 0 then
+			local band = tostring(data.band or "Neutral")
+			local perk = if band == "Honoured" then "turf pays +25%"
+				elseif band == "Friendly" then "turf pays +10%"
+				else "build a name, get paid more"
+			self._toast:Push({
+				title = string.format("%+d STREET CRED", gained),
+				text = string.format("%s  ·  %s", string.upper(band), perk),
+				icon = "🌆",
+				colour = Color3.fromRGB(255, 208, 72),
+				duration = 6,
+			})
+		end
+	elseif kind == "kingpin" then
+		local gold = Color3.fromRGB(255, 208, 72)
+		if data.stage == "arrive" then
+			self._toast:Banner({
+				title = "THE KINGPIN",
+				subtitle = string.format("STEPPED OUT AT %s  ·  %d MINUTES TO TAKE THEM DOWN", zone,
+					math.floor((tonumber(data.seconds) or 300) / 60)),
+				colour = gold,
+				sound = "Slam",
+				duration = 4,
+			})
+		elseif data.stage == "phase" then
+			if near then
+				self._toast:Push({ title = "The Kingpin calls for backup", text = "More crew incoming at " .. zone,
+					icon = "🎩", colour = red })
+			end
+		elseif data.stage == "defeated" then
+			self._toast:Banner({
+				title = "KINGPIN DOWN",
+				subtitle = (data.mvp and ("MVP  ·  " .. string.upper(tostring(data.mvp)) .. "  ·  ") or "")
+					.. "THE CREWS SCATTER  ·  THREAT FALLS TO " .. numeral(data.threat),
+				colour = gold,
+				sound = "Ring",
+				duration = 4,
+			})
+		elseif data.stage == "escaped" then
+			self._toast:Push({ title = "The Kingpin walked away", text = "Downtown stays hot  ·  threat " .. numeral(data.threat),
+				icon = "🎩", colour = red })
+		end
 	end
 	self:_update()
 end
