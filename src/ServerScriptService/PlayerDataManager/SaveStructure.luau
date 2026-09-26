@@ -69,6 +69,12 @@ local SaveStructure = {
 	-- The UTC day the Downtown rooftop stash was last opened (once a day).
 	StashDay = 0,
 
+	-- ZEE TOWER: whether this player has beaten the Don at the top (TowerService). It opens
+	-- the world past Downtown -- the Travel menu's other places and the Quartermaster's
+	-- work there. How many times, for the profile and a smaller repeat reward.
+	TowerCleared = false,
+	TowerClears = 0,
+
 	-- Achievements (AchievementService / AchievementConfig): running counts per kind
 	-- ("kill" = 412, "streak" = best run), which are unlocked, which have been claimed, and
 	-- the places travelled to for Explorer. All dictionaries, so Replica never sees a gappy
@@ -177,6 +183,13 @@ local SaveStructure = {
 	--   EquippedVFX = { Kill = "KillShatter", Tracer = "TracerGold" }
 	OwnedVFX = {},
 	EquippedVFX = {},
+	-- Gear bought at ZEE TACTICS (GearConfig): heals, armour and bombs, and which is in each
+	-- slot. The Common piece of each slot is free and never listed; a missing slot means it.
+	--
+	--   OwnedGear = { "Heal_TraumaKit", "Bomb_Sticky" }
+	--   EquippedGear = { Heal = "Heal_TraumaKit", Bomb = "Bomb_Sticky" }
+	OwnedGear = {},
+	EquippedGear = {},
 	-- Per gun, what it uses instead of the slot's effect: an owned id, or "none" to play
 	-- nothing on that gun. A gun with no entry uses EquippedVFX.
 	--

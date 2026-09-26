@@ -6,7 +6,8 @@
 --
 --   1. Everyone engaging one target has a ROLE. Brawlers and aggressive types push, keepers
 --      hold at range, balanced ones split between holding and flanking, tactical ones flank.
---      No more than two push at once; the rest find something else to do.
+--      No more than two push at once; the rest find something else to do -- unless the
+--      target is reloading or badly hurt, when everyone with any nerve pushes at once.
 --   2. Everyone gets their own SLOT around the target, spread by rank so two enemies never
 --      want the same patch of ground, pulled in short of any wall between them and it.
 --   3. Seeing someone is shared. An NPC that spots a player calls it out to nearby allies,
@@ -80,11 +81,31 @@ function Squad.Leave(agent)
 	agent.slotPoint = nil
 end
 
-local function roleFor(agent, list): string
+-- A target caught out: reloading (its equipped gun says so) or badly hurt. The moment to
+-- push, and everyone who is not a sniper takes it -- which is what makes a reload in the
+-- open a mistake rather than a formality.
+local PUNISH_HEALTH = 0.35
+local function vulnerable(target: Model?): boolean
+	if not target then
+		return false
+	end
+	local humanoid = target:FindFirstChildOfClass("Humanoid")
+	if humanoid and humanoid.MaxHealth > 0 and humanoid.Health / humanoid.MaxHealth <= PUNISH_HEALTH then
+		return true
+	end
+	local tool = target:FindFirstChildOfClass("Tool")
+	return tool ~= nil and tool:GetAttribute("Reloading") == true
+end
+Squad.Vulnerable = vulnerable
+
+local function roleFor(agent, list, target: Model?): string
 	local behaviour = agent.cfg.Behaviour
 	if behaviour == "Keeper" then
 		return "Overwatch"
 	elseif behaviour == "Brawler" then
+		return "Push"
+	end
+	if vulnerable(target) and (agent.cfg.Aggression or 0.5) >= 0.5 then
 		return "Push"
 	end
 	local pushers = 0
@@ -138,13 +159,16 @@ end
 function Squad.SlotFor(agent, info, now: number): Vector3
 	local target = info.model
 	local targetPos = info.position
-	if agent.slotPoint and agent.slotTargetPos and now - (agent.slotAt or 0) < SLOT_REFRESH
+	-- A slot is kept a moment -- unless the target has just left themselves open, which is
+	-- worth rethinking for straight away.
+	local caughtOut = vulnerable(target) and agent.role ~= "Push" and agent.role ~= "Overwatch"
+	if not caughtOut and agent.slotPoint and agent.slotTargetPos and now - (agent.slotAt or 0) < SLOT_REFRESH
 		and World.Flat(agent.slotTargetPos - targetPos).Magnitude < SLOT_TARGET_DRIFT then
 		return agent.slotPoint
 	end
 
 	local list = members(target)
-	local role = roleFor(agent, list)
+	local role = roleFor(agent, list, target)
 	agent.role = role
 	local cfg = agent.cfg
 

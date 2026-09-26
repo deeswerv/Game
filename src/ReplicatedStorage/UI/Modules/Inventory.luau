@@ -27,6 +27,7 @@ local GunHandling = require(ReplicatedStorage:WaitForChild("GunHandling"))
 local WeaponPreview = require(ReplicatedStorage:WaitForChild("WeaponPreview"))
 local VFXConfig = require(ReplicatedStorage:WaitForChild("VFXConfig"))
 local UISound = require(script.Parent.UISound)
+local Tactics = require(script.Parent.Tactics)
 
 local Inventory = {}
 Inventory.__index = Inventory
@@ -80,6 +81,9 @@ local function buildCategories(): { Menu.Category }
 			})
 		end
 	end
+	-- Heals, armour and bombs from ZEE TACTICS: what is in each slot, swapped here. Second in
+	-- the rail, straight under All, so it is never scrolled out of sight.
+	table.insert(categories, math.min(2, #categories + 1), { id = "Gear", label = "Gear", icon = "🧰" })
 	return categories
 end
 
@@ -417,7 +421,7 @@ end
 -- ------------------------------------------------------------------ api --
 
 function Inventory.new(parent: Instance, remotes: { getOwnership: RemoteFunction, loadoutAction: RemoteFunction,
-	vfxAction: RemoteFunction? })
+	vfxAction: RemoteFunction?, gearAction: RemoteFunction? })
 	local self = setmetatable({}, Inventory)
 
 	self._remotes = remotes
@@ -490,8 +494,32 @@ function Inventory.new(parent: Instance, remotes: { getOwnership: RemoteFunction
 		end)
 	end
 
+	-- The GEAR section covers the weapon grid and detail while it is picked.
+	if remotes.gearAction then
+		self._locker = Tactics.Locker(menu.content, remotes.gearAction)
+	end
+	local weaponView = { scroller, menu.content:FindFirstChild("Detail"), self._equip.instance,
+		self._vfxButton.instance }
+	local function showGear(on: boolean)
+		if self._locker then
+			self._locker.frame.Visible = on
+		end
+		for _, view in ipairs(weaponView) do
+			if view and view:IsA("GuiObject") then
+				view.Visible = not on
+			end
+		end
+	end
+
 	menu:OnCategory(function(id: string)
-		self:_fill(id)
+		showGear(id == "Gear")
+		if id == "Gear" then
+			if self._locker then
+				self._locker:Refresh()
+			end
+		else
+			self:_fill(id)
+		end
 	end)
 	menu:OnOpen(function()
 		self:Refresh()
@@ -519,7 +547,13 @@ function Inventory:Refresh()
 			end
 		end
 		self._owned, self._ownedVFX = owned, ownedVFX
-		self:_fill(self._menu._category or "All")
+		if self._menu._category == "Gear" then
+			if self._locker then
+				self._locker:Refresh()
+			end
+		else
+			self:_fill(self._menu._category or "All")
+		end
 	end)
 end
 

@@ -21,6 +21,7 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local UtilityConfig = require(ReplicatedStorage:WaitForChild("UtilityConfig"))
+local GearConfig = require(ReplicatedStorage:WaitForChild("GearConfig"))
 local ExplosionFX = require(ReplicatedStorage:WaitForChild("ExplosionFX"))
 local Modules = ReplicatedStorage:WaitForChild("UI"):WaitForChild("Modules")
 local Theme = require(Modules:WaitForChild("Theme")) :: any
@@ -63,7 +64,7 @@ tray.Parent = gui
 local trayList = Components.List(tray, Enum.FillDirection.Horizontal, 6, Enum.HorizontalAlignment.Left)
 trayList.VerticalAlignment = Enum.VerticalAlignment.Bottom
 
-type Tile = { frame: Frame, count: TextLabel, key: TextLabel, rim: UIStroke, scale: UIScale }
+type Tile = { frame: Frame, count: TextLabel, key: TextLabel, rim: UIStroke, scale: UIScale, icon: TextLabel }
 local tiles: { [string]: Tile } = {}
 
 local function tile(id: string, order: number): Tile
@@ -93,7 +94,7 @@ local function tile(id: string, order: number): Tile
 	key.Name = "Key"
 	key.Position = UDim2.fromOffset(5, 2)
 	key.Size = UDim2.fromOffset(20, 14)
-	return { frame = frame, count = count, key = key, rim = rim, scale = scale }
+	return { frame = frame, count = count, key = key, rim = rim, scale = scale, icon = icon }
 end
 
 for i, id in ipairs(UtilityConfig.Order) do
@@ -543,6 +544,77 @@ local function smoke(centre: Vector3, radius: number, duration: number)
 	end)
 end
 
+-- ------------------------------------------------------------------ fire --
+
+local FLAMES = { Color3.fromRGB(255, 120, 30), Color3.fromRGB(255, 180, 50), Color3.fromRGB(236, 70, 30) }
+
+--- An incendiary's patch: a scorched disc, flames licking up across it, a glow, for as long
+--- as it burns.
+local function fire(centre: Vector3, radius: number, duration: number)
+	local pieces: { Instance } = {}
+	local scorch = part("Scorch", Vector3.new(0.12, radius * 2, radius * 2), Color3.fromRGB(40, 28, 22),
+		Enum.PartType.Cylinder, 0.15)
+	scorch.CFrame = CFrame.new(centre + Vector3.new(0, 0.08, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	table.insert(pieces, scorch)
+	local rng = Random.new(math.floor(centre.X * 11 + centre.Z * 5))
+	for i = 1, 9 do
+		local a = rng:NextNumber(0, math.pi * 2)
+		local r = if i == 1 then 0 else rng:NextNumber(radius * 0.2, radius * 0.85)
+		local holder = part("Flame", Vector3.new(1, 0.2, 1), FLAMES[i % #FLAMES + 1], nil, 1)
+		holder.CFrame = CFrame.new(centre + Vector3.new(math.cos(a) * r, 0.3, math.sin(a) * r))
+		local flame = Instance.new("Fire")
+		flame.Size = rng:NextNumber(4, 7)
+		flame.Heat = rng:NextNumber(8, 14)
+		flame.Color = FLAMES[i % #FLAMES + 1]
+		flame.SecondaryColor = Color3.fromRGB(255, 220, 120)
+		flame.Parent = holder
+		table.insert(pieces, holder)
+	end
+	local glow = Instance.new("PointLight")
+	glow.Color = Color3.fromRGB(255, 140, 50)
+	glow.Brightness = 3
+	glow.Range = radius * 2.2
+	glow.Parent = scorch
+	sound("rbxasset://sounds/swoosh.wav", centre, 0.8, 0.4)
+	task.delay(duration, function()
+		for _, piece in ipairs(pieces) do
+			local flame = piece:FindFirstChildOfClass("Fire")
+			if flame then
+				flame.Enabled = false
+			end
+		end
+		task.wait(1.2)
+		for _, piece in ipairs(pieces) do
+			piece:Destroy()
+		end
+	end)
+end
+
+--- A singularity: a dark core that swells, a ring sucked inward, then the blast (drawn by the
+--- "explode" the server sends after it).
+local function singularity(centre: Vector3, pull: number, pullTime: number)
+	local core = part("Singularity", Vector3.new(1, 1, 1), Color3.fromRGB(26, 10, 40), Enum.PartType.Ball, 0)
+	core.CFrame = CFrame.new(centre + Vector3.new(0, 1.5, 0))
+	core.Material = Enum.Material.Glass
+	local rim = part("SingularityRim", Vector3.new(0.3, pull * 2, pull * 2), Color3.fromRGB(170, 90, 255),
+		Enum.PartType.Cylinder, 0.55)
+	rim.CFrame = CFrame.new(centre + Vector3.new(0, 1.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(170, 90, 255)
+	light.Brightness = 4
+	light.Range = pull
+	light.Parent = core
+	TweenService:Create(core, TweenInfo.new(pullTime, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+		{ Size = Vector3.new(6, 6, 6) }):Play()
+	TweenService:Create(rim, TweenInfo.new(pullTime, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+		{ Size = Vector3.new(0.3, 2, 2), Transparency = 0.1 }):Play()
+	sound("rbxasset://sounds/swoosh.wav", centre, 1, 0.3)
+	task.delay(pullTime + 0.05, function()
+		core:Destroy()
+		rim:Destroy()
+	end)
+end
+
 -- ---------------------------------------------------------------- medkit --
 
 local healBar = Instance.new("Frame")
@@ -639,6 +711,20 @@ UtilityEvent.OnClientEvent:Connect(function(kind: unknown, a: any, b: any, c: an
 			cycle()
 		end
 		redraw()
+	elseif kind == "gear" and type(a) == "table" then
+		-- What the throw slot and the heal key hold now: their icons on the tray.
+		local bomb = GearConfig.Get(a.Bomb)
+		local healItem = GearConfig.Get(a.Heal)
+		if bomb and tiles.Frag then
+			tiles.Frag.icon.Text = bomb.icon
+		end
+		if healItem and tiles.Medkit then
+			tiles.Medkit.icon.Text = healItem.icon
+		end
+	elseif kind == "fire" and typeof(a) == "Vector3" and type(b) == "number" and type(c) == "number" then
+		fire(a, b, c)
+	elseif kind == "singularity" and typeof(a) == "Vector3" and type(b) == "number" and type(c) == "number" then
+		singularity(a, b, c)
 	elseif kind == "thrown" then
 		flight(a)
 	elseif kind == "explode" and typeof(a) == "Vector3" and type(b) == "number" then

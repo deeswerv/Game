@@ -961,6 +961,21 @@ ClassMethods.PVInstance = {
 	PivotTo = function(self, cf)
 		if self:IsA("BasePart") then
 			self.CFrame = cf
+		elseif self:IsA("Model") then
+			-- The whole model moves with its pivot: the primary part, else the root, else the
+			-- first part. Position is kept in step with CFrame, as Roblox does.
+			local anchor = self.PrimaryPart or self:FindFirstChild("HumanoidRootPart")
+				or self:FindFirstChildWhichIsA("BasePart", true)
+			if not anchor then
+				return
+			end
+			local delta = cf * anchor.CFrame:Inverse()
+			for _, d in ipairs(self:GetDescendants()) do
+				if d:IsA("BasePart") then
+					d.CFrame = delta * d.CFrame
+					d.Position = d.CFrame.Position
+				end
+			end
 		end
 	end,
 }

@@ -1,7 +1,7 @@
 --!nocheck
 -- The Downtown chapter's quests, checked without Studio:
 --
---   * the Fixer stands in ZEE PLAZA and offers their own chain, separate from the
+--   * the Fixer stands by ZEE COURTS and offers their own chain, separate from the
 --     Quartermaster's, in order and by level, with a repeatable job once it runs dry;
 --   * talking goes through the same dialogue machinery: the Fixer's offer, accepting it, and
 --     lines that change with Street Cred;
@@ -128,7 +128,9 @@ local DOWNTOWN = Vector3.new(-155, 1000, 1500)
 print("the Fixer's chain")
 local fixer = QuestConfig.Givers.Fixer
 local offset = fixer and (fixer.position - DOWNTOWN)
-check(fixer ~= nil and math.abs(offset.X) < 40 and math.abs(offset.Z) < 40, "the Fixer stands in ZEE PLAZA")
+-- On the grey paving between the cross street's walk (z 28) and the court's fence (z 55).
+check(fixer ~= nil and offset.X > 36 and offset.X < 72 and offset.Z > 30 and offset.Z < 54,
+	"the Fixer stands south of ZEE COURTS")
 check(fixer and fixer.where ~= nil and DialogueConfig.Tree("Fixer") ~= nil, "with somewhere to be found and something to say")
 local chain = {}
 for _, q in ipairs(QuestConfig.Quests) do
@@ -136,8 +138,8 @@ for _, q in ipairs(QuestConfig.Quests) do
 		table.insert(chain, q.id)
 	end
 end
-check(#chain == 7 and chain[1] == "RooftopRun" and chain[7] == "TheKingpin",
-	("seven jobs, the roof first and the Kingpin last (%s)"):format(table.concat(chain, ", ")))
+check(#chain == 8 and chain[1] == "RooftopRun" and chain[8] == "TheKingpin" and table.find(chain, "TheTopFloor") ~= nil,
+	("eight jobs, the roof first, the tower among them, the Kingpin last (%s)"):format(table.concat(chain, ", ")))
 local levelsRise = true
 local last = 0
 for _, id in ipairs(chain) do
@@ -146,7 +148,8 @@ for _, id in ipairs(chain) do
 	last = q.levelRequired
 end
 check(levelsRise, "each asks a higher level than the last, and each pays Street Cred")
-local known = { Kill = true, KillPlayer = true, KillElite = true, KillInZone = true, Reach = true, KillCrew = true, TurfWin = true }
+local known = { Kill = true, KillPlayer = true, KillElite = true, KillInZone = true, Reach = true, KillCrew = true, TurfWin = true,
+	TowerWin = true }
 local allKnown = true
 for _, q in ipairs(QuestConfig.Quests) do
 	allKnown = allKnown and known[q.objective.kind] == true
@@ -230,6 +233,9 @@ check(not QuestService.ObjectiveMatches(alley, "Grunt", { crew = true, turf = "P
 check(not QuestService.ObjectiveMatches(alley, "Grunt", { crew = false, turf = "Alley" }), "nor an ordinary Bandit")
 check(not QuestService.ObjectiveMatches(alley, nil, nil), "nor a player")
 check(QuestService.ObjectiveMatches(QuestConfig.Get("TheKingpin").objective, "Kingpin", {}), "the Kingpin job counts the Kingpin")
+check(QuestService.EventMatches(QuestConfig.Get("TheTopFloor").objective, "tower", {})
+	and not QuestService.EventMatches(QuestConfig.Get("TheTopFloor").objective, "turf", { zone = "Courts" }),
+	"the tower job counts a win at the top of ZEE TOWER, and nothing else")
 
 -- --------------------------------------------------------------- standing --
 

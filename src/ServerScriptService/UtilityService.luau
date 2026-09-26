@@ -19,12 +19,18 @@
 -- Armour: `Armour` / `MaxArmour` on the character (the HUD's cyan segments). KillCredit
 -- takes hits out of it before health. Enemies drop plates that top it up; a duel gives both
 -- fighters the same armour every round.
+--
+-- Gear (GearConfig, bought at ZEE TACTICS): the heal, the armour and the bomb in the throw
+-- slot are whatever the player has equipped -- GearService publishes the choice as the
+-- GearHeal / GearArmor / GearBomb attributes. A duel always uses the Common of each, so a
+-- duel is still decided by the fighters, not their wallets.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local UtilityConfig = require(ReplicatedStorage.UtilityConfig)
+local GearConfig = require(ReplicatedStorage.GearConfig)
 local KillCredit = require(ServerScriptService.KillCredit)
 local SmokeField = require(ServerScriptService.SmokeField)
 
@@ -86,6 +92,21 @@ local function finite(v: Vector3): boolean
 		and math.abs(v.Z) < 1e6
 end
 
+--- The gear `player` is using in `slot` right now: the Common one in a duel, else what they
+--- have equipped.
+local function gearOf(player: Player, slot: string): GearConfig.Gear
+	if player:GetAttribute("DuelState") == "duel" then
+		return GearConfig.Resolve(slot, nil)
+	end
+	local chosen = player:GetAttribute("Gear" .. slot)
+	return GearConfig.Resolve(slot, if type(chosen) == "string" then chosen else nil)
+end
+UtilityService.GearOf = gearOf
+
+local function maxArmourOf(character: Model): number
+	return tonumber(character:GetAttribute("MaxArmour")) or Armour.max
+end
+
 local function sendKit(player: Player)
 	local kit = kits[player]
 	if kit then
@@ -116,20 +137,34 @@ end
 
 -- ------------------------------------------------------------------- kit --
 
---- A fresh kit for this life (or duel round): throwables and medkits by level, and armour --
---- a duel's even amount, or what the open world gives (nothing; plates are picked up).
+--- A fresh kit for this life (or duel round): throwables and medkits by level and gear, and
+--- armour -- a duel's even amount, or what the equipped armour starts a life with.
 function UtilityService.Refill(player: Player, keepArmour: boolean?)
-	kits[player] = UtilityConfig.KitFor(levelOf(player))
+	local kit = UtilityConfig.KitFor(levelOf(player))
+	local inDuel = player:GetAttribute("DuelState") == "duel"
+	local bomb, heal, armor = gearOf(player, "Bomb"), gearOf(player, "Heal"), gearOf(player, "Armor")
+	if bomb.id ~= GearConfig.Default.Bomb then
+		kit.Frag = bomb.stats.perLife
+	end
+	if (kit.Medkit or 0) > 0 then
+		kit.Medkit = heal.stats.perLife
+	end
+	kits[player] = kit
 	local character = player.Character
 	if character then
-		character:SetAttribute("MaxArmour", Armour.max)
-		if player:GetAttribute("DuelState") == "duel" then
+		local cap = if inDuel then Armour.max else armor.stats.max
+		character:SetAttribute("MaxArmour", cap)
+		if inDuel then
 			character:SetAttribute("Armour", Armour.duel)
-		elseif not keepArmour then
-			character:SetAttribute("Armour", 0)
+		elseif keepArmour then
+			local have = tonumber(character:GetAttribute("Armour")) or 0
+			character:SetAttribute("Armour", math.clamp(math.max(have, armor.stats.start), 0, cap))
+		else
+			character:SetAttribute("Armour", armor.stats.start)
 		end
 	end
 	sendKit(player)
+	UtilityEvent:FireClient(player, "gear", { Heal = heal.id, Armor = armor.id, Bomb = bomb.id })
 end
 
 function UtilityService.Kit(player: Player): Kit?
@@ -142,8 +177,7 @@ function UtilityService.AddArmour(player: Player, amount: number): number
 	if not character then
 		return 0
 	end
-	local now = math.clamp((tonumber(character:GetAttribute("Armour")) or 0) + amount, 0, Armour.max)
-	character:SetAttribute("MaxArmour", Armour.max)
+	local now = math.clamp((tonumber(character:GetAttribute("Armour")) or 0) + amount, 0, maxArmourOf(character))
 	character:SetAttribute("Armour", now)
 	return now
 end
@@ -179,16 +213,19 @@ local function walled(centre: Vector3, root: BasePart, params: RaycastParams): b
 	return hit ~= nil and (hit.Position - root.Position).Magnitude > 1.5
 end
 
-function UtilityService.Frag(thrower: Player?, centre: Vector3)
+--- A blast: damage that falls off with distance, mostly stopped by a wall, through KillCredit
+--- like every other hit; the thrower takes half. The frag's numbers unless told otherwise.
+function UtilityService.Frag(thrower: Player?, centre: Vector3, damageOverride: number?, radiusOverride: number?,
+	weaponName: string?)
 	local frag = UtilityConfig.Throwables.Frag
-	local radius = frag.radius
-	local damage = frag.damage or 100
+	local radius = radiusOverride or frag.radius
+	local damage = damageOverride or frag.damage or 100
 	UtilityEvent:FireAllClients("explode", centre, radius)
 	local params = worldParams()
 	for _, t in ipairs(targets()) do
 		local offset = t.root.Position - centre
 		local d = offset.Magnitude
-		local share = UtilityConfig.FragShare(d)
+		local share = if d > radius then 0 else math.max(0.1, 1 - (d / radius) ^ 1.25)
 		if share > 0 then
 			if walled(centre, t.root, params) then
 				share *= 0.2
@@ -197,7 +234,7 @@ function UtilityService.Frag(thrower: Player?, centre: Vector3)
 				share *= 0.5
 			end
 			local dir = d > 0.1 and offset.Unit or Vector3.new(0, 1, 0)
-			KillCredit.Damage(t.humanoid, damage * share, thrower, "Frag Grenade", dir)
+			KillCredit.Damage(t.humanoid, damage * share, thrower, weaponName or "Frag Grenade", dir)
 			-- A shove, for the ones it did not kill.
 			if t.humanoid.Health > 0 and d < radius * 0.7 then
 				local flat = Vector3.new(offset.X, 0, offset.Z)
@@ -255,6 +292,81 @@ function UtilityService.Smoke(_thrower: Player?, centre: Vector3)
 	UtilityEvent:FireAllClients("smoke", centre, smoke.radius, duration)
 end
 
+-- ------------------------------------------------------------------ bombs --
+
+--- A patch of fire: every half second, anyone standing in it (and not behind a wall from its
+--- middle) burns. The thrower burns at half rate.
+function UtilityService.Burn(thrower: Player?, centre: Vector3, radius: number, perSecond: number, duration: number,
+	weaponName: string?)
+	UtilityEvent:FireAllClients("fire", centre, radius, duration)
+	local tick = 0.5
+	task.spawn(function()
+		local params = worldParams()
+		local elapsed = 0
+		while elapsed < duration do
+			task.wait(tick)
+			elapsed += tick
+			for _, t in ipairs(targets()) do
+				local offset = t.root.Position - centre
+				if Vector3.new(offset.X, 0, offset.Z).Magnitude <= radius and math.abs(offset.Y) < 7
+					and not walled(centre + Vector3.new(0, 1.5, 0), t.root, params) then
+					local share = if t.player and t.player == thrower then 0.5 else 1
+					KillCredit.Damage(t.humanoid, perSecond * tick * share, thrower, weaponName or "Incendiary", nil)
+				end
+			end
+		end
+	end)
+end
+
+--- Everything near it is dragged in toward the middle for a moment, then it goes off.
+function UtilityService.Singularity(thrower: Player?, centre: Vector3, gear: GearConfig.Gear)
+	local s = gear.stats
+	UtilityEvent:FireAllClients("singularity", centre, s.pull, s.pullTime)
+	local steps = math.max(1, math.floor(s.pullTime / 0.1))
+	task.spawn(function()
+		for _ = 1, steps do
+			for _, t in ipairs(targets()) do
+				local offset = centre - t.root.Position
+				local flat = Vector3.new(offset.X, 0, offset.Z)
+				if flat.Magnitude < s.pull and flat.Magnitude > 1.5 and t.player ~= thrower then
+					t.root.AssemblyLinearVelocity = flat.Unit * math.min(38, flat.Magnitude * 4)
+						+ Vector3.new(0, 4, 0)
+				end
+			end
+			task.wait(0.1)
+		end
+		UtilityService.Frag(thrower, centre, s.damage, s.radius, gear.name)
+	end)
+end
+
+--- The bomb in the throw slot goes off at `centre`, the way its kind does.
+function UtilityService.Detonate(thrower: Player?, centre: Vector3, gear: GearConfig.Gear)
+	local s = gear.stats
+	local style = s.style
+	if style == "singularity" then
+		UtilityService.Singularity(thrower, centre, gear)
+		return
+	end
+	UtilityService.Frag(thrower, centre, s.damage, s.radius, gear.name)
+	if style == "cluster" then
+		local params = worldParams()
+		for i = 1, s.bomblets do
+			local angle = (i / s.bomblets) * math.pi * 2 + math.random() * 0.6
+			local out = Vector3.new(math.cos(angle), 0, math.sin(angle)) * s.spread * (0.7 + math.random() * 0.5)
+			local at = centre + out
+			local down = workspace:Raycast(at + Vector3.new(0, 6, 0), Vector3.new(0, -16, 0), params)
+			if down then
+				at = down.Position + Vector3.new(0, 0.6, 0)
+			end
+			task.delay(0.35 + i * 0.12, function()
+				UtilityService.Frag(thrower, at, s.bombletDamage, s.bombletRadius, gear.name)
+			end)
+		end
+	elseif style == "incendiary" then
+		UtilityService.Burn(thrower, centre - Vector3.new(0, 0.6, 0), s.burnRadius, s.burn, s.burnTime, gear.name)
+	end
+end
+
 -- ----------------------------------------------------------------- throw --
 
 --- Throw one. Returns false (and nothing happens) if the player cannot.
@@ -301,11 +413,29 @@ function UtilityService.Throw(player: Player, kind: unknown, origin: unknown, di
 	end
 
 	local params = worldParams()
+	-- The bomb slot throws whatever bomb is equipped; a sticky one stops on the first thing it
+	-- touches (the path is told every surface is a floor).
+	local bomb = if kind == "Frag" then gearOf(player, "Bomb") else nil
+	local sticky = bomb ~= nil and bomb.stats.style == "sticky"
 	local path = UtilityConfig.Trajectory(from, UtilityConfig.LaunchVelocity(dir), function(a: Vector3, delta: Vector3)
-		return workspace:Raycast(a, delta, params)
+		local hit = workspace:Raycast(a, delta, params)
+		if hit and sticky then
+			return { Position = hit.Position, Normal = Vector3.new(0, 1, 0), Instance = hit.Instance }
+		end
+		return hit
 	end)
 	local cfg = UtilityConfig.Throwables[kind]
 	local goesOffAt = kind == "Smoke" and (path.restAt + cfg.fuse) or cfg.fuse
+	if bomb then
+		local style = bomb.stats.style
+		if style == "impact" then
+			goesOffAt = path.restAt + bomb.stats.fuse
+		elseif style == "sticky" then
+			goesOffAt = path.restAt + bomb.stats.fuse
+		else
+			goesOffAt = math.max(bomb.stats.fuse, 0.2)
+		end
+	end
 	nextId += 1
 	UtilityEvent:FireAllClients("thrown", {
 		id = nextId,
@@ -314,10 +444,13 @@ function UtilityService.Throw(player: Player, kind: unknown, origin: unknown, di
 		points = path.points,
 		times = path.times,
 		fuse = goesOffAt,
+		bomb = bomb and bomb.id or nil,
 	})
 	task.delay(goesOffAt, function()
 		local at = UtilityConfig.PositionAt(path, goesOffAt)
-		if kind == "Frag" then
+		if kind == "Frag" and bomb and bomb.id ~= GearConfig.Default.Bomb then
+			UtilityService.Detonate(player, at + Vector3.new(0, 0.6, 0), bomb)
+		elseif kind == "Frag" then
 			UtilityService.Frag(player, at + Vector3.new(0, 0.6, 0))
 		elseif kind == "Flash" then
 			UtilityService.Flash(player, at + Vector3.new(0, 0.6, 0))
@@ -336,10 +469,14 @@ function UtilityService.Medkit(player: Player): boolean
 	if not character or not humanoid or not kit or (kit.Medkit or 0) <= 0 or healing[player] then
 		return false
 	end
-	if humanoid.Health >= humanoid.MaxHealth then
+	local gear = gearOf(player, "Heal")
+	local armourBonus = tonumber(gear.stats.armour) or 0
+	local armourRoom = armourBonus > 0
+		and (tonumber(character:GetAttribute("Armour")) or 0) < maxArmourOf(character)
+	if humanoid.Health >= humanoid.MaxHealth and not armourRoom then
 		return false
 	end
-	local medkit = UtilityConfig.Medkit
+	local medkit = { channel = gear.stats.channel, heal = gear.stats.heal }
 	kit.Medkit -= 1
 	sendKit(player)
 	local token = os.clock()
@@ -357,6 +494,9 @@ function UtilityService.Medkit(player: Player): boolean
 		if humanoid.Parent and humanoid.Health > 0 and player.Character == character then
 			humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + medkit.heal)
 			UtilityEvent:FireClient(player, "healed", medkit.heal)
+			if armourBonus > 0 then
+				UtilityEvent:FireClient(player, "plate", UtilityService.AddArmour(player, armourBonus))
+			end
 		end
 	end)
 	return true
@@ -427,8 +567,8 @@ function UtilityService.CollectPlates()
 				if character and root and root:IsA("BasePart")
 					and (root.Position - plate.Position).Magnitude <= Armour.pickupRadius then
 					local have = tonumber(character:GetAttribute("Armour")) or 0
-					if have < Armour.max then
-						local now2 = UtilityService.AddArmour(p, Armour.plate)
+					if have < maxArmourOf(character) then
+						local now2 = UtilityService.AddArmour(p, gearOf(p, "Armor").stats.plate)
 						UtilityEvent:FireClient(p, "plate", now2)
 						plate:Destroy()
 						break
@@ -452,6 +592,16 @@ function UtilityService.OnEnemyDeath(model: Model)
 	end
 end
 
+--- ZEE TACTICS restocks you: a fresh kit, and armour up to what your armour starts a life
+--- with (never down). Not in a duel.
+function UtilityService.Restock(player: Player): boolean
+	if player:GetAttribute("DuelState") == "duel" or not alive(player) then
+		return false
+	end
+	UtilityService.Refill(player, true)
+	return true
+end
+
 -- ---------------------------------------------------------------- wiring --
 
 UtilityAction.OnServerEvent:Connect(function(player: Player, action: unknown, a: unknown, b: unknown, c: unknown)
@@ -466,7 +616,7 @@ end)
 
 local function onCharacter(player: Player, character: Model)
 	healing[player] = nil
-	character:SetAttribute("MaxArmour", Armour.max)
+	character:SetAttribute("MaxArmour", gearOf(player, "Armor").stats.max)
 	character:SetAttribute("Armour", 0)
 	UtilityService.Refill(player)
 end

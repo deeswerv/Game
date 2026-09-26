@@ -132,6 +132,10 @@ end
 
 function Travel:_card(place: any, here: boolean, order: number)
 	local colour = typeof(place.colour) == "Color3" and place.colour or Theme.Colour.Info
+	local locked = type(place.locked) == "string" and place.locked or nil
+	if locked then
+		colour = colour:Lerp(Color3.fromRGB(90, 92, 100), 0.7)
+	end
 	local card = Instance.new("Frame")
 	card.Name = "Place_" .. tostring(place.id)
 	card.BackgroundColor3 = here and Theme.Colour.PanelRaised or Theme.Shade(colour, -0.35)
@@ -168,21 +172,52 @@ function Travel:_card(place: any, here: boolean, order: number)
 	blurb.Position = UDim2.fromOffset(14, 80)
 	blurb.Size = UDim2.new(1, -28, 0, 34)
 	blurb.TextYAlignment = Enum.TextYAlignment.Top
+	if locked then
+		-- What it is waiting for, in place of the blurb, and a padlock over the icon.
+		blurb.Text = "🔒 " .. locked
+		blurb.TextColor3 = Theme.Colour.Warning
+		icon.TextTransparency = 0.5
+		local padlock = Components.Icon(card, "🔒", 22)
+		padlock.Position = UDim2.fromOffset(34, 34)
+	end
+	if type(place.tag) == "string" then
+		-- A ribbon across the top-right corner: START HERE on Downtown for a new player.
+		local ribbon = Instance.new("Frame")
+		ribbon.Name = "Ribbon"
+		ribbon.AnchorPoint = Vector2.new(1, 0)
+		ribbon.Position = UDim2.new(1, -10, 0, -10)
+		ribbon.Size = UDim2.fromOffset(118, 26)
+		ribbon.BackgroundColor3 = Theme.Colour.Level
+		ribbon.BorderSizePixel = 0
+		ribbon.ZIndex = 4
+		ribbon.Parent = card
+		Components.Corner(ribbon, 8)
+		Components.Stroke(ribbon, Theme.Colour.Outline, 2.5)
+		Components.Gradient(ribbon)
+		local text = Components.Label(ribbon, { text = "★ " .. place.tag, face = Theme.Face.HeavyItalic, size = 16,
+			align = Enum.TextXAlignment.Center, outline = 2 })
+		text.Size = UDim2.fromScale(1, 1)
+		text.ZIndex = 5
+		local pulse = Instance.new("UIScale")
+		pulse.Parent = ribbon
+		TweenService:Create(pulse, TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+			{ Scale = 1.08 }):Play()
+	end
 
 	local go = Components.Button(card, {
 		name = "Go",
-		text = here and "YOU ARE HERE" or "GO",
-		primary = not here,
+		text = here and "YOU ARE HERE" or locked and "🔒 LOCKED" or "GO",
+		primary = not here and not locked,
 		textSize = 20,
 		size = UDim2.new(1, -28, 0, 32),
 		position = UDim2.new(0, 14, 1, -42),
 		onActivated = function()
-			if not here then
+			if not here and not locked then
 				self:Go(place)
 			end
 		end,
 	})
-	go:SetEnabled(not here)
+	go:SetEnabled(not here and not locked)
 	-- The whole card is a button too, under the GO button.
 	local hit = Instance.new("TextButton")
 	hit.Name = "Hit"
@@ -192,7 +227,7 @@ function Travel:_card(place: any, here: boolean, order: number)
 	hit.ZIndex = 0
 	hit.Parent = card
 	hit.Activated:Connect(function()
-		if not here then
+		if not here and not locked then
 			self:Go(place)
 		end
 	end)

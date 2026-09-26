@@ -24,6 +24,8 @@ DialogueConfig.Conditions = {
 	maxRep = true,
 	-- Crystals, so the Quartermaster can offer to work them without a second screen.
 	minCrystals = true,
+	-- The giver's next job waits on ZEE TOWER's boss.
+	towerLocked = true,
 }
 
 DialogueConfig.Trees = {
@@ -45,6 +47,8 @@ DialogueConfig.Trees = {
 					{ requires = { hasOffer = true, minRep = { faction = "Guard", value = 30 } },
 					  text = "Good to see you. @offer" },
 					{ requires = { hasOffer = true }, text = "@offer" },
+					{ requires = { towerLocked = true },
+					  text = "The ferries past the Crossing are shut to anyone who hasn't dealt with ZEE TOWER. The Don runs this city from the top floor. Go Downtown, work your way up, and bring him down -- then we'll talk about the Flats." },
 					{ text = "Nothing for you right now. Come back when you've grown a little." },
 				},
 				choices = {

@@ -51,10 +51,11 @@ The live game always saves.
 | **Shift** or double-tap **W** | Sprint; **Ctrl** / **C** while sprinting slides |
 | Hold **F** | Aim the selected throwable (an arc shows where it lands); let go to throw |
 | **X** | Switch throwable: Frag (from level 3), Flashbang (level 7), Smoke |
-| **Z** | Medkit: patch up 50 health over a second |
+| **Z** | Heal: the equipped heal (the Field Medkit patches 50 health over a second) |
 | **G** (hold) | Emote wheel: scroll or click the tabs for five pages of emotes, 1-8 to pick |
 
-You can also queue by standing on one of the glowing **1V1 pads** near the spawn.
+You can also queue by standing on one of the **1V1 pads** in Downtown's DUEL HALL (the lobby's
+pads at the Crossing are retired).
 
 ## Utility and armour
 
@@ -66,6 +67,20 @@ Enemies cannot see through smoke. The cyan bar over your health is armour: it so
 before your health does. Enemies drop armour plates (walk over them), and a duel gives both
 fighters 50 armour every round.
 
+**Gear (ZEE TACTICS).** The heal on Z, the armour you wear and the bomb in your throw slot are
+gear, six grades each from Common (what everyone starts with) to Mastery, bought from the clerk
+behind the counter at ZEE TACTICS in Downtown and swapped in the inventory's **GEAR** section:
+
+| | Common | Uncommon | Rare | Epic | Legendary | Mastery |
+|---|---|---|---|---|---|---|
+| **Heals** | Field Medkit (+50, 1.2s, x2) | Trauma Kit (+65) | Combat Stim (+70, 0.8s, x3) | Nano Injector (+85, 0.7s) | Phoenix Serum (+100, 0.6s) | Zee Elixir (+100 and +25 armour, x4) |
+| **Armor** | Padded Jacket (starts 0 / 75) | Kevlar Vest (25 / 75) | Plate Carrier (50 / 100) | Riot Rig (50 / 125) | Juggernaut Plates (75 / 150) | Titan Weave (100 / 150, bigger plates) |
+| **Bombs** | Frag Grenade | Impact Grenade (goes off on landing) | Sticky Bomb (sticks to what it hits) | Cluster Bomb (four bomblets) | Incendiary (six seconds of fire) | Singularity Charge (pulls them in) |
+
+Prices run from about $2,000 (level 3) to about $50,000 and 30 crystals (level 22+), with 8-15%
+off for Friendly/Honoured Street Cred. Equipping at the counter restocks your kit (every 20
+seconds); duels always use the Common of each, so a duel stays even. `tools/uitest/gear.luau`.
+
 ## Streaks and bounties
 
 Out in the world, kills without dying build a streak: **KILLING SPREE** at 3, and at 5 you
@@ -74,7 +89,20 @@ and the price climbs with every kill after (up to $4,000). Whoever takes a wante
 collects the bounty and XP, and the server hears about it. Duels and practice dummies do not
 count.
 
+**MOST WANTED.** The **BOUNTIES** board on the side of the 24/7 in Downtown (next to CONTRACTS)
+names a crime boss every few minutes -- *"THE VICE" Vinnie Russo*, *"BIG SAL" Moretti* and
+friends -- a Capo with two of their crew, holed up somewhere in the district. The board shows
+the poster, what they did, where they were last seen, their health and how long before they
+skip town, plus every WANTED player and their price; a marker with the distance floats over the
+target. The one who brings them in gets $1,500, XP, crystals and Street Cred; anyone who helped
+gets a cut. `tools/uitest/wanted.luau`.
+
 ## Downtown
+
+**Downtown is the first stop.** You wash up at the Crossing; the Quartermaster's first job is
+*Welcome to Downtown*, and the Travel menu marks it START HERE. Everything past it -- the Flats,
+Watchpoint, the Reach, and the Quartermaster's work out there -- stays locked until you beat the
+Don at the top of **ZEE TOWER**.
 
 Open **Travel** (T) and pick **Downtown**, a cartoon low-poly city in the style of the reference
 street, with no neon anywhere. Buildings are saturated orange, yellow, green, blue, coral,
@@ -87,8 +115,13 @@ colour while you are there. The places:
 
 - an avenue from the welcome wall to **ZEE TOWER**, and **ZEE PLAZA** with its three-tier
   fountain, planted corners and finger post;
-- **ZEE GUNS** and the **ARMORY** (walk up and press E to shop or customise), **ZEE GAS** and
-  the **24/7** with the **CONTRACTS** board;
+- **ZEE GUNS** and **ZEE TACTICS**, shops you walk into: a wood-floored gun shop with rifles
+  racked on the wall, pistol cases and a workbench (press E for attachments and builds), and
+  a gear shop with heals on the shelves, vests on mannequins and bombs on a pegboard. A clerk
+  stands behind each counter -- press E at the counter to buy;
+- **ZEE GAS** and the **24/7** with the **CONTRACTS** and **BOUNTIES** boards on its wall;
+- **THE FIXER's corner** on the paving south of the courts: a purple JOBS canopy over a card
+  table;
 - the **DUEL HALL**, a sports hall with its own 1v1 pads, its name painted down its sides;
 - **RAINBOW PARK**: a curving path, flowers and long grass, a waterfall pouring off a rock
   cliff into a pond with a rainbow over it, and the star-shaped **ZEE BEATS** stage with a
@@ -115,17 +148,33 @@ open patch and its crew comes out round the edge; clear them and everyone who la
 paid, with half as much again for the MVP. Then that patch goes quiet for three minutes (the
 other three stay open, and wars on different patches run side by side). A crew wins if the
 clock runs out or everybody walks away from it for 45 seconds. Downtown remembers: every crew
-driven out raises the **THREAT** (I to V) -- the next crew is bigger (5 up to 10: more Bandits and
-Soldiers, a second Brute at V), the clock longer and the payout 25% higher per level; a crew
+driven out raises the **THREAT** (I to V) -- the next crew is bigger (5 up to 10: more Gangsters
+and Shooters, a second Enforcer at V), the clock longer and the payout 25% higher per level; a crew
 that holds its patch lowers it. The HUD chip follows the nearest war; wars near you get a
 banner, ones across town a notice.
 
-**The Downtown chapter** (RPG). **The Fixer** stands in ZEE PLAZA by the finger post (press E).
-They run their own job chain, separate from the Quartermaster's (one job at a time, from
-either): *Rooftop Run* (get onto the apartment roof), *The Car Park*, *Alley Cats* (six crew in
-the alley), *Park Life*, *Full Court Press*, *Turn Up the Heat* (two wars at threat III+) and
-*The Kingpin* -- then a repeatable paid job, *Street Sweep* (win two wars). Each pays cash, XP,
-crystals and **Street Cred**.
+**The Downtown chapter** (RPG). **The Fixer** stands under the purple canopy south of ZEE COURTS
+(press E). They run their own job chain, separate from the Quartermaster's (one job at a time,
+from either): *Rooftop Run* (get onto the apartment roof), *The Car Park*, *Alley Cats* (six crew
+in the alley), *Park Life*, *Full Court Press*, *The Top Floor* (beat the Don), *Turn Up the Heat*
+(two wars at threat III+) and *The Kingpin* -- then a repeatable paid job, *Street Sweep* (win
+two wars). Each pays cash, XP, crystals and **Street Cred**.
+
+**The crews** are criminals now: Thugs with knives, Gangsters with SMGs, Shooters with rifles
+and grenades, Enforcers with shotguns, and Capos running them. They call targets to each other,
+split into pushers, flankers and overwatch -- and the moment you reload in the open or drop
+below a third of your health, everyone with any nerve rushes you. A crew lives in THE ALLEY.
+
+**ZEE TOWER.** Walk into the tower's lobby (level 8+) and take the elevator to **THE PENTHOUSE**
+-- the real roof of the tower, 150 studs over the city: black marble and gold, an infinity pool
+along the edge, a glass-roofed lounge with a grand piano, a bar and a chandelier, the Don's desk
+in front of a gold Z and the vault, a helipad with his helicopter, and a crown and spire over
+it all. The first one up is welcomed, then **THE DON** steps out with two bodyguards (his health
+scales with the room). At 70% the family comes up the elevator and money bombs land where you
+stand (red ring, then the blast); at 40% his helicopter lifts off and circles the roof, strafing
+a line across it (a red strip first). Beat him and everyone up there is paid ($8,000, 4,000 XP,
+25 crystals, 25 Street Cred the first time; less after) and **the world opens**. An empty roof
+resets the fight; beaten, the Don is back after a minute. `tools/uitest/tower.luau`.
 
 **Street Cred** is your standing with Downtown: +8 for every war you help win (+4 more as MVP),
 the Fixer's jobs, +20 for the Kingpin, -3 when a crew holds a patch you fought for. A known name
@@ -151,9 +200,10 @@ prompt in `docs/prompts/downtown-expansion.md`.
   server, from headshots and wallbangs to duel wins, long-range kills, Warlords and supply drops.
   Each pays cash, XP and crystals the moment it is done, and finishing all three pays a bonus.
   Progress pops up on the left; practice dummies do not count.
-- **Supply drops**: every four minutes a crate parachutes into one of the open zones under a
-  pillar of light, with a marker and distance on your screen. First to hold E on it keeps the
-  cash, crystals and XP inside; about one in eight is a golden Elite drop worth double.
+- **Supply drops**: every four minutes a crate parachutes down 25-70 studs from a player out in
+  the world (whoever has gone longest without one), under a pillar of light, with a marker and
+  distance on your screen -- the named zones are only the fallback. First to hold E on it keeps
+  the cash, crystals and XP inside; about one in eight is a golden Elite drop worth more.
 
 ## Title screen
 
@@ -164,9 +214,10 @@ and what is new. **PLAY** (or Space / Enter) drops you in; the **1V1 DUEL**, **D
 
 ## Achievements
 
-27 long-term goals in four groups -- Combat, Duels, World, Progress -- from First Blood to
+30 long-term goals in four groups -- Combat, Duels, World, Progress -- from First Blood to
 Legend (1,000 takedowns), Champion (50 duel wins), Explorer (all six places), Warlord Slayer,
-Street Defender (turf wars), Kingpin Slayer, Street Legend (Honoured Street Cred) and
+Street Defender (turf wars), Kingpin Slayer, Street Legend (Honoured Street Cred), Public
+Enemy No. 1 (five MOST WANTED names), The Top Floor and Penthouse Regular (the Don) and
 Completionist. They count themselves from what the server
 already decides; an unlock pops a banner and a badge on the Awards tile, and the reward
 (cash, XP, crystals, often a **title**) is claimed in the panel (H), where you also choose

@@ -324,6 +324,258 @@ NPCConfig.Archetypes = {
 		},
 	},
 
+	-- ---------------------------------------------------------- downtown --
+	-- Downtown's criminals: street crews, not raiders. They fight the city way -- rushers who
+	-- close while you reload, SMG kids who push in pairs, riflemen who hold corners and throw
+	-- grenades, and the heavies who walk in behind a shotgun. `Gang` marks them as crew for
+	-- quests (a kill counts toward the patch they were standing on).
+
+	-- Hoodie, beanie, bandana. A knife most of the time, a cheap pistol otherwise.
+	Thug = {
+		DisplayName = "Thug",
+		Gang = true,
+		Voice = "Bandit",
+		Strafe = true,
+		RespawnTime = 70,
+		MaxHealth = 95,
+		WalkSpeed = 16,
+		Damage = 9,
+		AttackRange = 6,
+		AttackCooldown = 0.85,
+		AggroRange = 60,
+		CoinReward = 20,
+		XPReward = 16,
+		Colour = Color3.fromRGB(70, 72, 80),
+		NameColour = Color3.fromRGB(255, 150, 120),
+		Weapon = "Fang",
+		DropChance = 0.25,
+		Behaviour = "Aggressive",
+		Accuracy = 0.4,
+		ReactionTime = 0.5,
+		AimTime = 0.28,
+		FieldOfView = 150,
+		Aggression = 0.9,
+		RetreatHealth = 0,
+		MeleeWindup = 0.26,
+		MeleeRecover = 0.32,
+		Medkits = 1,
+		Loadout = {
+			{ weight = 55 },
+			{ weight = 45, Weapon = "Vantage", Ranged = true, AttackRange = 45,
+			  PreferredRange = 16, Damage = 6, Burst = { 1, 2 }, BurstPause = { 0.45, 0.8 },
+			  DropChance = 0.2 },
+		},
+		Skin = Color3.fromRGB(170, 124, 92),
+		Shirt = Color3.fromRGB(66, 68, 76),
+		Pants = Color3.fromRGB(52, 70, 110),
+		Sleeves = true,
+		Accents = {
+			{ part = "Head", size = Vector3.new(1.3, 0.5, 1.3), offset = Vector3.new(0, 0.46, 0),
+			  colour = Color3.fromRGB(34, 34, 38) },                       -- beanie
+			{ part = "Head", size = Vector3.new(1.26, 0.42, 0.3), offset = Vector3.new(0, -0.16, -0.52),
+			  colour = Color3.fromRGB(196, 40, 44) },                      -- red bandana
+			{ part = "UpperTorso", size = Vector3.new(1.6, 0.5, 1.3), offset = Vector3.new(0, 0.62, 0.3),
+			  colour = Color3.fromRGB(56, 58, 64) },                       -- hood down
+		},
+	},
+
+	-- Red tracksuit, cap on backwards, a gold chain and an SMG. Pushes in pairs.
+	Gangster = {
+		DisplayName = "Gangster",
+		Gang = true,
+		Voice = "Bandit",
+		Strafe = true,
+		RespawnTime = 80,
+		MaxHealth = 115,
+		WalkSpeed = 15,
+		Damage = 5,
+		Ranged = true,
+		AttackRange = 60,
+		PreferredRange = 18,
+		AggroRange = 70,
+		DeaggroRange = 110,
+		CoinReward = 24,
+		XPReward = 20,
+		Colour = Color3.fromRGB(180, 40, 44),
+		NameColour = Color3.fromRGB(255, 120, 120),
+		Weapon = "Hornet",
+		Secondary = "Vantage",
+		DropChance = 0.15,
+		Behaviour = "Aggressive",
+		Accuracy = 0.45,
+		ReactionTime = 0.42,
+		AimTime = 0.2,
+		Burst = { 4, 7 },
+		BurstPause = { 0.35, 0.65 },
+		Aggression = 0.8,
+		RetreatHealth = 0.2,
+		UsesCover = true,
+		Medkits = 1,
+		Skin = Color3.fromRGB(150, 104, 78),
+		Shirt = Color3.fromRGB(190, 40, 44),
+		Pants = Color3.fromRGB(34, 34, 40),
+		Sleeves = true,
+		Accents = {
+			{ part = "Head", size = Vector3.new(1.3, 0.34, 1.3), offset = Vector3.new(0, 0.5, 0.06),
+			  colour = Color3.fromRGB(28, 28, 32) },                       -- cap
+			{ part = "Head", size = Vector3.new(0.9, 0.1, 0.6), offset = Vector3.new(0, 0.4, 0.82),
+			  colour = Color3.fromRGB(28, 28, 32) },                       -- peak, backwards
+			{ part = "UpperTorso", size = Vector3.new(1.3, 0.14, 0.12), offset = Vector3.new(0, 0.5, -0.58),
+			  colour = Color3.fromRGB(250, 204, 60) },                     -- gold chain
+			{ part = "UpperTorso", size = Vector3.new(0.12, 1.3, 0.12), offset = Vector3.new(0.35, 0, -0.57),
+			  colour = Color3.fromRGB(240, 240, 240) },                    -- tracksuit stripe
+		},
+	},
+
+	-- Balaclava and a black jacket over a vest. A rifle, cover, grenades, patience.
+	Shooter = {
+		DisplayName = "Shooter",
+		Gang = true,
+		Voice = "Soldier",
+		Strafe = true,
+		RespawnTime = 90,
+		MaxHealth = 140,
+		WalkSpeed = 14,
+		Damage = 6,
+		Ranged = true,
+		AttackRange = 80,
+		PreferredRange = 32,
+		AggroRange = 85,
+		DeaggroRange = 125,
+		CoinReward = 28,
+		XPReward = 26,
+		Colour = Color3.fromRGB(40, 42, 48),
+		NameColour = Color3.fromRGB(226, 214, 160),
+		Weapon = "Redwood",
+		Secondary = "Vantage",
+		DropChance = 0.1,
+		Behaviour = "Tactical",
+		Accuracy = 0.58,
+		HeadAimChance = 0.05,
+		ReactionTime = 0.38,
+		AimTime = 0.2,
+		UsesCover = true,
+		Burst = { 3, 5 },
+		BurstPause = { 0.4, 0.75 },
+		Aggression = 0.55,
+		RetreatHealth = 0.3,
+		Grenades = 1,
+		Medkits = 1,
+		Armor = 1,
+		Skin = Color3.fromRGB(186, 150, 118),
+		Shirt = Color3.fromRGB(36, 38, 44),
+		Pants = Color3.fromRGB(46, 48, 56),
+		Sleeves = true,
+		Accents = {
+			{ part = "Head", size = Vector3.new(1.3, 1.2, 1.3), offset = Vector3.new(0, 0.02, 0),
+			  colour = Color3.fromRGB(24, 24, 28) },                       -- balaclava
+			{ part = "Head", size = Vector3.new(0.9, 0.22, 0.1), offset = Vector3.new(0, 0.12, -0.64),
+			  colour = Color3.fromRGB(186, 150, 118) },                    -- eye slit
+			{ part = "UpperTorso", size = Vector3.new(1.96, 1.2, 1.24), offset = Vector3.new(0, -0.05, 0),
+			  colour = Color3.fromRGB(54, 58, 50) },                       -- vest
+		},
+	},
+
+	-- Big, bald, shades and a leather jacket, and a shotgun. Walks through your cover.
+	Enforcer = {
+		DisplayName = "Enforcer",
+		Gang = true,
+		Voice = "Brute",
+		RespawnTime = 110,
+		MaxHealth = 280,
+		WalkSpeed = 11,
+		Damage = 7,
+		Ranged = true,
+		AttackRange = 34,
+		PreferredRange = 10,
+		AggroRange = 60,
+		DeaggroRange = 110,
+		CoinReward = 55,
+		XPReward = 45,
+		Colour = Color3.fromRGB(96, 60, 40),
+		NameColour = Color3.fromRGB(255, 90, 90),
+		Weapon = "Scattergun",
+		DropChance = 0.2,
+		Scale = 1.3,
+		Behaviour = "Brawler",
+		Accuracy = 0.55,
+		ReactionTime = 0.5,
+		AimTime = 0.3,
+		Burst = { 1, 1 },
+		BurstPause = { 0.8, 1.1 },
+		Aggression = 1,
+		RetreatHealth = 0,
+		Armor = 3,
+		HitReactScale = 0.45,
+		Skin = Color3.fromRGB(140, 100, 76),
+		Shirt = Color3.fromRGB(92, 58, 38),
+		Pants = Color3.fromRGB(38, 36, 40),
+		Sleeves = true,
+		Accents = {
+			{ part = "Head", size = Vector3.new(1.1, 0.22, 0.12), offset = Vector3.new(0, 0.1, -0.62),
+			  colour = Color3.fromRGB(20, 20, 24) },                       -- shades
+			{ part = "UpperTorso", size = Vector3.new(1.4, 0.16, 0.14), offset = Vector3.new(0, 0.5, -0.6),
+			  colour = Color3.fromRGB(210, 210, 214) },                    -- silver chain
+			{ part = "UpperTorso", size = Vector3.new(2.1, 0.5, 1.3), offset = Vector3.new(0, 0.66, 0),
+			  colour = Color3.fromRGB(70, 44, 30) },                       -- jacket collar
+		},
+	},
+
+	-- A named Most Wanted target (BountyService): a purple suit, shades, and the sense to use
+	-- everything the others do at once.
+	Capo = {
+		DisplayName = "Capo",
+		Gang = true,
+		NeverElite = true,
+		Voice = "Soldier",
+		Strafe = true,
+		RespawnTime = 600,
+		MaxHealth = 420,
+		WalkSpeed = 15,
+		Damage = 7,
+		Ranged = true,
+		AttackRange = 85,
+		PreferredRange = 26,
+		AggroRange = 95,
+		DeaggroRange = 150,
+		LeashRange = 110,
+		CoinReward = 120,
+		XPReward = 120,
+		Colour = Color3.fromRGB(110, 60, 160),
+		NameColour = Color3.fromRGB(255, 208, 72),
+		Weapon = "Hornet",
+		Secondary = "Sentinel",
+		DropChance = 0.6,
+		Scale = 1.12,
+		Behaviour = "Tactical",
+		Accuracy = 0.66,
+		HeadAimChance = 0.08,
+		ReactionTime = 0.3,
+		AimTime = 0.16,
+		FieldOfView = 170,
+		UsesCover = true,
+		Burst = { 5, 8 },
+		BurstPause = { 0.3, 0.55 },
+		Aggression = 0.65,
+		RetreatHealth = 0.25,
+		Grenades = 2,
+		GrenadeCooldown = 10,
+		Medkits = 2,
+		Armor = 2,
+		Skin = Color3.fromRGB(160, 116, 88),
+		Shirt = Color3.fromRGB(110, 60, 160),
+		Pants = Color3.fromRGB(80, 44, 118),
+		Sleeves = true,
+		Accents = {
+			{ part = "Head", size = Vector3.new(1.1, 0.22, 0.12), offset = Vector3.new(0, 0.1, -0.62),
+			  colour = Color3.fromRGB(20, 20, 24) },                       -- shades
+			{ part = "UpperTorso", size = Vector3.new(0.7, 0.9, 0.12), offset = Vector3.new(0, 0.1, -0.56),
+			  colour = Color3.fromRGB(240, 236, 226) },                    -- white shirt
+			{ part = "UpperTorso", size = Vector3.new(1.4, 0.16, 0.14), offset = Vector3.new(0, 0.55, -0.6),
+			  colour = Color3.fromRGB(250, 204, 60) },                     -- gold chain
+		},
+	},
+
 	-- The Downtown boss (TurfWarService): steps out when the crews have been driven off at
 	-- threat V. A gunfighter, not a brawler -- it keeps its distance, uses cover, throws
 	-- grenades and patches itself up -- in a white suit and a hat, so nobody mistakes it.
@@ -381,6 +633,71 @@ NPCConfig.Archetypes = {
 			  colour = Color3.fromRGB(214, 44, 48) },                      -- shirt and tie
 			{ part = "UpperTorso", size = Vector3.new(1.4, 0.16, 0.14), offset = Vector3.new(0, 0.55, -0.58),
 			  colour = Color3.fromRGB(250, 204, 60) },                     -- gold chain
+		},
+	},
+
+	-- THE DON: who the Kingpin answered to. Only ever up at the top of ZEE TOWER (TowerService
+	-- spawns him, scales his health to the room, and calls the family in by phase). White
+	-- suit, gold everything, a fedora, and a carbine he is not shy with.
+	TheDon = {
+		DisplayName = "THE DON",
+		Gang = true,
+		NeverElite = true,
+		MaxHealth = 6500,
+		WalkSpeed = 13,
+		Damage = 11,
+		Ranged = true,
+		AttackRange = 110,
+		PreferredRange = 30,
+		AggroRange = 140,
+		DeaggroRange = 220,
+		LeashRange = 60,
+		CoinReward = 0,
+		XPReward = 0,
+		RespawnTime = 99999,
+		Grenades = 4,
+		GrenadeCooldown = 8,
+		Medkits = 0,
+		Strafe = true,
+		Colour = Color3.fromRGB(246, 242, 232),
+		NameColour = Color3.fromRGB(255, 208, 72),
+		Weapon = "Carbine",
+		Secondary = "Scattergun",
+		DropChance = 0,
+		Scale = 1.6,
+		Behaviour = "Tactical",
+		Accuracy = 0.7,
+		HeadAimChance = 0.1,
+		ReactionTime = 0.24,
+		AimTime = 0.14,
+		FieldOfView = 200,
+		UsesCover = true,
+		Burst = { 5, 9 },
+		BurstPause = { 0.3, 0.5 },
+		Aggression = 0.7,
+		RetreatHealth = 0,
+		ReloadThreshold = 0.35,
+		Armor = 3,
+		Voice = "Brute",
+		Skin = Color3.fromRGB(196, 150, 116),
+		Shirt = Color3.fromRGB(248, 246, 240),
+		Pants = Color3.fromRGB(240, 236, 228),
+		Sleeves = true,
+		Accents = {
+			{ part = "Head", size = Vector3.new(2, 0.14, 2), offset = Vector3.new(0, 0.42, 0),
+			  colour = Color3.fromRGB(246, 242, 232) },                    -- fedora brim, white
+			{ part = "Head", size = Vector3.new(1.24, 0.66, 1.24), offset = Vector3.new(0, 0.78, 0),
+			  colour = Color3.fromRGB(246, 242, 232) },                    -- fedora crown
+			{ part = "Head", size = Vector3.new(1.26, 0.18, 1.26), offset = Vector3.new(0, 0.55, 0),
+			  colour = Color3.fromRGB(28, 26, 30) },                       -- black band
+			{ part = "UpperTorso", size = Vector3.new(0.7, 1, 0.12), offset = Vector3.new(0, 0.05, -0.56),
+			  colour = Color3.fromRGB(28, 26, 30) },                       -- black shirt
+			{ part = "UpperTorso", size = Vector3.new(0.26, 0.8, 0.14), offset = Vector3.new(0, 0.05, -0.6),
+			  colour = Color3.fromRGB(250, 204, 60) },                     -- gold tie
+			{ part = "UpperTorso", size = Vector3.new(1.5, 0.18, 0.16), offset = Vector3.new(0, 0.58, -0.6),
+			  colour = Color3.fromRGB(250, 204, 60) },                     -- gold chain
+			{ part = "UpperTorso", size = Vector3.new(0.34, 0.26, 0.12), offset = Vector3.new(-0.5, 0.4, -0.58),
+			  colour = Color3.fromRGB(214, 44, 48) },                      -- a red rose on the lapel
 		},
 	},
 
@@ -507,6 +824,16 @@ NPCConfig.Spawns = {
 	{ archetype = "Guard",    position = Vector3.new(-540, 1, 88) },
 }
 
+-- Downtown's own residents, kept apart from the Flats posts above (which the Flats map is
+-- laid out around, one post per spawn): a crew that lives in THE ALLEY behind the gas
+-- station, down by the dumpsters, well away from the plaza. They count as the Alley's crew
+-- for quests.
+NPCConfig.DistrictSpawns = {
+	{ archetype = "Thug",     position = Vector3.new(-273, 1001, 1420), attributes = { TurfZone = "Alley" } },
+	{ archetype = "Thug",     position = Vector3.new(-261, 1001, 1412), attributes = { TurfZone = "Alley" } },
+	{ archetype = "Gangster", position = Vector3.new(-251, 1001, 1419), attributes = { TurfZone = "Alley" } },
+}
+
 -- How the population is kept in bounds. A respawn that finds the world full, or a player
 -- standing on the spot, waits and tries again rather than piling in.
 NPCConfig.SpawnRules = {
@@ -528,10 +855,10 @@ NPCConfig.SpawnRules = {
 -- there for elites and named enemies to sit in later without moving the zone.
 NPCConfig.Zones = {
 	{ id = "Harbour", name = "The Harbour", minX = -380, maxX = -46,  minZ = -87, maxZ = 321, level = { 1, 2 } },
-	{ id = "Flats",   name = "The Flats",   minX = -753, maxX = -381, minZ = -87, maxZ = 321, level = { 3, 5 } },
-	{ id = "Reach",   name = "The Reach",   minX = -56,  maxX = 436,  minZ = 44,  maxZ = 560, level = { 6, 9 } },
+	{ id = "Flats",   name = "The Flats",   minX = -753, maxX = -381, minZ = -87, maxZ = 321, level = { 6, 9 } },
+	{ id = "Reach",   name = "The Reach",   minX = -56,  maxX = 436,  minZ = 44,  maxZ = 560, level = { 9, 12 } },
 	-- The Downtown district in the sky (DistrictService); only turf-war crews ever stand here.
-	{ id = "Downtown", name = "Downtown",   minX = -355, maxX = 45,   minZ = 1300, maxZ = 1700, level = { 4, 7 } },
+	{ id = "Downtown", name = "Downtown",   minX = -355, maxX = 45,   minZ = 1300, maxZ = 1700, level = { 1, 6 } },
 }
 
 -- Anywhere not inside a zone is treated as starter ground rather than erroring.

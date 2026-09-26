@@ -39,6 +39,7 @@ World.serverRemotes({
 		ProfileRequest = "RemoteFunction", DailyAction = "RemoteFunction", BuildAction = "RemoteFunction",
 		StatAction = "RemoteFunction", SettingsAction = "RemoteFunction",
 		ContractAction = "RemoteFunction", ContractUpdate = "RemoteEvent", SupplyEvent = "RemoteEvent", WorldReward = "RemoteEvent", BountyEvent = "RemoteEvent", TurfEvent = "RemoteEvent", TravelAction = "RemoteFunction", AchievementAction = "RemoteFunction", AchievementEvent = "RemoteEvent",
+		GearAction = "RemoteFunction", BountyBoard = "RemoteFunction", TowerEvent = "RemoteEvent",
 		KillFeed = "RemoteEvent", KillFeedAll = "RemoteEvent", DeathReport = "RemoteEvent",
 		GunEffect = "RemoteEvent", NPCEffect = "RemoteEvent", GunAction = "RemoteEvent",
 		MeleeAction = "RemoteEvent", MeleeEffect = "RemoteEvent", AimUpdate = "RemoteEvent",
@@ -235,6 +236,42 @@ World.serverFire("Remotes", "TurfEvent", "reward", { id = "CarPark", zone = "THE
 	coins = 7500, xp = 4500, crystals = 18, mvp = true, threat = 5, cred = 20, band = "Honoured", bonus = 0 })
 shot("33_kingpin", 0.5)
 World.advance(4)
+
+-- 34..38: the new stops. The counter at ZEE TACTICS and the MOST WANTED board open from their
+-- prompts in the world; the GEAR locker is a section of the inventory; ZEE TOWER's banners.
+local function openPanel(name: string)
+	local prompt = R.new("ProximityPrompt")
+	prompt:SetAttribute("OpenPanel", name)
+	R.fire(World.service("ProximityPromptService"), "PromptTriggered", prompt, World.player)
+	World.advance(0.8)
+end
+openPanel("Tactics")
+shot("34_tactics")
+local bombsTab = World.find(World.playerGui, "Bomb", "TextButton")
+if bombsTab then
+	World.click(bombsTab)
+	World.advance(0.4)
+end
+shot("35_tactics_bombs")
+openPanel("Tactics")
+openPanel("Bounties")
+shot("36_most_wanted")
+openPanel("Bounties")
+toggle(Enum.KeyCode.B)
+local gearTab = World.find(World.playerGui, "Gear", "TextButton")
+if gearTab then
+	World.click(gearTab)
+	World.advance(0.5)
+end
+shot("37_gear_locker")
+toggle(Enum.KeyCode.B)
+World.serverFire("Remotes", "TowerEvent", "phase", { phase = 3, name = "LAST STAND",
+	line = "\"Get the chopper up. Nobody walks off my roof.\"" })
+shot("38_tower_phase", 0.5)
+World.advance(4)
+World.serverFire("Remotes", "TowerEvent", "cleared", { first = true, coins = 8000, xp = 6000, crystals = 25, cred = 25 })
+shot("39_tower_cleared", 0.5)
+World.advance(9)
 
 -- Contract news and a supply drop on the way.
 World.serverFire("Remotes", "ContractUpdate", "progress", {

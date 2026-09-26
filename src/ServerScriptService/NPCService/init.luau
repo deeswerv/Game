@@ -259,7 +259,7 @@ end
 
 -- ------------------------------------------------------------------ spawning --
 
-local function scheduleRespawn(archetype: string, home: Vector3, delay: number)
+local function scheduleRespawn(archetype: string, home: Vector3, delay: number, attributes: { [string]: any }?)
 	task.delay(delay, function()
 		local rules = NPCConfig.SpawnRules
 		-- Never gives up: a post someone is camping stays empty while they camp it, and
@@ -267,7 +267,7 @@ local function scheduleRespawn(archetype: string, home: Vector3, delay: number)
 		local tries = 0
 		while true do
 			if liveCount() < rules.MaxAlive and not Spawner.PlayerTooClose(home, rules.MinPlayerDistance) then
-				NPCService.Spawn(archetype, home)
+				NPCService.Spawn(archetype, home, { attributes = attributes })
 				return
 			end
 			tries += 1
@@ -279,7 +279,8 @@ end
 --- Bring an NPC into the world. `options.respawn = false` for anything that must not come
 --- back on its own (boss adds, admin spawns, bosses that manage their own return), and
 --- `options.ignoreCap = true` for spawns that must happen even at the population cap.
-function NPCService.Spawn(archetype: string, position: Vector3, options: { respawn: boolean?, ignoreCap: boolean? }?): Model?
+function NPCService.Spawn(archetype: string, position: Vector3,
+	options: { respawn: boolean?, ignoreCap: boolean?, attributes: { [string]: any }? }?): Model?
 	local opts = options or {}
 	local base = NPCConfig.Get(archetype)
 	if not base then
@@ -339,6 +340,14 @@ function NPCService.Spawn(archetype: string, position: Vector3, options: { respa
 	model:SetAttribute("Behaviour", cfg.Behaviour)
 	model:SetAttribute("NameColour", cfg.NameColour)
 	model:SetAttribute("State", "Idle")
+	-- Downtown's criminals are crew wherever they stand (quests count them).
+	if cfg.Gang then
+		model:SetAttribute("Gang", true)
+	end
+	-- Anything the spawner asked to have stamped on it (kept across respawns).
+	for key, value in pairs(opts.attributes or {}) do
+		model:SetAttribute(key, value)
+	end
 
 	local ground = spot :: Vector3
 	model:PivotTo(CFrame.new(ground + Vector3.new(0, 3.05 * scale, 0)) * CFrame.Angles(0, math.random() * math.pi * 2, 0))
@@ -368,6 +377,7 @@ function NPCService.Spawn(archetype: string, position: Vector3, options: { respa
 		scale = scale,
 		alive = true,
 		respawn = opts.respawn ~= false,
+		attributes = opts.attributes,
 		memory = {},
 		threat = {},
 		state = "Spawning",
@@ -562,7 +572,7 @@ function NPCService.OnDeath(model: Model)
 
 	-- Respawn at the post it was assigned to, when nobody is standing on it.
 	if agent.respawn then
-		scheduleRespawn(agent.archetype, agent.home, cfg.RespawnTime)
+		scheduleRespawn(agent.archetype, agent.home, cfg.RespawnTime, agent.attributes)
 	end
 end
 
@@ -697,7 +707,10 @@ function NPCService.SpawnAll()
 	folder:SetAttribute("Populated", true)
 
 	for _, spec in ipairs(NPCConfig.Spawns) do
-		NPCService.Spawn(spec.archetype, spec.position)
+		NPCService.Spawn(spec.archetype, spec.position, { attributes = spec.attributes })
+	end
+	for _, spec in ipairs(NPCConfig.DistrictSpawns or {}) do
+		NPCService.Spawn(spec.archetype, spec.position, { attributes = spec.attributes })
 	end
 
 	-- Posts placed in Studio: any part tagged NPCSpawn with an Archetype attribute.

@@ -23,6 +23,10 @@ local MatchService = require(ServerScriptService.MatchService)
 
 local DuelPads = {}
 
+-- Pads at the Crossing's spawn. Off: the Crossing is for heading out, and the duel pads are
+-- in the DUEL HALL downtown.
+DuelPads.LOBBY_PADS = false
+
 local PAD_RADIUS = 4               -- how close to a pad's centre counts as standing on it
 local PAD_SIZE = 9.4               -- rim diameter
 local PAD_GAP = 16                 -- centre to centre
@@ -338,14 +342,17 @@ end
 task.spawn(function()
 	-- Let the rest of the world finish building first, so the clearance check sees it.
 	task.wait(2)
-	local origin = spawnPoint()
-	local cf = findSite(origin)
-	if cf then
-		DuelPads.AddPair(workspace, cf)
-		print(("[DuelPads] placed at %s"):format(tostring(cf.Position)))
-	else
-		-- Other pads (the duel hall downtown) still work, so the watch loop runs regardless.
-		warn("[DuelPads] no clear, level spot near the spawn; lobby pads not placed")
+	-- The Crossing no longer has its own pair: the DUEL button (and J) queue from anywhere, and
+	-- the pads live in Downtown's DUEL HALL. Kept switchable in case they are wanted back.
+	if DuelPads.LOBBY_PADS then
+		local origin = spawnPoint()
+		local cf = findSite(origin)
+		if cf then
+			DuelPads.AddPair(workspace, cf)
+			print(("[DuelPads] placed at %s"):format(tostring(cf.Position)))
+		else
+			warn("[DuelPads] no clear, level spot near the spawn; lobby pads not placed")
+		end
 	end
 
 	while true do

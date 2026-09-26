@@ -56,13 +56,14 @@ TurfWarService.ABANDON_AFTER = 45
 -- How far from the patch still counts as "near" for that.
 TurfWarService.LEASH = 70
 TurfWarService.CHECK_EVERY = 0.5
-TurfWarService.CREW = { "Grunt", "Grunt", "Grunt", "Soldier", "Brute" }
+-- Downtown's own criminals (NPCConfig): thugs up front, a shooter behind, an enforcer leading.
+TurfWarService.CREW = { "Thug", "Thug", "Thug", "Shooter", "Enforcer" }
 -- Who joins the crew at each threat level, on top of everyone from the levels below.
 TurfWarService.REINFORCEMENTS = {
-	[2] = { "Grunt" },
-	[3] = { "Soldier" },
-	[4] = { "Grunt", "Soldier" },
-	[5] = { "Brute" },
+	[2] = { "Gangster" },
+	[3] = { "Shooter" },
+	[4] = { "Gangster", "Shooter" },
+	[5] = { "Enforcer" },
 }
 TurfWarService.MAX_THREAT = 5
 -- Base payout at threat I; each level above adds REWARD_PER_THREAT of it.
@@ -81,8 +82,8 @@ TurfWarService.KINGPIN_TIME = 300
 TurfWarService.KINGPIN_COOLDOWN = 600
 TurfWarService.KINGPIN_REWARD = { coins = 5000, xp = 3000, crystals = 12 }
 TurfWarService.KINGPIN_PHASES = {
-	{ at = 0.66, adds = { "Soldier", "Grunt", "Grunt" } },
-	{ at = 0.33, adds = { "Soldier", "Soldier", "Brute" } },
+	{ at = 0.66, adds = { "Shooter", "Thug", "Thug" } },
+	{ at = 0.33, adds = { "Gangster", "Shooter", "Enforcer" } },
 }
 -- Where the threat goes once the Kingpin falls (the crews scatter), or walks away.
 TurfWarService.THREAT_AFTER_KINGPIN = 3
@@ -590,7 +591,7 @@ function TurfWarService.Start(zoneId: string?): boolean
 		if model and humanoid then
 			model:SetAttribute("TurfCrew", true)
 			model:SetAttribute("TurfZone", zone.id)
-			if archetype == "Brute" then
+			if archetype == "Enforcer" then
 				model:SetAttribute("Lieutenant", true)
 				model.Name = "Crew Lieutenant"
 			end
@@ -611,6 +612,17 @@ function TurfWarService.Start(zoneId: string?): boolean
 	refreshMarker(turf, now)
 	print(("[Turf] threat %d: a crew of %d holds %s"):format(level, war.left, zone.name))
 	return true
+end
+
+--- The patch a point is on or next to (within its radius plus `margin`), if any. Quests use it
+--- to count a Downtown criminal killed near a patch as crew from that patch.
+function TurfWarService.PatchAt(at: Vector3, margin: number?): string?
+	for _, turf in ipairs(turfs) do
+		if within(turf, at, turf.zone.radius + (margin or 20)) then
+			return turf.zone.id
+		end
+	end
+	return nil
 end
 
 --- "idle", "active" or "cooldown", and the seconds left on the clock that applies.

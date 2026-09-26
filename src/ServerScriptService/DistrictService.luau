@@ -5,8 +5,10 @@
 -- This service puts it in the sky north of the hub -- clear of the islands, the range and
 -- the duel maps -- and wires it up:
 --
---   * ZEE GUNS, the ARMORY and the CONTRACTS board carry prompts that open the shop, the
---     armory and the contracts panel (the client opens them; nothing to validate).
+--   * ZEE GUNS and ZEE TACTICS are shops you walk into: a clerk stands behind each counter
+--     (a rig borrowed from the world, like the quest givers), and the counter's prompt opens
+--     the gun shop or the gear counter; the workbench in ZEE GUNS opens the armory. The
+--     CONTRACTS and MOST WANTED boards on the 24/7 open theirs (the client opens them).
 --   * The DUEL HALL gets its own pair of 1v1 pads (DuelPads), into the same queue.
 --   * The ROOFTOP STASH at the top of the fire escape pays once a day per player.
 --
@@ -86,8 +88,100 @@ local function openStash(player: Player, stash: BasePart)
 	end
 end
 
---- Prompts on everything marked for one, pads in the hall. Safe to run on a baked copy.
+--- A clerk behind a shop counter: a rig borrowed from the world (as the quest givers are),
+--- dressed in the shop's shirt, standing on `spot` and facing the door, with a nameplate.
+local function clerk(spot: BasePart)
+	local parent = spot.Parent
+	if not parent or parent:FindFirstChild("Clerk") then
+		return
+	end
+	local template: Model? = nil
+	for _, d in ipairs(workspace:GetChildren()) do
+		if d:IsA("Model") and d:FindFirstChildOfClass("Humanoid") and d:FindFirstChild("Head")
+			and not game:GetService("Players"):GetPlayerFromCharacter(d) and d.Name:sub(1, 11) ~= "QuestGiver_" then
+			template = d
+			break
+		end
+	end
+	if not template then
+		return
+	end
+	local npc = template:Clone()
+	npc.Name = "Clerk"
+	for _, d in ipairs(npc:GetDescendants()) do
+		if d:IsA("LuaSourceContainer") or d:IsA("BodyColors") or d:IsA("BillboardGui") or d:IsA("ProximityPrompt")
+			or d.Name == "Signpost" then
+			d:Destroy()
+		end
+	end
+	local shirt = spot:GetAttribute("ClerkShirt")
+	local shirtColour = if typeof(shirt) == "Color3" then shirt else Color3.fromRGB(60, 60, 70)
+	for _, p in ipairs(npc:GetDescendants()) do
+		if p:IsA("BasePart") then
+			p.Anchored = true
+			p.CanCollide = false
+			if p.Name == "Head" or p.Name:find("Arm") or p.Name:find("Hand") then
+				p.Color = Color3.fromRGB(214, 170, 128)
+			elseif p.Name:find("Leg") or p.Name:find("Foot") then
+				p.Color = Color3.fromRGB(46, 48, 56)
+			else
+				p.Color = shirtColour
+			end
+		end
+	end
+	local humanoid = npc:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.WalkSpeed = 0
+		humanoid.JumpPower = 0
+		humanoid.MaxHealth = math.huge
+		humanoid.Health = math.huge
+		humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	end
+	-- Facing -X: out over the counter toward the door.
+	local stand = spot.Position + Vector3.new(0, 3, 0)
+	npc:PivotTo(CFrame.lookAt(stand, stand + Vector3.new(-1, 0, 0)))
+	npc.Parent = parent
+	local head = npc:FindFirstChild("Head")
+	if head and head:IsA("BasePart") then
+		local plate = Instance.new("BillboardGui")
+		plate.Name = "Nameplate"
+		plate.Size = UDim2.fromOffset(160, 44)
+		plate.StudsOffsetWorldSpace = Vector3.new(0, 2.4, 0)
+		plate.MaxDistance = 40
+		plate.Parent = head
+		local name = Instance.new("TextLabel")
+		name.BackgroundTransparency = 1
+		name.Size = UDim2.new(1, 0, 0.55, 0)
+		name.Font = Enum.Font.FredokaOne
+		name.TextScaled = true
+		name.TextColor3 = Color3.new(1, 1, 1)
+		name.TextStrokeTransparency = 0.2
+		name.Text = tostring(spot:GetAttribute("ClerkName") or "Clerk")
+		name.Parent = plate
+		local title = Instance.new("TextLabel")
+		title.BackgroundTransparency = 1
+		title.Position = UDim2.fromScale(0, 0.55)
+		title.Size = UDim2.new(1, 0, 0.45, 0)
+		title.Font = Enum.Font.GothamBold
+		title.TextScaled = true
+		title.TextColor3 = Color3.fromRGB(255, 214, 90)
+		title.TextStrokeTransparency = 0.3
+		title.Text = tostring(spot:GetAttribute("ClerkTitle") or "")
+		title.Parent = plate
+	end
+end
+
+--- Prompts on everything marked for one, clerks behind the counters, pads in the hall. Safe
+--- to run on a baked copy.
 local function wire(folder: Instance)
+	for _, d in ipairs(folder:GetDescendants()) do
+		if d:IsA("BasePart") and d.Name == "ClerkSpot" then
+			local ok, err = pcall(clerk, d)
+			if not ok then
+				warn("[Downtown] clerk: " .. tostring(err))
+			end
+		end
+	end
 	for _, d in ipairs(folder:GetDescendants()) do
 		if d:IsA("BasePart") and d:GetAttribute("PromptText") and not d:FindFirstChildOfClass("ProximityPrompt") then
 			local prompt = Instance.new("ProximityPrompt")
@@ -101,6 +195,20 @@ local function wire(folder: Instance)
 				-- The client opens the panel (StarterPlayerScripts.MainUI reads this).
 				prompt:SetAttribute("OpenPanel", panel)
 				prompt.HoldDuration = 0
+			elseif d.Name == "TowerDoor" or d.Name == "TowerExit" then
+				-- The elevator up ZEE TOWER and back down (TowerService decides who may go).
+				prompt.HoldDuration = 0.6
+				prompt.MaxActivationDistance = 12
+				prompt.Triggered:Connect(function(player)
+					local ok, Tower = pcall(require, ServerScriptService:FindFirstChild("TowerService") :: ModuleScript)
+					if ok and type(Tower) == "table" then
+						if d.Name == "TowerDoor" then
+							Tower.Enter(player)
+						else
+							Tower.Leave(player)
+						end
+					end
+				end)
 			elseif d.Name == "RooftopStash" then
 				prompt.HoldDuration = 1.2
 				prompt.Triggered:Connect(function(player)

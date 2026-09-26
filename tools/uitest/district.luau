@@ -116,7 +116,8 @@ local function find(name: string)
 	end
 	return nil
 end
-for _, name in ipairs({ "GunShop", "Armory", "ContractBoard", "RooftopStash", "DuelPadSite" }) do
+for _, name in ipairs({ "GunCounter", "GunWorkbench", "TacticsCounter", "ContractBoard", "BountyBoard", "RooftopStash",
+	"DuelPadSite" }) do
 	local marker = find(name)
 	check(marker ~= nil, name .. " marker built")
 	if marker and name ~= "RooftopStash" and name ~= "DuelPadSite" then
@@ -125,8 +126,78 @@ for _, name in ipairs({ "GunShop", "Armory", "ContractBoard", "RooftopStash", "D
 		check(blocked == nil, name .. " has room to stand" .. (blocked and (" -- " .. blocked) or ""))
 	end
 end
-check(Downtown.Panels.GunShop == "Market" and Downtown.Panels.Armory == "Workshop"
-	and Downtown.Panels.ContractBoard == "Contracts", "doors open the right panels")
+check(Downtown.Panels.GunCounter == "Market" and Downtown.Panels.GunWorkbench == "Workshop"
+	and Downtown.Panels.TacticsCounter == "Tactics" and Downtown.Panels.ContractBoard == "Contracts"
+	and Downtown.Panels.BountyBoard == "Bounties", "counters and boards open the right panels")
+
+-- The shops are rooms: in through the doorway, up to the counter, with the clerk's spot
+-- behind it and nothing solid in the way.
+print("walking into the shops")
+for _, counterName in ipairs({ "GunCounter", "TacticsCounter" }) do
+	local counter = find(counterName)
+	if counter then
+		local shop = counter.Parent
+		local spot = shop and shop:FindFirstChild("ClerkSpot")
+		check(spot ~= nil and spot:GetAttribute("ClerkName") ~= nil and spot.Position.X > counter.Position.X,
+			counterName .. ": a clerk's spot behind the counter")
+		-- From the pavement outside the door to the counter, a step at a time along +X.
+		local blockedAt = nil
+		local startX = counter.Position.X - 24
+		for x = startX, counter.Position.X, 1 do
+			local foot = Vector3.new(x, counter.Position.Y + 0.1, counter.Position.Z)
+			local blocked = clearColumn(foot)
+			if blocked then
+				blockedAt = ("%s at %.0f"):format(blocked, x - counter.Position.X)
+				break
+			end
+		end
+		check(blockedAt == nil, counterName .. ": walk in off the street to the counter"
+			.. (blockedAt and (" -- " .. blockedAt) or ""))
+		-- The front wall is 20 studs out from the counter mat; beside the doorway it is a pier.
+		local wallAt = clearColumn(Vector3.new(counter.Position.X - 20, counter.Position.Y + 0.1, counter.Position.Z + 4.5))
+		check(wallAt ~= nil, counterName .. ": and the front wall is solid beside the doorway")
+	end
+end
+
+-- ZEE TOWER: in at the lobby, up to a penthouse with everything the fight needs, walled in.
+print("zee tower")
+local door, exit, arrival, bossSpot = find("TowerDoor"), find("TowerExit"), find("TowerArrival"), find("TowerBossSpot")
+check(door and door:GetAttribute("PromptText") and exit and exit:GetAttribute("PromptText"),
+	"a way up at the lobby and a way down on the roof")
+if door then
+	local blocked = clearColumn(door.Position + Vector3.new(0, 0.1, 0))
+	check(blocked == nil, "room to stand at the lobby doors" .. (blocked and (" -- " .. blocked) or ""))
+end
+local adds, heliBody, bounds = 0, nil, {}
+for _, d in ipairs(folder:GetDescendants()) do
+	if d.Name == "TowerAddSpot" then
+		adds += 1
+	elseif d.Name == "HeliBody" then
+		heliBody = d
+	elseif d.Name == "TowerBound" then
+		table.insert(bounds, d)
+	end
+end
+check(adds >= 4 and heliBody ~= nil and heliBody.Parent.Name == "DonHeli", ("the family's way in (%d) and the helicopter"):format(adds))
+if arrival and bossSpot then
+	local roof = centre.Y + 0.5 + 150
+	check(arrival.Position.Y > roof and arrival.Position.Y < roof + 2 and math.abs(bossSpot.Position.Y - arrival.Position.Y) < 0.2,
+		("the roof is up at the top of the tower (%.1f)"):format(arrival.Position.Y))
+	for _, spot in ipairs({ arrival, bossSpot }) do
+		local blocked = clearColumn(spot.Position + Vector3.new(0, 0.1, 0))
+		check(blocked == nil, spot.Name .. " has room" .. (blocked and (" -- " .. blocked) or ""))
+	end
+	-- Walls on four sides of the deck and a lid over it.
+	local minX, maxX, minZ, maxZ, lid = math.huge, -math.huge, math.huge, -math.huge, false
+	for _, b in ipairs(bounds) do
+		minX, maxX = math.min(minX, b.Position.X), math.max(maxX, b.Position.X)
+		minZ, maxZ = math.min(minZ, b.Position.Z), math.max(maxZ, b.Position.Z)
+		lid = lid or (b.Size.Y < 2 and b.Position.Y > arrival.Position.Y + 30)
+		check(b.CanCollide and b.Transparency == 1 and not b.CanQuery, "a bound stops players and nothing else")
+	end
+	check(#bounds == 5 and lid and minX < bossSpot.Position.X - 30 and maxX > bossSpot.Position.X + 30
+		and minZ < arrival.Position.Z - 20 and maxZ > arrival.Position.Z, "the roof is walled in and lidded")
+end
 
 print("fire escape")
 local stash = find("RooftopStash")

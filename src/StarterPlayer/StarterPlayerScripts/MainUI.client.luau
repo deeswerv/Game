@@ -12,6 +12,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
 local Modules = ReplicatedStorage:WaitForChild("UI"):WaitForChild("Modules")
 local Hud = require(Modules:WaitForChild("Hud"))
@@ -33,6 +34,8 @@ local Settings = require(Modules:WaitForChild("Settings"))
 local BossBar = require(Modules:WaitForChild("BossBar"))
 local Toast = require(Modules:WaitForChild("Toast"))
 local Contracts = require(Modules:WaitForChild("Contracts"))
+local BountyBoard = require(Modules:WaitForChild("BountyBoard"))
+local Tactics = require(Modules:WaitForChild("Tactics"))
 local WorldEvents = require(Modules:WaitForChild("WorldEvents"))
 local Bounties = require(Modules:WaitForChild("Bounties"))
 local LevelRoad = require(Modules:WaitForChild("LevelRoad"))
@@ -73,6 +76,7 @@ screen.DisplayOrder = 10
 screen.Parent = playerGui
 
 local Components = require(Modules:WaitForChild("Components"))
+local Theme = require(Modules:WaitForChild("Theme"))
 Components.BindScale(screen)
 
 -- Every panel is built through this. One that throws while building is replaced by an inert
@@ -601,6 +605,7 @@ local inventory = safe("Inventory", function()
 		getOwnership = gameRemote("GetOwnership"),
 		loadoutAction = gameRemote("LoadoutAction"),
 		vfxAction = gameRemote("VFXAction"),
+		gearAction = remote("GearAction"),
 	})
 end)
 
@@ -660,6 +665,20 @@ local contracts = safe("Contracts", function()
 	})
 end)
 
+-- The MOST WANTED board: only opened from the board itself, on the side of the 24/7.
+local bountyBoard = safe("BountyBoard", function()
+	return BountyBoard.new(menuLayer, {
+		bountyBoard = remote("BountyBoard"),
+	})
+end)
+
+-- ZEE TACTICS: the gear counter, opened by the clerk inside the shop downtown.
+local tactics = safe("Tactics", function()
+	return Tactics.new(menuLayer, {
+		gearAction = remote("GearAction"),
+	})
+end)
+
 -- Forward-declared: claiming from the panel shows a banner, and the toasts are built below.
 local announceClaim: (any) -> () = function() end
 local achievements = safe("Achievements", function()
@@ -687,7 +706,8 @@ local NAV_ID = {
 	[profile] = "Profile", [daily] = "Daily", [journal] = "Journal",
 	[settings] = "Settings", [contracts] = "Contracts", [travel] = "Travel", [achievements] = "Achievements",
 }
-local PANELS = { inventory, market, workshop, profile, daily, journal, contracts, road, travel, achievements, settings }
+local PANELS = { inventory, market, workshop, profile, daily, journal, contracts, bountyBoard, tactics, road, travel,
+	achievements, settings }
 
 -- Opening one panel closes the others. Two full-screen menus stacked on each other is how a
 -- player loses track of what Escape is going to do.
@@ -778,7 +798,8 @@ end)
 -- rooftop stash) come back as a banner.
 do
 	local ProximityPromptService = game:GetService("ProximityPromptService")
-	local PANEL_FOR = { Market = market, Workshop = workshop, Contracts = contracts, Inventory = inventory }
+	local PANEL_FOR = { Market = market, Workshop = workshop, Contracts = contracts, Inventory = inventory,
+		Bounties = bountyBoard, Tactics = tactics }
 	ProximityPromptService.PromptTriggered:Connect(function(prompt: ProximityPrompt, who: Player)
 		if who ~= player then
 			return
@@ -786,6 +807,97 @@ do
 		local target = PANEL_FOR[tostring(prompt:GetAttribute("OpenPanel") or "")]
 		if target then
 			openOnly(target)
+		end
+	end)
+
+	-- ZEE TOWER. Stepping out of the elevator is a title card that fades away over the view;
+	-- the fight's beats are banners; beating the Don the first time says what it opened.
+	local TOWER_GOLD = Color3.fromRGB(255, 196, 60)
+	local card = Instance.new("Frame")
+	card.Name = "TowerCard"
+	card.BackgroundColor3 = Color3.fromRGB(10, 9, 12)
+	card.BorderSizePixel = 0
+	card.Size = UDim2.fromScale(1, 1)
+	card.Visible = false
+	card.ZIndex = 50
+	card.Parent = menuLayer
+	local cardTop = Components.Label(card, { text = "ZEE TOWER  ·  FLOOR 88", font = Theme.Font.Bold, size = 20,
+		colour = TOWER_GOLD, align = Enum.TextXAlignment.Center })
+	cardTop.AnchorPoint = Vector2.new(0.5, 0.5)
+	cardTop.Position = UDim2.fromScale(0.5, 0.44)
+	cardTop.Size = UDim2.fromOffset(600, 26)
+	cardTop.ZIndex = 51
+	local cardTitle = Components.Label(card, { text = "THE PENTHOUSE", face = Theme.Face.HeavyItalic, size = 64,
+		align = Enum.TextXAlignment.Center, outline = 3 })
+	cardTitle.AnchorPoint = Vector2.new(0.5, 0.5)
+	cardTitle.Position = UDim2.fromScale(0.5, 0.52)
+	cardTitle.Size = UDim2.fromOffset(900, 70)
+	cardTitle.ZIndex = 51
+	local cardLine = Instance.new("Frame")
+	cardLine.AnchorPoint = Vector2.new(0.5, 0.5)
+	cardLine.Position = UDim2.fromScale(0.5, 0.585)
+	cardLine.Size = UDim2.fromOffset(320, 3)
+	cardLine.BackgroundColor3 = TOWER_GOLD
+	cardLine.BorderSizePixel = 0
+	cardLine.ZIndex = 51
+	cardLine.Parent = card
+	local function titleCard(sub: string)
+		cardTop.Text = sub
+		card.Visible = true
+		card.BackgroundTransparency = 0
+		for _, l in ipairs({ cardTop, cardTitle }) do
+			l.TextTransparency = 0
+		end
+		cardLine.BackgroundTransparency = 0
+		task.delay(1.1, function()
+			local info = TweenInfo.new(1.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+			TweenService:Create(card, info, { BackgroundTransparency = 1 }):Play()
+			TweenService:Create(cardTop, info, { TextTransparency = 1 }):Play()
+			TweenService:Create(cardTitle, info, { TextTransparency = 1 }):Play()
+			TweenService:Create(cardLine, info, { BackgroundTransparency = 1 }):Play()
+			task.delay(1.5, function()
+				card.Visible = false
+			end)
+		end)
+	end
+
+	remote("TowerEvent").OnClientEvent:Connect(function(kind: unknown, data: unknown)
+		local info = (if type(data) == "table" then data else {}) :: any
+		if kind == "enter" then
+			titleCard("ZEE TOWER  ·  FLOOR 88")
+			if info.state == "cooldown" and info.readyIn then
+				toast:Push({ title = "The Don is regrouping", text = ("He'll be back in %ds"):format(info.readyIn),
+					icon = "🎩", colour = TOWER_GOLD })
+			end
+		elseif kind == "left" then
+			titleCard("ZEE AVENUE  ·  STREET LEVEL")
+		elseif kind == "denied" then
+			toast:Push({ title = "ZEE TOWER", text = tostring(info.reason or "Not now"), icon = "🚫",
+				colour = Theme.Colour.Danger })
+		elseif kind == "intro" then
+			toast:Banner({ title = "THE DON", subtitle = tostring(info.line or ""), colour = TOWER_GOLD, sound = "Slam" })
+		elseif kind == "start" then
+			toast:Banner({ title = "BOSS FIGHT", subtitle = ("THE DON  ·  %s HP"):format(tostring(info.health or "?")),
+				colour = Theme.Colour.Danger, sound = "Slam" })
+		elseif kind == "phase" then
+			toast:Banner({ title = tostring(info.name or "PHASE"), subtitle = tostring(info.line or ""),
+				colour = Theme.Colour.Danger, sound = "Slam" })
+		elseif kind == "cleared" then
+			toast:Banner({ title = "ZEE TOWER CLEARED",
+				subtitle = string.format("+$%s     +%s XP     +%s 💎     +%s Street Cred", tostring(info.coins or 0),
+					tostring(info.xp or 0), tostring(info.crystals or 0), tostring(info.cred or 0)),
+				colour = TOWER_GOLD, sound = "Ring" })
+			if info.first then
+				toast:Banner({ title = "THE WORLD OPENS",
+					subtitle = "The Flats, Watchpoint and the Reach are on your Travel menu",
+					colour = Theme.Colour.Accent, sound = "Ring" })
+			end
+		elseif kind == "reset" then
+			toast:Push({ title = "The penthouse is quiet again", text = "The Don's people cleaned up", icon = "🎩",
+				colour = Theme.Colour.TextMuted })
+		elseif kind == "announce" and type(info.names) == "table" and #info.names > 0 then
+			toast:Push({ title = "THE DON IS DOWN", text = table.concat(info.names, ", ") .. " took the top floor of ZEE TOWER",
+				icon = "🏙", colour = TOWER_GOLD, duration = 6 })
 		end
 	end)
 

@@ -258,6 +258,8 @@ local function shortcut(name: string, icon: string, label: string, colour: Color
 	})
 	text.Position = UDim2.new(0, 0, 1, -34)
 	text.Size = UDim2.new(1, 0, 0, 26)
+	text.Name = "Label"
+	glyph.Name = "Glyph"
 	tile.MouseEnter:Connect(function()
 		TweenService:Create(tile, TweenInfo.new(0.12), { BackgroundColor3 = Theme.Shade(colour, -0.15) }):Play()
 	end)
@@ -273,9 +275,24 @@ end)
 shortcut("Downtown", "🏙", "DOWNTOWN", Color3.fromRGB(236, 120, 150), 2, function()
 	close("Downtown")
 end)
-shortcut("Flats", "🏕", "THE FLATS", Color3.fromRGB(214, 150, 70), 3, function()
-	close("Flats")
+-- The third tile is the next step: ZEE TOWER (the top of Downtown) until its boss is beaten,
+-- then THE FLATS, the first place past it.
+local nextTile = shortcut("Flats", "🏙", "ZEE TOWER", Color3.fromRGB(214, 150, 70), 3, function()
+	close(if player:GetAttribute("TowerCleared") == true then "Flats" else "Downtown")
 end)
+local function refreshNext()
+	local cleared = player:GetAttribute("TowerCleared") == true
+	local label = nextTile:FindFirstChild("Label") :: TextLabel?
+	local glyph = nextTile:FindFirstChild("Glyph") :: TextLabel?
+	if label then
+		label.Text = if cleared then "THE FLATS" else "ZEE TOWER"
+	end
+	if glyph then
+		glyph.Text = if cleared then "🏕" else "🏙"
+	end
+end
+player:GetAttributeChangedSignal("TowerCleared"):Connect(refreshNext)
+refreshNext()
 
 local hint = Components.Label(screen, {
 	text = "SPACE / ENTER TO PLAY",

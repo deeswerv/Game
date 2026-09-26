@@ -81,7 +81,8 @@ function QuestService.GetState(player: Player, giver: string?)
 	local completed = completedSet(data)
 
 	local active = data.CurrentQuest ~= "" and QuestConfig.Get(data.CurrentQuest) or nil
-	local offer = QuestConfig.NextAvailable(giver or "Quartermaster", levelOf(player), completed)
+	local offer, lockedBy = QuestConfig.NextAvailable(giver or "Quartermaster", levelOf(player), completed,
+		{ Tower = data.TowerCleared == true })
 
 	return {
 		active = active and {
@@ -110,6 +111,9 @@ function QuestService.GetState(player: Player, giver: string?)
 		completedCount = #(data.CompletedQuests or {}),
 		totalQuests = #QuestConfig.Quests,
 		giver = giver or "Quartermaster",
+		-- What the giver's next job is waiting on ("Tower": ZEE TOWER's boss), when it is.
+		locked = lockedBy,
+		towerCleared = data.TowerCleared == true,
 		-- The ids themselves, for the quest journal's list. Copied: never hand out the profile.
 		completed = table.clone(data.CompletedQuests or {}),
 		level = levelOf(player),
@@ -134,6 +138,7 @@ local function contextFor(player: Player, giverId: string?)
 		level = levelOf(player),
 		hasActive = state ~= nil and state.active ~= nil,
 		hasOffer = state ~= nil and state.offer ~= nil,
+		towerLocked = state ~= nil and state.locked == "Tower" and state.active == nil,
 		completed = state and state.completedCount or 0,
 		rep = ReputationService.GetAll(player),
 		crystals = CrystalService.Get(player),
@@ -159,6 +164,8 @@ local function requirementsMet(requires, ctx): boolean
 		elseif key == "hasActive" and ctx.hasActive ~= want then
 			return false
 		elseif key == "completedAtLeast" and ctx.completed < want then
+			return false
+		elseif key == "towerLocked" and ctx.towerLocked ~= want then
 			return false
 		elseif key == "minCrystals" then
 			if ctx.crystals < want then
@@ -488,11 +495,21 @@ KillCredit.KillAwarded.Event:Connect(function(killer: Player, victimHumanoid: Hu
 		if not archetype then
 			return -- a humanoid that is not one of our NPCs (training dummy, prop)
 		end
+		local turf = model:GetAttribute("TurfZone")
+		local gang = model:GetAttribute("Gang") == true
+		if not turf and gang then
+			-- A Downtown criminal off a war's roster: the patch it fell on (or beside).
+			local root = model:FindFirstChild("HumanoidRootPart")
+			local okT, Turf = pcall(require, ServerScriptService:FindFirstChild("TurfWarService") :: ModuleScript)
+			if root and root:IsA("BasePart") and okT and type(Turf) == "table" and Turf.PatchAt then
+				turf = Turf.PatchAt(root.Position)
+			end
+		end
 		ctx = {
 			elite = model:GetAttribute("Elite") == true,
 			zone = model:GetAttribute("Zone"),
-			crew = model:GetAttribute("TurfCrew") == true,
-			turf = model:GetAttribute("TurfZone"),
+			crew = model:GetAttribute("TurfCrew") == true or gang,
+			turf = turf,
 		}
 	end
 	task.spawn(QuestService.RegisterKill, killer, archetype, ctx)
@@ -512,6 +529,9 @@ function QuestService.EventMatches(obj, kind: string, detail): boolean
 			return false
 		end
 		return (tonumber(detail.threat) or 1) >= (obj.minThreat or 1)
+	end
+	if kind == "tower" and obj.kind == "TowerWin" then
+		return true
 	end
 	return false
 end

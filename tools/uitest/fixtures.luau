@@ -97,6 +97,33 @@ return function(World)
 			secondsLeft = 5 * 3600 + 12 * 60, lifetime = 23,
 		}
 	end
+	-- GearService.State: the Commons, a few upgrades owned, a Street Cred discount.
+	R.serverFunctions.GearAction = function(action)
+		local GearConfig = World.require(rs:FindFirstChild("GearConfig"))
+		local ownedGear, prices = {}, {}
+		local bought = { Heal_TraumaKit = true, Armor_Kevlar = true, Armor_Carrier = true, Bomb_Impact = true }
+		for _, item in ipairs(GearConfig.Items) do
+			ownedGear[item.id] = GearConfig.IsFree(item.id) or bought[item.id] == true
+			prices[item.id] = math.floor(item.coins * 0.92 / 50 + 0.5) * 50
+		end
+		local state = { owned = ownedGear, equipped = { Heal = "Heal_TraumaKit", Armor = "Armor_Carrier", Bomb = "Bomb_Impact" },
+			prices = prices, level = 12, coins = 24350, crystals = 37, discount = 0.08 }
+		if action == "state" then
+			return state
+		end
+		return { ok = true, state = state, restocked = true }
+	end
+	-- MostWantedService.Board: a name on the board, two WANTED players.
+	R.serverFunctions.BountyBoard = function()
+		return {
+			reward = { coins = 1500, xp = 900, crystals = 3, cred = 6 },
+			takedowns = 2,
+			target = { name = "Vinnie Russo", alias = "THE VICE", crime = "Runs the protection racket on every shop on the avenue.",
+				where = "the ZEE GAS car park", secondsLeft = 312, health = 0.64 },
+			wanted = { { name = "xXSniperXx", userId = 2, amount = 1400 },
+				{ name = World.player.DisplayName, userId = World.player.UserId, amount = 800, you = true } },
+		}
+	end
 	-- TravelService.Places as shipped.
 	R.serverFunctions.TravelAction = function(action)
 		if action == "go" then
@@ -106,18 +133,22 @@ return function(World)
 		local V3, C3 = rbx.Vector3, rbx.Color3
 		return {
 			places = {
-				{ id = "Hub", label = "The Crossing", blurb = "Spawn, the 1v1 pads and the harbour.", icon = "⚓", levels = "LV 1-2",
-					colour = C3.fromRGB(88, 176, 232), position = V3.new(-155, 1.25, 275) },
-				{ id = "Downtown", label = "Downtown", blurb = "Shops, the Duel Hall, contracts and turf wars.", icon = "🏙",
-					levels = "LV 4-7", colour = C3.fromRGB(236, 120, 150), position = V3.new(-155, 1000.5, 1330) },
-				{ id = "Flats", label = "The Flats", blurb = "The bandit camp and the guard post, at war.", icon = "⚔",
-					levels = "LV 3-5", colour = C3.fromRGB(214, 150, 70), position = V3.new(-465, 1, 160) },
+				{ id = "Hub", label = "The Crossing", blurb = "Where you wash up: spawn, the Quartermaster and the harbour.",
+					icon = "⚓", levels = "LV 1", colour = C3.fromRGB(88, 176, 232), position = V3.new(-155, 1.25, 275) },
+				{ id = "Downtown", label = "Downtown", blurb = "Your first stop: shops, the Fixer's jobs, turf wars -- and ZEE TOWER.",
+					icon = "🏙", levels = "LV 1-10", colour = C3.fromRGB(236, 120, 150), position = V3.new(-155, 1000.5, 1330),
+					tag = "START HERE" },
 				{ id = "Mine", label = "Crystal Mine", blurb = "Behind the falls: crystal seams to mine.", icon = "💎",
 					levels = "LV 1-3", colour = C3.fromRGB(150, 110, 240), position = V3.new(-101, 4, 61) },
+				{ id = "Flats", label = "The Flats", blurb = "The bandit camp and the guard post, at war.", icon = "⚔",
+					levels = "LV 6-9", colour = C3.fromRGB(214, 150, 70), position = V3.new(-465, 1, 160),
+					locked = "Beat the Don at the top of ZEE TOWER, Downtown" },
 				{ id = "WatchPoint", label = "Watchpoint", blurb = "High ground over the western isles.", icon = "🔭",
-					levels = "LV 2-4", colour = C3.fromRGB(110, 190, 140), position = V3.new(-320, 6, 291) },
+					levels = "LV 7-10", colour = C3.fromRGB(110, 190, 140), position = V3.new(-320, 6, 291),
+					locked = "Beat the Don at the top of ZEE TOWER, Downtown" },
 				{ id = "Reach", label = "The Reach", blurb = "The far east. The toughest fights, the best loot.", icon = "🏔",
-					levels = "LV 6-9", colour = C3.fromRGB(120, 150, 220), position = V3.new(145, 1.9, 375) },
+					levels = "LV 9-12", colour = C3.fromRGB(120, 150, 220), position = V3.new(145, 1.9, 375),
+					locked = "Beat the Don at the top of ZEE TOWER, Downtown" },
 			},
 		}
 	end
@@ -193,9 +224,9 @@ return function(World)
 
 	R.serverFunctions.QuestAction = function(action)
 		return {
-			active = { id = "Marksmen", title = "Eyes on the Ridge", label = "Marksmen defeated", progress = 1, goal = 3 },
-			completed = { "ClearTheCamp", "TheBrute", "ScoutTheFlats" },
-			completedCount = 3, totalQuests = 10, level = 14,
+			active = { id = "AlleyCats", title = "Alley Cats", label = "Alley crew defeated", progress = 4, goal = 6 },
+			completed = { "WelcomeDowntown", "RooftopRun", "TakeTheCarPark" },
+			completedCount = 3, totalQuests = 17, level = 6, towerCleared = false,
 		}
 	end
 end

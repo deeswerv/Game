@@ -7,8 +7,14 @@
 -- toward one place. Everyone is told where and when it lands (SupplyEvent), so the client
 -- can put a marker on it; the crate itself, the timing and the loot are all server side.
 --
--- Landing spots are found at run time -- a ray down from the sky inside one of the named
--- zones, open sky above it, solid ground (not water) below -- so a change to the map moves
+-- Drops come to the players, not to the map: each one picks somebody out in the world
+-- (weighted toward whoever has gone longest without one landing near them) and lands a
+-- short run from where they are standing -- far enough to be a race, close enough that it
+-- is theirs to lose. The named zones are only the fallback when nobody is out, or the ground
+-- round them has no room (a rooftop, a bridge).
+--
+-- Landing spots are found at run time -- a ray down from the sky, open sky above it, solid
+-- ground (not water) below, on the same level as the player -- so a change to the map moves
 -- the drops with it rather than dropping crates into a wall.
 
 local Players = game:GetService("Players")
@@ -26,6 +32,7 @@ SupplyDropService.INTERVAL = 240        -- between drops
 SupplyDropService.FALL_TIME = 16        -- from the sky to the ground
 SupplyDropService.LIFETIME = 240        -- an unopened crate waits this long
 SupplyDropService.GOLDEN_CHANCE = 0.12
+SupplyDropService.NEAR = { min = 25, max = 70, rise = 8 }   -- how far from the chosen player
 
 -- Where drops come down: named places with open ground, from the admin waypoints (which
 -- were raycast, not guessed).
@@ -39,9 +46,11 @@ SupplyDropService.Zones = {
 	{ name = "DOWNTOWN", centre = Vector3.new(-155, 1000.5, 1500), radius = 150, maxRise = 3 },
 }
 
+-- Balanced for drops that come to you (a short run, not a race across the map): a bonus on
+-- top of what fighting pays, not the income itself. Golden ones are still worth a detour.
 SupplyDropService.Loot = {
-	normal = { coins = { 1200, 2200 }, crystals = { 3, 6 }, xp = 600 },
-	golden = { coins = { 2800, 4500 }, crystals = { 8, 12 }, xp = 1400 },
+	normal = { coins = { 700, 1100 }, crystals = { 2, 4 }, xp = 450 },
+	golden = { coins = { 1800, 2800 }, crystals = { 6, 9 }, xp = 1000 },
 }
 
 local remotes = ReplicatedStorage:FindFirstChild("Remotes")
@@ -98,12 +107,14 @@ local function rayParams(): RaycastParams
 	return params
 end
 
---- A spot in `zone` with solid, level ground and nothing overhead, or nil.
+--- A spot in `zone` with solid, level ground and nothing overhead, or nil. A zone with a
+--- `minRadius` is a ring: nothing closer to the centre than that.
 local function findLanding(zone): Vector3?
 	local params = rayParams()
-	for _ = 1, 16 do
+	for _ = 1, 24 do
 		local angle = math.random() * math.pi * 2
-		local r = math.sqrt(math.random()) * zone.radius
+		local inner = (zone.minRadius or 0) / zone.radius
+		local r = math.sqrt(inner * inner + math.random() * (1 - inner * inner)) * zone.radius
 		local x, z = zone.centre.X + math.cos(angle) * r, zone.centre.Z + math.sin(angle) * r
 		local top = Vector3.new(x, zone.centre.Y + 300, z)
 		local hit = workspace:Raycast(top, Vector3.new(0, -600, 0), params)
@@ -304,25 +315,106 @@ local function award(player: Player, golden: boolean)
 	return { coins = coins, crystals = crystals, xp = GameConfig.ShownXP(loot.xp), golden = golden }
 end
 
---- Drop one crate now. Returns the landing position, or nil if no zone had room.
-function SupplyDropService.Drop(zoneName: string?): Vector3?
-	local zones = SupplyDropService.Zones
-	local options = {}
-	for _, zone in ipairs(zones) do
-		if (zoneName and zone.name == zoneName) or (not zoneName and zone.name ~= lastZone) then
-			table.insert(options, zone)
+-- When a drop last came down near each player, so the next one goes to somebody else.
+local lastNear: { [Player]: number } = {}
+
+local RangeService: any = nil
+--- Is `player` out in the open world, where a crate could reach them? Not in a duel, not in
+--- the gun range, not up in ZEE TOWER's penthouse, and alive.
+function SupplyDropService.Eligible(player: Player): boolean
+	if player:GetAttribute("DuelState") == "duel" or player:GetAttribute("InTower") then
+		return false
+	end
+	if RangeService == nil then
+		local module = ServerScriptService:FindFirstChild("RangeService")
+		local ok, loaded = pcall(require, module :: ModuleScript)
+		RangeService = (ok and type(loaded) == "table" and loaded) or false
+	end
+	if RangeService and RangeService.IsIn and RangeService.IsIn(player) then
+		return false
+	end
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	return humanoid ~= nil and humanoid.Health > 0 and root ~= nil and root:IsA("BasePart")
+end
+
+--- Who the next drop goes to: an eligible player, weighted by how long since one landed near
+--- them (never = the heaviest). Nil when nobody is out.
+function SupplyDropService.PickPlayer(): Player?
+	local now = os.clock()
+	local pool, total = {}, 0
+	for _, p in ipairs(Players:GetPlayers()) do
+		if SupplyDropService.Eligible(p) then
+			local since = now - (lastNear[p] or -10 * SupplyDropService.INTERVAL)
+			local weight = math.clamp(since / SupplyDropService.INTERVAL, 0.25, 10)
+			table.insert(pool, { player = p, weight = weight })
+			total += weight
 		end
 	end
-	if #options == 0 then
-		options = zones
+	local roll = math.random() * total
+	for _, entry in ipairs(pool) do
+		roll -= entry.weight
+		if roll <= 0 then
+			return entry.player
+		end
 	end
-	local zone = options[math.random(1, #options)]
-	local landing = findLanding(zone)
+	return pool[#pool] and pool[#pool].player or nil
+end
+
+--- The zone a drop near `player` uses: a ring round where they stand, named after the named
+--- zone they are in (or after them).
+function SupplyDropService.ZoneNear(player: Player): { [string]: any }?
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root or not root:IsA("BasePart") then
+		return nil
+	end
+	local at = root.Position - Vector3.new(0, 3, 0)
+	local name = "NEAR " .. string.upper(player.DisplayName)
+	for _, zone in ipairs(SupplyDropService.Zones) do
+		local flat = Vector3.new(at.X - zone.centre.X, 0, at.Z - zone.centre.Z)
+		if flat.Magnitude <= zone.radius + 40 and math.abs(at.Y - zone.centre.Y) < 120 then
+			name = zone.name
+			break
+		end
+	end
+	local near = SupplyDropService.NEAR
+	return { name = name, centre = at, radius = near.max, minRadius = near.min, maxRise = near.rise }
+end
+
+--- Drop one crate now: near a player by default, in a named zone when `zoneName` says so (or
+--- when nobody is out). Returns the landing position, or nil if nowhere had room.
+function SupplyDropService.Drop(zoneName: string?): Vector3?
+	local zone, landing, target = nil, nil, nil
+	if not zoneName then
+		target = SupplyDropService.PickPlayer()
+		zone = target and SupplyDropService.ZoneNear(target)
+		landing = zone and findLanding(zone)
+	end
 	if not landing then
-		warn(("[Supply] no clear ground found in %s"):format(zone.name))
+		target = nil
+		local zones = SupplyDropService.Zones
+		local options = {}
+		for _, z in ipairs(zones) do
+			if (zoneName and z.name == zoneName) or (not zoneName and z.name ~= lastZone) then
+				table.insert(options, z)
+			end
+		end
+		if #options == 0 then
+			options = zones
+		end
+		zone = options[math.random(1, #options)]
+		landing = findLanding(zone)
+	end
+	if not zone or not landing then
+		warn(("[Supply] no clear ground found in %s"):format(zone and zone.name or "any zone"))
 		return nil
 	end
 	lastZone = zone.name
+	if target then
+		lastNear[target] = os.clock()
+	end
 
 	nextId += 1
 	local id = nextId
@@ -456,12 +548,16 @@ end
 local function worldPlayers(): number
 	local count = 0
 	for _, p in ipairs(Players:GetPlayers()) do
-		if p:GetAttribute("DuelState") ~= "duel" and p.Character then
+		if SupplyDropService.Eligible(p) then
 			count += 1
 		end
 	end
 	return count
 end
+
+Players.PlayerRemoving:Connect(function(player)
+	lastNear[player] = nil
+end)
 
 task.spawn(function()
 	while true do

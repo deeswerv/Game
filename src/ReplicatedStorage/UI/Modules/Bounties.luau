@@ -1,12 +1,14 @@
 --!strict
 -- Bounties on the HUD: streak calls, the WANTED tag over anybody with a price on their head,
--- and your own price while it is yours.
+-- your own price while it is yours, and the MOST WANTED marker over the board's target
+-- (MostWantedService) with how far away they are.
 --
 -- The tag is a billboard pinned over the WANTED player's head that shows through walls --
 -- the point of a bounty is that everybody can find you. The price comes from the "Bounty"
 -- attribute BountyService sets, so the tag and the payout can never disagree.
 
 local Players = game:GetService("Players")
+local CollectionService = game:GetService("CollectionService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
@@ -31,6 +33,7 @@ function Bounties.new(screen: GuiObject, playerGui: Instance, toast: any)
 	self._gui = playerGui
 	self._hidden = false
 	self._tags = {} :: { [Player]: { gui: BillboardGui, amount: TextLabel, shown: number } }
+	self._marks = {} :: { [Model]: { gui: BillboardGui, distance: TextLabel } }
 
 	-- Your own price, under the cash bar while you are WANTED.
 	local badge = Instance.new("Frame")
@@ -113,6 +116,51 @@ function Bounties:_tag(player: Player, head: BasePart)
 	self._tags[player] = { gui = gui, amount = amount, shown = 0 }
 end
 
+--- The marker over the board's target: a red-and-gold pill with their street name, and the
+--- distance to them under it. Shows through walls from anywhere in the district.
+function Bounties:_mark(model: Model, head: BasePart)
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "MostWantedTag"
+	gui.Adornee = head
+	gui.AlwaysOnTop = true
+	gui.LightInfluence = 0
+	gui.MaxDistance = 900
+	gui.Size = UDim2.fromOffset(190, 62)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, 4.2, 0)
+	gui.ResetOnSpawn = false
+	gui.Parent = self._gui
+
+	local pill = Instance.new("Frame")
+	pill.AnchorPoint = Vector2.new(0.5, 0)
+	pill.Position = UDim2.new(0.5, 0, 0, 0)
+	pill.Size = UDim2.fromOffset(176, 30)
+	pill.BackgroundColor3 = RED
+	pill.BorderSizePixel = 0
+	pill.Parent = gui
+	Components.Corner(pill, 8)
+	Components.Stroke(pill, GOLD, 2.5)
+	Components.Gradient(pill)
+	local title = Components.Label(pill, {
+		text = "🎯 " .. string.upper(tostring(model:GetAttribute("MostWantedAlias") or "MOST WANTED")),
+		face = Theme.Face.HeavyItalic,
+		size = 18,
+		align = Enum.TextXAlignment.Center,
+		outline = 2,
+	})
+	title.Size = UDim2.fromScale(1, 1)
+	local distance = Components.Label(gui, {
+		text = "",
+		font = Theme.Font.Display,
+		size = 16,
+		colour = GOLD,
+		align = Enum.TextXAlignment.Center,
+		outline = 2,
+	})
+	distance.Position = UDim2.fromOffset(0, 32)
+	distance.Size = UDim2.new(1, 0, 0, 22)
+	self._marks[model] = { gui = gui, distance = distance }
+end
+
 function Bounties:_refresh()
 	local me = Players.LocalPlayer
 	for _, player in ipairs(Players:GetPlayers()) do
@@ -146,6 +194,37 @@ function Bounties:_refresh()
 		end
 	end
 
+	-- The board's target.
+	local seen = {}
+	local myRoot = me.Character and me.Character:FindFirstChild("HumanoidRootPart")
+	for _, tagged in ipairs(CollectionService:GetTagged("MostWanted")) do
+		local model = tagged :: Model
+		local head = model:IsA("Model") and model:FindFirstChild("Head")
+		local humanoid = model:FindFirstChildOfClass("Humanoid")
+		if head and head:IsA("BasePart") and humanoid and humanoid.Health > 0 and model:IsDescendantOf(workspace) then
+			seen[model] = true
+			local mark = self._marks[model]
+			if mark and mark.gui.Adornee ~= head then
+				mark.gui:Destroy()
+				mark = nil
+			end
+			if not mark then
+				self:_mark(model, head)
+				mark = self._marks[model]
+			end
+			if mark and myRoot and myRoot:IsA("BasePart") then
+				mark.distance.Text = string.format("%s  ·  %dm", string.upper(model.Name),
+					math.floor((head.Position - myRoot.Position).Magnitude / 3.5))
+			end
+		end
+	end
+	for model, mark in pairs(self._marks) do
+		if not seen[model] then
+			mark.gui:Destroy()
+			self._marks[model] = nil
+		end
+	end
+
 	local mine = tonumber(me:GetAttribute("Bounty")) or 0
 	self._badge.Visible = mine > 0 and not self._hidden and me:GetAttribute("DuelState") ~= "duel"
 	if mine > 0 then
@@ -159,7 +238,9 @@ function Bounties:Handle(kind: string, data: any)
 		return
 	end
 	local me = Players.LocalPlayer
-	if kind == "streak" then
+	if kind == "mostwanted" then
+		self:_mostWanted(data)
+	elseif kind == "streak" then
 		local subtitle = string.format("%d KILLS WITHOUT DYING", tonumber(data.streak) or 0)
 		if data.amount then
 			subtitle ..= string.format("  ·  $%s ON YOUR HEAD", commas(tonumber(data.amount) or 0))
@@ -185,6 +266,41 @@ function Bounties:Handle(kind: string, data: any)
 				text = string.format("%s  ·  $%s", tostring(data.victim), commas(tonumber(data.amount) or 0)),
 				icon = "🎯", colour = GOLD })
 		end
+	end
+end
+
+--- MOST WANTED news: a name going up, coming down, getting away, and your pay.
+function Bounties:_mostWanted(data: any)
+	local me = Players.LocalPlayer
+	local alias = "“" .. tostring(data.alias or "?") .. "”"
+	local stage = data.stage
+	if stage == "out" then
+		self._toast:Banner({ title = "MOST WANTED: " .. string.upper(tostring(data.alias or "")),
+			subtitle = string.format("%s is out at %s  ·  $%s on their head", tostring(data.name), tostring(data.where),
+				commas(tonumber(data.coins) or 0)),
+			colour = RED, sound = "Slam" })
+	elseif stage == "down" then
+		if data.byId ~= me.UserId then
+			self._toast:Push({ title = tostring(data.name) .. " is down", text = data.by and ("Brought in by "
+				.. tostring(data.by)) or "Somebody got to them", icon = "🎯", colour = GOLD })
+		end
+	elseif stage == "gone" then
+		self._toast:Push({ title = alias .. " skipped town", text = "The board will have a new name soon", icon = "🚗",
+			colour = Theme.Colour.TextMuted })
+	elseif stage == "paid" then
+		local subtitle = string.format("+$%s     +%s XP", commas(tonumber(data.coins) or 0), tostring(data.xp or 0))
+		if (tonumber(data.crystals) or 0) > 0 then
+			subtitle ..= "     +" .. tostring(data.crystals) .. " 💎"
+		end
+		self._toast:Banner({ title = "BROUGHT IN: " .. string.upper(tostring(data.alias or "")), subtitle = subtitle,
+			colour = GOLD, sound = "Ring" })
+		if data.cred then
+			self._toast:Push({ title = "+" .. tostring(data.cred) .. " Street Cred",
+				text = data.credTotal and ("Now " .. tostring(data.credTotal)) or nil, icon = "⭐", colour = GOLD })
+		end
+	elseif stage == "assist" then
+		self._toast:Push({ title = "Assist on " .. alias, text = string.format("+$%s  +%s XP",
+			commas(tonumber(data.coins) or 0), tostring(data.xp or 0)), icon = "🤝", colour = GOLD })
 	end
 end
 

@@ -40,6 +40,7 @@ local systems = {
 	"EmoteService",         -- emote wheel; the server owns which emotes exist
 	"HeadLookService",     -- where each player is looking, so everyone sees heads turn
 	"UtilityService",      -- frags, flashbangs, smoke, medkits and armour plates
+	"GearService",         -- ZEE TACTICS: heals, armour and bombs, Common to Mastery, and what is equipped
 	"CombatFeedService",   -- aim replication and the kill feed, both for the combat HUD
 	"WeaponBuildService",  -- per-player saved builds, camos, and dressing weapons on equip
 	"KillcamService",      -- tells the victim who killed them, and with what
@@ -54,9 +55,11 @@ local systems = {
 	"SupplyDropService",   -- a crate on a parachute every few minutes: a race across the map
 	"BountyService",       -- kill streaks, WANTED players and the price on their heads
 	"SettingsService",     -- saves the settings panel (volumes, camera shake, field of view)
-	"DuelPads",            -- 1v1 pads by the spawn: stand on one to queue (last: it looks for clear ground)
+	"DuelPads",            -- 1v1 pads: the DUEL HALL's pair downtown (the lobby's are retired)
 	"DistrictService",     -- Downtown: the city district (Travel menu), its shops, hall and stash
 	"TurfWarService",      -- four Downtown patches: step on one and its crew comes out to fight
+	"MostWantedService",   -- the bounty board's named crime boss, out somewhere in Downtown
+	"TowerService",        -- ZEE TOWER: the elevator to the penthouse, the Don, and the world it unlocks
 }
 
 -- Which build this is (tools/build.luau stamps it), first thing in the output.

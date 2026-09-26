@@ -88,6 +88,12 @@ AchievementConfig.List = {
 		kind = "crystal", goal = 50, reward = { coins = 2500, xp = 800, crystals = 5 } },
 	{ id = "bounty_hunter", category = "World", icon = "💰", title = "Bounty Hunter", text = "Claim 3 bounties",
 		kind = "bounty", goal = 3, reward = { coins = 3000, xp = 1000, crystals = 5, title = "Bounty Hunter" } },
+	{ id = "top_floor", category = "World", icon = "🏙", title = "The Top Floor", text = "Beat the Don at the top of ZEE TOWER",
+		kind = "tower", goal = 1, reward = { coins = 5000, xp = 2500, crystals = 10, title = "Don Breaker" } },
+	{ id = "penthouse_regular", category = "World", icon = "🥂", title = "Penthouse Regular", text = "Beat the Don 5 times",
+		kind = "tower", goal = 5, reward = { coins = 10000, xp = 5000, crystals = 20, title = "The New Don" } },
+	{ id = "most_wanted", category = "World", icon = "🎯", title = "Public Enemy No. 1", text = "Bring in 5 names off the MOST WANTED board",
+		kind = "mostwanted", goal = 5, reward = { coins = 5000, xp = 2000, crystals = 10, title = "Headhunter" } },
 
 	-- ---------------------------------------------------------- progress --
 	{ id = "contractor", category = "Progress", icon = "📋", title = "Contractor", text = "Finish 10 daily contracts",

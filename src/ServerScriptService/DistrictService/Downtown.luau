@@ -6,8 +6,9 @@
 --   * An avenue runs north from the arrival forecourt (south) to ZEE TOWER (north); a cross
 --     street runs east-west. Where they meet is ZEE PLAZA, pedestrianised: tiled paving, a
 --     three-tier stone fountain, planted corners and a finger post pointing the way.
---   * South-east: ZEE GUNS and the ARMORY, storefronts on the avenue (the shop and the
---     armory panels open at their doors).
+--   * South-east: ZEE GUNS and ZEE TACTICS, storefronts on the avenue you can walk into: a
+--     clerk behind each counter sells guns (and a workbench fits them out) or heals, armour
+--     and bombs.
 --   * South-west: ZEE GAS -- canopy, pumps, and the 24/7 store with the CONTRACTS board.
 --   * North-west: the DUEL HALL, a sports hall in two team colours with its own 1v1 pads.
 --   * North-east: a basketball court, and an apartment block whose fire escape climbs to a
@@ -63,9 +64,11 @@ Downtown.Look = {
 
 -- Interactive points the service wires up after building: prompt name -> panel.
 Downtown.Panels = {
-	GunShop = "Market",
-	Armory = "Workshop",
+	GunCounter = "Market",          -- ZEE GUNS: the clerk behind the counter sells guns
+	GunWorkbench = "Workshop",      -- and the bench by the wall fits them out
+	TacticsCounter = "Tactics",     -- ZEE TACTICS: heals, armour and bombs
 	ContractBoard = "Contracts",
+	BountyBoard = "Bounties",
 }
 
 local M = Enum.Material
@@ -762,58 +765,224 @@ end
 
 -- ------------------------------------------------------------- set pieces --
 
---- A storefront facing -X (toward the avenue): a brick or painted shell, a painted signboard,
---- a striped awning, two display windows with flower boxes, and a prompt at the door.
---- Origin at the front's centre on the pavement.
+--- The inside of ZEE GUNS: wood floor, racks of rifles on the back wall, pistols in glass
+--- cases, a target sheet, and the workbench where guns are fitted out (the Armory panel).
+local function gunsInterior(b: Kit.Builder, depth: number, width: number)
+	local plank = Color3.fromRGB(150, 108, 72)
+	for i = 0, math.floor((width - 2) / 2) - 1 do
+		b:decor("FloorPlank", Vector3.new(depth - 2, 0.06, 1.9), Vector3.new(depth / 2, 0.23, -width / 2 + 2 + i * 2),
+			if i % 2 == 0 then plank else darker(plank, 0.08), M.WoodPlanks)
+	end
+	-- Racks: a dark board on the back wall, rifles hung across it in two rows.
+	for _, z in ipairs({ -9, 9 }) do
+		local rack = b:within(CFrame.new(depth - 1.2, 0, z))
+		rack:decor("RackBoard", Vector3.new(0.3, 7, 12), Vector3.new(0, 7.5, 0), Color3.fromRGB(52, 46, 42), M.Wood)
+		for row = 0, 1 do
+			for k = -2, 2 do
+				local g = rack:within(CFrame.new(-0.35, 5.6 + row * 3.2, k * 2.3) * CFrame.Angles(math.rad(90), 0, 0))
+				g:decor("Rifle", Vector3.new(0.3, 5.2, 0.5), Vector3.new(0, 0, 0), Color3.fromRGB(38, 40, 44), M.Metal)
+				g:decor("Stock", Vector3.new(0.34, 1.6, 0.9), Vector3.new(0, -2.4, -0.23),
+					if (k + row) % 2 == 0 then WOOD else Color3.fromRGB(70, 72, 60), M.Wood)
+			end
+		end
+	end
+	-- Pistol cases either side of the aisle up to the counter.
+	for _, z in ipairs({ -8, 8 }) do
+		local case = b:within(CFrame.new(12, 0, z))
+		case:part("CaseBase", Vector3.new(2.4, 2.8, 5), Vector3.new(0, 1.6, 0), Color3.fromRGB(58, 50, 44), M.Wood)
+		case:decor("CaseGlass", Vector3.new(2.3, 1, 4.9), Vector3.new(0, 3.5, 0), GLASS, M.Glass, { transparency = 0.6 })
+		for k = -1, 1 do
+			case:decor("Pistol", Vector3.new(1.1, 0.25, 0.6), CFrame.new(0, 3.12, k * 1.4) * CFrame.Angles(0, math.rad(20), 0),
+				Color3.fromRGB(34, 36, 40), M.Metal)
+		end
+	end
+	-- A target sheet on the side wall, and a workbench under it.
+	local wall = b:within(CFrame.new(depth / 2 - 3, 0, -width / 2 + 1.2))
+	wall:decor("Target", Vector3.new(4, 5, 0.1), Vector3.new(0, 8, 0), CREAM)
+	for i, r in ipairs({ 1.8, 1.25, 0.7 }) do
+		wall:decor("Ring", Vector3.new(0.1, r * 2, r * 2), CFrame.new(0, 8, 0.06 + i * 0.02) * CFrame.Angles(0, math.rad(90), 0),
+			if i % 2 == 1 then Color3.fromRGB(30, 30, 34) else CREAM, nil, { shape = "Cylinder" })
+	end
+	wall:part("Workbench", Vector3.new(8, 3.2, 3), Vector3.new(0, 1.6, 1.6), Color3.fromRGB(120, 88, 60), M.Wood)
+	wall:decor("BenchTop", Vector3.new(8.3, 0.3, 3.3), Vector3.new(0, 3.35, 1.6), Color3.fromRGB(96, 70, 48), M.Wood)
+	wall:decor("Vise", Vector3.new(1, 0.9, 0.8), Vector3.new(-2.6, 3.95, 1.2), STEEL, M.Metal)
+	wall:decor("BenchGun", Vector3.new(3.6, 0.3, 0.5), Vector3.new(0.6, 3.66, 1.4), Color3.fromRGB(40, 42, 46), M.Metal)
+	local bench = wall:decor("Bench", Vector3.new(6, 0.08, 3), Vector3.new(0, 0.3, 4.4), darker(plank, 0.2))
+	bench.Name = "GunWorkbench"
+	bench.Transparency = 1
+	bench:SetAttribute("PromptText", "Customise")
+	bench:SetAttribute("PromptObject", "Attachments & builds")
+	-- The sign over the racks.
+	painted(b, "ZEE GUNS", Kit.Look(Vector3.new(depth - 1.5, 11.2, 0), Vector3.new(0, 11.2, 0)), 10, 1.4, GOLD)
+end
+
+--- The inside of ZEE TACTICS: dark rubber floor, a shelf of heals on the back wall, armour on
+--- mannequins down one side, bombs on a pegboard down the other, each shelf edged in the
+--- colours of the grades it sells.
+local function tacticsInterior(b: Kit.Builder, depth: number, width: number)
+	local tileA, tileB = Color3.fromRGB(58, 62, 72), Color3.fromRGB(72, 78, 90)
+	local nx, nz = math.floor((depth - 2) / 4), math.floor((width - 2) / 4)
+	local tx, tz = (depth - 2) / nx, (width - 2) / nz
+	for ix = 0, nx - 1 do
+		for iz = 0, nz - 1 do
+			b:decor("FloorTile", Vector3.new(tx - 0.04, 0.06, tz - 0.04),
+				Vector3.new(1 + (ix + 0.5) * tx, 0.23, -width / 2 + 1 + (iz + 0.5) * tz),
+				if (ix + iz) % 2 == 0 then tileA else tileB, M.Rubber)
+		end
+	end
+	local tiers = { Color3.fromRGB(150, 158, 172), Color3.fromRGB(46, 200, 84), Color3.fromRGB(46, 150, 255),
+		Color3.fromRGB(176, 76, 255), Color3.fromRGB(255, 170, 20), Color3.fromRGB(255, 56, 96) }
+	-- Heals: a long shelf unit on the back wall, three shelves of first-aid boxes.
+	local shelf = b:within(CFrame.new(depth - 1.6, 0, 0))
+	shelf:decor("ShelfBack", Vector3.new(0.3, 8, 16), Vector3.new(0.4, 5, 0), Color3.fromRGB(226, 228, 232))
+	for row = 0, 2 do
+		local y = 2.6 + row * 2.4
+		shelf:decor("Shelf", Vector3.new(1.6, 0.2, 16), Vector3.new(-0.4, y, 0), Color3.fromRGB(236, 238, 242))
+		for k = 0, 5 do
+			local z = -6.6 + k * 2.64
+			shelf:decor("ShelfEdge", Vector3.new(0.1, 0.24, 2.5), Vector3.new(-1.24, y, z), tiers[k + 1])
+			local kit = shelf:within(CFrame.new(-0.4, y + 0.1, z))
+			kit:decor("HealBox", Vector3.new(1, 0.9, 1.4), Vector3.new(0, 0.45, 0), Color3.fromRGB(246, 246, 248))
+			kit:decor("Cross", Vector3.new(0.06, 0.5, 0.16), Vector3.new(-0.52, 0.45, 0), RED)
+			kit:decor("Cross", Vector3.new(0.06, 0.16, 0.5), Vector3.new(-0.53, 0.45, 0), RED)
+		end
+	end
+	painted(b, "HEALS", Kit.Look(Vector3.new(depth - 1.4, 10.6, 0), Vector3.new(0, 10.6, 0)), 6, 1.2, Color3.fromRGB(96, 226, 110))
+
+	-- Armour: mannequins in vests down the -Z wall, one per grade, on a low plinth.
+	for k = 0, 5 do
+		local x = 5 + k * 3.2
+		local m = b:within(CFrame.new(x, 0, -width / 2 + 2.6))
+		m:part("Plinth", Vector3.new(2.4, 0.6, 2.4), Vector3.new(0, 0.5, 0), Color3.fromRGB(44, 48, 56))
+		m:decor("Stand", Vector3.new(0.3, 2.2, 0.3), Vector3.new(0, 1.9, 0), STEEL, M.Metal)
+		m:decor("Torso", Vector3.new(1.8, 2.2, 1), Vector3.new(0, 4.1, 0), Color3.fromRGB(214, 206, 196))
+		m:decor("MannequinHead", Vector3.new(0.9, 0.9, 0.9), Vector3.new(0, 5.6, 0), Color3.fromRGB(214, 206, 196), nil,
+			{ shape = "Ball" })
+		m:decor("Vest", Vector3.new(2, 1.9, 1.2), Vector3.new(0, 4.05, 0), darker(tiers[k + 1], 0.25), M.Fabric)
+		m:decor("VestPlate", Vector3.new(1.2, 1.1, 0.08), Vector3.new(0, 4.15, 0.62), tiers[k + 1])
+	end
+	painted(b, "ARMOR", Kit.Look(Vector3.new(13, 10.6, -width / 2 + 1.2), Vector3.new(13, 10.6, 0)), 6, 1.2,
+		Color3.fromRGB(52, 214, 240))
+
+	-- Bombs: a pegboard on the +Z wall, a row of grenades per grade.
+	local peg = b:within(CFrame.new(13, 0, width / 2 - 1.2) * CFrame.Angles(0, math.pi, 0))
+	peg:decor("Pegboard", Vector3.new(18, 6.4, 0.2), Vector3.new(0, 5.8, 0), Color3.fromRGB(196, 164, 120), M.Wood)
+	for k = 0, 5 do
+		local x = -7.5 + k * 3
+		peg:decor("PegLabel", Vector3.new(2.4, 0.3, 0.08), Vector3.new(x, 8.6, 0.14), tiers[k + 1])
+		for row = 0, 2 do
+			local g = peg:within(CFrame.new(x, 3.6 + row * 1.5, 0.55))
+			g:decor("Grenade", Vector3.new(0.8, 0.8, 0.8), Vector3.new(0, 0, 0), Color3.fromRGB(70, 84, 56), M.Metal,
+				{ shape = "Ball" })
+			g:decor("GrenadeBand", Vector3.new(0.84, 0.18, 0.84), Vector3.new(0, 0.1, 0), tiers[k + 1])
+			g:decor("GrenadePin", Vector3.new(0.2, 0.3, 0.2), Vector3.new(0, 0.5, 0), STEEL, M.Metal)
+		end
+	end
+	painted(b, "BOMBS", Kit.Look(Vector3.new(13, 10.6, width / 2 - 1.3), Vector3.new(13, 10.6, 0)), 6, 1.2,
+		Color3.fromRGB(236, 84, 70))
+	-- Crates of stock in the corner, and the grade chart on the wall behind the counter.
+	for i, at in ipairs({ Vector3.new(4, 0.2, width / 2 - 4.6), Vector3.new(6.6, 0.2, width / 2 - 4.2) }) do
+		local size = if i == 1 then 2.4 else 2
+		local crate = b:within(CFrame.new(at) * CFrame.Angles(0, math.rad(i * 11), 0))
+		crate:part("Crate", Vector3.new(size, size * 0.8, size), Vector3.new(0, size * 0.4, 0), Color3.fromRGB(96, 104, 76),
+			M.Wood)
+		crate:decor("CrateBand", Vector3.new(size + 0.04, 0.2, size * 0.2), Vector3.new(0, size * 0.8 + 0.02, 0), STEEL,
+			M.Metal)
+	end
+	local chart = b:within(CFrame.new(28.5, 0, -width / 2 + 1.2))
+	chart:decor("Chart", Vector3.new(4, 6, 0.1), Vector3.new(0, 7, 0), Color3.fromRGB(30, 32, 38))
+	for k = 0, 5 do
+		chart:decor("ChartBar", Vector3.new(3.4, 0.7, 0.06), Vector3.new(0, 9.2 - k * 0.85, 0.08), tiers[k + 1])
+	end
+end
+
+--- A storefront facing -X (toward the avenue) that you can walk into: a painted signboard, a
+--- striped awning, two display windows with flower boxes, an open doorway, and inside, a
+--- counter with the shop's clerk behind it (DistrictService puts a person on `ClerkSpot`)
+--- and the shop's own stock (`interior`: "guns" or "tactics"). The counter's prompt opens
+--- the shop's panel. Origin at the front's centre on the pavement.
 local function storefront(b: Kit.Builder, name: string, sub: string, colour: Color3, wall: Color3, promptName: string,
-	prompt: string, depth: number, width: number)
+	prompt: string, depth: number, width: number, interior: string, clerk: { [string]: any })
 	local h = 22
+	local ceil = 12.4
 	local trim = lighter(wall, 0.55)
-	b:part("Shell", Vector3.new(depth, h, width), Vector3.new(depth / 2, h / 2, 0), wall,
-		wall == BRICK and M.Brick or M.SmoothPlastic)
+	local shellMaterial = if wall == BRICK then M.Brick else M.SmoothPlastic
+	local face = darker(wall, 0.3)
+	local lining = if interior == "guns" then Color3.fromRGB(196, 160, 118) else Color3.fromRGB(86, 94, 110)
+
+	-- The shell: the storey above is solid; the ground floor is walls round a room.
+	b:part("Upper", Vector3.new(depth, h - ceil, width), Vector3.new(depth / 2, (h + ceil) / 2, 0), wall, shellMaterial)
+	b:part("BackWall", Vector3.new(1, ceil, width), Vector3.new(depth - 0.5, ceil / 2, 0), wall, shellMaterial)
+	for _, s in ipairs({ -1, 1 }) do
+		b:part("SideWall", Vector3.new(depth - 1.4, ceil, 1), Vector3.new((depth + 0.4 - 1) / 2, ceil / 2, s * (width / 2 - 0.5)),
+			wall, shellMaterial)
+	end
+	-- The front wall is the facade itself, with the doorway and the two windows left open in it.
+	local winW = width / 2 - 8
+	local winZ = width / 4 + 1.5
+	b:part("FrontWall", Vector3.new(1, ceil - 9.4, width), Vector3.new(-0.1, (ceil + 9.4) / 2, 0), face)
+	for _, s in ipairs({ -1, 1 }) do
+		b:part("FrontWall", Vector3.new(1, 1.6, width / 2 - 3.5), Vector3.new(-0.1, 0.8, s * (width / 4 + 1.75)), face)
+		b:part("FrontWall", Vector3.new(1, 7.8, winZ - winW / 2 - 3.5),
+			Vector3.new(-0.1, 5.5, s * (3.5 + (winZ - winW / 2 - 3.5) / 2)), face)
+		b:part("FrontWall", Vector3.new(1, 7.8, width / 2 - (winZ + winW / 2)),
+			Vector3.new(-0.1, 5.5, s * (winZ + winW / 2 + (width / 2 - winZ - winW / 2) / 2)), face)
+	end
+	-- Linings inside, a hair proud of the walls, and the ceiling.
+	b:decor("Lining", Vector3.new(0.1, ceil - 0.4, width - 2.2), Vector3.new(depth - 1.06, ceil / 2, 0), lining)
+	for _, s in ipairs({ -1, 1 }) do
+		b:decor("Lining", Vector3.new(depth - 2.2, ceil - 0.4, 0.1), Vector3.new(depth / 2, ceil / 2, s * (width / 2 - 1.06)),
+			lining)
+		b:decor("Wainscot", Vector3.new(depth - 2.3, 3, 0.14), Vector3.new(depth / 2, 1.7, s * (width / 2 - 1.1)),
+			darker(lining, 0.35))
+	end
+	b:decor("Ceiling", Vector3.new(depth - 1.8, 0.1, width - 1.8), Vector3.new(depth / 2, ceil - 0.06, 0),
+		Color3.fromRGB(232, 232, 228))
+	b:part("ShopFloor", Vector3.new(depth - 1, 0.2, width - 1), Vector3.new(depth / 2 - 0.5, 0.1, 0),
+		Color3.fromRGB(80, 80, 84))
+	for _, x in ipairs({ depth * 0.3, depth * 0.7 }) do
+		for _, z in ipairs({ -width / 4, width / 4 }) do
+			b:decor("LightPanel", Vector3.new(4, 0.12, 2), Vector3.new(x, ceil - 0.14, z), LAMP_GLASS)
+		end
+		b:light("Point", Vector3.new(x, ceil - 1.2, 0), WARM, 1.6, 26)
+	end
+
 	b:decor("Cornice", Vector3.new(depth + 0.8, 1, width + 0.8), Vector3.new(depth / 2, h - 0.6, 0), trim)
 	b:decor("Parapet", Vector3.new(depth + 0.4, 1, width + 0.4), Vector3.new(depth / 2, h + 0.4, 0), darker(wall, 0.15))
 	b:decor("RoofDeck", Vector3.new(depth - 1, 0.2, width - 1), Vector3.new(depth / 2, h + 0.95, 0),
 		Color3.fromRGB(150, 148, 144))
 	b:decor("RoofUnit", Vector3.new(5, 3, 4), Vector3.new(depth * 0.6, h + 1.6, width / 4), Color3.fromRGB(206, 208, 204),
 		M.Metal)
-	-- The facade: trim pilasters, the painted signboard, the glass.
-	b:decor("Facade", Vector3.new(0.6, 12.6, width + 0.4), Vector3.new(-0.3, 6.3, 0), darker(wall, 0.3))
 	for _, z in ipairs({ -width / 2 + 1, width / 2 - 1 }) do
-		b:decor("Pilaster", Vector3.new(0.8, h - 1, 1.6), Vector3.new(-0.4, (h - 1) / 2, z), trim)
+		b:decor("Pilaster", Vector3.new(0.8, h - 1, 1.6), Vector3.new(-0.9, (h - 1) / 2, z), trim)
 	end
 	for _, z in ipairs({ -4.6, 4.6 }) do
-		b:decor("Pilaster", Vector3.new(0.8, 12.8, 1.2), Vector3.new(-0.4, 6.4, z), trim)
+		b:decor("Pilaster", Vector3.new(0.8, 12.8, 1.2), Vector3.new(-0.9, 6.4, z), trim)
 	end
-	board(b, name, Kit.Look(Vector3.new(-1.1, 16.2, 0), Vector3.new(-10, 16.2, 0)), width - 10, 4.4, colour, CREAM)
-	-- Two big windows either side of the door, the interior lit behind them.
-	for _, z in ipairs({ -width / 4 - 1.5, width / 4 + 1.5 }) do
-		b:decor("Window", Vector3.new(0.3, 8, width / 2 - 8), Vector3.new(-0.6, 5.6, z), GLASS, M.Glass,
+	board(b, name, Kit.Look(Vector3.new(-1.6, 16.2, 0), Vector3.new(-10, 16.2, 0)), width - 10, 4.4, colour, CREAM)
+	-- The two windows, the interior lit behind them.
+	for _, z in ipairs({ -winZ, winZ }) do
+		b:part("Window", Vector3.new(0.3, 7.8, winW), Vector3.new(-0.1, 5.5, z), GLASS, M.Glass,
 			{ transparency = 0.55, reflectance = 0.15 })
-		b:decor("Mullion", Vector3.new(0.46, 8.1, 0.3), Vector3.new(-0.72, 5.6, z), trim)
-		b:decor("Display", Vector3.new(3, 1.2, width / 2 - 10), Vector3.new(1.8, 1.1, z), WOOD, M.Wood)
-		-- Racks of guns on the back wall of the display.
-		for i = -2, 2 do
-			b:decor("RackItem", Vector3.new(0.4, 0.5, 3.2), Vector3.new(4, 4 + (i % 2) * 1.6, z + i * 1.8),
-				Color3.fromRGB(44, 44, 48), M.Metal)
-		end
-		b:decor("CeilingLight", Vector3.new(0.4, 0.2, width / 2 - 8), Vector3.new(6, 10.4, z), LAMP_GLASS)
+		b:decor("Mullion", Vector3.new(0.46, 7.9, 0.3), Vector3.new(-0.1, 5.5, z), trim)
+		b:decor("Sill", Vector3.new(1.4, 0.3, winW + 0.6), Vector3.new(-0.5, 1.5, z), trim)
+		b:part("Display", Vector3.new(3, 1.2, winW - 2), Vector3.new(2.2, 0.8, z), WOOD, M.Wood)
 		-- A flower box under the window.
-		local box = b:within(CFrame.new(-1.2, 0, z) * CFrame.Angles(0, math.rad(90), 0))
-		box:decor("FlowerBox", Vector3.new(width / 2 - 8, 1, 1.2), Vector3.new(0, 1.1, 0), WOOD, M.WoodPlanks)
-		for x = -(width / 4 - 4.6), width / 4 - 4.6 + 1e-3, 1.4 do
-			box:decor("Tuft", Vector3.new(1, 0.6, 1), CFrame.new(x, 1.85, 0) * CFrame.Angles(0, math.rad(45), 0), HEDGE)
-			box:decor("Bloom", Vector3.new(0.6, 0.35, 0.6), Vector3.new(x, 2.25, 0), FLOWERS[(math.floor(x) % 2) + 1])
+		local fb = b:within(CFrame.new(-1.4, 0, z) * CFrame.Angles(0, math.rad(90), 0))
+		fb:decor("FlowerBox", Vector3.new(winW, 1, 1.2), Vector3.new(0, 1.1, 0), WOOD, M.WoodPlanks)
+		for x = -(winW / 2 - 0.6), winW / 2 - 0.6 + 1e-3, 1.4 do
+			fb:decor("Tuft", Vector3.new(1, 0.6, 1), CFrame.new(x, 1.85, 0) * CFrame.Angles(0, math.rad(45), 0), HEDGE)
+			fb:decor("Bloom", Vector3.new(0.6, 0.35, 0.6), Vector3.new(x, 2.25, 0), FLOWERS[(math.floor(x) % 2) + 1])
 		end
 	end
-	b:light("Point", Vector3.new(5, 8, 0), WARM, 1.1, 26)
-	-- The door and its prompt.
-	b:decor("DoorFrame", Vector3.new(0.5, 9.4, 7), Vector3.new(-0.6, 4.7, 0), colour)
-	b:decor("Door", Vector3.new(0.3, 8.6, 6), Vector3.new(-0.66, 4.3, 0), GLASS, M.Glass, { transparency = 0.4 })
-	local mat = b:decor("Mat", Vector3.new(3, 0.08, 6), Vector3.new(-2.2, 0.04, 0), darker(colour, 0.3), M.Fabric)
-	mat.Name = promptName
-	mat:SetAttribute("PromptText", prompt)
-	mat:SetAttribute("PromptObject", sub)
+	-- The doorway: jambs and a head in the shop's colour, a mat outside.
+	for _, s in ipairs({ -1, 1 }) do
+		b:decor("DoorJamb", Vector3.new(1.3, 9.3, 0.5), Vector3.new(-0.1, 4.65, s * 3.7), colour)
+	end
+	b:decor("DoorHead", Vector3.new(1.3, 0.76, 8), Vector3.new(-0.1, 9.72, 0), colour)
+	b:decor("DoorMat", Vector3.new(3, 0.08, 6), Vector3.new(-2.2, 0.04, 0), darker(colour, 0.3), M.Fabric)
+	b:decor("OpenSign", Vector3.new(0.1, 0.9, 2.4), Vector3.new(-0.66, 8.4, -6.2), Color3.fromRGB(236, 70, 60))
+	painted(b, "OPEN", Kit.Look(Vector3.new(-0.74, 8.4, -6.2), Vector3.new(-10, 8.4, -6.2)), 2.2, 0.7, CREAM)
 	-- The awning: stripes of the shop's colour and cream, sloping out over the windows.
 	local run = width - 3
 	local stripes = math.max(4, math.floor(run / 2.6))
@@ -825,8 +994,84 @@ local function storefront(b: Kit.Builder, name: string, sub: string, colour: Col
 		b:decor("AwningFlap", Vector3.new(0.2, 0.7, sw), Vector3.new(-4.6, 11.05, z), i % 2 == 0 and colour or CREAM,
 			M.Fabric)
 	end
-	painted(b, sub, Kit.Look(Vector3.new(-0.95, 10.4, width / 2 - 4.5), Vector3.new(-10, 10.4, width / 2 - 4.5)), 6, 0.9,
+	painted(b, sub, Kit.Look(Vector3.new(-1.1, 10.4, width / 2 - 4.5), Vector3.new(-10, 10.4, width / 2 - 4.5)), 6, 0.9,
 		CREAM)
+
+	-- The counter: a long run across the back third, closed off at both ends so the clerk has
+	-- the space behind it to themselves.
+	local cx = depth - 11
+	b:part("Counter", Vector3.new(2.4, 3.6, 24), Vector3.new(cx, 1.8, 0), colour)
+	b:decor("CounterTop", Vector3.new(2.9, 0.3, 24.5), Vector3.new(cx, 3.75, 0), Color3.fromRGB(64, 52, 44), M.Wood)
+	b:decor("CounterKick", Vector3.new(0.1, 0.5, 23.6), Vector3.new(cx - 1.22, 0.45, 0), darker(colour, 0.4))
+	for _, s in ipairs({ -1, 1 }) do
+		b:part("CounterEnd", Vector3.new(depth - 1 - (cx - 1.2), 3.6, 1.2),
+			Vector3.new((cx - 1.2 + depth - 1) / 2, 1.8, s * 12.6), colour)
+	end
+	b:decor("Register", Vector3.new(1.4, 1, 1.6), Vector3.new(cx + 0.2, 4.4, -6), Color3.fromRGB(40, 42, 48))
+	b:decor("RegisterScreen", Vector3.new(0.1, 0.7, 1.2), Vector3.new(cx - 0.55, 5.1, -6), Color3.fromRGB(80, 200, 130))
+	b:decor("Bell", Vector3.new(0.5, 0.35, 0.5), Vector3.new(cx - 0.5, 4.08, 4), GOLD, M.Metal, { shape = "Ball" })
+	-- Where the clerk stands (DistrictService puts them there), and where you stand to be served.
+	local spot = b:decor("ClerkSpot", Vector3.new(1, 0.1, 1), Vector3.new(cx + 4, 0.25, 0), colour, nil,
+		{ transparency = 1 })
+	for key, value in pairs(clerk) do
+		spot:SetAttribute(key, value)
+	end
+	local counter = b:decor("Service", Vector3.new(3, 0.08, 6), Vector3.new(cx - 3, 0.28, 0), darker(colour, 0.2), M.Fabric)
+	counter.Name = promptName
+	counter:SetAttribute("PromptText", prompt)
+	counter:SetAttribute("PromptObject", sub)
+
+	if interior == "guns" then
+		gunsInterior(b, depth, width)
+	else
+		tacticsInterior(b, depth, width)
+	end
+end
+
+--- A job board hung on a wall that faces -Z (the builder's -Z points away from the wall):
+--- a wood frame round a cork panel, a painted header, a lamp, what is pinned to it -- notes
+--- for contracts, WANTED posters for bounties -- and the spot in front that opens it.
+local function jobBoard(b: Kit.Builder, kind: string)
+	local dark, cork = Color3.fromRGB(86, 60, 42), Color3.fromRGB(196, 146, 96)
+	local bounty = kind == "bounties"
+	b:decor("BoardFrame", Vector3.new(9.6, 6.6, 0.3), Vector3.new(0, 5.6, -0.17), dark, M.Wood)
+	b:decor("BoardCork", Vector3.new(8.8, 5.8, 0.3), Vector3.new(0, 5.6, -0.3), cork, M.Fabric)
+	board(b, if bounty then "BOUNTIES" else "CONTRACTS", Kit.Look(Vector3.new(0, 9.62, -0.62), Vector3.new(0, 9.62, -10)),
+		8.8, 1.4, if bounty then Color3.fromRGB(170, 36, 40) else NAVY, if bounty then TRIM else GOLD)
+	local rng = Random.new(if bounty then 91 else 77)
+	if bounty then
+		-- WANTED posters: a silhouette, the word, a price.
+		for i = 0, 3 do
+			local x = -3.1 + i * 2.07
+			local tilt = CFrame.Angles(0, 0, math.rad(rng:NextNumber(-5, 5)))
+			local p = b:within(CFrame.new(x, 5.4, -0.5) * tilt)
+			p:decor("Poster", Vector3.new(1.8, 2.8, 0.05), Vector3.new(0, 0, 0), Color3.fromRGB(240, 222, 180))
+			p:decor("PosterHead", Vector3.new(0.7, 0.7, 0.06), Vector3.new(0, 0.35, -0.03), Color3.fromRGB(46, 40, 38),
+				nil, { shape = "Ball" })
+			p:decor("PosterBody", Vector3.new(1.1, 0.5, 0.06), Vector3.new(0, -0.18, -0.03), Color3.fromRGB(46, 40, 38))
+			p:decor("PosterBand", Vector3.new(1.6, 0.34, 0.06), Vector3.new(0, 1.05, -0.03), Color3.fromRGB(176, 40, 40))
+			p:decor("PosterPrice", Vector3.new(1.2, 0.26, 0.06), Vector3.new(0, -0.9, -0.03), Color3.fromRGB(60, 120, 60))
+			p:decor("Pin", Vector3.new(0.2, 0.2, 0.12), Vector3.new(0, 1.3, -0.06), RED)
+		end
+	else
+		for i = 0, 5 do
+			local x = -3 + (i % 3) * 3
+			local y = 4.4 + math.floor(i / 3) * 2.4
+			b:decor("Paper", Vector3.new(1.9, 1.8, 0.05), CFrame.new(x, y, -0.5)
+				* CFrame.Angles(0, 0, math.rad(rng:NextNumber(-6, 6))), Color3.fromRGB(248, 242, 226))
+			b:decor("PaperLines", Vector3.new(1.3, 0.8, 0.06), Vector3.new(x, y - 0.1, -0.53), Color3.fromRGB(190, 196, 210))
+			b:decor("Pin", Vector3.new(0.2, 0.2, 0.12), Vector3.new(x, y + 0.7, -0.56), RED)
+		end
+	end
+	-- A lamp over it.
+	b:decor("LampArm", Vector3.new(0.2, 0.2, 1.6), Vector3.new(0, 10.95, -0.8), IRON)
+	b:decor("LampShade", Vector3.new(1.6, 0.5, 1), Vector3.new(0, 10.75, -1.5), IRON)
+	b:light("Spot", Kit.Look(Vector3.new(0, 10.45, -1.5), Vector3.new(0, 5.6, 0)), WARM, 1.4, 16, { Angle = 70 })
+	-- Where you stand to read it: the prompt lives here.
+	local spot = b:decor(if bounty then "BountyBoard" else "ContractBoard", Vector3.new(6, 0.08, 3),
+		Vector3.new(0, 0.04, -2.2), Color3.fromRGB(60, 58, 56), M.Fabric)
+	spot:SetAttribute("PromptText", if bounty then "Bounties" else "Contracts")
+	spot:SetAttribute("PromptObject", if bounty then "Most Wanted" else "Daily jobs")
 end
 
 --- ZEE GAS: canopy over two pump islands, the price pylon on the corner. Origin at the
@@ -894,29 +1139,10 @@ local function convenience(b: Kit.Builder)
 	painted(b, "ICE", Kit.Look(Vector3.new(2.62, 2, -14), Vector3.new(10, 2, -14)), 2.4, 1, Color3.fromRGB(60, 120, 200))
 	b:part("PaperStand", Vector3.new(1.4, 3, 1.6), Vector3.new(1, 1.5, 7), BLUE)
 
-	-- The contracts board: a cork board on posts, papers pinned, a header, a lamp over it.
-	local cork = b:within(CFrame.new(5, 0, 11.5))
-	for _, z in ipairs({ -4, 4 }) do
-		cork:part("Post", Vector3.new(0.5, 9, 0.5), Vector3.new(0, 4.5, z * 1.175), Color3.fromRGB(96, 68, 48), M.Wood)
-	end
-	cork:decor("Board", Vector3.new(0.4, 5, 8.6), Vector3.new(0.04, 5.6, 0), Color3.fromRGB(188, 138, 90), M.Wood)
-	cork:decor("Frame", Vector3.new(0.5, 5.4, 9), Vector3.new(-0.05, 5.6, 0), Color3.fromRGB(96, 68, 48), M.Wood)
-	local rng = Random.new(77)
-	for i = 0, 5 do
-		local z = -3 + (i % 3) * 3
-		local y = 4.4 + math.floor(i / 3) * 2.4
-		cork:decor("Paper", Vector3.new(0.05, 1.8, 1.9),
-			CFrame.new(0.23, y, z) * CFrame.Angles(math.rad(rng:NextNumber(-6, 6)), 0, 0), Color3.fromRGB(248, 242, 226))
-		cork:decor("Pin", Vector3.new(0.12, 0.2, 0.2), Vector3.new(0.28, y + 0.7, z), RED)
-	end
-	board(cork, "CONTRACTS", Kit.Look(Vector3.new(0.3, 8.9, 0), Vector3.new(10, 8.9, 0)), 8.6, 1.3, NAVY, GOLD)
-	local spot = cork:decor("ContractBoard", Vector3.new(3, 0.08, 6), Vector3.new(2, 0.04, 0), Color3.fromRGB(60, 58, 56),
-		M.Fabric)
-	spot:SetAttribute("PromptText", "Contracts")
-	spot:SetAttribute("PromptObject", "Daily jobs")
-	cork:decor("LampArm", Vector3.new(1.6, 0.2, 0.2), Vector3.new(0.7, 10.4, 0), IRON)
-	cork:decor("LampShade", Vector3.new(1, 0.5, 1.4), Vector3.new(1.4, 10.2, 0), IRON)
-	cork:light("Spot", Kit.Look(Vector3.new(1.4, 10, 0), Vector3.new(0, 5.6, 0)), WARM, 1.4, 16, { Angle = 70 })
+	-- The job boards on the store's north wall, facing the cross street: CONTRACTS and
+	-- BOUNTIES, side by side under their own lamps.
+	jobBoard(b:within(CFrame.new(-19, 0, 15) * CFrame.Angles(0, math.pi, 0)), "contracts")
+	jobBoard(b:within(CFrame.new(-7, 0, 15) * CFrame.Angles(0, math.pi, 0)), "bounties")
 end
 
 --- The DUEL HALL: an open-fronted sports hall facing +X, the floor split into a blue half and
@@ -1163,6 +1389,303 @@ local function apartments(b: Kit.Builder)
 	b:light("Point", Vector3.new(D / 2, H + 4.5, 0), WARM, 1.2, 16)
 end
 
+--- THE PENTHOUSE, on the roof of ZEE TOWER: the Don's floor, and the arena for the fight with
+--- him. A black-marble deck a little wider than the shaft all round, edged in gold and glass.
+--- From the front: an infinity pool along the edge looking down the avenue, a terrace of
+--- loungers, a glass-roofed pavilion on gold columns (the lounge -- a sunken sofa, a grand
+--- piano, a bar, the Don's desk under a chandelier), the feature wall with the gold Z and the
+--- vault, and behind it the helipad (the Don's helicopter is `DonHeli`) and the elevator you
+--- arrive by. Four pylons carry the crown and the spire over it all. Invisible walls and a lid
+--- keep everybody on the roof.
+---
+--- Origin at the middle of the roof, on the roof; -Z toward the avenue. The deck's top is y 1.
+local function penthouse(b: Kit.Builder)
+	local W, D = 84, 60
+	local marble = Color3.fromRGB(34, 32, 40)
+	local marbleLight = Color3.fromRGB(236, 232, 226)
+	local gold = Color3.fromRGB(236, 184, 64)
+	local deckTop = 1
+	b:part("PenthouseDeck", Vector3.new(W, 2, D), Vector3.new(0, 0, 0), marble, M.Marble)
+	-- Gold inlay across the floor, and a gold band round the deck's edge.
+	for x = -36, 36, 12 do
+		b:decor("Inlay", Vector3.new(0.3, 0.04, D - 2), Vector3.new(x, deckTop + 0.02, 0), gold, M.Metal)
+	end
+	for z = -24, 24, 12 do
+		b:decor("Inlay", Vector3.new(W - 2, 0.04, 0.3), Vector3.new(0, deckTop + 0.03, z), gold, M.Metal)
+	end
+	-- The underside, as the street sees it: a cream soffit with a ring of lamps round its edge.
+	b:decor("Soffit", Vector3.new(W - 0.4, 0.1, D - 0.4), Vector3.new(0, -1.06, 0), Color3.fromRGB(236, 226, 206))
+	for x = -W / 2 + 3, W / 2 - 3 + 1e-3, 6 do
+		for _, s in ipairs({ -1, 1 }) do
+			b:decor("SoffitLamp", Vector3.new(0.8, 0.2, 0.8), Vector3.new(x, -1.2, s * (D / 2 - 1.2)), LAMP_GLASS)
+		end
+	end
+	for z = -D / 2 + 3.6, D / 2 - 3.6 + 1e-3, 6 do
+		for _, s in ipairs({ -1, 1 }) do
+			b:decor("SoffitLamp", Vector3.new(0.8, 0.2, 0.8), Vector3.new(s * (W / 2 - 1.2), -1.2, z), LAMP_GLASS)
+		end
+	end
+	for _, at in ipairs({ Vector3.new(-30, -3, -24), Vector3.new(30, -3, -24), Vector3.new(0, -3, -27) }) do
+		b:light("Point", at, WARM, 1.1, 22)
+	end
+	for _, s in ipairs({ -1, 1 }) do
+		b:decor("Fascia", Vector3.new(W + 0.3, 0.6, 0.2), Vector3.new(0, 0.2, s * (D / 2 + 0.05)), gold, M.Metal)
+		b:decor("Fascia", Vector3.new(0.2, 0.6, D + 0.3), Vector3.new(s * (W / 2 + 0.05), 0.2, 0), gold, M.Metal)
+		-- Struts under the side cantilevers, from the shaft out to the deck's edge.
+		for _, z in ipairs({ -20, 0, 20 }) do
+			local cf, len = Kit.Span(Vector3.new(s * 30, -9, z), Vector3.new(s * (W / 2 - 1), -1, z))
+			b:decor("Strut", Vector3.new(0.8, 0.8, len), cf, gold, M.Metal)
+		end
+	end
+
+	-- The glass balustrade round the edge, gold posts and a gold rail on top.
+	local rail = 3.6
+	for _, s in ipairs({ -1, 1 }) do
+		b:part("Balustrade", Vector3.new(W - 1.2, rail, 0.3), Vector3.new(0, deckTop + rail / 2, s * (D / 2 - 0.6)), GLASS,
+			M.Glass, { transparency = 0.6, reflectance = 0.1 })
+		b:part("Balustrade", Vector3.new(0.3, rail, D - 1.8), Vector3.new(s * (W / 2 - 0.6), deckTop + rail / 2, 0), GLASS,
+			M.Glass, { transparency = 0.6, reflectance = 0.1 })
+		b:decor("HandRail", Vector3.new(W - 0.9, 0.3, 0.5), Vector3.new(0, deckTop + rail + 0.15, s * (D / 2 - 0.6)), gold,
+			M.Metal)
+		b:decor("HandRail", Vector3.new(0.5, 0.3, D - 1.5), Vector3.new(s * (W / 2 - 0.6), deckTop + rail + 0.16, 0), gold,
+			M.Metal)
+		for x = -W / 2 + 0.6, W / 2 - 0.6 + 1e-3, 6 do
+			b:decor("RailPost", Vector3.new(0.45, rail, 0.45), Vector3.new(x, deckTop + rail / 2, s * (D / 2 - 0.6)), gold,
+				M.Metal)
+		end
+	end
+	-- Nobody leaves by the edge: invisible walls well above the rail, and a lid.
+	for _, s in ipairs({ -1, 1 }) do
+		b:part("TowerBound", Vector3.new(W + 2, 50, 1), Vector3.new(0, deckTop + 25, s * (D / 2 + 0.5)), gold, nil,
+			{ transparency = 1, query = false, shadow = false })
+		b:part("TowerBound", Vector3.new(1, 50, D + 2), Vector3.new(s * (W / 2 + 0.5), deckTop + 25, 0), gold, nil,
+			{ transparency = 1, query = false, shadow = false })
+	end
+	b:part("TowerBound", Vector3.new(W + 2, 1, D + 2), Vector3.new(0, deckTop + 50.5, 0), gold, nil,
+		{ transparency = 1, query = false, shadow = false })
+
+	-- The infinity pool along the front edge, looking down the avenue.
+	local pool = b:within(CFrame.new(0, deckTop, -24.6))
+	pool:decor("PoolTile", Vector3.new(56, 0.04, 6.4), Vector3.new(0, 0.09, 0), Color3.fromRGB(120, 206, 230))
+	pool:decor("PoolWater", Vector3.new(56, 0.1, 6.4), Vector3.new(0, 0.56, 0), Color3.fromRGB(70, 180, 226), M.Glass,
+		{ transparency = 0.35, reflectance = 0.2 })
+	for _, s in ipairs({ -1, 1 }) do
+		pool:part("PoolRim", Vector3.new(57.6, 0.7, 0.8), Vector3.new(0, 0.35, s * 3.6), marbleLight, M.Marble)
+		pool:part("PoolRim", Vector3.new(0.8, 0.7, 6.4), Vector3.new(s * 28.4, 0.35, 0), marbleLight, M.Marble)
+	end
+	b:light("Point", Vector3.new(0, deckTop + 0.4, -24.6), Color3.fromRGB(120, 210, 255), 1.4, 24)
+
+	-- The terrace: loungers facing the view, gold umbrellas between them.
+	for i, x in ipairs({ -26, -17, 17, 26 }) do
+		local l = b:within(CFrame.new(x, deckTop, -15) * CFrame.Angles(0, 0, 0))
+		l:part("Lounger", Vector3.new(2.4, 0.9, 6), Vector3.new(0, 0.65, 0), marbleLight)
+		l:decor("LoungerBack", Vector3.new(2.4, 0.4, 2.6), CFrame.new(0, 1.6, 2.2) * CFrame.Angles(math.rad(35), 0, 0),
+			marbleLight)
+		l:decor("Towel", Vector3.new(1.8, 0.06, 3), Vector3.new(0, 1.13, -0.8), if i % 2 == 0 then gold else TEAL, M.Fabric)
+		if i % 2 == 1 then
+			local u = b:within(CFrame.new(x + 4.5, deckTop, -15))
+			u:decor("UmbrellaPole", Vector3.new(0.25, 7, 0.25), Vector3.new(0, 3.5, 0), gold, M.Metal)
+			u:decor("Umbrella", Vector3.new(1.2, 7, 7), CFrame.new(0, 7.2, 0) * CFrame.Angles(0, 0, math.rad(90)), CREAM,
+				M.Fabric, { shape = "Cylinder" })
+			u:decor("UmbrellaTrim", Vector3.new(0.3, 7.2, 7.2), CFrame.new(0, 6.6, 0) * CFrame.Angles(0, 0, math.rad(90)),
+				gold, M.Fabric, { shape = "Cylinder" })
+		end
+	end
+
+	-- The pavilion: a glass roof on gold columns; the four corner columns run on up as the
+	-- crown's pylons.
+	local roofY = deckTop + 15
+	for _, x in ipairs({ -22, -7.4, 7.4, 22 }) do
+		for _, z in ipairs({ -8, 16 }) do
+			local corner = math.abs(x) > 20
+			local height = if corner then 40 else roofY - deckTop
+			b:part("Column", Vector3.new(height, 1.6, 1.6), CFrame.new(x, deckTop + height / 2, z)
+				* CFrame.Angles(0, 0, math.rad(90)), marbleLight, M.Marble, { shape = "Cylinder" })
+			b:decor("ColumnBase", Vector3.new(2.4, 0.8, 2.4), Vector3.new(x, deckTop + 0.4, z), gold, M.Metal)
+			b:decor("ColumnCap", Vector3.new(2.4, 0.8, 2.4), Vector3.new(x, roofY - 0.4, z), gold, M.Metal)
+			b:light("Spot", Kit.Look(Vector3.new(x, deckTop + 1, z - 1.4), Vector3.new(x, roofY, z - 1.4)), WARM, 1, 16,
+				{ Angle = 35 })
+		end
+	end
+	b:decor("GlassRoof", Vector3.new(46, 0.3, 26), Vector3.new(0, roofY + 0.3, 4), Color3.fromRGB(190, 220, 236), M.Glass,
+		{ transparency = 0.55, reflectance = 0.2 })
+	for _, z in ipairs({ -8, 4, 16 }) do
+		b:decor("RoofBeam", Vector3.new(46.6, 0.6, 0.5), Vector3.new(0, roofY + 0.1, z), gold, M.Metal)
+	end
+	for _, x in ipairs({ -22, -7.4, 7.4, 22 }) do
+		b:decor("RoofBeam", Vector3.new(0.5, 0.6, 24.5), Vector3.new(x, roofY + 0.11, 4), gold, M.Metal)
+	end
+	-- The chandelier over the lounge.
+	local ch = b:within(CFrame.new(-8, roofY - 3.2, 4))
+	ch:decor("ChandelierChain", Vector3.new(0.15, 2.6, 0.15), Vector3.new(0, 1.9, 0), gold, M.Metal)
+	for i, r in ipairs({ 3, 2 }) do
+		ch:decor("ChandelierRing", Vector3.new(0.25, r * 2, r * 2), CFrame.new(0, -i * 0.7, 0)
+			* CFrame.Angles(0, 0, math.rad(90)), gold, M.Metal, { shape = "Cylinder" })
+		for k = 0, 7 do
+			local a = k * math.pi / 4
+			ch:decor("Crystal", Vector3.new(0.5, 0.5, 0.5), Vector3.new(math.cos(a) * r, -i * 0.7 - 0.45, math.sin(a) * r),
+				LAMP_GLASS, M.Glass, { shape = "Ball", transparency = 0.1 })
+		end
+	end
+	ch:light("Point", Vector3.new(0, -1.6, 0), WARM, 2, 30)
+
+	-- The lounge: a sunken-feeling U of white sofas round a table of money.
+	local lounge = b:within(CFrame.new(-11, deckTop, 3))
+	lounge:decor("Rug", Vector3.new(12.4, 0.06, 11), Vector3.new(0, 0.06, 0), Color3.fromRGB(150, 36, 44), M.Fabric)
+	for _, spec in ipairs({ { Vector3.new(10, 1.6, 2.2), Vector3.new(0, 0.8, 4.6) }, { Vector3.new(2.2, 1.6, 8), Vector3.new(-5.4, 0.8, 0.4) },
+		{ Vector3.new(2.2, 1.6, 8), Vector3.new(5.4, 0.8, 0.4) } }) do
+		lounge:part("Sofa", spec[1], spec[2], marbleLight, M.Fabric)
+	end
+	lounge:decor("SofaBack", Vector3.new(10, 1.4, 0.8), Vector3.new(0, 2.3, 5.4), marbleLight, M.Fabric)
+	lounge:part("CoffeeTable", Vector3.new(4.4, 1.1, 3), Vector3.new(0, 0.55, 0), Color3.fromRGB(20, 20, 24), M.Marble)
+	for k = 0, 4 do
+		lounge:decor("CashStack", Vector3.new(0.9, 0.35 + (k % 2) * 0.2, 0.45), Vector3.new(-1.6 + k * 0.8, 1.3, -0.3 + (k % 2) * 0.6),
+			Color3.fromRGB(110, 170, 96))
+	end
+	lounge:decor("Briefcase", Vector3.new(1.6, 0.5, 1.1), Vector3.new(1.4, 1.35, 0.7), Color3.fromRGB(40, 30, 26))
+
+	-- The grand piano, lid up.
+	local piano = b:within(CFrame.new(10, deckTop, 1) * CFrame.Angles(0, math.rad(-20), 0))
+	piano:part("Piano", Vector3.new(4.6, 1.6, 6), Vector3.new(0, 2.6, 0), Color3.fromRGB(14, 14, 18))
+	piano:decor("PianoLid", Vector3.new(4.4, 0.15, 5.6), CFrame.new(0.6, 4.2, 0) * CFrame.Angles(0, 0, math.rad(32)),
+		Color3.fromRGB(20, 20, 26))
+	piano:decor("Keys", Vector3.new(4, 0.2, 1), Vector3.new(0, 3.2, -3.4), CREAM)
+	for _, at in ipairs({ Vector3.new(-1.8, 0.9, -2.4), Vector3.new(1.8, 0.9, -2.4), Vector3.new(0, 0.9, 2.4) }) do
+		piano:decor("PianoLeg", Vector3.new(0.4, 1.8, 0.4), at, Color3.fromRGB(14, 14, 18))
+	end
+	piano:part("PianoBench", Vector3.new(3, 1.4, 1.2), Vector3.new(0, 0.7, -5), Color3.fromRGB(14, 14, 18))
+
+	-- The bar down the east side, bottles on a mirrored shelf behind it.
+	local bar = b:within(CFrame.new(19, deckTop, 4))
+	bar:part("Bar", Vector3.new(2.2, 3.6, 14), Vector3.new(0, 1.8, 0), Color3.fromRGB(26, 24, 30), M.Marble)
+	bar:decor("BarTop", Vector3.new(2.6, 0.3, 14.4), Vector3.new(0, 3.75, 0), gold, M.Metal)
+	bar:decor("BarShelf", Vector3.new(0.3, 5, 14), Vector3.new(2.6, 5.5, 0), Color3.fromRGB(150, 170, 186), M.Glass,
+		{ reflectance = 0.3 })
+	for k = 0, 11 do
+		bar:decor("Bottle", Vector3.new(0.4, 1.1, 0.4), Vector3.new(2.3, 4.45 + (k % 2) * 2, -6 + k * 1.1),
+			({ Color3.fromRGB(60, 120, 60), Color3.fromRGB(150, 90, 40), Color3.fromRGB(200, 200, 210),
+				Color3.fromRGB(140, 30, 40) })[k % 4 + 1], M.Glass, { transparency = 0.2 })
+	end
+	for _, z in ipairs({ -4, 0, 4 }) do
+		bar:decor("Stool", Vector3.new(1.3, 0.3, 1.3), Vector3.new(-2.2, 2.6, z), gold, M.Metal, { shape = "Cylinder" })
+		bar:decor("StoolLeg", Vector3.new(0.2, 2.4, 0.2), Vector3.new(-2.2, 1.2, z), gold, M.Metal)
+	end
+
+	-- The Don's desk under the chandelier's glow.
+	local desk = b:within(CFrame.new(0, deckTop, 12))
+	desk:part("Desk", Vector3.new(9, 3, 3.4), Vector3.new(0, 1.5, 0), Color3.fromRGB(62, 36, 24), M.Wood)
+	desk:decor("DeskTop", Vector3.new(9.4, 0.25, 3.8), Vector3.new(0, 3.1, 0), Color3.fromRGB(20, 18, 20), M.Marble)
+	desk:decor("DeskLamp", Vector3.new(0.9, 1.4, 0.9), Vector3.new(-3.4, 3.9, 0.6), gold, M.Metal)
+	desk:decor("Globe", Vector3.new(1.2, 1.2, 1.2), Vector3.new(3.4, 3.85, 0.4), Color3.fromRGB(60, 120, 170), nil,
+		{ shape = "Ball" })
+	desk:part("DeskChair", Vector3.new(2.4, 5, 2.4), Vector3.new(0, 2.5, 2.8), Color3.fromRGB(120, 30, 36), M.Fabric)
+
+	-- The feature wall: marble, the gold Z in a ring, the vault. Cover, too.
+	local wall = b:within(CFrame.new(0, deckTop, 18))
+	wall:part("FeatureWall", Vector3.new(40, 13, 1.4), Vector3.new(0, 6.5, 0), marbleLight, M.Marble)
+	wall:decor("WallTrim", Vector3.new(40.4, 0.6, 1.6), Vector3.new(0, 13.1, 0), gold, M.Metal)
+	wall:decor("ZRing", Vector3.new(0.2, 9, 9), CFrame.new(-6, 7, -0.75) * CFrame.Angles(0, math.rad(90), 0), gold, M.Metal,
+		{ shape = "Cylinder" })
+	wall:decor("ZDisc", Vector3.new(0.2, 8, 8), CFrame.new(-6, 7, -0.8) * CFrame.Angles(0, math.rad(90), 0), marble, M.Marble,
+		{ shape = "Cylinder" })
+	painted(wall, "Z", Kit.Look(Vector3.new(-6, 7, -0.95), Vector3.new(-6, 7, -10)), 6, 6.4, gold)
+	painted(wall, "THE PENTHOUSE", Kit.Look(Vector3.new(-6, 1.6, -0.76), Vector3.new(-6, 1.6, -10)), 10, 1, gold)
+	wall:decor("Vault", Vector3.new(0.5, 7, 7), CFrame.new(10, 5.2, -0.9) * CFrame.Angles(0, math.rad(90), 0),
+		Color3.fromRGB(150, 156, 164), M.DiamondPlate, { shape = "Cylinder" })
+	wall:decor("VaultRim", Vector3.new(0.3, 7.8, 7.8), CFrame.new(10, 5.2, -0.75) * CFrame.Angles(0, math.rad(90), 0), gold,
+		M.Metal, { shape = "Cylinder" })
+	for k = 0, 2 do
+		wall:decor("VaultSpoke", Vector3.new(4.6, 0.35, 0.3),
+			CFrame.new(10, 5.2, -1.25) * CFrame.Angles(0, 0, k * math.pi / 3), gold, M.Metal)
+	end
+	wall:decor("VaultHub", Vector3.new(0.4, 1.2, 1.2), CFrame.new(10, 5.2, -1.3) * CFrame.Angles(0, math.rad(90), 0), gold,
+		M.Metal, { shape = "Cylinder" })
+
+	-- Palms in gold planters at the corners of the open floor.
+	for _, at in ipairs({ Vector3.new(-36, 0, -10), Vector3.new(36, 0, -10), Vector3.new(-36, 0, 8), Vector3.new(36, 0, 8) }) do
+		local palm = b:within(CFrame.new(at.X, deckTop, at.Z))
+		palm:part("Planter", Vector3.new(4, 2.2, 4), Vector3.new(0, 1.1, 0), gold, M.Metal)
+		palm:decor("PlanterSoil", Vector3.new(3.6, 0.1, 3.6), Vector3.new(0, 2.2, 0), SOIL)
+		for k = 0, 4 do
+			palm:decor("PalmTrunk", Vector3.new(0.9 - k * 0.08, 1.6, 0.9 - k * 0.08),
+				CFrame.new(k * 0.18, 3 + k * 1.5, 0) * CFrame.Angles(0, 0, math.rad(-4)), BARK, M.Wood)
+		end
+		for k = 0, 5 do
+			local a = k * math.pi / 3
+			palm:decor("Frond", Vector3.new(1.4, 0.3, 5),
+				CFrame.new(0.9, 10.2, 0) * CFrame.Angles(0, a, 0) * CFrame.new(0, 0, -2.3) * CFrame.Angles(math.rad(-22), 0, 0),
+				HEDGE, M.Grass)
+		end
+	end
+
+	-- The helipad behind the wall, and the Don's helicopter on it.
+	local pad = b:within(CFrame.new(14, deckTop, 24.5))
+	pad:part("Helipad", Vector3.new(28, 0.4, 9.4), Vector3.new(0, 0.2, 0), Color3.fromRGB(46, 50, 58))
+	pad:decor("PadEdge", Vector3.new(28.2, 0.06, 9.6), Vector3.new(0, 0.43, 0), Color3.fromRGB(250, 204, 60))
+	pad:decor("PadInner", Vector3.new(27, 0.06, 8.6), Vector3.new(0, 0.47, 0), Color3.fromRGB(46, 50, 58))
+	pad:decor("PadH", Vector3.new(0.8, 0.06, 5), Vector3.new(-2, 0.53, 0), CREAM)
+	pad:decor("PadH", Vector3.new(0.8, 0.06, 5), Vector3.new(2, 0.53, 0), CREAM)
+	pad:decor("PadH", Vector3.new(4, 0.06, 0.8), Vector3.new(0, 0.545, 0), CREAM)
+	local heli = pad:folder("DonHeli")
+	heli:decor("HeliBody", Vector3.new(9, 4, 4.4), Vector3.new(0, 2.8, 0), Color3.fromRGB(22, 22, 26))
+	heli:decor("HeliNose", Vector3.new(3, 3, 4.2), CFrame.new(-6, 2.6, 0) * CFrame.Angles(0, math.rad(-90), 0),
+		Color3.fromRGB(22, 22, 26), nil, { shape = "Wedge" })
+	heli:decor("HeliGlass", Vector3.new(2.4, 2.2, 4.3), Vector3.new(-4.6, 3.2, 0), Color3.fromRGB(110, 160, 196), M.Glass,
+		{ transparency = 0.3 })
+	heli:decor("HeliStripe", Vector3.new(9.1, 0.5, 4.5), Vector3.new(0, 2.2, 0), gold)
+	heli:decor("HeliTail", Vector3.new(10, 1, 1), Vector3.new(9.4, 3.6, 0), Color3.fromRGB(22, 22, 26))
+	heli:decor("HeliFin", Vector3.new(1.6, 3, 0.3), Vector3.new(14, 4.7, 0), gold)
+	heli:decor("HeliMast", Vector3.new(0.6, 1.2, 0.6), Vector3.new(0, 5.4, 0), STEEL, M.Metal)
+	for k = 0, 1 do
+		heli:decor("Rotor", Vector3.new(22, 0.2, 0.8), CFrame.new(0, 6.1, 0) * CFrame.Angles(0, k * math.pi / 2, 0),
+			Color3.fromRGB(40, 40, 44), M.Metal)
+	end
+	for _, z in ipairs({ -1.8, 1.8 }) do
+		heli:decor("Skid", Vector3.new(8, 0.3, 0.3), Vector3.new(0, 0.6, z), STEEL, M.Metal)
+	end
+
+	-- The elevator you come up in, and leave by.
+	local lift = b:within(CFrame.new(-34, deckTop, 25))
+	lift:part("ElevatorCore", Vector3.new(12, 13, 8), Vector3.new(0, 6.5, 0), marbleLight, M.Marble)
+	lift:decor("ElevatorTrim", Vector3.new(12.4, 0.6, 8.4), Vector3.new(0, 13.1, 0), gold, M.Metal)
+	lift:decor("ElevatorFrame", Vector3.new(6.4, 9.4, 0.4), Vector3.new(0, 4.7, -4.1), gold, M.Metal)
+	for _, x in ipairs({ -1.4, 1.4 }) do
+		lift:decor("ElevatorDoor", Vector3.new(2.7, 8.6, 0.2), Vector3.new(x, 4.3, -4.35), Color3.fromRGB(210, 170, 90),
+			M.Metal, { reflectance = 0.2 })
+	end
+	painted(lift, "88", Kit.Look(Vector3.new(0, 10.2, -4.45), Vector3.new(0, 10.2, -10)), 2.4, 1.2, gold)
+	local arrive = lift:decor("TowerArrival", Vector3.new(4, 0.06, 3), Vector3.new(0, 0.04, -8), marble, nil,
+		{ transparency = 1 })
+	arrive:SetAttribute("Facing", "-Z")
+	local leave = lift:decor("TowerExit", Vector3.new(5, 0.08, 2.4), Vector3.new(0, 0.05, -5.6), gold, M.Fabric)
+	leave:SetAttribute("PromptText", "Take the elevator down")
+	leave:SetAttribute("PromptObject", "Leave ZEE TOWER")
+	-- Where the Don stands to start with, and where his people come from.
+	b:decor("TowerBossSpot", Vector3.new(2, 0.06, 2), Vector3.new(-2, deckTop + 0.04, 8), marble, nil, { transparency = 1 })
+	for i, at in ipairs({ Vector3.new(-34, 0, 14), Vector3.new(14, 0, 22), Vector3.new(30, 0, -4), Vector3.new(-30, 0, -4) }) do
+		local spot = b:decor("TowerAddSpot", Vector3.new(2, 0.06, 2), at + Vector3.new(0, deckTop + 0.04, 0), marble, nil,
+			{ transparency = 1 })
+		spot:SetAttribute("Order", i)
+	end
+
+	-- The crown: the four corner columns carry a gold frame, and the spire rises out of it.
+	local crownY = deckTop + 40
+	for _, s in ipairs({ -1, 1 }) do
+		b:decor("CrownBeam", Vector3.new(46, 1.4, 1.4), Vector3.new(0, crownY, s * 12 + 4), gold, M.Metal)
+		b:decor("CrownBeam", Vector3.new(1.4, 1.4, 25.4), Vector3.new(s * 22, crownY + 0.02, 4), gold, M.Metal)
+		local cf, len = Kit.Span(Vector3.new(s * 22, crownY, 4), Vector3.new(0, crownY + 12, 4))
+		b:decor("CrownArch", Vector3.new(1, 1, len), cf, gold, M.Metal)
+	end
+	b:part("Spire", Vector3.new(26, 1.4, 1.4), vertical(Vector3.new(0, crownY + 12 + 13, 4)), Color3.fromRGB(226, 216, 196),
+		nil, { shape = "Cylinder" })
+	b:decor("SpireBand", Vector3.new(1, 2.4, 2.4), vertical(Vector3.new(0, crownY + 13, 4)), gold, nil, { shape = "Cylinder" })
+	b:decor("Beacon", Vector3.new(1.6, 1.6, 1.6), Vector3.new(0, crownY + 38.8, 4), RED, nil, { shape = "Ball" })
+	b:light("Point", Vector3.new(0, crownY + 38.8, 4), RED, 1.5, 20)
+	b:light("Point", Vector3.new(-20, deckTop + 6, -14), WARM, 1.2, 36)
+	b:light("Point", Vector3.new(20, deckTop + 6, -14), WARM, 1.2, 36)
+	b:light("Point", Vector3.new(-20, deckTop + 8, 24), WARM, 1, 30)
+end
+
 --- ZEE TOWER at the north end of the avenue: a stone-and-glass skyscraper with three
 --- setbacks and a spire, its name painted on a board at the top. Origin at the front's
 --- centre, facing -Z.
@@ -1197,23 +1720,15 @@ local function tower(b: Kit.Builder)
 	b:part("Canopy", Vector3.new(24, 0.8, 10), Vector3.new(0, 12.4, -5), NAVY)
 	b:decor("CanopyTrim", Vector3.new(24.2, 0.4, 0.3), Vector3.new(0, 12.15, -10.1), GOLD)
 	board(b, "ZEE TOWER", Kit.Look(Vector3.new(0, 14.9, -1.6), Vector3.new(0, 14.9, -10)), 22, 1.8, NAVY, GOLD)
-	-- The setbacks, each narrower, each with its own cornice.
-	local tiers = { { W - 12, 22, D - 10 }, { W - 26, 16, D - 20 }, { W - 40, 10, D - 28 } }
-	local y = H
-	for i, t in ipairs(tiers) do
-		local tw, th, td = t[1], t[2], t[3]
-		b:part("Setback", Vector3.new(tw, th, td), Vector3.new(0, y + th / 2, D / 2), i % 2 == 1 and stone or glass,
-			i % 2 == 1 and M.SmoothPlastic or M.Glass)
-		for k = 1, math.floor(th / 6) do
-			b:decor("SetbackWindows", Vector3.new(tw * 0.8, 2.4, 0.3), Vector3.new(0, y + k * 6 - 1, D / 2 - td / 2 - 0.1),
-				i % 2 == 1 and glass or stone, i % 2 == 1 and M.Glass or M.SmoothPlastic)
-		end
-		b:decor("SetbackCornice", Vector3.new(tw + 1, 1, td + 1), Vector3.new(0, y + th - 0.55, D / 2), stone)
-		y += th
-	end
-	b:part("Spire", Vector3.new(30, 1.4, 1.4), vertical(Vector3.new(0, y + 15, D / 2)), stone, nil, { shape = "Cylinder" })
-	b:decor("SpireBand", Vector3.new(1, 2.2, 2.2), vertical(Vector3.new(0, y + 4, D / 2)), GOLD, nil, { shape = "Cylinder" })
-	b:decor("Beacon", Vector3.new(1.4, 1.4, 1.4), Vector3.new(0, y + 30.5, D / 2), RED, nil, { shape = "Ball" })
+	-- The top floor: THE PENTHOUSE, where the Don sits (penthouse, below). It is built on the
+	-- roof, a little wider than the shaft all round, so from the street it reads as a crown.
+	penthouse(b:within(CFrame.new(0, H, D / 2)))
+	-- The way up: the lobby doors take you to the top floor (TowerService).
+	-- A stone stoop out front, so the doors meet the avenue on a step rather than the road.
+	b:part("TowerStoop", Vector3.new(34, 0.5, 8), Vector3.new(0, -0.25, -4), STONE, M.Concrete)
+	local door = b:decor("TowerDoor", Vector3.new(8, 0.08, 4), Vector3.new(0, 0.04, -3.4), NAVY, M.Fabric)
+	door:SetAttribute("PromptText", "Take the elevator")
+	door:SetAttribute("PromptObject", "ZEE TOWER · The Penthouse")
 	-- The name, high up, facing down the avenue.
 	board(b, "ZEE", Kit.Look(Vector3.new(0, H - 14, -1.4), Vector3.new(0, H - 14, -10)), 26, 11, TEAL, CREAM)
 	b:light("Point", Vector3.new(0, 14, -4), WARM, 1.2, 36)
@@ -1417,6 +1932,84 @@ end
 --- red light over a back door, yellow bollards where it meets the car park, and tags on the
 --- walls. Origin at the lane's middle on the ground; the lane runs along X (east +X), its
 --- walls at z = +-`half`.
+--- The Fixer's corner, on the paving south of the courts: a purple pop-up canopy over a card
+--- table (cards, a cash stack, a burner phone), two folding chairs, crates with a boombox on
+--- top, a work lamp. The Fixer stands at the front of it (QuestConfig.Givers.Fixer).
+--- Origin at the canopy's centre on the pavement, +Z toward the court.
+local function fixerCorner(b: Kit.Builder)
+	local purple = Color3.fromRGB(128, 64, 170)
+	local W, D, H = 12, 10, 8.6
+	for _, x in ipairs({ -W / 2, W / 2 }) do
+		for _, z in ipairs({ -D / 2, D / 2 }) do
+			b:part("CanopyPole", Vector3.new(0.35, H, 0.35), Vector3.new(x, H / 2, z), STEEL, M.Metal)
+			b:decor("PoleFoot", Vector3.new(1, 0.3, 1), Vector3.new(x, 0.15, z), IRON)
+		end
+	end
+	-- The roof: a shallow pyramid read as two pitched halves, a valance round the edge.
+	for _, s in ipairs({ -1, 1 }) do
+		b:decor("CanopyRoof", Vector3.new(W + 0.6, 1.4, D / 2 + 0.3),
+			CFrame.new(0, H + 0.7, s * (D / 4 + 0.075)) * CFrame.Angles(0, s > 0 and math.pi or 0, 0), purple, M.Fabric,
+			{ shape = "Wedge" })
+	end
+	for _, s in ipairs({ -1, 1 }) do
+		b:decor("Valance", Vector3.new(W + 0.6, 0.8, 0.12), Vector3.new(0, H - 0.4, s * (D / 2 + 0.3)), purple, M.Fabric)
+		b:decor("Valance", Vector3.new(0.12, 0.8, D + 0.6), Vector3.new(s * (W / 2 + 0.3), H - 0.4, 0), purple, M.Fabric)
+	end
+	painted(b, "JOBS", Kit.Look(Vector3.new(0, H - 0.4, -D / 2 - 0.42), Vector3.new(0, H - 0.4, -D)), 4, 0.7, CREAM)
+
+	-- The card table.
+	local t = b:within(CFrame.new(3, 0, 1.5))
+	t:part("CardTable", Vector3.new(3.4, 0.2, 3.4), Vector3.new(0, 2.6, 0), Color3.fromRGB(40, 110, 70), M.Fabric)
+	t:decor("TableRim", Vector3.new(3.6, 0.16, 3.6), Vector3.new(0, 2.44, 0), Color3.fromRGB(36, 30, 26))
+	for _, x in ipairs({ -1.5, 1.5 }) do
+		for _, z in ipairs({ -1.5, 1.5 }) do
+			t:decor("TableLeg", Vector3.new(0.14, 2.4, 0.14), Vector3.new(x, 1.2, z), STEEL, M.Metal)
+		end
+	end
+	for i, at in ipairs({ Vector3.new(-0.8, 2.72, -0.5), Vector3.new(0.3, 2.72, 0.7), Vector3.new(0.9, 2.72, -0.6) }) do
+		t:decor("Card", Vector3.new(0.5, 0.03, 0.72), CFrame.new(at) * CFrame.Angles(0, math.rad(i * 37), 0),
+			Color3.fromRGB(250, 250, 246))
+	end
+	t:decor("Cash", Vector3.new(0.9, 0.3, 0.45), Vector3.new(-0.6, 2.85, 0.8), Color3.fromRGB(110, 170, 96))
+	t:decor("CashBand", Vector3.new(0.2, 0.36, 0.51), Vector3.new(-0.6, 2.85, 0.8), Color3.fromRGB(236, 220, 150))
+	t:decor("Phone", Vector3.new(0.3, 0.06, 0.6), Vector3.new(1.1, 2.73, 0.9), Color3.fromRGB(24, 24, 28))
+	-- Folding chairs either side.
+	for _, s in ipairs({ -1, 1 }) do
+		local c = t:within(CFrame.new(s * 2.6, 0, 0) * CFrame.Angles(0, s > 0 and math.rad(90) or math.rad(-90), 0))
+		c:part("ChairSeat", Vector3.new(1.6, 0.16, 1.6), Vector3.new(0, 1.6, 0), Color3.fromRGB(70, 74, 82), M.Metal)
+		c:decor("ChairBack", Vector3.new(1.6, 1.6, 0.14), Vector3.new(0, 2.5, 0.8), Color3.fromRGB(70, 74, 82), M.Metal)
+		for _, x in ipairs({ -0.7, 0.7 }) do
+			c:decor("ChairLeg", Vector3.new(0.1, 1.6, 0.1), Vector3.new(x, 0.8, -0.6), STEEL, M.Metal)
+			c:decor("ChairLeg", Vector3.new(0.1, 3.2, 0.1), Vector3.new(x, 1.6, 0.74), STEEL, M.Metal)
+		end
+	end
+
+	-- Crates at the back, a boombox on top.
+	local crates = b:within(CFrame.new(-3.4, 0, 3))
+	box(crates:within(CFrame.new(0, 0, 0)), 2.6, 1)
+	box(crates:within(CFrame.new(2.4, 0, 0.6) * CFrame.Angles(0, math.rad(12), 0)), 2.2, 2)
+	box(crates:within(CFrame.new(0.4, 2.08, 0.1) * CFrame.Angles(0, math.rad(-8), 0)), 1.9, 3)
+	local boom = crates:within(CFrame.new(0.4, 3.6, 0.1))
+	boom:decor("Boombox", Vector3.new(1.8, 0.9, 0.6), Vector3.new(0, 0.45, 0), Color3.fromRGB(34, 34, 40))
+	for _, x in ipairs({ -0.5, 0.5 }) do
+		boom:decor("Speaker", Vector3.new(0.06, 0.62, 0.62), CFrame.new(x, 0.45, -0.31) * CFrame.Angles(0, math.rad(90), 0),
+			Color3.fromRGB(90, 90, 96), M.Metal, { shape = "Cylinder" })
+	end
+	boom:decor("Handle", Vector3.new(1.2, 0.12, 0.12), Vector3.new(0, 1.0, 0), STEEL, M.Metal)
+
+	-- A work lamp on a tripod, pointed at the table.
+	local lamp = b:within(CFrame.new(-5, 0, -3.6))
+	for i = 0, 2 do
+		local a = i * math.pi * 2 / 3
+		lamp:decor("TripodLeg", Vector3.new(0.12, 4.4, 0.12),
+			CFrame.new(math.cos(a) * 0.6, 2.1, math.sin(a) * 0.6) * CFrame.Angles(math.sin(a) * 0.28, 0, -math.cos(a) * 0.28),
+			IRON, M.Metal)
+	end
+	lamp:decor("LampHead", Vector3.new(1.2, 0.9, 0.5), Kit.Look(Vector3.new(0, 4.6, 0), Vector3.new(8, 2.6, 5)),
+		Color3.fromRGB(236, 190, 40), M.Metal)
+	lamp:light("Spot", Kit.Look(Vector3.new(0, 4.6, 0), Vector3.new(8, 2.6, 5)), WARM, 1.4, 18, { Angle = 60 })
+end
+
 local function alley(b: Kit.Builder, length: number, half: number)
 	local floorColour = Color3.fromRGB(78, 80, 88)
 	b:decor("AlleyFloor", Vector3.new(length, 0.04, half * 2), Vector3.new(0, 0.02, 0), floorColour, M.Asphalt)
@@ -2053,7 +2646,7 @@ function Downtown.Build(parent: Instance, centre: Vector3)
 	sign:decor("Inner", Vector3.new(32.4, 4.6, 0.6), Vector3.new(0, 0, 0), Color3.fromRGB(34, 118, 76))
 	sign:sign("↑ ZEE PLAZA     ↖ DUEL HALL     ↗ COURTS", Kit.Look(Vector3.new(0, 0.9, -0.3), Vector3.new(0, 0.9, -10)),
 		31, 1.8, Color3.new(1, 1, 1), { lit = true, glow = false, font = Enum.Font.GothamBold, brightness = 1.2 })
-	sign:sign("← ZEE GAS  ·  24/7         ZEE GUNS  ·  ARMORY →", Kit.Look(Vector3.new(0, -1.3, -0.3), Vector3.new(0, -1.3, -10)),
+	sign:sign("← ZEE GAS  ·  24/7         ZEE GUNS  ·  TACTICS →", Kit.Look(Vector3.new(0, -1.3, -0.3), Vector3.new(0, -1.3, -10)),
 		31, 1.6, Color3.new(1, 1, 1), { lit = true, glow = false, font = Enum.Font.GothamBold, brightness = 1.2 })
 	-- A bus shelter on the forecourt.
 	local shelter = root:within(CFrame.new(-ROAD + 4, 0.5, -HW + 36))
@@ -2072,7 +2665,7 @@ function Downtown.Build(parent: Instance, centre: Vector3)
 	-- and bin. Lamps on both sides of every arm, arms reaching over the road. The avenue
 	-- has green trees and teal banners, the cross street pink blossom and red banners.
 	local doors = {
-		{ 16, 32, -72, -56 }, { 16, 32, -118, -102 },     -- ZEE GUNS, ARMORY
+		{ 16, 32, -72, -56 }, { 16, 32, -118, -102 },     -- ZEE GUNS, ZEE TACTICS
 		{ -32, -16, 64, 112 },                             -- the DUEL HALL's opening
 	}
 	local function clear(p: Vector3): boolean
@@ -2243,12 +2836,13 @@ function Downtown.Build(parent: Instance, centre: Vector3)
 
 	-- ---------------------------------------------------------------- blocks --
 
-	-- South-east: ZEE GUNS and the ARMORY on the avenue, a car park south of them, and a
+	-- South-east: ZEE GUNS and ZEE TACTICS on the avenue, a car park south of them, and a
 	-- street wall of offices behind.
-	storefront(root:within(CFrame.new(ROAD + WALK + 2, 0.5, -64)), "ZEE GUNS", "Gun Shop", GREEN, BRICK, "GunShop",
-		"Browse guns", 34, 40)
-	storefront(root:within(CFrame.new(ROAD + WALK + 2, 0.5, -110)), "ARMORY", "Attachments & Camos", ORANGE, FACADE[8],
-		"Armory", "Customise", 34, 40)
+	storefront(root:within(CFrame.new(ROAD + WALK + 2, 0.5, -64)), "ZEE GUNS", "Guns & Builds", GREEN, BRICK, "GunCounter",
+		"Browse guns", 34, 40, "guns", { ClerkName = "Rico", ClerkTitle = "ZEE GUNS", ClerkShirt = GREEN })
+	storefront(root:within(CFrame.new(ROAD + WALK + 2, 0.5, -110)), "ZEE TACTICS", "Heals · Armor · Bombs", ORANGE,
+		FACADE[8], "TacticsCounter", "Shop gear", 34, 40, "tactics",
+		{ ClerkName = "Vic", ClerkTitle = "ZEE TACTICS", ClerkShirt = Color3.fromRGB(44, 52, 66) })
 	carPark(root, ROAD + WALK + 2, 64, -186, -136, 4)
 	for _, spec in ipairs({
 		{ 68, 108, -150, -34, 30, 1 }, { 108, 148, -150, -34, 44, 3 }, { 148, 186, -150, -34, 26, 5 },
@@ -2289,6 +2883,7 @@ function Downtown.Build(parent: Instance, centre: Vector3)
 
 	-- North-east: the court, the apartments with the fire escape, offices round them.
 	court(root:within(CFrame.new(ROAD + WALK + 26, 0.5, 80)))
+	fixerCorner(root:within(CFrame.new(48, 0.5, 43)))
 	apartments(root:within(CFrame.new(ROAD + WALK + 60, 0.5, 80)))
 	for _, spec in ipairs({
 		{ 34, 76, 118, 186, 40, 8 }, { 76, 130, 118, 186, 28, 9 }, { 130, 186, 118, 186, 52, 3 },

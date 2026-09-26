@@ -28,30 +28,41 @@ export type Place = {
 	colour: Color3,
 	position: Vector3,       -- where you land (on the ground)
 	facing: Vector3,         -- which way you look on arrival
+	requires: string?,       -- "Tower": shut until the player has beaten ZEE TOWER
 }
 
 -- Arrival spots are measured ground (the same numbers the admin waypoints were raycast at),
 -- each with a little room around it.
+--
+-- In the order a new player meets them: the Crossing where they spawn, Downtown straight
+-- after it (the first real stop -- the Quartermaster's first job sends them there), the mine
+-- on the home island. Everything else is "the next world": shut until the player has beaten
+-- the Don at the top of ZEE TOWER (`requires = "Tower"`, TowerService).
 TravelService.Places = {
-	{ id = "Hub", label = "The Crossing", blurb = "Spawn, the 1v1 pads and the harbour.", icon = "⚓",
-		levels = "LV 1-2", colour = Color3.fromRGB(88, 176, 232),
+	{ id = "Hub", label = "The Crossing", blurb = "Where you wash up: spawn, the Quartermaster and the harbour.", icon = "⚓",
+		levels = "LV 1", colour = Color3.fromRGB(88, 176, 232),
 		position = Vector3.new(-155, 1.25, 275), facing = Vector3.new(0, 0, -1) },
-	{ id = "Downtown", label = "Downtown", blurb = "Shops, the Duel Hall, contracts and turf wars.", icon = "🏙",
-		levels = "LV 4-7", colour = Color3.fromRGB(236, 120, 150),
+	{ id = "Downtown", label = "Downtown", blurb = "Your first stop: shops, the Fixer's jobs, turf wars -- and ZEE TOWER.",
+		icon = "🏙", levels = "LV 1-10", colour = Color3.fromRGB(236, 120, 150),
 		position = Vector3.new(-155, 1000.5, 1330), facing = Vector3.new(0, 0, 1) },
-	{ id = "Flats", label = "The Flats", blurb = "The bandit camp and the guard post, at war.", icon = "⚔",
-		levels = "LV 3-5", colour = Color3.fromRGB(214, 150, 70),
-		position = Vector3.new(-465, 1, 160), facing = Vector3.new(-1, 0, -0.4) },
 	{ id = "Mine", label = "Crystal Mine", blurb = "Behind the falls: crystal seams to mine.", icon = "💎",
 		levels = "LV 1-3", colour = Color3.fromRGB(150, 110, 240),
 		position = Vector3.new(-101, 4, 61), facing = Vector3.new(0, 0, -1) },
+	{ id = "Flats", label = "The Flats", blurb = "The bandit camp and the guard post, at war.", icon = "⚔",
+		levels = "LV 6-9", colour = Color3.fromRGB(214, 150, 70), requires = "Tower",
+		position = Vector3.new(-465, 1, 160), facing = Vector3.new(-1, 0, -0.4) },
 	{ id = "WatchPoint", label = "Watchpoint", blurb = "High ground over the western isles.", icon = "🔭",
-		levels = "LV 2-4", colour = Color3.fromRGB(110, 190, 140),
+		levels = "LV 7-10", colour = Color3.fromRGB(110, 190, 140), requires = "Tower",
 		position = Vector3.new(-320, 6, 291), facing = Vector3.new(-1, 0, 0) },
 	{ id = "Reach", label = "The Reach", blurb = "The far east. The toughest fights, the best loot.", icon = "🏔",
-		levels = "LV 6-9", colour = Color3.fromRGB(120, 150, 220),
+		levels = "LV 9-12", colour = Color3.fromRGB(120, 150, 220), requires = "Tower",
 		position = Vector3.new(145, 1.9, 375), facing = Vector3.new(1, 0, 0) },
 } :: { Place }
+
+-- What a locked place says on its card, by what it is waiting for.
+TravelService.LOCKS = {
+	Tower = "Beat the Don at the top of ZEE TOWER, Downtown",
+}
 
 local byId: { [string]: Place } = {}
 for _, place in ipairs(TravelService.Places) do
@@ -91,6 +102,19 @@ function TravelService.Arrival(id: string): CFrame?
 	return CFrame.lookAt(stand, stand + look.Unit)
 end
 
+--- Why `player` may not go to `id` at all yet (nil if they may): a place past Downtown before
+--- ZEE TOWER is beaten. TowerService publishes the "TowerCleared" attribute from the profile.
+function TravelService.Locked(player: Player, id: string): string?
+	local place = byId[id]
+	if not place or not place.requires then
+		return nil
+	end
+	if place.requires == "Tower" and player:GetAttribute("TowerCleared") == true then
+		return nil
+	end
+	return TravelService.LOCKS[place.requires] or "Locked"
+end
+
 --- Why `player` may not travel right now, or nil if they may.
 function TravelService.Blocked(player: Player): string?
 	local char = player.Character
@@ -117,6 +141,10 @@ function TravelService.Go(player: Player, id: string): (boolean, string?)
 	local target = TravelService.Arrival(id)
 	if not target then
 		return false, "Unknown place"
+	end
+	local locked = TravelService.Locked(player, id)
+	if locked then
+		return false, locked
 	end
 	local why = TravelService.Blocked(player)
 	if why then
@@ -159,10 +187,13 @@ end)
 
 local function listFor(player: Player)
 	local list = {}
+	local cleared = player:GetAttribute("TowerCleared") == true
 	for _, place in ipairs(TravelService.Places) do
 		table.insert(list, {
 			id = place.id, label = place.label, blurb = place.blurb, icon = place.icon, levels = place.levels,
-			colour = place.colour, position = place.position,
+			colour = place.colour, position = place.position, locked = TravelService.Locked(player, place.id),
+			-- Until the tower falls, Downtown is where the story is.
+			tag = if place.id == "Downtown" and not cleared then "START HERE" else nil,
 		})
 	end
 	return { places = list, blocked = TravelService.Blocked(player) }

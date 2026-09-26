@@ -14,12 +14,29 @@ local QuestConfig = {}
 -- KillCrew  -> kill `count` turf-war crew; `zone` narrows it to one patch (TurfWarService)
 -- TurfWin   -> win `count` turf wars; `zone` narrows it to one patch, `minThreat` to wars
 --              fought at that threat level or higher (TurfWarService reports them)
+-- TowerWin  -> beat the Don at the top of ZEE TOWER `count` times (TowerService reports it)
+--
+-- `requires = "Tower"` holds a quest back until the player has beaten the boss at the top of
+-- ZEE TOWER (TowerService): the world past Downtown opens then, and so does the work in it.
 --
 -- The last three read attributes NPCService and the zone table already provide, so they
 -- needed no new tracking -- only somewhere to look.
 QuestConfig.Quests = {
+	-- The first thing anyone is told at the Crossing: Downtown is where you start.
+	{
+		id = "WelcomeDowntown",
+		title = "Welcome to Downtown",
+		giver = "Quartermaster",
+		levelRequired = 1,
+		summary = "Open the Travel menu and head Downtown. The Fixer by the courts has work.",
+		dialogue = "Fresh off the boat? The Crossing's no place to make a name. Open your Travel menu and head Downtown -- walk up to ZEE PLAZA, then find the Fixer by the courts. Everything past this harbour is shut until somebody deals with the man at the top of ZEE TOWER.",
+		objective = { kind = "Reach", position = Vector3.new(-155, 1000.5, 1500), radius = 44, count = 1,
+			label = "Reach ZEE PLAZA, Downtown" },
+		rewards = { coins = 250, xp = 150 },
+	},
 	{
 		id = "ClearTheCamp",
+		requires = "Tower",
 		title = "Clear the Camp",
 		giver = "Quartermaster",
 		levelRequired = 1,
@@ -31,6 +48,7 @@ QuestConfig.Quests = {
 	},
 	{
 		id = "TheBrute",
+		requires = "Tower",
 		title = "The Brute",
 		giver = "Quartermaster",
 		levelRequired = 3,
@@ -42,6 +60,7 @@ QuestConfig.Quests = {
 	},
 	{
 		id = "Marksmen",
+		requires = "Tower",
 		title = "Eyes on the Ridge",
 		giver = "Quartermaster",
 		levelRequired = 6,
@@ -53,6 +72,7 @@ QuestConfig.Quests = {
 	},
 	{
 		id = "Proving",
+		requires = "Tower",
 		title = "Proving Ground",
 		giver = "Quartermaster",
 		levelRequired = 10,
@@ -67,6 +87,7 @@ QuestConfig.Quests = {
 	-- map exists and that west is where the trouble is, without asking them to fight.
 	{
 		id = "ScoutTheFlats",
+		requires = "Tower",
 		title = "Scout the Flats",
 		giver = "Quartermaster",
 		levelRequired = 1,
@@ -87,6 +108,7 @@ QuestConfig.Quests = {
 
 	{
 		id = "CleanTheFlats",
+		requires = "Tower",
 		title = "Ground to Hold",
 		giver = "Quartermaster",
 		levelRequired = 2,
@@ -99,6 +121,7 @@ QuestConfig.Quests = {
 
 	{
 		id = "HuntStandouts",
+		requires = "Tower",
 		title = "The Standouts",
 		giver = "Quartermaster",
 		levelRequired = 4,
@@ -168,6 +191,16 @@ for _, q in ipairs({
 		rewards = { coins = 2200, xp = 1600, crystals = 3, rep = 10 },
 	},
 	{
+		id = "TheTopFloor",
+		title = "The Top Floor",
+		giver = "Fixer",
+		levelRequired = 10,
+		summary = "Take the elevator up ZEE TOWER and beat the Don on his own roof.",
+		dialogue = "You've been knocking on the crews' doors. Time to knock on the man's. The Don runs all of it from the penthouse at the top of ZEE TOWER -- walk in the lobby, take the elevator, and don't go up alone if you can help it. Beat him and this whole city opens up for you.",
+		objective = { kind = "TowerWin", count = 1, label = "Beat the Don at the top of ZEE TOWER" },
+		rewards = { coins = 3000, xp = 2400, crystals = 6, rep = 15 },
+	},
+	{
 		id = "TurnUpTheHeat",
 		title = "Turn Up the Heat",
 		giver = "Fixer",
@@ -203,16 +236,17 @@ QuestConfig.Givers = {
 		lookAt = Vector3.new(-75, 1.0, 153),
 		colour = Color3.fromRGB(78, 96, 120),
 		signText = "QUESTS",
-		where = "in the lobby",
+		where = "at the Crossing, by the harbour",
 	},
-	-- Downtown's fixer, in ZEE PLAZA by the finger post, looking at the fountain.
+	-- Downtown's fixer, on the grey paving south of ZEE COURTS (by the card table), looking
+	-- back down the cross street at the plaza.
 	Fixer = {
 		displayName = "The Fixer",
-		position = DOWNTOWN + Vector3.new(-14, 0.5, -30),
+		position = DOWNTOWN + Vector3.new(46, 0.5, 42),
 		lookAt = DOWNTOWN + Vector3.new(0, 0.5, 0),
 		colour = Color3.fromRGB(128, 64, 170),
 		signText = "JOBS",
-		where = "in ZEE PLAZA, Downtown",
+		where = "by ZEE COURTS, Downtown",
 	},
 }
 
@@ -281,14 +315,27 @@ end
 --- The first quest from `giver` the player can take, given what they have done -- and once
 --- the chain is exhausted, the best contract they qualify for.
 ---
+--- `flags` says what the player has opened up (`{ Tower = true }` once ZEE TOWER is beaten).
+--- A quest that needs something they have not got stops the chain there: nothing past it,
+--- no contract either, and the second value names what it is waiting for.
+---
 --- Contracts come last on purpose: while there is still a story quest to do, that is what the
 --- Quartermaster offers. They only appear when the board would otherwise be empty, which is
 --- exactly where the progression hole was.
-function QuestConfig.NextAvailable(giver: string, level: number, completed: { [string]: boolean })
+function QuestConfig.NextAvailable(giver: string, level: number, completed: { [string]: boolean },
+	flags: { [string]: boolean }?): (any, string?)
+	local lockedBy: string? = nil
 	for _, q in ipairs(QuestConfig.Quests) do
-		if q.giver == giver and not completed[q.id] and level >= q.levelRequired then
-			return q
+		if q.giver == giver and not completed[q.id] then
+			if q.requires and not (flags and flags[q.requires]) then
+				lockedBy = lockedBy or q.requires
+			elseif level >= q.levelRequired then
+				return q, nil
+			end
 		end
+	end
+	if lockedBy then
+		return nil, lockedBy
 	end
 	-- Highest tier first, so a veteran is not offered the beginner's contract.
 	local best
