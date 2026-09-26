@@ -142,7 +142,7 @@ local function container(b: Kit.Builder, length: number, colour: Color3, label: 
 			Color3.fromRGB(200, 200, 196), M.Metal, { shape = "Cylinder" })
 	end
 	for _, x in ipairs({ -0.8, 0.8 }) do
-		b:decor("Handle", Vector3.new(0.2, 1.1, 0.2), Vector3.new(x + (x > 0 and 0.35 or -0.35), 3.4, z + 0.3),
+		b:decor("Handle", Vector3.new(0.2, 1.1, 0.2), Vector3.new(x + (x > 0 and 0.35 or -0.35), 3.4, z + 0.18),
 			Color3.fromRGB(200, 200, 196), M.Metal)
 	end
 
@@ -390,7 +390,7 @@ local function warehouse(b: Kit.Builder, side: number)
 	-- A pedestrian door and a fire extinguisher sign, off to one side.
 	b:decor("ManDoor", Vector3.new(4, 7.5, 0.3), Vector3.new(-22, 3.75, -0.3), darker(DOOR, 0.3), M.Metal)
 	b:decor("DoorFrame", Vector3.new(4.8, 8, 0.2), Vector3.new(-22, 4, -0.4), STEEL_DARK, M.Metal)
-	b:decor("ExitSign", Vector3.new(2.4, 0.9, 0.2), Vector3.new(-22, 8.8, -0.35), Color3.fromRGB(40, 190, 90), M.Neon)
+	b:decor("ExitSign", Vector3.new(2.4, 0.9, 0.2), Vector3.new(-22, 8.8, -0.475), Color3.fromRGB(40, 190, 90), M.Neon)
 end
 
 --- The long edge of the quay (the +X side as written): capping beam, face, fenders,
@@ -461,7 +461,7 @@ local function ship(b: Kit.Builder)
 	b:neon("BridgeGlass", Vector3.new(30.1, 1.4, 10.1), Vector3.new(0, 28.8, 58), WARM_WINDOW, 0.35)
 	b:decor("Funnel", Vector3.new(7, 12, 7), Vector3.new(0, 35, 64), Color3.fromRGB(40, 40, 44), M.Metal)
 	b:decor("FunnelBand", Vector3.new(7.1, 3, 7.1), Vector3.new(0, 36, 64), SIDE[1])
-	b:neon("MastLight", Vector3.new(0.6, 0.6, 0.6), Vector3.new(0, 41.5, 64), Color3.fromRGB(255, 70, 60))
+	b:neon("MastLight", Vector3.new(0.6, 0.6, 0.6), Vector3.new(0, 41.3, 64), Color3.fromRGB(255, 70, 60))
 	b:decor("Mast", Vector3.new(0.4, 16, 0.4), Vector3.new(0, 14, -66), Color3.fromRGB(200, 200, 196), M.Metal)
 	b:neon("MastLight", Vector3.new(0.5, 0.5, 0.5), Vector3.new(0, 22.2, -66), Color3.fromRGB(255, 244, 220))
 end
@@ -496,6 +496,8 @@ local function stsCrane(b: Kit.Builder)
 		local cf2, len2 = Kit.Span(apex, tip)
 		b:decor("Stay", Vector3.new(0.5, 0.5, len2), cf2, Color3.fromRGB(60, 60, 64), M.Metal)
 	end
+	-- A tie across the two apexes, which the beacon sits on (it hung in the air between them).
+	b:decor("ApexTie", Vector3.new(1.2, 1.2, 6.8), Vector3.new(4, legH + 30, 0), STS, M.Metal)
 	b:neon("Beacon", Vector3.new(1, 1, 1), Vector3.new(4, legH + 31, 0), Color3.fromRGB(255, 60, 50))
 	-- The trolley and its spreader, lowered to the ship.
 	b:decor("Trolley", Vector3.new(8, 3, 9), Vector3.new(-34, legH + 0.5, 0), Color3.fromRGB(60, 60, 64), M.Metal)
@@ -513,7 +515,7 @@ local function gantry(root: Kit.Builder)
 		root:part("Girder", Vector3.new(Map.HalfWidth * 2 - 1, 3, 1.6), Vector3.new(0, top, z), CRANE, M.Metal)
 	end
 	for _, x in ipairs({ -30, -15, 0, 15, 30 }) do
-		root:decor("Tie", Vector3.new(1.2, 1, 6.4), Vector3.new(x, top + 2, 0), CRANE, M.Metal)
+		root:decor("Tie", Vector3.new(1.2, 1, 6.4), Vector3.new(x, top + 1.95, 0), CRANE, M.Metal)
 	end
 	root:decor("Trolley", Vector3.new(9, 3, 9.5), Vector3.new(0, top + 3, 0), Color3.fromRGB(62, 64, 70), M.Metal)
 	for _, x in ipairs({ -2.6, 2.6 }) do

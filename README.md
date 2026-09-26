@@ -195,7 +195,7 @@ one next. Two duels at once never share a map. The VS screen names the map.
 
 | Map | Look |
 | --- | --- |
-| **Neon Court** | Rooftop court at night, magenta and cyan neon, lit skyline |
+| **Neon Court** | Rooftop court at night, magenta and cyan neon, lit skyline; equipment cases, stacked crates, jersey barriers and plant units for cover, lighting trusses overhead, painted court markings, team benches and lockers |
 | **Dockyard** | Container quay at sunset: stacked boxes, a gantry with a hanging container, a ship and cranes across the water |
 | **Rooftops** | Tar roof over the city on a clear afternoon: stair huts, water towers, a raised HVAC deck, billboard and mural |
 | **Sakura Temple** | Temple courtyard at dusk: gate houses, torii, koi pond with an arched bridge, lanterns, bell tower, pagodas |
@@ -207,6 +207,29 @@ rotational symmetry, so both spawns see the same thing.
 The maps live in `src/ServerScriptService/ArenaService/` (one module per map, plus `Kit`).
 `tools/mapview/` renders any of them to PNGs, and `lune run tools/uitest/arenas.luau` checks
 every map's spawns, bounds and lighting.
+
+### Map glitch audit
+
+`tools/mapview/audit.luau` finds what makes a low-poly map look broken: **z-fighting** (two
+faces in one plane, overlapping, in different colours -- the flicker as the camera moves),
+exact duplicates, and small props floating with nothing under them. It only reports faces a
+player could actually see (not buried in another part, not the underside of a slab over the
+void).
+
+```sh
+lune run tools/mapview/audit.luau -- build/Game.rbxl Mine TheMap        # parts saved in the place
+lune run tools/mapview/arenas.luau -- Temple out/temple.json            # a map as the server builds it
+lune run tools/mapview/audit.luau -- json out/temple.json
+lune run tools/mapview/arenas.luau -- world:Ascents:src/ServerScriptService/AscentService.luau out/a.json
+```
+
+Fixed with it: the Temple stage (its skirt's top was the deck's top: the whole stage
+flickered), the Rooftops murals and roof edge, Downtown's kerbs, plaza walks, billboard,
+doors and tower cornices, the Flats' paving joints, flags, banners and merlons, and the Mine
+shaft (a flickering band round the ladder where it passes the cavern roof). The Mine is baked
+into the place, so `tools/patches/060_glitch_fixes.luau` corrects the saved parts as well as
+the builder. Props that hung in the air are seated: container handles, the crane beacon, the
+rooftop stairs (now on stringers) and the temple fountain's spout.
 
 The **"+"** beside your cash opens the Shop.
 

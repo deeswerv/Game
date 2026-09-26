@@ -68,13 +68,150 @@ local WINDOW = {
 
 local M = Enum.Material
 
+-- The dressing. Every piece of it is decoration -- no collision, no raycasts -- and stands a
+-- few hundredths of a stud off the surface it is fixed to, so it never shares a face with the
+-- cover or the wall behind it (which is what makes a detail flicker).
+local STEEL = Color3.fromRGB(60, 64, 76)
+local STEEL_DARK = Color3.fromRGB(34, 36, 44)
+local HAZARD = Color3.fromRGB(246, 196, 48)
+local RUBBER = Color3.fromRGB(18, 18, 22)
+local SEAM = Color3.fromRGB(22, 24, 30)
+local PROUD = 0.06
+
+type Dress = (b: Kit.Builder, size: Vector3, offset: Vector3, paint: Color3, accent: Color3) -> ()
+
+--- The visible height of a piece of cover: from the floor to its top.
+local function span(size: Vector3, offset: Vector3): (number, number)
+	return math.max(0, offset.Y - size.Y / 2), offset.Y + size.Y / 2
+end
+
+--- Rubber guards down the four vertical edges, standing just proud of both faces.
+local function cornerGuards(b: Kit.Builder, size: Vector3, offset: Vector3, colour: Color3)
+	local low, top = span(size, offset)
+	local h = top - low - 0.2
+	for _, sx in ipairs({ -1, 1 }) do
+		for _, sz in ipairs({ -1, 1 }) do
+			b:decor("Guard", Vector3.new(0.7, h, 0.7),
+				Vector3.new(offset.X + sx * (size.X / 2 - 0.35 + PROUD), low + h / 2, offset.Z + sz * (size.Z / 2 - 0.35 + PROUD)),
+				colour, M.Rubber)
+		end
+	end
+end
+
+--- A band round all four faces at height `y`, between the corner guards.
+local function band(b: Kit.Builder, size: Vector3, offset: Vector3, y: number, h: number, colour: Color3,
+	material: Enum.Material?, inset: number?)
+	local gap = inset or 1.5
+	for _, sx in ipairs({ -1, 1 }) do
+		b:decor("Band", Vector3.new(PROUD, h, size.Z - gap), Vector3.new(offset.X + sx * (size.X / 2 + PROUD / 2), y, offset.Z),
+			colour, material)
+	end
+	for _, sz in ipairs({ -1, 1 }) do
+		b:decor("Band", Vector3.new(size.X - gap, h, PROUD), Vector3.new(offset.X, y, offset.Z + sz * (size.Z / 2 + PROUD / 2)),
+			colour, material)
+	end
+end
+
+--- A low equipment case: corner guards, a painted stripe, latches and a lid seam.
+local function caseDress(b: Kit.Builder, size: Vector3, offset: Vector3, paint: Color3, accent: Color3)
+	local low, top = span(size, offset)
+	cornerGuards(b, size, offset, RUBBER)
+	band(b, size, offset, top - 0.45, 0.14, SEAM)
+	band(b, size, offset, low + (top - low) * 0.42, 0.7, accent:Lerp(paint, 0.55), M.SmoothPlastic)
+	for _, sx in ipairs({ -1, 1 }) do
+		for _, dz in ipairs({ -1.8, 1.8 }) do
+			b:decor("Latch", Vector3.new(0.12, 0.6, 0.5),
+				Vector3.new(offset.X + sx * (size.X / 2 + PROUD + 0.06), top - 0.75, offset.Z + dz), STEEL, M.Metal)
+		end
+	end
+	for _, sz in ipairs({ -1, 1 }) do
+		b:decor("Handle", Vector3.new(1.6, 0.18, 0.18), Vector3.new(offset.X, low + (top - low) * 0.72,
+			offset.Z + sz * (size.Z / 2 + 0.09)), STEEL, M.Metal)
+	end
+end
+
+--- Stacked crates: seams between the tiers, corner posts, a hazard panel on each face.
+local function stackDress(b: Kit.Builder, size: Vector3, offset: Vector3, paint: Color3, accent: Color3)
+	local low, top = span(size, offset)
+	cornerGuards(b, size, offset, STEEL_DARK)
+	local tier = (top - low) / 3
+	for i = 1, 2 do
+		band(b, size, offset, low + tier * i, 0.22, SEAM)
+	end
+	-- Hazard panel: alternating blocks, low on two opposite faces.
+	for _, sz in ipairs({ -1, 1 }) do
+		for k = 0, 4 do
+			local x = offset.X - 1.6 + k * 0.8
+			b:decor("Hazard", Vector3.new(0.8, 0.6, PROUD), Vector3.new(x, low + tier * 0.5,
+				offset.Z + sz * (size.Z / 2 + PROUD / 2)), k % 2 == 0 and HAZARD or RUBBER)
+		end
+	end
+	for _, sx in ipairs({ -1, 1 }) do
+		b:decor("Stencil", Vector3.new(PROUD, 1.1, 2.6), Vector3.new(offset.X + sx * (size.X / 2 + PROUD / 2),
+			low + tier * 1.5, offset.Z), accent:Lerp(paint, 0.4))
+	end
+end
+
+--- A concrete column: a wider foot, steel collars, and a lit slot down two faces.
+local function pillarDress(b: Kit.Builder, size: Vector3, offset: Vector3, _paint: Color3, accent: Color3)
+	local low, top = span(size, offset)
+	b:decor("Foot", Vector3.new(size.X + 0.5, 0.9, size.Z + 0.5), Vector3.new(offset.X, low + 0.45, offset.Z),
+		STEEL_DARK, M.Concrete)
+	for _, y in ipairs({ low + (top - low) * 0.34, low + (top - low) * 0.68 }) do
+		band(b, size, offset, y, 0.35, STEEL, M.Metal, 0.2)
+	end
+	for _, sx in ipairs({ -1, 1 }) do
+		b:neon("Slot", Vector3.new(PROUD, (top - low) * 0.26, 0.3), Vector3.new(offset.X + sx * (size.X / 2 + PROUD / 2),
+			low + (top - low) * 0.51, offset.Z), accent, 0.1)
+	end
+end
+
+--- A jersey barrier: a heavier foot and a hazard band down both long faces.
+local function barrierDress(b: Kit.Builder, size: Vector3, offset: Vector3, _paint: Color3, _accent: Color3)
+	local low, top = span(size, offset)
+	b:decor("Foot", Vector3.new(size.X + 0.3, 0.7, size.Z + 0.4), Vector3.new(offset.X, low + 0.35, offset.Z),
+		STEEL_DARK, M.Concrete)
+	local blocks = 10
+	local w = (size.X - 1) / blocks
+	for _, sz in ipairs({ -1, 1 }) do
+		for k = 0, blocks - 1 do
+			b:decor("Hazard", Vector3.new(w, 0.7, PROUD), Vector3.new(offset.X - (size.X - 1) / 2 + w * (k + 0.5),
+				top - 1.2, offset.Z + sz * (size.Z / 2 + PROUD / 2)), k % 2 == 0 and HAZARD or RUBBER)
+		end
+	end
+	for _, sx in ipairs({ -1, 1 }) do
+		b:decor("EndCap", Vector3.new(PROUD, top - low - 0.9, size.Z - 0.6), Vector3.new(offset.X + sx * (size.X / 2 + PROUD / 2),
+			low + 0.9 + (top - low - 0.9) / 2 - 0.1, offset.Z), STEEL, M.Metal)
+	end
+end
+
+--- A rooftop plant unit: louvred sides and a grille on each end.
+local function ventDress(b: Kit.Builder, size: Vector3, offset: Vector3, _paint: Color3, _accent: Color3)
+	local low, top = span(size, offset)
+	cornerGuards(b, size, offset, STEEL_DARK)
+	for _, sx in ipairs({ -1, 1 }) do
+		for y = low + 1.2, top - 1.2, 0.55 do
+			b:decor("Louvre", Vector3.new(0.12, 0.16, size.Z - 2.2), Vector3.new(offset.X + sx * (size.X / 2 + PROUD + 0.04), y,
+				offset.Z), SEAM, M.Metal)
+		end
+	end
+	for _, sz in ipairs({ -1, 1 }) do
+		b:decor("Grille", Vector3.new(size.X - 1.6, (top - low) * 0.45, PROUD), Vector3.new(offset.X, low + (top - low) * 0.55,
+			offset.Z + sz * (size.Z / 2 + PROUD / 2)), STEEL, M.DiamondPlate)
+	end
+end
+
 --- A piece of cover and its rotational twin, neon along the top edges in each side's colour.
-local function pair(root: Kit.Builder, name: string, size: Vector3, offset: Vector3, material: Enum.Material?)
+local function pair(root: Kit.Builder, name: string, size: Vector3, offset: Vector3, material: Enum.Material?,
+	dress: Dress?)
 	Kit.Both(root, function(b, side)
 		local sideColour = side == 1 and SIDE_A or SIDE_B
 		local paint = side == 1 and COVER or COVER_DARK
 		b:part(name .. (side == 1 and "_A" or "_B"), size, offset,
 			material == M.Slate and WALL or paint, material or M.Metal)
+		if dress then
+			dress(b, size, offset, material == M.Slate and WALL or paint, sideColour)
+		end
 		local top = offset.Y + size.Y / 2
 		for _, dx in ipairs({ -1, 1 }) do
 			b:neon("Edge", Vector3.new(0.25, 0.25, size.Z + 0.1),
@@ -142,8 +279,9 @@ function Map.Build(parent: Instance, centre: Vector3)
 	local floor = root:part("Floor", Vector3.new(W * 2, 2, L * 2), Vector3.new(0, -1, 0), FLOOR, M.Asphalt)
 
 	-- A darker band across the middle, so both players can see where half way is.
-	root:part("Midfield", Vector3.new(W * 2, 2.1, 16), Vector3.new(0, -0.95, 0), FLOOR_ALT, M.Asphalt)
-	root:neon("Centreline", Vector3.new(W * 2, 2.2, 0.5), Vector3.new(0, -0.9, 0), LINE)
+	-- Each a little short of the floor's ends, so their ends are not the floor's ends too.
+	root:part("Midfield", Vector3.new(W * 2 - 0.1, 2.1, 16), Vector3.new(0, -0.95, 0), FLOOR_ALT, M.Asphalt)
+	root:neon("Centreline", Vector3.new(W * 2 - 0.2, 2.2, 0.5), Vector3.new(0, -0.9, 0), LINE)
 
 	for _, sx in ipairs({ -1, 1 }) do
 		root:decor("CourtLine", Vector3.new(0.4, 0.05, L * 2 - 6), Vector3.new(sx * (W - 3), 0.03, 0), LINE, nil,
@@ -226,11 +364,89 @@ function Map.Build(parent: Instance, centre: Vector3)
 
 	-- ------------------------------------------------------------ cover --
 
-	pair(root, "CrateLow", Vector3.new(8, 4, 8), Vector3.new(14, 1, 22))
-	pair(root, "CrateTall", Vector3.new(6, 9, 6), Vector3.new(-20, 3.5, 12))
-	pair(root, "Pillar", Vector3.new(5, 14, 5), Vector3.new(26, 6, -6), M.Slate)
-	pair(root, "Barricade", Vector3.new(16, 5, 3), Vector3.new(-8, 1.5, -26), M.Concrete)
-	pair(root, "MidBlock", Vector3.new(4, 7, 12), Vector3.new(16, 2.5, 0))
+	pair(root, "CrateLow", Vector3.new(8, 4, 8), Vector3.new(14, 1, 22), nil, caseDress)
+	pair(root, "CrateTall", Vector3.new(6, 9, 6), Vector3.new(-20, 3.5, 12), nil, stackDress)
+	pair(root, "Pillar", Vector3.new(5, 14, 5), Vector3.new(26, 6, -6), M.Slate, pillarDress)
+	pair(root, "Barricade", Vector3.new(16, 5, 3), Vector3.new(-8, 1.5, -26), M.Concrete, barrierDress)
+	pair(root, "MidBlock", Vector3.new(4, 7, 12), Vector3.new(16, 2.5, 0), nil, ventDress)
+
+	-- ---------------------------------------------------------- dressing --
+
+	-- Floor: the slab is laid in twelve-stud panels. Seams sit just above the slab and below
+	-- every painted line, so where they cross, the paint wins cleanly.
+	for x = -W + 12, W - 12, 12 do
+		root:decor("Seam", Vector3.new(0.12, 0.03, L * 2 - 0.4), Vector3.new(x, 0.005, 0), SEAM, M.Asphalt)
+	end
+	for z = -L + 12, L - 12, 12 do
+		if math.abs(z) > 9 then
+			root:decor("Seam", Vector3.new(W * 2 - 0.4, 0.03, 0.12), Vector3.new(0, 0.005, z), SEAM, M.Asphalt)
+		end
+	end
+	-- A centre circle on the midfield band, and an arc round each spawn: segments of a
+	-- low-poly ring, painted like the court lines.
+	local function ring(centre: Vector3, radius: number, from: number, to: number, pieces: number, y: number)
+		for i = 0, pieces - 1 do
+			local a0 = from + (to - from) * i / pieces
+			local a1 = from + (to - from) * (i + 1) / pieces
+			local p0 = centre + Vector3.new(math.cos(a0) * radius, 0, math.sin(a0) * radius)
+			local p1 = centre + Vector3.new(math.cos(a1) * radius, 0, math.sin(a1) * radius)
+			local cf, len = Kit.Span(p0, p1)
+			root:decor("CourtLine", Vector3.new(0.4, 0.04, len + 0.08), cf + Vector3.new(0, y, 0), LINE, nil,
+				{ transparency = 0.35 })
+		end
+	end
+	ring(Vector3.new(0, 0, 0), 7, 0, math.pi * 2, 20, 0.14)
+	for _, sz in ipairs({ -1, 1 }) do
+		ring(Vector3.new(0, 0, sz * L), 16, sz < 0 and 0 or math.pi, sz < 0 and math.pi or math.pi * 2, 14, 0.025)
+	end
+
+	-- Walls: a dark kickboard, steel pilasters between the light bars, and speakers high up.
+	Kit.Both(root, function(b, _side)
+		for _, sx in ipairs({ -1, 1 }) do
+			b:decor("Kickboard", Vector3.new(0.1, 1.6, L - 1), Vector3.new(sx * (W - 0.05), 0.8, -L / 2), STEEL_DARK, M.Metal)
+			for _, z in ipairs({ -36, -12 }) do
+				b:decor("Pilaster", Vector3.new(0.14, H - 6, 0.9), Vector3.new(sx * (W - 0.07), (H - 6) / 2 + 1.7, z), STEEL, M.Metal)
+				b:decor("Bolt", Vector3.new(0.1, 0.3, 0.3), Vector3.new(sx * (W - 0.19), 3, z), STEEL_DARK, M.Metal)
+			end
+			local speaker = Vector3.new(sx * (W - 0.8), H - 7, -L + 6)
+			b:decor("Speaker", Vector3.new(1.4, 2.4, 1.6), speaker, RUBBER, M.Metal)
+			b:decor("Cone", Vector3.new(0.12, 1.3, 1.3), speaker + Vector3.new(-sx * 0.76, 0.2, 0), STEEL_DARK, M.Fabric,
+				{ shape = "Cylinder" })
+		end
+		b:decor("Kickboard", Vector3.new(W * 2 - 0.3, 1.6, 0.1), Vector3.new(0, 0.8, -(L - 0.05)), STEEL_DARK, M.Metal)
+		-- A team bench and a bank of lockers against the end wall behind each spawn.
+		b:part("Bench", Vector3.new(10, 1.1, 1.6), Vector3.new(-14, 0.55, -(L - 1.6)), STEEL, M.Metal)
+		b:decor("BenchPad", Vector3.new(9.6, 0.2, 1.3), Vector3.new(-14, 1.2, -(L - 1.6)), RUBBER, M.Fabric)
+		for i = 0, 3 do
+			local x = 12 + i * 2.1
+			b:part("Locker", Vector3.new(2, 7, 1.4), Vector3.new(x, 3.5, -(L - 0.7)), i % 2 == 0 and STEEL or STEEL_DARK, M.Metal)
+			b:decor("Vent", Vector3.new(1.2, 0.5, PROUD), Vector3.new(x, 5.8, -(L - 1.4 - PROUD / 2)), SEAM, M.Metal)
+			b:decor("Handle", Vector3.new(0.14, 0.9, 0.14), Vector3.new(x + 0.6, 3.6, -(L - 1.52)), STEEL, M.Metal)
+		end
+	end)
+
+	-- Lighting rigs: a truss across the court at each pair of lamps, so the lamps hang from
+	-- something instead of floating under the lid.
+	for _, z in ipairs({ -30, 30 }) do
+		local top, bottom = H - 1.6, H - 3.6
+		for _, y in ipairs({ top, bottom }) do
+			for _, dz in ipairs({ -0.8, 0.8 }) do
+				root:decor("Chord", Vector3.new(W * 2, 0.35, 0.35), Vector3.new(0, y, z + dz), STEEL_DARK, M.Metal)
+			end
+		end
+		for x = -W + 3, W - 3, 4 do
+			for _, dz in ipairs({ -0.8, 0.8 }) do
+				local cf, len = Kit.Span(Vector3.new(x, bottom, z + dz), Vector3.new(x + 2, top, z + dz))
+				root:decor("Web", Vector3.new(0.2, 0.2, len), cf, STEEL, M.Metal)
+				local cf2, len2 = Kit.Span(Vector3.new(x + 2, top, z + dz), Vector3.new(x + 4, bottom, z + dz))
+				root:decor("Web", Vector3.new(0.2, 0.2, len2), cf2, STEEL, M.Metal)
+			end
+		end
+		for _, x in ipairs({ -18, 18 }) do
+			root:decor("Hanger", Vector3.new(0.15, 0.5, 0.15), Vector3.new(x, H - 3.5, z), STEEL, M.Metal)
+			root:decor("LampHood", Vector3.new(4.4, 0.35, 2.4), Vector3.new(x, H - 2.53, z), STEEL_DARK, M.Metal)
+		end
+	end
 
 	-- ----------------------------------------------------------- spawns --
 

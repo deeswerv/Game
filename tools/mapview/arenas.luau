@@ -100,7 +100,24 @@ end })
 
 local root, map
 local spawns, centre, mood, exposure
-if id == "Court" and not fs.isFile("src/ServerScriptService/ArenaService/Court.luau") then
+local worldFolder, worldModule = id:match("^world:(%w+):(.+)$")
+if worldFolder then
+	-- "world:Ascents:src/ServerScriptService/AscentService.luau" -- a world piece built the way the
+	-- server builds it at start-up, from scratch (any copy saved in the place is removed first).
+	local old = game.Workspace:FindFirstChild(worldFolder)
+	if old then
+		old.Parent = nil
+	end
+	local module = load(worldModule)
+	if type(module) == "table" and type(module.Build) == "function" and not game.Workspace:FindFirstChild(worldFolder) then
+		module.Build()
+	end
+	root = game.Workspace:FindFirstChild(worldFolder)
+	assert(root, "the module built nothing in workspace." .. worldFolder)
+	centre = roblox.Vector3.new(0, 0, 0)
+	spawns = { roblox.Vector3.new(0, 3, -40), roblox.Vector3.new(0, 3, 40) }
+	mood = "day"
+elseif id == "Court" and not fs.isFile("src/ServerScriptService/ArenaService/Court.luau") then
 	-- The original single arena: ArenaService builds itself when it loads.
 	local module = load("src/ServerScriptService/ArenaService.luau")
 	root = game.Workspace:FindFirstChild("Arena")

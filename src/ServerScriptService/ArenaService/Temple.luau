@@ -339,7 +339,9 @@ local function stage(b: Kit.Builder)
 	for x = -W / 2 + 1.2, W / 2 - 1.2, 1.2 do
 		b:decor("Board", Vector3.new(0.08, 0.04, D), Vector3.new(x, H + 0.02, 0), darker(WOOD, 0.25), M.Wood)
 	end
-	b:decor("Skirt", Vector3.new(W + 0.2, 0.5, D + 0.2), Vector3.new(0, H - 0.25, 0), VERMILION, M.Wood)
+	-- The skirt's top sits a hair under the deck. Flush, the two tops were one plane in two
+	-- colours and the whole stage flickered between wood and red as the camera moved.
+	b:decor("Skirt", Vector3.new(W + 0.2, 0.5, D + 0.2), Vector3.new(0, H - 0.3, 0), VERMILION, M.Wood)
 	for _, x in ipairs({ -W / 2 + 0.4, W / 2 - 0.4 }) do
 		for _, z in ipairs({ -D / 2 + 0.4, 0, D / 2 - 0.4 }) do
 			post(b, Vector3.new(x, H, z), 9, 0.8, VERMILION)
@@ -417,6 +419,8 @@ local function chozuya(b: Kit.Builder)
 	b:decor("Water", Vector3.new(3.6, 0.1, 1.8), Vector3.new(0, 2.12, 0), WATER, M.Glass, { transparency = 0.2 })
 	b:decor("Spout", Vector3.new(3, 0.3, 0.3), CFrame.new(-1.2, 3, 0) * CFrame.Angles(0, 0, math.rad(-20)),
 		Color3.fromRGB(116, 150, 72), M.Wood, { shape = "Cylinder" })
+	-- The bamboo post the spout is lashed to.
+	b:decor("SpoutPost", Vector3.new(0.3, 3.4, 0.3), Vector3.new(-2.7, 2, 0), Color3.fromRGB(96, 128, 60), M.Wood)
 	for i, x in ipairs({ -0.6, 0.4, 1.4 }) do
 		b:decor("Dipper", Vector3.new(0.5, 0.5, 0.5), vertical(Vector3.new(x, 2.4, 0.9)), WOOD, M.Wood,
 			{ shape = "Cylinder" })

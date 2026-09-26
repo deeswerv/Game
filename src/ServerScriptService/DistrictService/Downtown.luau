@@ -416,15 +416,18 @@ local function pavement(b: Kit.Builder, x0: number, x1: number, z0: number, z1: 
 	kerbs: { string }?)
 	local cx, cz = (x0 + x1) / 2, (z0 + z1) / 2
 	b:part("Pavement", Vector3.new(x1 - x0, 0.5, z1 - z0), Vector3.new(cx, 0.25, cz), colour, M.Concrete)
+	-- Kerbs stand a few hundredths proud of the paving's edge. Flush, the kerb's face and the
+	-- slab's face were one plane in two colours, and every kerb flickered along its length.
+	local proud = 0.03
 	for _, edge in ipairs(kerbs or {}) do
 		if edge == "-x" then
-			b:decor("Kerb", Vector3.new(0.5, 0.56, z1 - z0), Vector3.new(x0 + 0.25, 0.28, cz), CURB, M.Concrete)
+			b:decor("Kerb", Vector3.new(0.5, 0.56, z1 - z0), Vector3.new(x0 + 0.25 - proud, 0.28, cz), CURB, M.Concrete)
 		elseif edge == "+x" then
-			b:decor("Kerb", Vector3.new(0.5, 0.56, z1 - z0), Vector3.new(x1 - 0.25, 0.28, cz), CURB, M.Concrete)
+			b:decor("Kerb", Vector3.new(0.5, 0.56, z1 - z0), Vector3.new(x1 - 0.25 + proud, 0.28, cz), CURB, M.Concrete)
 		elseif edge == "-z" then
-			b:decor("Kerb", Vector3.new(x1 - x0, 0.56, 0.5), Vector3.new(cx, 0.28, z0 + 0.25), CURB, M.Concrete)
+			b:decor("Kerb", Vector3.new(x1 - x0, 0.56, 0.5), Vector3.new(cx, 0.28, z0 + 0.25 - proud), CURB, M.Concrete)
 		elseif edge == "+z" then
-			b:decor("Kerb", Vector3.new(x1 - x0, 0.56, 0.5), Vector3.new(cx, 0.28, z1 - 0.25), CURB, M.Concrete)
+			b:decor("Kerb", Vector3.new(x1 - x0, 0.56, 0.5), Vector3.new(cx, 0.28, z1 - 0.25 + proud), CURB, M.Concrete)
 		end
 	end
 end
@@ -506,7 +509,9 @@ local function plaza(b: Kit.Builder, half: number)
 			local ring = math.max(math.abs(x), math.abs(z))
 			local pale = ring > half - 12 or (ring > 12 and ring < 22)
 			if pale then
-				b:decor("Tile", Vector3.new(tile - 0.3, 0.04, tile - 0.3), Vector3.new(x, 0.52, z), PLAZA_A, M.Slate)
+				-- The paving steps up in clear layers where they overlap: slab 0.50, tile 0.52,
+				-- walk strip 0.54, kerb 0.56. Level with each other they flickered.
+				b:decor("Tile", Vector3.new(tile - 0.3, 0.04, tile - 0.3), Vector3.new(x, 0.5, z), PLAZA_A, M.Slate)
 			end
 		end
 	end
@@ -600,7 +605,7 @@ local function storefront(b: Kit.Builder, name: string, sub: string, colour: Col
 	b:light("Point", Vector3.new(5, 8, 0), WARM, 1.1, 26)
 	-- The door and its prompt.
 	b:decor("DoorFrame", Vector3.new(0.5, 9.4, 7), Vector3.new(-0.6, 4.7, 0), colour)
-	b:decor("Door", Vector3.new(0.3, 8.6, 6), Vector3.new(-0.7, 4.3, 0), GLASS, M.Glass, { transparency = 0.4 })
+	b:decor("Door", Vector3.new(0.3, 8.6, 6), Vector3.new(-0.66, 4.3, 0), GLASS, M.Glass, { transparency = 0.4 })
 	local mat = b:decor("Mat", Vector3.new(3, 0.08, 6), Vector3.new(-2.2, 0.04, 0), darker(colour, 0.3), M.Fabric)
 	mat.Name = promptName
 	mat:SetAttribute("PromptText", prompt)
@@ -689,7 +694,7 @@ local function convenience(b: Kit.Builder)
 	for _, z in ipairs({ -4, 4 }) do
 		cork:part("Post", Vector3.new(0.5, 9, 0.5), Vector3.new(0, 4.5, z), Color3.fromRGB(96, 68, 48), M.Wood)
 	end
-	cork:decor("Board", Vector3.new(0.4, 5, 8.6), Vector3.new(0, 5.6, 0), Color3.fromRGB(188, 138, 90), M.Wood)
+	cork:decor("Board", Vector3.new(0.4, 5, 8.6), Vector3.new(0.04, 5.6, 0), Color3.fromRGB(188, 138, 90), M.Wood)
 	cork:decor("Frame", Vector3.new(0.5, 5.4, 9), Vector3.new(-0.05, 5.6, 0), Color3.fromRGB(96, 68, 48), M.Wood)
 	local rng = Random.new(77)
 	for i = 0, 5 do
@@ -970,7 +975,7 @@ local function tower(b: Kit.Builder)
 			b:decor("SetbackWindows", Vector3.new(tw * 0.8, 2.4, 0.3), Vector3.new(0, y + k * 6 - 1, D / 2 - td / 2 - 0.1),
 				i % 2 == 1 and glass or stone, i % 2 == 1 and M.Glass or M.SmoothPlastic)
 		end
-		b:decor("SetbackCornice", Vector3.new(tw + 1, 1, td + 1), Vector3.new(0, y + th - 0.5, D / 2), stone)
+		b:decor("SetbackCornice", Vector3.new(tw + 1, 1, td + 1), Vector3.new(0, y + th - 0.55, D / 2), stone)
 		y += th
 	end
 	b:part("Spire", Vector3.new(30, 1.4, 1.4), vertical(Vector3.new(0, y + 15, D / 2)), stone, nil, { shape = "Cylinder" })
@@ -1122,9 +1127,11 @@ function Downtown.Build(parent: Instance, centre: Vector3)
 	end
 	root:decor("Gantry", Vector3.new(ROAD * 2 + 5, 1, 1), Vector3.new(0, 19, -HW + 62), IRON)
 	local sign = root:within(CFrame.new(0, 15.6, -HW + 61.4))
+	-- Each layer a clear step proud of the one behind, on both faces. They were a hundredth of
+	-- a stud apart, which the depth buffer cannot tell apart past a few studs.
 	sign:decor("Board", Vector3.new(34, 6, 0.4), Vector3.new(0, 0, 0), Color3.fromRGB(34, 118, 76))
-	sign:decor("Border", Vector3.new(33, 5.2, 0.42), Vector3.new(0, 0, 0), Color3.fromRGB(240, 240, 236))
-	sign:decor("Inner", Vector3.new(32.4, 4.6, 0.44), Vector3.new(0, 0, 0), Color3.fromRGB(34, 118, 76))
+	sign:decor("Border", Vector3.new(33, 5.2, 0.5), Vector3.new(0, 0, 0), Color3.fromRGB(240, 240, 236))
+	sign:decor("Inner", Vector3.new(32.4, 4.6, 0.6), Vector3.new(0, 0, 0), Color3.fromRGB(34, 118, 76))
 	sign:sign("↑ ZEE PLAZA     ↖ DUEL HALL     ↗ COURTS", Kit.Look(Vector3.new(0, 0.9, -0.3), Vector3.new(0, 0.9, -10)),
 		31, 1.8, Color3.new(1, 1, 1), { lit = true, glow = false, font = Enum.Font.GothamBold, brightness = 1.2 })
 	sign:sign("← ZEE GAS  ·  24/7         ZEE GUNS  ·  ARMORY →", Kit.Look(Vector3.new(0, -1.3, -0.3), Vector3.new(0, -1.3, -10)),

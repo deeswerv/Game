@@ -186,7 +186,7 @@ local function flag(b: Kit.Builder, at: Vector3, colour: Color3, height: number)
 	b:part("FlagPole", Vector3.new(height, 0.4, 0.4), vertical(at + Vector3.new(0, height / 2, 0)), WOOD_DARK, M.Wood,
 		{ shape = "Cylinder" })
 	b:decor("Flag", Vector3.new(0.1, 2.6, 4), at + Vector3.new(0, height - 1.6, 2.1), colour, M.Fabric)
-	b:decor("FlagBand", Vector3.new(0.12, 0.5, 4), at + Vector3.new(0, height - 1.6, 2.1), CREAM, M.Fabric)
+	b:decor("FlagBand", Vector3.new(0.16, 0.5, 4), at + Vector3.new(0, height - 1.6, 2.1), CREAM, M.Fabric)
 end
 
 --- A ridge tent, ridge along X: canvas roof, triangular ends, a dark doorway on the +X end.
@@ -270,7 +270,7 @@ local function raiderCamp(b: Kit.Builder)
 	for _, z in ipairs({ -6.5, 6.5 }) do
 		b:part("GatePost", Vector3.new(12, 1.9, 1.9), vertical(Vector3.new(-45, 6, z)), WOOD_DARK, M.Wood, { shape = "Cylinder" })
 		b:decor("GateBanner", Vector3.new(0.12, 5, 2.4), Vector3.new(-44, 6.5, z * 0.72), RAIDER, M.Fabric)
-		b:decor("GateBannerBand", Vector3.new(0.14, 0.5, 2.4), Vector3.new(-44, 5, z * 0.72), CREAM, M.Fabric)
+		b:decor("GateBannerBand", Vector3.new(0.18, 0.5, 2.4), Vector3.new(-44, 5, z * 0.72), CREAM, M.Fabric)
 	end
 	b:decor("GateBeam", Vector3.new(1.2, 1.2, 15), Vector3.new(-45, 11.2, 0), WOOD, M.Wood)
 	b:decor("GateSign", Vector3.new(0.3, 2, 8), Vector3.new(-44.4, 9.6, 0), WOOD_LIGHT, M.WoodPlanks)
@@ -326,7 +326,9 @@ local function guardPost(b: Kit.Builder)
 	-- Laid stone underfoot.
 	b:decor("PostPaving", Vector3.new(26, 0.06, 90), Vector3.new(33, 0.03, 0), STONE_LIGHT, M.SmoothPlastic)
 	for z = -42, 42, 6 do
-		b:decor("PavingJoint", Vector3.new(26, 0.08, 0.2), Vector3.new(33, 0.04, z), STONE)
+		-- Mortar lines stand a little above both the paving (0.06) and the flagstones (0.08)
+		-- they cross; level with the flagstones they flickered where the two overlap.
+		b:decor("PavingJoint", Vector3.new(26, 0.08, 0.2), Vector3.new(33, 0.06, z), STONE)
 	end
 	-- The front wall, crenellated, with the gap in the middle and a brazier each side of it.
 	stoneWall(b:within(CFrame.new(20, 0, -14) * CFrame.Angles(0, math.rad(90), 0)), 16, 3.4, 21, true)
@@ -481,7 +483,8 @@ local function southTerrace(b: Kit.Builder)
 	b:decor("TerraceFoot", Vector3.new(W + 0.6, 0.8, D + 0.6), Vector3.new(0, 0.4, cz), STONE_DARK)
 	for i = 0, 5 do
 		local x = -W / 2 + 1 + i * (W - 2) / 5
-		b:part("Merlon", Vector3.new(1.8, 1.6, 1.2), Vector3.new(x, H + 1.1, cz + D / 2 - 0.6), STONE_LIGHT)
+		-- A hair shallower than the parapet it stands on, so their faces are not one plane.
+		b:part("Merlon", Vector3.new(1.8, 1.6, 1.16), Vector3.new(x, H + 1.1, cz + D / 2 - 0.6), STONE_LIGHT)
 	end
 	b:part("ParapetLow", Vector3.new(W, 0.8, 1.2), Vector3.new(0, H + 0.4, cz + D / 2 - 0.6), STONE)
 	-- Steps up the back (south) side, away from the open middle.

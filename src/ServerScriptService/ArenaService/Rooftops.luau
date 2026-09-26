@@ -124,7 +124,7 @@ local function bulkhead(b: Kit.Builder, side: number)
 	b:decor("DishArm", Vector3.new(0.3, 1.6, 0.3), Vector3.new(-4.6, 12.3, 4.2), STEEL, M.Metal)
 	b:decor("Dish", Vector3.new(0.3, 3, 3), CFrame.new(-4.6, 13.6, 4.4) * CFrame.Angles(0, math.rad(90), math.rad(25)),
 		Color3.fromRGB(230, 230, 226), M.SmoothPlastic, { shape = "Cylinder" })
-	b:decor("Aerial", Vector3.new(0.2, 9, 0.2), Vector3.new(-6.6, 15.8, 1.2), STEEL, M.Metal)
+	b:decor("Aerial", Vector3.new(0.2, 9.8, 0.2), Vector3.new(-6.6, 16.2, 1.2), STEEL, M.Metal)
 	for i, w in ipairs({ 3.6, 2.8, 2 }) do
 		b:decor("AerialBar", Vector3.new(w, 0.15, 0.15), Vector3.new(-6.6, 17 + i * 1.2, 1.2), STEEL, M.Metal)
 	end
@@ -247,6 +247,12 @@ local function hvacDeck(b: Kit.Builder, accent: Color3)
 	b:part("Ramp", Vector3.new(width, DECK_Y + 0.4, run), Vector3.new(stairX, (DECK_Y + 0.4) / 2, -10 - run / 2),
 		GALV, nil, { shape = "Wedge", transparency = 1, shadow = false })
 	local steps = 7
+	-- Stringers down both sides, so the treads are carried by something.
+	for _, sx in ipairs({ -1, 1 }) do
+		local cf, len = Kit.Span(Vector3.new(stairX + sx * width / 2, 0.1, -10 - run), Vector3.new(stairX + sx * width / 2,
+			DECK_Y + 0.1, -10))
+		b:decor("Stringer", Vector3.new(0.2, 0.7, len), cf, STEEL, M.Metal)
+	end
 	for i = 1, steps do
 		local h = (DECK_Y + 0.4) * i / steps
 		b:decor("Step", Vector3.new(width, 0.3, run / steps + 0.05),
@@ -416,8 +422,10 @@ end
 --- The painted gable wall of the tall neighbour, facing -X toward the map.
 local function mural(b: Kit.Builder, accent: Color3)
 	b:decor("Primer", Vector3.new(0.2, 26, 40), Vector3.new(0, 0, 0), Color3.fromRGB(34, 36, 48), M.SmoothPlastic)
-	b:decor("Splash", Vector3.new(0.22, 26, 10), Vector3.new(-0.02, 0, -13), accent)
-	b:decor("Splash", Vector3.new(0.22, 8, 30), Vector3.new(-0.02, -9, 5), Color3.fromRGB(255, 196, 60))
+	-- Each coat of paint stands proud of the one under it. At one depth the two splashes (and
+	-- the primer a hundredth of a stud behind them) fought over the same pixels.
+	b:decor("Splash", Vector3.new(0.22, 26, 10), Vector3.new(-0.05, 0, -13), accent)
+	b:decor("Splash", Vector3.new(0.22, 8, 30), Vector3.new(-0.09, -9, 5), Color3.fromRGB(255, 196, 60))
 	graffiti(b, "PROJECT", Kit.Look(Vector3.new(-0.2, 6, 2), Vector3.new(-10, 6, 2)), 30, 7, Color3.new(1, 1, 1))
 	graffiti(b, "ZEE", Kit.Look(Vector3.new(-0.2, -1.5, 2), Vector3.new(-10, -1.5, 2)), 22, 10,
 		Color3.fromRGB(120, 230, 255))
@@ -452,8 +460,10 @@ function Map.Build(parent: Instance, centre: Vector3)
 		root:part("Parapet", Vector3.new(HW * 2 + 0.8, 3.6, 1.4), Vector3.new(0, 1.8, s * (IN_Z + 0.7)), BRICK, M.Brick)
 		root:decor("Coping", Vector3.new(2, 0.4, HL * 2 + 1.4), Vector3.new(s * (IN_X + 0.7), 3.8, 0), COPING, M.Concrete)
 		root:decor("Coping", Vector3.new(HW * 2 + 1.4, 0.4, 2), Vector3.new(0, 3.8, s * (IN_Z + 0.7)), COPING, M.Concrete)
-		root:decor("Facade", Vector3.new(1, 90, HL * 2 + 2), Vector3.new(s * (HW + 0.9), -45, 0), BRICK, M.Brick)
-		root:decor("Facade", Vector3.new(HW * 2 + 2, 90, 1), Vector3.new(0, -45, s * (HL + 0.9)), BRICK, M.Brick)
+		-- Stopped just under the roof's top, which overhangs it: level with it, the two made a
+		-- flickering seam all the way round the roof edge.
+		root:decor("Facade", Vector3.new(1, 90, HL * 2 + 2), Vector3.new(s * (HW + 0.9), -45.06, 0), BRICK, M.Brick)
+		root:decor("Facade", Vector3.new(HW * 2 + 2, 90, 1), Vector3.new(0, -45.06, s * (HL + 0.9)), BRICK, M.Brick)
 		root:decor("Cornice", Vector3.new(1.6, 1.2, HL * 2 + 3), Vector3.new(s * (HW + 1.2), -1.2, 0), COPING, M.Concrete)
 		root:decor("Cornice", Vector3.new(HW * 2 + 3, 1.2, 1.6), Vector3.new(0, -1.2, s * (HL + 1.2)), COPING, M.Concrete)
 	end

@@ -124,7 +124,8 @@ function MineService.Build()
 	local length = tunnelZ0 - tunnelZ1
 	local midZ = (tunnelZ0 + tunnelZ1) / 2
 	part(tunnel, "Floor", Vector3.new(W, 1, length), CFrame.new(head.X, floorY - 0.5, midZ), ROCK_DARK)
-	part(tunnel, "Roof", Vector3.new(W + 2, 1, length), CFrame.new(head.X, floorY + H + 0.5, midZ), ROCK_DARK)
+	-- A touch longer than the walls, so its ends are not the walls' ends too (they flickered).
+	part(tunnel, "Roof", Vector3.new(W + 2, 1, length + 0.06), CFrame.new(head.X, floorY + H + 0.5, midZ), ROCK_DARK)
 	part(tunnel, "WallL", Vector3.new(1, H + 1, length), CFrame.new(head.X - W / 2 - 0.5, floorY + H / 2, midZ), ROCK)
 	part(tunnel, "WallR", Vector3.new(1, H + 1, length), CFrame.new(head.X + W / 2 + 0.5, floorY + H / 2, midZ), ROCK)
 
@@ -148,12 +149,16 @@ function MineService.Build()
 	local depth = top - bottom
 	local SW = 10
 
-	-- walls of the shaft
+	-- Walls of the shaft. Each stands a twentieth of a stud inside the opening and stops the
+	-- same amount under the tunnel floor: exactly on those lines, their faces were the same
+	-- planes as the cavern roof's cut edges and the floor's top, and the shaft flickered in a
+	-- band all the way round where the ladder passes through the roof.
+	local inset, wallH, wallY = 0.05, depth - 0.05, (top + bottom) / 2 - 0.025
 	for _, spec in ipairs({
-		{ Vector3.new(1, depth, SW + 2), Vector3.new(head.X - SW / 2 - 0.5, (top + bottom) / 2, shaftZ) },
-		{ Vector3.new(1, depth, SW + 2), Vector3.new(head.X + SW / 2 + 0.5, (top + bottom) / 2, shaftZ) },
-		{ Vector3.new(SW + 2, depth, 1), Vector3.new(head.X, (top + bottom) / 2, shaftZ - SW / 2 - 0.5) },
-		{ Vector3.new(SW + 2, depth, 1), Vector3.new(head.X, (top + bottom) / 2, shaftZ + SW / 2 + 0.5) },
+		{ Vector3.new(1, wallH, SW + 2), Vector3.new(head.X - SW / 2 - 0.5 + inset, wallY, shaftZ) },
+		{ Vector3.new(1, wallH, SW + 2), Vector3.new(head.X + SW / 2 + 0.5 - inset, wallY, shaftZ) },
+		{ Vector3.new(SW + 2, wallH, 1), Vector3.new(head.X, wallY, shaftZ - SW / 2 - 0.5 + inset) },
+		{ Vector3.new(SW + 2, wallH, 1), Vector3.new(head.X, wallY, shaftZ + SW / 2 + 0.5 - inset) },
 	}) do
 		part(shaft, "ShaftWall", spec[1], CFrame.new(spec[2]), ROCK)
 	end
@@ -201,7 +206,8 @@ function MineService.Build()
 	part(cavern, "WallW", Vector3.new(2, CH, CD), CFrame.new(c.X - CW / 2, c.Y + CH / 2, c.Z), ROCK)
 	part(cavern, "WallE", Vector3.new(2, CH, CD), CFrame.new(c.X + CW / 2, c.Y + CH / 2, c.Z), ROCK)
 	part(cavern, "WallS", Vector3.new(CW, CH, 2), CFrame.new(c.X, c.Y + CH / 2, c.Z - CD / 2), ROCK)
-	part(cavern, "WallN", Vector3.new(CW, CH, 2), CFrame.new(c.X, c.Y + CH / 2, c.Z + CD / 2), ROCK)
+	-- Set back a hair so its face is not the roof's cut edge above the shaft opening.
+	part(cavern, "WallN", Vector3.new(CW, CH, 2), CFrame.new(c.X, c.Y + CH / 2, c.Z + CD / 2 + 0.03), ROCK)
 
 	-- a landing so the drop from the ladder is short
 	part(cavern, "Landing", Vector3.new(SW + 4, 1, SW + 4), CFrame.new(head.X, bottom - 2, shaftZ), ROCK_DARK)
