@@ -1018,12 +1018,14 @@ WeaponConfig.Variants = {
 			MuzzleFlashColor = Color3.fromRGB(176, 123, 255),
 			TracerColor = Color3.fromRGB(106, 43, 255),
 			TracerWidth = 0.1,
-			-- A headshot with it plays the imported gem charge (ReplicatedStorage.VFX) on the
-			-- head it hit: the crystal draws in, then bursts. Authored at ability size, so it
-			-- is played at half scale -- big enough to read across an arena, not so big it
-			-- hides the body falling.
+			-- Its hits play the imported gem charge (ReplicatedStorage.VFX). A body hit is a
+			-- small, instant burst on the spot the round struck. A headshot is the whole
+			-- effect -- the crystal draws in on the head, then bursts -- played large, with a
+			-- crystal flare the instant it lands, so a headshot is unmistakable.
 			HeadshotVFX = "gemstoneCharge",
-			HeadshotVFXScale = 0.5,
+			HeadshotVFXScale = 0.85,
+			BodyVFX = "gemstoneCharge",
+			BodyVFXScale = 0.3,
 		},
 	},
 }

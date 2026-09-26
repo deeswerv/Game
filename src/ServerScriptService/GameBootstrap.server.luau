@@ -56,7 +56,7 @@ local systems = {
 	"SettingsService",     -- saves the settings panel (volumes, camera shake, field of view)
 	"DuelPads",            -- 1v1 pads by the spawn: stand on one to queue (last: it looks for clear ground)
 	"DistrictService",     -- Downtown: the city district (Travel menu), its shops, hall and stash
-	"TurfWarService",      -- a crew rolls into Downtown every few minutes; drive them out for a payout
+	"TurfWarService",      -- four Downtown patches: step on one and its crew comes out to fight
 }
 
 -- Which build this is (tools/build.luau stamps it), first thing in the output.

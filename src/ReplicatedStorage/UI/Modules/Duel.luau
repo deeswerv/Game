@@ -1,9 +1,9 @@
 --!strict
 -- Duels, front to back, the way the reference game presents them:
 --
---   free roam   a big green PLAY diamond with "Click Play To Queue Up!" over it, and on a
+--   free roam   a chunky green DUEL button with "Click Duel To Queue Up!" over it, and on a
 --               keyboard its key (J) and how to get a cursor out of shift lock (hold ALT)
---   queued      the diamond turns gold and cancels; a small card says it is searching
+--   queued      the button turns gold and cancels; a small card says it is searching
 --   countdown   the VS screen -- both fighters thrown in on red and blue slabs -- then
 --               3 - 2 - 1 - FIGHT! slammed into the middle of the screen
 --   live        a scoreboard across the top: your avatar and a red bar with your score, the
@@ -88,6 +88,8 @@ end
 -- ------------------------------------------------------------------ build --
 
 local function buildPlay(self, parent: GuiObject)
+	-- A chunky rectangular DUEL button: a green plate on a darker lip (it presses down onto
+	-- the lip), a crossed-swords badge, a sheen that sweeps across every few seconds.
 	local holder = Instance.new("TextButton")
 	holder.Name = "Play"
 	holder.AutoButtonColor = false
@@ -96,63 +98,132 @@ local function buildPlay(self, parent: GuiObject)
 	-- Bottom-left, just above your name and health: where the eye already goes for "me",
 	-- and clear of the middle of the screen where the fighting is.
 	holder.AnchorPoint = Vector2.new(0, 1)
-	holder.Position = UDim2.new(0, 24, 1, -122)
-	holder.Size = UDim2.fromOffset(104, 104)
+	holder.Position = UDim2.new(0, 24, 1, -128)
+	holder.Size = UDim2.fromOffset(212, 70)
 	holder.Parent = parent
-
-	local diamond = Instance.new("Frame")
-	diamond.Name = "Diamond"
-	diamond.AnchorPoint = Vector2.new(0.5, 0.5)
-	diamond.Position = UDim2.fromScale(0.5, 0.5)
-	diamond.Size = UDim2.fromOffset(72, 72)
-	diamond.Rotation = 45
-	diamond.BackgroundColor3 = Theme.Colour.Accent
-	diamond.Parent = holder
-	Components.Corner(diamond, 12)
-	local rim = Components.Stroke(diamond, WHITE, 4)
-	rim.Transparency = 0.05
-	local g = Components.Gradient(diamond, Color3.fromRGB(220, 255, 220), Color3.fromRGB(120, 170, 120))
-	g.Rotation = 45
 
 	-- A soft green glow behind it.
 	local glow = Instance.new("Frame")
 	glow.Name = "Glow"
 	glow.AnchorPoint = Vector2.new(0.5, 0.5)
-	glow.Position = UDim2.fromScale(0.5, 0.5)
-	glow.Size = UDim2.fromOffset(130, 130)
+	glow.Position = UDim2.new(0.5, 0, 0.5, 3)
+	glow.Size = UDim2.new(1, 44, 1, 40)
 	glow.BackgroundColor3 = Theme.Colour.Accent
-	glow.BackgroundTransparency = 0.75
+	glow.BackgroundTransparency = 0.7
 	glow.ZIndex = 0
 	glow.Parent = holder
-	Components.Corner(glow, 65)
+	Components.Corner(glow, 30)
 	local glowFade = Instance.new("UIGradient")
 	glowFade.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(0.5, 0.2),
+		NumberSequenceKeypoint.new(0.5, 0.15),
 		NumberSequenceKeypoint.new(1, 1),
 	})
 	glowFade.Parent = glow
 
-	local label = Components.Label(holder, {
-		text = "PLAY",
+	-- The lip: the button's darker underside, showing below the plate.
+	local lip = Instance.new("Frame")
+	lip.Name = "Lip"
+	lip.Position = UDim2.fromOffset(0, 6)
+	lip.Size = UDim2.fromScale(1, 1)
+	lip.BackgroundColor3 = Theme.Colour.AccentDim
+	lip.ZIndex = 1
+	lip.Parent = holder
+	Components.Corner(lip, 12)
+	Components.Stroke(lip, Theme.Colour.Outline, 3)
+
+	local plate = Instance.new("Frame")
+	plate.Name = "Plate"
+	plate.Size = UDim2.fromScale(1, 1)
+	plate.BackgroundColor3 = Theme.Colour.Accent
+	plate.ZIndex = 2
+	plate.Parent = holder
+	Components.Corner(plate, 12)
+	local rim = Components.Stroke(plate, WHITE, 3)
+	rim.Transparency = 0.05
+	Components.Gradient(plate, Color3.fromRGB(235, 255, 235), Color3.fromRGB(150, 196, 150))
+
+	-- A glassy highlight across the top half.
+	local shine = Instance.new("Frame")
+	shine.Name = "Shine"
+	shine.Position = UDim2.fromOffset(5, 4)
+	shine.Size = UDim2.new(1, -10, 0.42, 0)
+	shine.BackgroundColor3 = WHITE
+	shine.BackgroundTransparency = 0.8
+	shine.ZIndex = 3
+	shine.Parent = plate
+	Components.Corner(shine, 9)
+
+	-- The sweep: a bright band in a gradient, slid across the plate.
+	local sweep = Instance.new("Frame")
+	sweep.Name = "Sweep"
+	sweep.Size = UDim2.fromScale(1, 1)
+	sweep.BackgroundColor3 = WHITE
+	sweep.BackgroundTransparency = 0.35
+	sweep.ZIndex = 3
+	sweep.Parent = plate
+	Components.Corner(sweep, 12)
+	local band = Instance.new("UIGradient")
+	band.Rotation = 20
+	band.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.42, 1),
+		NumberSequenceKeypoint.new(0.5, 0.2),
+		NumberSequenceKeypoint.new(0.58, 1),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	band.Offset = Vector2.new(-1, 0)
+	band.Parent = sweep
+
+	-- Crossed swords on a darker badge.
+	local badge = Instance.new("Frame")
+	badge.Name = "Badge"
+	badge.AnchorPoint = Vector2.new(0, 0.5)
+	badge.Position = UDim2.new(0, 9, 0.5, 0)
+	badge.Size = UDim2.fromOffset(52, 52)
+	badge.BackgroundColor3 = Theme.Colour.AccentDim
+	badge.ZIndex = 4
+	badge.Parent = plate
+	Components.Corner(badge, 9)
+	Components.Stroke(badge, Theme.Colour.Outline, 2.5)
+	Components.Gradient(badge, Color3.fromRGB(255, 255, 255), Color3.fromRGB(170, 176, 170))
+	local swords = Components.Icon(badge, "⚔", 32)
+	swords.AnchorPoint = Vector2.new(0.5, 0.5)
+	swords.Position = UDim2.fromScale(0.5, 0.5)
+	swords.Size = UDim2.fromScale(1, 1)
+	swords.ZIndex = 5
+
+	local label = Components.Label(plate, {
+		text = "DUEL",
 		face = Theme.Face.Condensed,
-		size = 34,
-		align = Enum.TextXAlignment.Center,
+		size = 40,
+		align = Enum.TextXAlignment.Left,
 		outline = 3,
 	})
-	label.Size = UDim2.fromScale(1, 1)
-	label.ZIndex = 3
+	label.Position = UDim2.fromOffset(72, 4)
+	label.Size = UDim2.new(1, -80, 0, 42)
+	label.ZIndex = 5
+	local sub = Components.Label(plate, {
+		text = "1V1  ·  QUEUE UP",
+		face = Theme.Face.Condensed,
+		size = 15,
+		align = Enum.TextXAlignment.Left,
+		outline = 1.6,
+	})
+	sub.Position = UDim2.fromOffset(73, 44)
+	sub.Size = UDim2.new(1, -80, 0, 16)
+	sub.ZIndex = 5
 
 	-- The shift-lock camera pins the cursor to the middle of the screen, so on a keyboard the
-	-- diamond says which key presses it, and a tip beside it says how to get a cursor back.
+	-- button says which key presses it, and a tip beside it says how to get a cursor back.
 	local keyboard = UserInputService.KeyboardEnabled
 	local key = Components.KeyCap(holder, "J", 26)
 	key.AnchorPoint = Vector2.new(0.5, 0.5)
-	key.Position = UDim2.new(0.5, 30, 0.5, 30)
-	key.ZIndex = 4
+	key.Position = UDim2.new(1, -4, 0, 2)
+	key.ZIndex = 6
 	for _, d in ipairs(key:GetDescendants()) do
 		if d:IsA("GuiObject") then
-			d.ZIndex = 4
+			d.ZIndex = 6
 		end
 	end
 	key.Visible = keyboard
@@ -162,7 +233,7 @@ local function buildPlay(self, parent: GuiObject)
 	tip.BackgroundColor3 = Theme.Colour.Panel
 	tip.BackgroundTransparency = 0.15
 	tip.AnchorPoint = Vector2.new(0, 0.5)
-	tip.Position = UDim2.new(1, 8, 0.5, 0)
+	tip.Position = UDim2.new(1, 16, 0.5, 3)
 	tip.Size = UDim2.fromOffset(0, 34)
 	tip.AutomaticSize = Enum.AutomaticSize.X
 	tip.Visible = keyboard
@@ -196,7 +267,7 @@ local function buildPlay(self, parent: GuiObject)
 	bubble.Name = "Hint"
 	bubble.BackgroundColor3 = WHITE
 	bubble.AnchorPoint = Vector2.new(0, 1)
-	bubble.Position = UDim2.new(0, 4, 0, -6)
+	bubble.Position = UDim2.new(0, 4, 0, -10)
 	bubble.Size = UDim2.fromOffset(0, 32)
 	bubble.AutomaticSize = Enum.AutomaticSize.X
 	bubble.Parent = holder
@@ -204,7 +275,7 @@ local function buildPlay(self, parent: GuiObject)
 	Components.Stroke(bubble, Theme.Colour.Outline, 2).Transparency = 0.1
 	Components.Padding(bubble, nil, 12, 0)
 	local hintText = Components.Label(bubble, {
-		text = UserInputService.KeyboardEnabled and "Click Play Or Press J To Queue Up!" or "Tap Play To Queue Up!",
+		text = UserInputService.KeyboardEnabled and "Click Duel Or Press J To Queue Up!" or "Tap Duel To Queue Up!",
 		font = Theme.Font.Bold,
 		size = 19,
 		colour = Theme.Colour.Outline,
@@ -221,35 +292,44 @@ local function buildPlay(self, parent: GuiObject)
 	pointer.Rotation = 45
 	pointer.Parent = bubble
 	local bob = TweenService:Create(bubble, TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-		Position = UDim2.new(0, 4, 0, -12),
+		Position = UDim2.new(0, 4, 0, -16),
 	})
 	bob:Play()
 
-	-- Breathing, so the eye keeps finding it.
-	local breathe = TweenService:Create(scaled(diamond), TweenInfo.new(0.9, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-		Scale = 1.06,
+	-- The glow breathes and the sheen sweeps, so the eye keeps finding it.
+	local breathe = TweenService:Create(glow, TweenInfo.new(0.9, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+		BackgroundTransparency = 0.45,
 	})
 	breathe:Play()
+	local sweepTween = TweenService:Create(band, TweenInfo.new(0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, -1,
+		false, 2.2), { Offset = Vector2.new(1, 0) })
+	sweepTween:Play()
 
+	-- Hover grows it a touch; pressing pushes the plate down onto its lip.
 	local hover = scaled(holder)
+	local function press(down: boolean)
+		TweenService:Create(plate, down and Theme.Tween.Press or Theme.Tween.Pop,
+			{ Position = UDim2.fromOffset(0, down and 5 or 0) }):Play()
+	end
 	holder.MouseEnter:Connect(function()
-		TweenService:Create(hover, Theme.Tween.Hover, { Scale = 1.1 }):Play()
+		TweenService:Create(hover, Theme.Tween.Hover, { Scale = 1.06 }):Play()
 	end)
 	holder.MouseLeave:Connect(function()
 		TweenService:Create(hover, Theme.Tween.Hover, { Scale = 1 }):Play()
+		press(false)
 	end)
 	holder.MouseButton1Down:Connect(function()
-		TweenService:Create(hover, Theme.Tween.Press, { Scale = 0.92 }):Play()
+		press(true)
 	end)
 	holder.Activated:Connect(function()
 		UISound.Play("Click")
-		TweenService:Create(hover, Theme.Tween.Pop, { Scale = 1 }):Play()
+		press(false)
 		self:_dismissHint()
 		self:Toggle()
 	end)
 
-	self._play, self._playDiamond, self._playLabel, self._playGlow, self._hint =
-		holder, diamond, label, glow, bubble
+	self._play, self._playPlate, self._playLabel, self._playGlow, self._hint = holder, plate, label, glow, bubble
+	self._playLip, self._playBadge, self._playIcon, self._playSub = lip, badge, swords, sub
 	task.delay(150, function()
 		self:_dismissHint()
 	end)
@@ -952,12 +1032,16 @@ function Duel:_apply()
 		end
 	end
 
-	-- Queued: the diamond turns gold and becomes the cancel button.
+	-- Queued: the button turns gold and becomes the cancel button.
 	local queued = mode == "queue"
-	self._playDiamond.BackgroundColor3 = queued and Theme.Colour.Level or Theme.Colour.Accent
+	self._playPlate.BackgroundColor3 = queued and Theme.Colour.Level or Theme.Colour.Accent
 	self._playGlow.BackgroundColor3 = queued and Theme.Colour.Level or Theme.Colour.Accent
-	self._playLabel.Text = queued and "CANCEL" or "PLAY"
-	self._playLabel.TextSize = queued and 24 or 34
+	self._playLip.BackgroundColor3 = queued and Theme.Colour.LevelEdge or Theme.Colour.AccentDim
+	self._playBadge.BackgroundColor3 = queued and Theme.Colour.LevelEdge or Theme.Colour.AccentDim
+	self._playIcon.Text = queued and "✕" or "⚔"
+	self._playLabel.Text = queued and "CANCEL" or "DUEL"
+	self._playLabel.TextSize = queued and 34 or 40
+	self._playSub.Text = queued and "SEARCHING  ·  TAP TO LEAVE" or "1V1  ·  QUEUE UP"
 end
 
 local VS_HOLD = 2.1

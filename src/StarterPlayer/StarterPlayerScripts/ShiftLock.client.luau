@@ -215,7 +215,7 @@ end
 -- Holding Alt frees the cursor without leaving shift lock.
 --
 -- The lock is permanent, which is right for fighting and wrong for everything on screen that
--- wants a click -- the PLAY diamond, the nav buttons -- because a cursor pinned to the centre
+-- wants a click -- the DUEL button, the nav buttons -- because a cursor pinned to the centre
 -- of the screen can only ever click the centre of the screen. Alt is the key other Roblox
 -- shooters use for this, and it is otherwise unbound here. Only the cursor changes: the camera
 -- framing, sprint and the character turning with the camera all carry on as normal, so letting

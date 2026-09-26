@@ -449,9 +449,11 @@ local function fire(player: Player, tool: Tool, cfg, aimPoint: Vector3, ads: boo
 					-- way the round was travelling.
 					KillCredit.Damage(victim, damage, player, tool.Name, dir)
 					GunEffect:FireClient(player, "Hitmarker", headshot, lethal, wallbang)
-					-- A weapon with its own headshot effect shows it to everyone, on the head.
-					if headshot and type(cfg.HeadshotVFX) == "string" then
-						GunEffect:FireAllClients("HeadshotVFX", tool.Name, hitPos, model)
+					-- A weapon with its own hit effects shows them to everyone: on the head for a
+					-- headshot, on the spot the round struck for anything else.
+					if (headshot and type(cfg.HeadshotVFX) == "string")
+						or (not headshot and type(cfg.BodyVFX) == "string") then
+						GunEffect:FireAllClients("HitVFX", tool.Name, hitPos, model, headshot)
 					end
 					-- Only against other players and fighters, not the practice targets.
 					if ContractService ~= false and victim.Parent and (Players:GetPlayerFromCharacter(victim.Parent)

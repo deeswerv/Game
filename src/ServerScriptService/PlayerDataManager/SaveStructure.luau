@@ -177,6 +177,11 @@ local SaveStructure = {
 	--   EquippedVFX = { Kill = "KillShatter", Tracer = "TracerGold" }
 	OwnedVFX = {},
 	EquippedVFX = {},
+	-- Per gun, what it uses instead of the slot's effect: an owned id, or "none" to play
+	-- nothing on that gun. A gun with no entry uses EquippedVFX.
+	--
+	--   WeaponVFX = { Carbine = { Kill = "KillLightning", Tracer = "TracerPlasma" }, Shotgun = { Tracer = "none" } }
+	WeaponVFX = {},
 
 	-- Crystals prised out of nodes in the world. A second currency deliberately kept
 	-- separate from coins: coins come from killing, crystals come from looking, so the

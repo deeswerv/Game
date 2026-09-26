@@ -6,7 +6,7 @@
 --     puts it straight into an empty slot; equipping checks ownership and the slot;
 --   * the equipped effects are published on the player, and a credited kill sends the killer's
 --     effect to everyone; each kill effect plays; a bought tracer changes the round's look;
---   * turf wars come more often, and the threat level grows the crew and the payout;
+--   * turf wars are on four patches, and the threat level grows the crew and the payout;
 --   * XP is paid at the new rate, and shown that way.
 --
 -- PlayerDataManager is stood in for by a plain table profile, as in progression.luau.
@@ -50,7 +50,7 @@ local player = World.player
 local profile = {
 	Level = 10, EXP = 0, MaxEXP = 100, StatPoints = 0, Prestige = 0, LifetimeXP = 0,
 	Crystals = 0, Titles = {}, OwnedItems = {}, Coins = 0, CoinsMigrated = true, TotalKills = 0,
-	Reputation = {}, OwnedVFX = {}, EquippedVFX = {},
+	Reputation = {}, OwnedVFX = {}, EquippedVFX = {}, WeaponVFX = {},
 }
 local saves = 0
 local stub = R.new("ModuleScript")
@@ -206,6 +206,35 @@ end
 check(sent ~= nil and sent[2] == "KillShatter" and sent[3] == victim and (sent[4] - Vector3.new(10, 3, 0)).Magnitude < 1e-3,
 	"a credited kill sends the killer's effect, on the body, to everyone")
 
+print("per gun")
+check(VFXService.EquipWeapon(player, "Carbine", "Kill", "KillVoid").ok, "the Carbine gets its own kill effect")
+check(VFXConfig.Resolve(player, "Kill", "Carbine") == "KillVoid", "kills with the Carbine play Void")
+check(VFXConfig.Resolve(player, "Kill", "Scattergun") == "KillShatter", "every other gun keeps the equipped Shatter")
+check(not VFXService.EquipWeapon(player, "Carbine", "Kill", "KillLightning").ok, "an effect you do not own is refused")
+check(not VFXService.EquipWeapon(player, "Carbine", "Kill", "TracerGold").ok, "a tracer is not a kill effect")
+check(not VFXService.EquipWeapon(player, "NoSuchGun", "Kill", "KillVoid").ok, "nor a gun that does not exist")
+check(VFXService.EquipWeapon(player, "Scattergun", "Tracer", "TracerGold").ok
+	and VFXConfig.Resolve(player, "Tracer", "Scattergun") == "TracerGold" and VFXConfig.Resolve(player, "Tracer", "Carbine") == nil,
+	"a tracer on one gun only")
+check(VFXService.EquipWeapon(player, "Fang", "Kill", "none").ok and VFXConfig.Resolve(player, "Kill", "Fang") == nil,
+	"\"none\" plays nothing on that gun")
+check(profile.WeaponVFX.Carbine.Kill == "KillVoid" and type(player:GetAttribute("VFX_Guns")) == "string",
+	"saved on the profile, and published for every client")
+table.clear(toClients)
+vh:SetAttribute("LastHitWeapon", "Carbine")
+KillCredit.KillAwarded:Fire(player, vh, nil)
+World.advance(0.1)
+sent = nil
+for _, e in ipairs(toClients) do
+	if e.name == "VFXEvent" and e.args[1] == "kill" then
+		sent = e.args
+	end
+end
+check(sent ~= nil and sent[2] == "KillVoid", "a kill with the Carbine sends ITS effect")
+check(VFXService.EquipWeapon(player, "Carbine", "Kill", nil).ok and VFXConfig.Resolve(player, "Kill", "Carbine") == "KillShatter",
+	"and Default puts it back on the equipped one")
+vh:SetAttribute("LastHitWeapon", nil)
+
 local CombatFX = World.require(rs.CombatFX)
 local bin = World.workspace:FindFirstChild("CombatFX")
 local allPlayed = true
@@ -221,6 +250,23 @@ for _, item in ipairs(VFXConfig.Items) do
 	end
 end
 check(allPlayed, "every kill effect plays and puts something in the world")
+World.advance(2.5)
+do
+	local before = #bin:GetChildren()
+	CombatFX.KillEffect("KillLightning", Vector3.new(0, 5, 0), victim)
+	World.advance(0.3)
+	local cylinders, bolts = 0, 0
+	for _, c in ipairs(bin:GetChildren()) do
+		if c.ClassName == "Part" and c.Shape == roblox.Enum.PartType.Cylinder then
+			cylinders += 1
+		elseif c.ClassName == "Part" and c.Size.Z > 3 then
+			bolts += 1
+		end
+	end
+	check(#bin:GetChildren() - before >= 40 and bolts >= 12 and cylinders >= 2,
+		("Thunderstrike comes down hard: %d parts, %d bolt segments, a shockwave and a scorch"):format(
+			#bin:GetChildren() - before, bolts))
+end
 check(CombatFX.KillEffect("NoSuchEffect", Vector3.new(), nil) == false, "an unknown effect is ignored")
 World.advance(2.5)
 
@@ -234,7 +280,7 @@ for _, c in ipairs(host:GetChildren()) do
 		beams += 1
 	end
 end
-check(beams == 3, "a bought tracer with a haze adds a vapour line to a rifle round")
+check(beams == 4, ("a bought tracer adds a glow and a vapour line in its colour to a rifle round (%d beams)"):format(beams))
 World.advance(0.08)
 local longest = 0
 for _, c in ipairs(host:GetChildren()) do
@@ -251,8 +297,8 @@ check(CombatFX.HasOwnTracer("Carbine_DarkMatter") and not CombatFX.HasOwnTracer(
 
 print("turf wars")
 local Turf = World.require(sss.TurfWarService)
-check(Turf.FIRST_DELAY <= 60 and Turf.INTERVAL <= 270, ("more often: first after %ds, then every %ds")
-	:format(Turf.FIRST_DELAY, Turf.INTERVAL))
+check(#Turf.Zones == 4 and Turf.COOLDOWN <= 180, ("four patches to start one on, each quiet for %ds after")
+	:format(Turf.COOLDOWN))
 local sizes = {}
 for level = 1, 5 do
 	sizes[level] = #Turf.CrewFor(level)

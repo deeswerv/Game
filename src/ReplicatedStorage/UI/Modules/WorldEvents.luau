@@ -35,6 +35,18 @@ type Marker = {
 	golden: boolean,
 }
 
+type TurfWar = {
+	zone: string,
+	position: Vector3?,
+	ends: number,
+	left: number,
+	total: number,
+	threat: number,
+}
+
+-- How close a turf war has to be for its start and end to be a banner rather than a toast.
+local TURF_NEAR = 220
+
 local function commas(n: number): string
 	local s = tostring(math.floor(n))
 	local out = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
@@ -55,7 +67,7 @@ function WorldEvents.new(toast: any, playerGui: Instance, screen: GuiObject?)
 		chip.BackgroundTransparency = 0.15
 		chip.BorderSizePixel = 0
 		chip.Position = UDim2.fromOffset(16, 76)
-		chip.Size = UDim2.fromOffset(250, 34)
+		chip.Size = UDim2.fromOffset(380, 34)
 		chip.Visible = false
 		chip.Parent = screen
 		Components.Corner(chip, 10)
@@ -69,8 +81,9 @@ function WorldEvents.new(toast: any, playerGui: Instance, screen: GuiObject?)
 		})
 		label.Size = UDim2.fromScale(1, 1)
 		self._turfChip, self._turfLabel = chip, label
-		self._turfEnds, self._turfLeft, self._turfTotal = 0, 0, 0
 	end
+	-- Every turf war on, by patch id: { zone, position, ends, left, total, threat }.
+	self._wars = {} :: { [string]: TurfWar }
 
 	local accumulator = 0
 	self._connection = RunService.Heartbeat:Connect(function(dt)
@@ -185,10 +198,24 @@ function WorldEvents:_update()
 		from = camera.CFrame.Position
 	end
 	local skyHigh = from ~= nil and from.Y > 1500
-	if self._turfChip and self._turfChip.Visible then
-		local secs = math.max(0, math.floor(self._turfEnds - os.clock()))
-		self._turfLabel.Text = string.format("TURF WAR %s  ·  %d / %d LEFT  ·  %d:%02d", numeral(self._turfThreat),
-			self._turfLeft, self._turfTotal, secs // 60, secs % 60)
+	if self._turfChip then
+		-- The chip follows the nearest war; "+N" says how many others are on.
+		local shown: TurfWar? = nil
+		local best, count = math.huge, 0
+		for _, war in pairs(self._wars) do
+			count += 1
+			local d = if from and war.position then (war.position - from).Magnitude else 1e6
+			if d < best then
+				best, shown = d, war
+			end
+		end
+		self._turfChip.Visible = shown ~= nil
+		if shown then
+			local secs = math.max(0, math.floor(shown.ends - os.clock()))
+			self._turfLabel.Text = string.format("⚔ %s  ·  %s  ·  %d/%d LEFT  ·  %d:%02d%s", shown.zone,
+				numeral(shown.threat), shown.left, shown.total, secs // 60, secs % 60,
+				if count > 1 then ("  ·  +" .. (count - 1)) else "")
+		end
 	end
 	for _, marker in pairs(self._markers) do
 		marker.gui.Enabled = not inDuel and not skyHigh
@@ -203,51 +230,77 @@ function WorldEvents:_update()
 	end
 end
 
---- Handle one TurfEvent from the server.
+--- Is a turf war at `position` close enough to this player to shout about?
+function WorldEvents:_near(position: any): boolean
+	if typeof(position) ~= "Vector3" then
+		return true
+	end
+	local character = Players.LocalPlayer.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root or not root:IsA("BasePart") then
+		return true
+	end
+	return (root.Position - position).Magnitude <= TURF_NEAR
+end
+
+--- Handle one TurfEvent from the server. Several wars can be on at once, one per patch, so
+--- each is kept by its patch id; the chip shows the nearest.
 function WorldEvents:HandleTurf(kind: string, data: any)
 	if type(data) ~= "table" then
 		return
 	end
 	local red = Color3.fromRGB(236, 44, 52)
-	if tonumber(data.threat) then
-		self._turfThreat = tonumber(data.threat)
-	end
+	local id = tostring(data.id or data.zone or "turf")
+	local zone = string.upper(tostring(data.zone or "DOWNTOWN"))
+	local near = self:_near(data.position)
 	if kind == "start" then
-		self._turfLeft, self._turfTotal = tonumber(data.left) or 0, tonumber(data.total) or 0
-		self._turfEnds = os.clock() + (tonumber(data.seconds) or 240)
-		if self._turfChip then
-			self._turfChip.Visible = true
+		self._wars[id] = {
+			zone = zone,
+			position = if typeof(data.position) == "Vector3" then data.position else nil,
+			ends = os.clock() + (tonumber(data.seconds) or 240),
+			left = tonumber(data.left) or 0,
+			total = tonumber(data.total) or 0,
+			threat = tonumber(data.threat) or 1,
+		}
+		if near then
+			self._toast:Banner({
+				title = "TURF WAR",
+				subtitle = string.format("THREAT %s  ·  A CREW OF %d HOLDS %s  ·  DRIVE THEM OUT", numeral(data.threat),
+					tonumber(data.total) or 0, zone),
+				colour = red,
+				sound = "Slam",
+			})
+		else
+			self._toast:Push({ title = "Turf war at " .. zone, text = "Threat " .. numeral(data.threat)
+				.. "  ·  a crew of " .. tostring(tonumber(data.total) or 0), icon = "⚔", colour = red })
 		end
-		self._toast:Banner({
-			title = "TURF WAR",
-			subtitle = string.format("THREAT %s  ·  A CREW OF %d IS MOVING ON DOWNTOWN FROM %s", numeral(data.threat),
-				tonumber(data.total) or 0, tostring(data.zone or "THE EDGE")),
-			colour = red,
-			sound = "Slam",
-		})
 	elseif kind == "progress" then
-		self._turfLeft = tonumber(data.left) or self._turfLeft
-		self._turfTotal = tonumber(data.total) or self._turfTotal
-		if tonumber(data.seconds) then
-			self._turfEnds = os.clock() + data.seconds
+		local war = self._wars[id]
+		if war then
+			war.left = tonumber(data.left) or war.left
+			war.total = tonumber(data.total) or war.total
+			if tonumber(data.seconds) then
+				war.ends = os.clock() + data.seconds
+			end
 		end
 	elseif kind == "won" then
-		if self._turfChip then
-			self._turfChip.Visible = false
+		self._wars[id] = nil
+		if near then
+			self._toast:Banner({
+				title = "TURF DEFENDED",
+				subtitle = (data.mvp and ("MVP  ·  " .. string.upper(tostring(data.mvp))) or (zone .. " IS YOURS"))
+					.. "  ·  THREAT RISES TO " .. numeral(data.threat),
+				colour = Color3.fromRGB(255, 196, 40),
+				sound = "Ring",
+			})
+		else
+			self._toast:Push({ title = zone .. " defended", text = "Threat rises to " .. numeral(data.threat),
+				icon = "⚔", colour = Color3.fromRGB(255, 196, 40) })
 		end
-		self._toast:Banner({
-			title = "TURF DEFENDED",
-			subtitle = (data.mvp and ("MVP  ·  " .. string.upper(tostring(data.mvp))) or "DOWNTOWN IS YOURS")
-				.. "  ·  THREAT RISES TO " .. numeral(data.threat),
-			colour = Color3.fromRGB(255, 196, 40),
-			sound = "Ring",
-		})
 	elseif kind == "lost" then
-		if self._turfChip then
-			self._turfChip.Visible = false
-		end
-		self._toast:Push({ title = "The crew got away",
-			text = "Downtown turf war over  ·  threat falls to " .. numeral(data.threat), icon = "⚔", colour = red })
+		self._wars[id] = nil
+		self._toast:Push({ title = "The crew held " .. zone,
+			text = "Turf war over  ·  threat falls to " .. numeral(data.threat), icon = "⚔", colour = red })
 	elseif kind == "reward" then
 		self._toast:Push({
 			title = data.mvp and "TURF WAR MVP" or "TURF WAR PAYOUT",
@@ -258,6 +311,7 @@ function WorldEvents:HandleTurf(kind: string, data: any)
 			duration = 6,
 		})
 	end
+	self:_update()
 end
 
 --- Handle one SupplyEvent from the server.

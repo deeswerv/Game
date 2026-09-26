@@ -39,11 +39,12 @@ that already works.
   `CENTRE = Vector3.new(-155, 1000, 1500)` and wires prompts from `Downtown.Panels`
   (`GunShop → Market`, `Armory → Workshop`, `ContractBoard → Contracts`), the Duel Hall pads
   (`DuelPads`), and the once-a-day ROOFTOP STASH (coins, crystals, XP).
-- `src/ServerScriptService/TurfWarService.luau` -- a crew attacks every ~4.5 min while someone is
-  downtown (first one after 60 s). It has a district-wide **THREAT level I-V**: each defence
-  raises it (bigger crew: 5 → 10 NPCs, longer clock, payout +25% per level), a loss lowers it.
-  Entry points are hard-coded (`Entries`: EAST/WEST TUNNEL, ZEE TOWER, THE CAR PARK) with
-  `CENTRE` and `HALF = 186` duplicated in the file. HUD: `UI/Modules/WorldEvents.luau`.
+- `src/ServerScriptService/TurfWarService.luau` -- four walk-in patches (`Zones`: THE CAR PARK,
+  THE COURTS, THE ALLEY, THE PARK, local offsets + radius). Stepping onto an open patch spawns
+  its crew; a finished war puts that patch on a 180 s cooldown; wars on different patches run
+  side by side. It has a district-wide **THREAT level I-V**: each defence raises it (bigger crew:
+  5 → 10 NPCs, longer clock, payout +25% per level), a loss lowers it. Ground rings and signs
+  live in `workspace.TurfZones`. `CENTRE` is duplicated in the file. HUD: `UI/Modules/WorldEvents.luau`.
 - `src/ReplicatedStorage/NPCConfig.luau` -- archetypes `Grunt` (Bandit), `Soldier`, `Brute`,
   `Marksman`, `Elite`, `Guard` (Town Guard), `Warlord`; zone table with
   `{ id = "Downtown", minX = -355, maxX = 45, minZ = 1300, maxZ = 1700, level = { 4, 7 } }`
@@ -197,7 +198,7 @@ two or three **combat pockets** (cover, flanks, height) for patrols and turf war
    check the Controls section of the README): quarters coloured by
    holder, turf war / bounty / heist / drop markers, station icons, your position.
 9. **Wire-up checklist** -- every one of these must read the new bounds, not a copy:
-   `TurfWarService` (CENTRE, HALF, Entries → per-quarter entries), `NPCConfig` zones,
+   `TurfWarService` (CENTRE, Zones → one or more patches per quarter), `NPCConfig` zones,
    `SupplyDropService` DOWNTOWN (centre, radius, `maxRise`), `TravelService` arrival,
    `DistrictService.CENTRE` (keep it), `Downtown.DropRadius`, `Downtown.Preview`,
    `tools/uitest/district.luau`, `tools/uitest/fixtures.luau` (Travel entry text).

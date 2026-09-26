@@ -95,6 +95,25 @@ end
 -- 2..6. Every menu.
 toggle(Enum.KeyCode.B)
 shot("02_inventory")
+-- The same gun's VFX: pick Shatter as its kill effect, Gold Rush equipped as the tracer default.
+World.player:SetAttribute("VFX_Tracer", "TracerGold")
+local vfxToggle = World.find(World.playerGui, "VFXToggle", "TextButton")
+if vfxToggle then
+	World.click(vfxToggle)
+	World.advance(0.3)
+	local detail = World.find(World.playerGui, "Detail")
+	local killRow = detail and World.find(detail, "Kill", "Frame")
+	local shatter = killRow and World.find(killRow, "Shatter", "TextButton")
+	if shatter then
+		World.click(shatter)
+		World.advance(0.3)
+	end
+end
+shot("32_inventory_vfx")
+if vfxToggle then
+	World.click(vfxToggle)
+	World.advance(0.2)
+end
 toggle(Enum.KeyCode.B)
 toggle(Enum.KeyCode.M)
 shot("03_shop")
@@ -196,12 +215,16 @@ do
 end
 
 -- A turf war downtown.
-World.serverFire("Remotes", "TurfEvent", "start", { zone = "THE EAST TUNNEL", left = 5, total = 5, seconds = 240 })
+World.serverFire("Remotes", "TurfEvent", "start", { id = "CarPark", zone = "THE CAR PARK", left = 5, total = 5,
+	seconds = 240, threat = 2, position = Vector3.new(0, 0, -20) })
+World.serverFire("Remotes", "TurfEvent", "start", { id = "Park", zone = "THE PARK", left = 6, total = 6,
+	seconds = 260, threat = 2, position = Vector3.new(5000, 0, 5000) })
 World.advance(1)
-World.serverFire("Remotes", "TurfEvent", "progress", { left = 3, total = 5, seconds = 201 })
+World.serverFire("Remotes", "TurfEvent", "progress", { id = "CarPark", left = 3, total = 5, seconds = 201 })
 shot("23_turf_war", 0.5)
 World.advance(4)
-World.serverFire("Remotes", "TurfEvent", "won", { mvp = "Tester" })
+World.serverFire("Remotes", "TurfEvent", "won", { id = "CarPark", zone = "THE CAR PARK", mvp = "Tester", threat = 3 })
+World.serverFire("Remotes", "TurfEvent", "lost", { id = "Park", zone = "THE PARK", threat = 2 })
 World.advance(4)
 
 -- Contract news and a supply drop on the way.

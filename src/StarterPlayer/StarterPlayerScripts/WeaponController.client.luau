@@ -480,6 +480,10 @@ local function fireFeedback(tool: Tool, wcfg)
 	end
 end
 
+-- When each body last showed a hit burst (Dark Matter and anything like it).
+local BODY_BURST_GAP = 0.2
+local bodyBurstAt: { [any]: number } = setmetatable({}, { __mode = "k" }) :: any
+
 -- Rounds seen per shooter, so a Prismatic tracer changes colour shot to shot.
 local shotsSeen: { [Player]: number } = setmetatable({}, { __mode = "k" }) :: any
 
@@ -518,12 +522,13 @@ GunEffect.OnClientEvent:Connect(function(kind, ...)
 		-- where its own unposed copy of the gun was, which is beside the barrel rather than
 		-- at it; it is only the fallback for a gun this client cannot see.
 		local from = CombatFX.MuzzlePoint(tool, origin) or origin
-		-- The shooter's bought tracer (VFXConfig), if they have one equipped: its colour, its
-		-- width and its streak, on every gun that does not ship its own.
+		-- The shooter's bought tracer (VFXConfig) for this gun -- its own pick from the
+		-- inventory, else the one equipped: its colour, width and streak, on every gun that
+		-- does not ship its own.
 		local colour, width, style = wcfg.TracerColor, wcfg.TracerWidth, nil
 		if typeof(shooter) == "Instance" and shooter:IsA("Player") and not CombatFX.HasOwnTracer(weaponName) then
 			shotsSeen[shooter] = (shotsSeen[shooter] or 0) + 1
-			local look = VFXConfig.TracerStyle(shooter:GetAttribute("VFX_Tracer"), shotsSeen[shooter])
+			local look = VFXConfig.TracerStyle(VFXConfig.Resolve(shooter, "Tracer", weaponName), shotsSeen[shooter])
 			if look then
 				colour = look.colour or colour
 				width = width * (look.width or 1)
@@ -547,16 +552,32 @@ GunEffect.OnClientEvent:Connect(function(kind, ...)
 				end
 			end
 		end
-	elseif kind == "HeadshotVFX" then
-		local weaponName, position, model = ...
+	elseif kind == "HitVFX" then
+		local weaponName, position, model, headshot = ...
 		local wcfg = type(weaponName) == "string" and WeaponConfig.Get(weaponName)
-		if not wcfg or type(wcfg.HeadshotVFX) ~= "string" or typeof(position) ~= "Vector3" then
+		if not wcfg or typeof(position) ~= "Vector3" then
 			return
 		end
-		local found = if typeof(model) == "Instance" then model:FindFirstChild("Head") else nil
-		local head: BasePart? = if found and found:IsA("BasePart") then found else nil
-		CombatFX.PlayVFX(wcfg.HeadshotVFX, head and head.Position or position, head,
-			type(wcfg.HeadshotVFXScale) == "number" and wcfg.HeadshotVFXScale or 1)
+		local body = if typeof(model) == "Instance" and model:IsA("Model") then model else nil
+		if headshot == true and type(wcfg.HeadshotVFX) == "string" then
+			-- The whole effect, large, on the head -- and a flare the instant it lands.
+			local found = body and body:FindFirstChild("Head")
+			local head: BasePart? = if found and found:IsA("BasePart") then found else nil
+			local at = head and head.Position or position
+			CombatFX.GemFlare(at, wcfg.MuzzleFlashColor)
+			CombatFX.PlayVFX(wcfg.HeadshotVFX, at, head,
+				type(wcfg.HeadshotVFXScale) == "number" and wcfg.HeadshotVFXScale or 1)
+		elseif headshot ~= true and type(wcfg.BodyVFX) == "string" then
+			-- An automatic weapon lands ten rounds a second; one burst per body every fifth of a
+			-- second reads as continuous without stacking dozens of effects on one target.
+			local key = body or "loose"
+			local now = os.clock()
+			if (bodyBurstAt[key] or 0) + BODY_BURST_GAP <= now then
+				bodyBurstAt[key] = now
+				CombatFX.PlayVFX(wcfg.BodyVFX, position, nil,
+					type(wcfg.BodyVFXScale) == "number" and wcfg.BodyVFXScale or 0.3, true)
+			end
+		end
 	elseif kind == "Hitmarker" then
 		local headshot, lethal, wallbang = ...
 		flashHitmarker(headshot == true, lethal == true, wallbang == true)

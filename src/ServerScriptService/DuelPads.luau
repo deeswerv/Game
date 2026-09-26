@@ -4,7 +4,7 @@
 -- magenta and cyan like the arena's two ends, with a 1V1 sign over them, the name of whoever
 -- is standing on each, and a shimmering column while they wait.
 --
--- A second door into the SAME queue, not a second queue. The PLAY diamond and J still work;
+-- A second door into the SAME queue, not a second queue. The DUEL button and J still work;
 -- this one needs no cursor at all, which matters because the shift-lock camera keeps the
 -- cursor pinned to the middle of the screen.
 --

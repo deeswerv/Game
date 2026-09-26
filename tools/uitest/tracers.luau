@@ -359,25 +359,57 @@ local function fireAt(tool, aim)
 	R.fire(rs.Remotes.GunAction, "OnServerEvent", player, "shoot", tool, aim, false, Vector3.new(0, 4.5, -2))
 	World.advance(dm.FireRate + 0.1)
 	for _, e in ipairs(toClients) do
-		if e.name == "GunEffect" and e.args[1] == "HeadshotVFX" then
+		if e.name == "GunEffect" and e.args[1] == "HitVFX" then
 			return e.args
 		end
 	end
 	return nil
 end
--- Pellet spread is random, so the head is made big enough that a straight shot cannot miss it.
+-- Pellet spread is random, so the part aimed at is made big enough that a straight shot cannot miss.
 victimHead.Size = Vector3.new(4, 1.4, 4)
 local sent = fireAt(darkMatter, Vector3.new(0, 4.5, -60))
-check(sent ~= nil and sent[2] == "Carbine_DarkMatter" and sent[4] == victim,
-	"a Dark Matter headshot tells everyone to play it on that head")
+check(sent ~= nil and sent[2] == "Carbine_DarkMatter" and sent[4] == victim and sent[5] == true,
+	"a Dark Matter headshot tells everyone to play the big effect on that head")
 victimHead.Size = Vector3.new(1.2, 1.2, 1.2)
 victimTorso.Size = Vector3.new(6, 3, 4)
-check(fireAt(darkMatter, Vector3.new(0, 2.5, -60)) == nil, "a body shot does not")
+sent = fireAt(darkMatter, Vector3.new(0, 2.5, -60))
+check(sent ~= nil and sent[5] == false and (sent[3] - Vector3.new(0, 2.5, -60)).Magnitude < 3,
+	"a body shot plays one too, where the round struck")
 victimHead.Size = Vector3.new(4, 1.4, 4)
 darkMatter.Parent = nil
 gun.Parent = character
 gun:SetAttribute("Ammo", cfg.MagazineSize)
-check(fireAt(gun, Vector3.new(0, 4.5, -60)) == nil, "and nor does an ordinary carbine's headshot")
+check(fireAt(gun, Vector3.new(0, 4.5, -60)) == nil, "and an ordinary carbine plays neither")
+
+print("the body burst")
+table.clear(emitted)
+local quick = CombatFX.PlayVFX("gemstoneCharge", Vector3.new(0, 3, -60), nil, 0.3, true)
+local burst
+for _, c in ipairs(bin:GetChildren()) do
+	if c.Name == "gemstoneCharge" then
+		burst = c
+	end
+end
+World.advance(1 / 30)
+local streamed = false
+for _, d in ipairs(burst:GetDescendants()) do
+	if d.ClassName == "ParticleEmitter" and d.Enabled then
+		streamed = true
+	end
+end
+check(emitted.Star == 10 and not streamed and quick <= lasts,
+	("a body hit bursts at once, with no build-up (%.2fs)"):format(quick or 0))
+local beamsLeft = 0
+for _, d in ipairs(burst:GetDescendants()) do
+	if d.ClassName == "Beam" then
+		beamsLeft += 1
+	end
+end
+check(beamsLeft == 0, "and without the charge's ribbons")
+World.advance(2)
+local flareBefore = #bin:GetChildren()
+CombatFX.GemFlare(Vector3.new(0, 4.5, -60))
+check(#bin:GetChildren() > flareBefore + 8, "a headshot's crystal flare throws its shards at once")
 targets = {}
 
 print(failures == 0 and "\27[32mall tracer checks passed\27[0m" or ("\27[31m%d failed\27[0m"):format(failures))

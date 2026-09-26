@@ -35,8 +35,8 @@ The live game always saves.
 
 | Key | Does |
 | --- | --- |
-| Hold **Alt** | Free the mouse to click buttons (PLAY, the side menu) without leaving shift lock |
-| **J** | Queue for a duel, or cancel the queue (same as clicking PLAY) |
+| Hold **Alt** | Free the mouse to click buttons (DUEL, the side menu) without leaving shift lock |
+| **J** | Queue for a duel, or cancel the queue (same as clicking DUEL) |
 | Hold **Tab** | Player board: levels, ranks, kills, deaths, who is dueling |
 | **B / M / K / P / N** | Items, Shop, Armory, Profile, Daily reward |
 | **O** | Quest journal |
@@ -85,12 +85,18 @@ a basketball court, a hedged pocket park, blossom trees, lanterns with flower ba
 cars and a skyline all round. Climb the fire escape on the apartments for a **rooftop stash**
 (once a day). Supply drops land in its streets too.
 
-**Turf war**: a minute after someone arrives downtown, and then every four and a half minutes
-while anyone is there, a crew rolls in from one of the district's edges. Drive them out and
-everyone who landed a hit is paid, with half as much again for the MVP. Downtown remembers:
-every crew driven out raises the **THREAT** (I to V) -- the next crew is bigger (5 up to 10:
-more Bandits and Soldiers, a second Brute at V), the clock longer and the payout 25% higher per
-level; a crew that gets away lowers it. The HUD shows the threat on the banner and the chip.
+**Turf wars** are fought on four patches of Downtown -- THE CAR PARK (south-east), THE COURTS
+(north-east), THE ALLEY (south-west) and THE PARK (north-west). Each is marked on the ground by a
+ring of dashes with a sign over it: red and "STEP IN TO START A TURF WAR" when open, orange with
+the count and clock while its war is on, grey with a countdown while it cools down. Walk onto an
+open patch and its crew comes out round the edge; clear them and everyone who landed a hit is
+paid, with half as much again for the MVP. Then that patch goes quiet for three minutes (the
+other three stay open, and wars on different patches run side by side). A crew wins if the
+clock runs out or everybody walks away from it for 45 seconds. Downtown remembers: every crew
+driven out raises the **THREAT** (I to V) -- the next crew is bigger (5 up to 10: more Bandits and
+Soldiers, a second Brute at V), the clock longer and the payout 25% higher per level; a crew
+that holds its patch lowers it. The HUD chip follows the nearest war; wars near you get a
+banner, ones across town a notice.
 
 **XP** is paid at 1.5x across the game (kills, quests, contracts, chests, turf wars, the stash,
 supply drops) -- one rate in `GameConfig.Leveling.XP_RATE`, and every reward shows what it pays.
@@ -179,13 +185,24 @@ Enemies fight like a squad, not a row of turrets:
   and the impact lands when the round does. A fitted suppressor fires from the end of the can.
 - **VFX shelf** in the shop (it replaced Style): five **kill effects** (Shatter, Confetti,
   Thunderstrike, Void, Gem Charge) that play on anyone you eliminate, and five **tracers**
-  (Crimson, Gold Rush, Plasma, Toxic, Prismatic) that change how your rounds look -- colour,
-  width, streak length, a haze. Everyone sees them. Buy one and it goes straight on; owned ones
-  show EQUIP / EQUIPPED. Mastery Weapons keep their own tracer. Hats and backs you already own
-  are still yours to wear. `lune run tools/uitest/vfx.luau` checks it.
-- **Dark Matter headshots** play the gem-charge effect (assets/vfx/gemstoneCharge.rbxm) on the
-  head that was hit, for everyone. Any .rbxm dropped into assets/vfx is imported into
-  ReplicatedStorage.VFX on build; `lune run tools/uitest/tracers.luau` checks all of this.
+  (Crimson, Gold Rush, Plasma, Toxic, Prismatic) that change how your rounds look. Everyone sees
+  them. Buy one and it goes straight on; owned ones show EQUIP / EQUIPPED. Mastery Weapons keep
+  their own tracer. Hats and backs you already own are still yours to wear.
+  - Kill effects hit hard: every one lands with a flash, a ball of light and a shockwave rolling
+    across the ground. Thunderstrike brings a thick bolt down from 70 studs up, re-struck four
+    times with forks, sparks thrown out, arcs crawling over the body and a scorch. Void opens a
+    black hole with a spinning ring that collapses and blows back out.
+  - Bought tracers are wide bolts of colour: a glow round the streak, a longer streak, a vapour
+    line in the tracer's colour, and a flare where each round lands.
+  - **Per gun** (inventory, **✨ VFX** beside EQUIP): pick which kill effect and which tracer
+    THIS gun uses. *Default* follows what is equipped in the shop, *None* plays nothing on that
+    gun, and any owned effect can be chosen (the rest show locked). Saved in `WeaponVFX`,
+    published as the `VFX_Guns` attribute, and checked for ownership on the server.
+  - `lune run tools/uitest/vfx.luau` checks all of it.
+- **Dark Matter hits** play the gem-charge effect (assets/vfx/gemstoneCharge.rbxm) for everyone:
+  a quick small burst on the body, and on a headshot a bigger charge on the head with a crystal
+  flare. Any .rbxm dropped into assets/vfx is imported into ReplicatedStorage.VFX on build;
+  `lune run tools/uitest/tracers.luau` checks all of this.
 
 ## Duel maps
 

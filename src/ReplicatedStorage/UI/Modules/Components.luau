@@ -279,7 +279,7 @@ export type ButtonOptions = {
 }
 
 --- A chunky button: a sheen from top to bottom, a dark rim, and outlined type -- the way
---- the reference "+" and PLAY buttons read as physical things you can press.
+--- the reference "+" and DUEL buttons read as physical things you can press.
 function Components.Button(parent: GuiObject, options: ButtonOptions)
 	local primary = options.primary == true
 	local danger = options.danger == true

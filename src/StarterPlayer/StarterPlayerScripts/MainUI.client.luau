@@ -172,7 +172,7 @@ local duel = safe("Duel", function()
 	onScoreboard = function(visible: boolean)
 		hud:SetIdentityVisible(not visible)
 	end,
-	-- The PLAY diamond lives bottom-left now, clear of the ELIMINATED call; nothing to move.
+	-- The DUEL button lives bottom-left now, clear of the ELIMINATED call; nothing to move.
 	onPlayVisible = function(_visible: boolean) end,
 })
 end)
@@ -600,6 +600,7 @@ local inventory = safe("Inventory", function()
 	return Inventory.new(menuLayer, {
 		getOwnership = gameRemote("GetOwnership"),
 		loadoutAction = gameRemote("LoadoutAction"),
+		vfxAction = gameRemote("VFXAction"),
 	})
 end)
 

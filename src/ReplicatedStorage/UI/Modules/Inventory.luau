@@ -10,7 +10,13 @@
 --
 -- Categories are derived from WeaponConfig rather than typed here, so a class that does not
 -- exist never gets a tab and a new one appears on its own.
+--
+-- The ✨ VFX button beside EQUIP flips the stat bars over to the gun's VFX: which kill effect
+-- and which tracer THIS gun uses. "Default" follows whatever is equipped in the shop, "None"
+-- plays nothing on this gun, and any owned effect can be picked; the ones not owned yet are
+-- shown locked so you know what there is. The server checks ownership (VFXAction).
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Theme = require(script.Parent.Theme)
@@ -19,6 +25,8 @@ local Menu = require(script.Parent.Menu)
 local WeaponConfig = require(ReplicatedStorage:WaitForChild("WeaponConfig"))
 local GunHandling = require(ReplicatedStorage:WaitForChild("GunHandling"))
 local WeaponPreview = require(ReplicatedStorage:WaitForChild("WeaponPreview"))
+local VFXConfig = require(ReplicatedStorage:WaitForChild("VFXConfig"))
+local UISound = require(script.Parent.UISound)
 
 local Inventory = {}
 Inventory.__index = Inventory
@@ -179,19 +187,246 @@ local function buildDetail(self, parent: GuiObject)
 	stats.Parent = panel
 	Components.List(stats, Enum.FillDirection.Vertical, 2)
 
-	self._preview, self._name, self._chips, self._description, self._stats =
-		preview, name, chipRow, description, stats
+	-- The VFX side: the same space as the stat bars, shown instead of them.
+	local vfx = Instance.new("Frame")
+	vfx.Name = "VFX"
+	vfx.BackgroundTransparency = 1
+	vfx.Size = UDim2.new(1, -Theme.Space.L, 0, 200)
+	vfx.Position = UDim2.fromOffset(Theme.Space.S, 232)
+	vfx.Visible = false
+	vfx.Parent = panel
+	Components.List(vfx, Enum.FillDirection.Vertical, 8)
+
+	self._preview, self._name, self._chips, self._description, self._stats, self._vfx =
+		preview, name, chipRow, description, stats, vfx
+end
+
+-- ------------------------------------------------------------------ vfx --
+
+local TILE = 60
+local ICON_DEFAULT, ICON_NONE = "↺", "⦸"
+
+local function ownTracer(weapon: string): boolean
+	local ok, has = pcall(function()
+		local CombatFX = (require :: any)(ReplicatedStorage:FindFirstChild("CombatFX"))
+		return CombatFX.HasOwnTracer(weapon)
+	end)
+	return ok and has == true
+end
+
+-- One choice: a square tile with its icon and a short name; the one in use is ringed white.
+local function tile(parent: GuiObject, order: number, icon: string, label: string, colour: Color3, selected: boolean,
+	locked: boolean, onPick: (() -> ())?): TextButton
+	local t = Instance.new("TextButton")
+	t.Name = label
+	t.AutoButtonColor = false
+	t.Text = ""
+	t.LayoutOrder = order
+	t.Size = UDim2.fromOffset(TILE, TILE + 12)
+	t.BackgroundColor3 = if selected then colour:Lerp(Theme.Colour.Panel, 0.45) else Theme.Colour.PanelRaised
+	t.BackgroundTransparency = if locked then 0.45 else 0
+	t.Parent = parent
+	Components.Corner(t, 8)
+	local edge = Components.Stroke(t, if selected then Color3.new(1, 1, 1) else colour, if selected then 3 else 1.6)
+	edge.Transparency = if locked then 0.6 else 0
+	Components.Gradient(t)
+	local glyph = Components.Icon(t, if locked then "🔒" else icon, 26)
+	glyph.AnchorPoint = Vector2.new(0.5, 0)
+	glyph.Position = UDim2.new(0.5, 0, 0, 6)
+	glyph.Size = UDim2.fromOffset(TILE, 32)
+	glyph.TextTransparency = if locked then 0.35 else 0
+	local name = Components.Label(t, {
+		text = string.upper(label),
+		face = Theme.Face.Condensed,
+		size = 12,
+		align = Enum.TextXAlignment.Center,
+		colour = if locked then Theme.Colour.TextMuted else Theme.Colour.Text,
+		outline = 1.2,
+	})
+	name.Position = UDim2.new(0, 2, 1, -24)
+	name.Size = UDim2.new(1, -4, 0, 20)
+	name.TextWrapped = true
+	name.TextScaled = true
+	local cap = Instance.new("UITextSizeConstraint")
+	cap.MaxTextSize = 12
+	cap.MinTextSize = 8
+	cap.Parent = name
+	if selected then
+		local tick = Components.Icon(t, "✓", 14)
+		tick.AnchorPoint = Vector2.new(1, 0)
+		tick.Position = UDim2.new(1, -2, 0, 1)
+		tick.Size = UDim2.fromOffset(16, 16)
+	end
+	t.Activated:Connect(function()
+		if onPick then
+			onPick()
+		else
+			UISound.Play("Clunk")
+		end
+	end)
+	return t
+end
+
+--- What this gun uses in `slot`: "default", "none", or an effect id.
+function Inventory:_choice(weapon: string, slot: string): string
+	local mine = self._vfxOverride[weapon]
+	if mine and mine[slot] ~= nil then
+		return mine[slot]
+	end
+	local published = VFXConfig.WeaponChoices(Players.LocalPlayer)[weapon]
+	local id = published and published[slot]
+	return if type(id) == "string" then id else "default"
+end
+
+function Inventory:_pickVFX(weapon: string, slot: string, choice: string)
+	if self:_choice(weapon, slot) == choice or not self._remotes.vfxAction then
+		return
+	end
+	UISound.Play("Click")
+	self._vfxOverride[weapon] = self._vfxOverride[weapon] or {}
+	self._vfxOverride[weapon][slot] = choice
+	self:_drawVFX()
+	task.spawn(function()
+		local ok, result = pcall(function()
+			return (self._remotes.vfxAction :: RemoteFunction):InvokeServer("equipWeapon", weapon, slot,
+				if choice == "default" then nil else choice)
+		end)
+		if not ok or type(result) ~= "table" or not result.ok then
+			-- Refused: put it back to what the server has.
+			self._vfxOverride[weapon][slot] = nil
+			self:_drawVFX()
+		end
+	end)
+end
+
+--- The VFX side for the selected gun: a row of kill effects and a row of tracers.
+function Inventory:_drawVFX()
+	local root = self._vfx
+	if not root or not root.Visible then
+		return
+	end
+	for _, child in ipairs(root:GetChildren()) do
+		if child:IsA("GuiObject") then
+			child:Destroy()
+		end
+	end
+	local weapon = self._selected
+	local cfg = weapon and WeaponConfig.Get(weapon)
+	if not weapon or not cfg then
+		return
+	end
+	local ownsGun = self._owned[weapon] == true
+	local player = Players.LocalPlayer
+	for order, slot in ipairs(VFXConfig.Slots) do
+		local section = Instance.new("Frame")
+		section.Name = slot
+		section.BackgroundTransparency = 1
+		section.LayoutOrder = order
+		section.Size = UDim2.new(1, 0, 0, 96)
+		section.Parent = root
+
+		local current = self:_choice(weapon, slot)
+		local equipped = player:GetAttribute(VFXConfig.Attribute[slot])
+		local equippedItem = VFXConfig.Get(if type(equipped) == "string" then equipped else nil)
+		local currentItem = VFXConfig.Get(current)
+		local heading = Components.Label(section, {
+			text = string.upper(VFXConfig.SlotLabels[slot] or slot),
+			face = Theme.Face.Condensed,
+			size = 16,
+			colour = Theme.Colour.TextDim,
+			outline = 1.4,
+		})
+		heading.Size = UDim2.new(0.5, 0, 0, 18)
+		local now = Components.Label(section, {
+			text = if currentItem then string.upper(currentItem.name)
+				elseif current == VFXConfig.NONE then "NONE"
+				else ("DEFAULT · " .. (if equippedItem then string.upper(equippedItem.name) else "NONE EQUIPPED")),
+			face = Theme.Face.Condensed,
+			size = 16,
+			colour = if currentItem then Theme.RarityColour(currentItem.rarity) else Theme.Colour.Text,
+			align = Enum.TextXAlignment.Right,
+			outline = 1.4,
+		})
+		now.Position = UDim2.fromScale(0.3, 0)
+		now.Size = UDim2.new(0.7, 0, 0, 18)
+
+		local row = Instance.new("ScrollingFrame")
+		row.Name = "Choices"
+		row.BackgroundTransparency = 1
+		row.BorderSizePixel = 0
+		row.Position = UDim2.fromOffset(0, 22)
+		row.Size = UDim2.new(1, 0, 0, TILE + 16)
+		row.CanvasSize = UDim2.new()
+		row.AutomaticCanvasSize = Enum.AutomaticSize.X
+		row.ScrollingDirection = Enum.ScrollingDirection.X
+		row.ScrollBarThickness = 3
+		row.ScrollBarImageColor3 = Theme.Colour.Stroke
+		row.Parent = section
+		Components.List(row, Enum.FillDirection.Horizontal, 6)
+
+		local note: string? = nil
+		if not ownsGun then
+			note = "Own this weapon to choose its VFX"
+		elseif slot == "Tracer" and cfg.Type ~= "Gun" then
+			note = "Melee weapons fire no tracer"
+		elseif slot == "Tracer" and ownTracer(weapon) then
+			note = "This gun fires its own tracer -- that look is what it is"
+		end
+		if note then
+			local l = Components.Label(row, {
+				text = note,
+				font = Theme.Font.Medium,
+				size = Theme.Text.Small,
+				colour = Theme.Colour.TextMuted,
+			})
+			l.Size = UDim2.new(1, 0, 0, TILE)
+			continue
+		end
+
+		tile(row, 1, ICON_DEFAULT, "Default", Theme.Colour.Info, current == "default", false, function()
+			self:_pickVFX(weapon, slot, "default")
+		end)
+		tile(row, 2, ICON_NONE, "None", Theme.Colour.Stroke, current == VFXConfig.NONE, false, function()
+			self:_pickVFX(weapon, slot, VFXConfig.NONE)
+		end)
+		local n = 2
+		for _, item in ipairs(VFXConfig.Items) do
+			if item.slot == slot then
+				n += 1
+				local owned = self._ownedVFX[item.id] == true
+				tile(row, n, item.icon, item.name, Theme.RarityColour(item.rarity), current == item.id, not owned,
+					if owned then function()
+						self:_pickVFX(weapon, slot, item.id)
+					end else nil)
+			end
+		end
+	end
+end
+
+function Inventory:_showVFX(on: boolean)
+	self._vfxShown = on
+	self._vfx.Visible = on
+	self._stats.Visible = not on
+	self._vfxButton:SetText(on and "◀ STATS" or "✨ VFX")
+	self._vfxButton:SetSelected(on)
+	if on then
+		self:_drawVFX()
+	end
 end
 
 -- ------------------------------------------------------------------ api --
 
-function Inventory.new(parent: Instance, remotes: { getOwnership: RemoteFunction, loadoutAction: RemoteFunction })
+function Inventory.new(parent: Instance, remotes: { getOwnership: RemoteFunction, loadoutAction: RemoteFunction,
+	vfxAction: RemoteFunction? })
 	local self = setmetatable({}, Inventory)
 
 	self._remotes = remotes
 	self._cards = {}
 	self._cardByName = {}
 	self._owned = {}
+	self._ownedVFX = {}
+	self._vfxOverride = {}
+	self._vfxShown = false
 	self._selected = nil
 
 	local menu = Menu.new(parent, {
@@ -226,7 +461,7 @@ function Inventory.new(parent: Instance, remotes: { getOwnership: RemoteFunction
 		text = "EQUIP",
 		primary = true,
 		textSize = 22,
-		size = UDim2.new(0.4, -Theme.Space.XL, 0, 48),
+		size = UDim2.new(0.4, -Theme.Space.XL - 124, 0, 48),
 		position = UDim2.new(0.6, Theme.Space.M + 4, 1, -Theme.Space.S),
 		anchor = Vector2.new(0, 1),
 		onActivated = function()
@@ -234,6 +469,26 @@ function Inventory.new(parent: Instance, remotes: { getOwnership: RemoteFunction
 		end,
 	})
 	self._equip:SetEnabled(false)
+	self._vfxButton = Components.Button(menu.content, {
+		name = "VFXToggle",
+		text = "✨ VFX",
+		textSize = 20,
+		colour = Theme.Colour.Xp,
+		size = UDim2.fromOffset(116, 48),
+		position = UDim2.new(1, -Theme.Space.S, 1, -Theme.Space.S),
+		anchor = Vector2.new(1, 1),
+		onActivated = function()
+			self:_showVFX(not self._vfxShown)
+		end,
+	})
+	-- Choices made elsewhere (or confirmed by the server) come back as attributes.
+	local player = Players.LocalPlayer
+	for _, attribute in ipairs({ VFXConfig.WeaponAttribute, VFXConfig.Attribute.Kill, VFXConfig.Attribute.Tracer }) do
+		player:GetAttributeChangedSignal(attribute):Connect(function()
+			table.clear(self._vfxOverride)
+			self:_drawVFX()
+		end)
+	end
 
 	menu:OnCategory(function(id: string)
 		self:_fill(id)
@@ -252,13 +507,18 @@ function Inventory:Refresh()
 		local ok, result = pcall(function()
 			return self._remotes.getOwnership:InvokeServer()
 		end)
-		local owned = {}
+		local owned, ownedVFX = {}, {}
 		if ok and type(result) == "table" and type(result.OwnedItems) == "table" then
 			for _, id in ipairs(result.OwnedItems) do
 				owned[id] = true
 			end
 		end
-		self._owned = owned
+		if ok and type(result) == "table" and type(result.OwnedVFX) == "table" then
+			for _, id in ipairs(result.OwnedVFX) do
+				ownedVFX[id] = true
+			end
+		end
+		self._owned, self._ownedVFX = owned, ownedVFX
 		self:_fill(self._menu._category or "All")
 	end)
 end
@@ -393,6 +653,7 @@ function Inventory:_select(name: string)
 	local owned = self._owned[name] == true
 	self._equip:SetEnabled(owned)
 	self._equip:SetText(owned and "EQUIP" or "🔒 LOCKED")
+	self:_drawVFX()
 end
 
 function Inventory:_equipSelected()
@@ -427,6 +688,7 @@ function Inventory:Destroy()
 		card:Destroy()
 	end
 	self._equip:Destroy()
+	self._vfxButton:Destroy()
 	self._menu:Destroy()
 end
 

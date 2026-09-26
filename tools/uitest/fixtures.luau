@@ -48,6 +48,9 @@ return function(World)
 	R.serverFunctions.LoadoutAction = function()
 		return { ok = true }
 	end
+	R.serverFunctions.VFXAction = function()
+		return { ok = true, reason = "Equipped" }
+	end
 	R.serverFunctions.MatchAction = function(action)
 		return { in_queue = false, queued = 0 }
 	end

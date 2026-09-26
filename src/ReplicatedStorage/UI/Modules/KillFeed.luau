@@ -269,8 +269,8 @@ function KillFeed:PushOther(killer: string, victim: string, weapon: string?, vic
 	fadeOut(row, ROW_LIFETIME, self._rows)
 end
 
---- The call sits low, just over the bottom row, as the references have it -- unless the PLAY
---- diamond is on screen there, in which case it lifts clear of it.
+--- The call sits low, just over the bottom row, as the references have it -- unless the DUEL
+--- button is on screen there, in which case it lifts clear of it.
 function KillFeed:SetLift(lifted: boolean)
 	local lift = lifted and 96 or 0
 	self._banner.Position = UDim2.new(0.5, 0, 1, -150 - lift)

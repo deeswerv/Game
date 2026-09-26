@@ -35,7 +35,7 @@ Theme.Colour = {
 	TextDim     = Color3.fromRGB(186, 190, 200),  -- labels, subtitles, units
 	TextMuted   = Color3.fromRGB(122, 127, 140),  -- disabled, placeholder, locked
 
-	-- The primary action: the PLAY diamond and the "+" beside the cash in the references.
+	-- The primary action: the DUEL button and the "+" beside the cash in the references.
 	Accent      = Color3.fromRGB(46, 204, 84),
 	AccentDim   = Color3.fromRGB(24, 128, 50),
 	AccentText  = Color3.fromRGB(255, 255, 255),  -- white on green, outlined, as referenced
