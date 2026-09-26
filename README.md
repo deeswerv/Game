@@ -76,14 +76,31 @@ count.
 
 ## Downtown
 
-Open **Travel** (T) and pick **Downtown**, a painted low-poly city district built block by
-block, with no neon anywhere: an avenue from the welcome wall to **ZEE TOWER**, **ZEE PLAZA**
-with its three-tier fountain, planted corners and finger post, **ZEE GUNS** and the **ARMORY**
-(walk up and press E to shop or customise), **ZEE GAS** and the **24/7** with the
-**CONTRACTS** board, the **DUEL HALL** (a blue-and-orange sports hall with its own 1v1 pads),
-a basketball court, a hedged pocket park, blossom trees, lanterns with flower baskets, parked
-cars and a skyline all round. Climb the fire escape on the apartments for a **rooftop stash**
-(once a day). Supply drops land in its streets too.
+Open **Travel** (T) and pick **Downtown**, a cartoon low-poly city in the style of the reference
+street, with no neon anywhere. Buildings are saturated orange, yellow, green, blue, coral,
+purple, teal and red brick with white trim; the street faces have rows of real windows --
+framed, arched with keystones, or shuttered, and bay windows on the wide ones -- over ground
+floors of named shops (ZEE BEATS, PIZZA, COMICS, BOBA...) under striped awnings, with corner
+quoins and heavy two-step cornices. Round trees of layered leaves, curling crook lamps, bright
+purple/yellow/blue/red benches, yellow road edge lines, and a sky of big clouds with punchier
+colour while you are there. The places:
+
+- an avenue from the welcome wall to **ZEE TOWER**, and **ZEE PLAZA** with its three-tier
+  fountain, planted corners and finger post;
+- **ZEE GUNS** and the **ARMORY** (walk up and press E to shop or customise), **ZEE GAS** and
+  the **24/7** with the **CONTRACTS** board;
+- the **DUEL HALL**, a sports hall with its own 1v1 pads, its name painted down its sides;
+- **RAINBOW PARK**: a curving path, flowers and long grass, a waterfall pouring off a rock
+  cliff into a pond with a rainbow over it, and the star-shaped **ZEE BEATS** stage with a
+  lighting truss, speakers, benches and cafe umbrellas;
+- **THE ALLEY** behind the gas station: brick backs with fire escapes, dumpsters, pallets and
+  boxes to fight round, bin bags, washing strung overhead, a muscle car, a red light over the
+  back door, tags on the walls and yellow bollards at the mouth;
+- a basketball court, a hedged pocket park, parked cars and a skyline all round.
+
+Climb the fire escape on the apartments for a **rooftop stash** (once a day). Supply drops land
+in its streets too. `lune run tools/mapview/audit.luau -- json <export>` checks it for z-fighting
+and floating props (set `AUDIT_LIMIT` to list more than 40).
 
 **Turf wars** are fought on four patches of Downtown -- THE CAR PARK (south-east), THE COURTS
 (north-east), THE ALLEY (south-west) and THE PARK (north-west). Each is marked on the ground by a

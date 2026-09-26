@@ -186,7 +186,7 @@ check(#Turf.Zones == 4, ("four patches (%d)"):format(#Turf.Zones))
 local quarters = {}
 for _, z in ipairs(Turf.Zones) do
 	quarters[(z.offset.X > 0 and "E" or "W") .. (z.offset.Z > 0 and "N" or "S")] = z.id
-	check(z.radius >= 15 and z.offset.Magnitude < 190, ("%s is a real patch inside the district"):format(z.name))
+	check(z.radius >= 10 and z.offset.Magnitude < 190, ("%s is a real patch inside the district"):format(z.name))
 end
 check(quarters.EN and quarters.WN and quarters.ES and quarters.WS, "one in each quarter of the district")
 check(Turf.COOLDOWN >= 60, ("a war leaves its patch quiet for %ds"):format(Turf.COOLDOWN))

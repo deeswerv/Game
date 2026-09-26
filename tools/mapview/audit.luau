@@ -321,7 +321,7 @@ table.sort(findings.floating, function(p, q)
 end)
 print(("%d parts checked: %d z-fights, %d duplicates, %d floating"):format(#boxes, #findings.zfight,
 	#findings.duplicate, #findings.floating))
-local limit = tonumber(os.getenv and os.getenv("AUDIT_LIMIT") or nil) or 40
+local limit = tonumber(process.env.AUDIT_LIMIT) or 40
 for k, f in ipairs(findings.zfight) do
 	if k > limit then
 		break

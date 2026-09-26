@@ -1,5 +1,6 @@
 --!strict
--- Each duel map lit its own way, whatever time it is in the world.
+-- Each duel map lit its own way, whatever time it is in the world (and Downtown graded and
+-- clouded its own way, at whatever time it is).
 --
 -- The world's sky is the server's (AmbienceService runs one day/night cycle for everyone).
 -- A duel map wants its own: night for the neon court, a low sun across the quay, dusk over
@@ -87,6 +88,12 @@ end
 
 local function zones(): { Zone }
 	local list = { RANGE }
+	-- Downtown publishes a look of its own (a colour grade and big clouds, never the clock).
+	local downtown = workspace:FindFirstChild("Downtown")
+	local district = downtown and readZone(downtown)
+	if district then
+		table.insert(list, district)
+	end
 	local arenas = workspace:FindFirstChild("Arenas")
 	if arenas then
 		for _, folder in ipairs(arenas:GetChildren()) do

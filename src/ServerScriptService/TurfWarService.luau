@@ -66,7 +66,7 @@ local CENTRE = Vector3.new(-155, 1000, 1500)
 TurfWarService.Zones = {
 	{ id = "CarPark", name = "THE CAR PARK", offset = Vector3.new(47, 0, -161), radius = 20 },
 	{ id = "Courts", name = "THE COURTS", offset = Vector3.new(54, 0, 80), radius = 20 },
-	{ id = "Alley", name = "THE ALLEY", offset = Vector3.new(-146, 0, -84), radius = 18 },
+	{ id = "Alley", name = "THE ALLEY", offset = Vector3.new(-146, 0, -84), radius = 11 },
 	{ id = "Park", name = "THE PARK", offset = Vector3.new(-126, 0, 78), radius = 20 },
 }
 
@@ -276,9 +276,11 @@ local function buildMarker(turf: Turf)
 		local hit = workspace:Raycast(at + Vector3.new(0, 40, 0), Vector3.new(0, -60, 0), params)
 		return hit and hit.Position or nil
 	end
-	if not ground(turf.centre) then
+	local middle = ground(turf.centre)
+	if not middle then
 		return
 	end
+	local streetY = middle.Y
 
 	local model = Instance.new("Model")
 	model.Name = turf.zone.id
@@ -288,7 +290,12 @@ local function buildMarker(turf: Turf)
 	for i = 0, DASHES - 1 do
 		local a = i / DASHES * math.pi * 2
 		local at = turf.centre + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r)
+		-- A dash whose ray landed on something tall (a roof, a car, a bench) is laid at street
+		-- height instead, so the ring stays a ring on the ground.
 		local g = ground(at)
+		if g and math.abs(g.Y - streetY) > 1.5 then
+			g = Vector3.new(at.X, streetY, at.Z)
+		end
 		if g then
 			local dash = Instance.new("Part")
 			dash.Name = "Dash"
@@ -316,7 +323,7 @@ local function buildMarker(turf: Turf)
 	anchor.CanTouch = false
 	anchor.Transparency = 1
 	anchor.Size = Vector3.new(1, 1, 1)
-	anchor.CFrame = CFrame.new((ground(turf.centre) :: Vector3) + Vector3.new(0, 16, 0))
+	anchor.CFrame = CFrame.new(middle + Vector3.new(0, 16, 0))
 	anchor.Parent = model
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "Label"
