@@ -131,9 +131,20 @@ rest.Parent = nil
 local hip = -lowest
 
 for row, id in ipairs(ids) do
-	local path = "src/ReplicatedStorage/EmoteData/" .. id .. ".luau"
+	-- "loco:Run" is a movement clip from LocomotionData; "loco:Run:armed" its gun-out variant.
+	local locoName, locoVariant = string.match(id, "^loco:(%w+):?(%w*)$")
+	local path = locoName and ("src/ReplicatedStorage/LocomotionData/" .. locoName .. ".luau")
+		or ("src/ReplicatedStorage/EmoteData/" .. id .. ".luau")
 	assert(fs.isFile(path), "no emote " .. id)
-	local clip = EmotePlayer.FromData(load(path))
+	local data = load(path)
+	if locoVariant == "armed" and data.armed then
+		local joints = table.clone(data.joints)
+		for name, track in pairs(data.armed) do
+			joints[name] = track
+		end
+		data = { length = data.length, loop = data.loop, joints = joints }
+	end
+	local clip = EmotePlayer.FromData(data)
 	local total = EmotePlayer.Duration(clip)
 	for i, f in ipairs(FRACTIONS) do
 		local figure = template:Clone()
@@ -149,7 +160,7 @@ for row, id in ipairs(ids) do
 		local cf = roblox.CFrame.new(x, hip, z)
 		pose(figure, cf, EmotePlayer.PoseAt(clip, total * f))
 		-- The emote's prop, placed the way EmoteAnimator places it.
-		local spec = EmoteConfig.Get(id)
+		local spec = not locoName and EmoteConfig.Get(id) or nil
 		if spec and spec.prop then
 			local prop = EmoteProps.Build(spec.prop, stage)
 			if prop then

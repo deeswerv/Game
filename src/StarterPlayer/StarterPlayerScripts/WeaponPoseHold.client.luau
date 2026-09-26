@@ -33,6 +33,9 @@ local InspectController = require(ReplicatedStorage:WaitForChild("InspectControl
 -- Movement other scripts want on top of the hold -- an NPC's recoil, a flinch, a death. It
 -- arrives here as an offset rather than as a second writer on these joints.
 local PoseLayers = require(ReplicatedStorage:WaitForChild("PoseLayers"))
+-- While strafing, the movement clips turn the hips into the direction of travel. The chest is
+-- turned back by the same amount so the weapon stays on the aim.
+local Locomotion = require(ReplicatedStorage:WaitForChild("Locomotion"))
 
 -- How an arm on this rig reaches a point lives in ReplicatedStorage.ArmSolver -- the same
 -- module the weapon pose and the reload use, so all three agree on where a hand ends up.
@@ -343,7 +346,9 @@ local function holdOne(character: Model, dt: number)
 		local waistTarget = published("PoseWaist", waistHome)
 		local eased = (smoothedWaist[character] or waistTarget):Lerp(waistTarget, blend)
 		smoothedWaist[character] = eased
-		waistJoint.C0 = eased * layerWaist * waistJoint.Transform:Inverse()
+		local counter = Locomotion.WaistCounterFor(character)
+		waistJoint.C0 = CFrame.new(eased.Position) * counter * (eased - eased.Position) * layerWaist
+			* waistJoint.Transform:Inverse()
 	end
 
 	local rightShoulderC0, rightElbowC0 = applyArm("PoseRightElbow", r.right,
