@@ -172,22 +172,6 @@ Enemies fight like a squad, not a row of turrets:
   head that was hit, for everyone. Any .rbxm dropped into assets/vfx is imported into
   ReplicatedStorage.VFX on build; `lune run tools/uitest/tracers.luau` checks all of this.
 
-## Movement animations
-
-Characters move with the uploaded clips (assets/animations: Idle, Run, WalkLeft, WalkRight,
-WalkBackward). They were authored on R6; `lune run tools/anims/locomotion.luau` carries them to
-this game's R15 body -- rotations re-expressed per joint, the torso re-rooted, and knees solved
-so each foot lands where the R6 foot did (and never through the floor). The game plays them
-itself (LocomotionAnimator), so nothing needs publishing:
-
-- Direction picks the clip -- forward runs, back backpedals, sideways strafes, diagonals mix --
-  and each plays at the speed your feet are covering ground. Standing still breathes the arms.
-- With a gun out the torso stays upright and square to your aim; the hips still turn into a
-  strafe and the legs keep running. Jumps, falls, seats and emotes hand the body back.
-- Everyone sees everyone move this way, from their velocity; no network traffic.
-- `lune run tools/anims/render.luau -- out.json` renders every clip; `tools/uitest/locomotion.luau`
-  checks the carry-over, the mix and the hand-offs.
-
 ## Duel maps
 
 Every duel is fought on one of four maps, and a pair who just played one map gets a different

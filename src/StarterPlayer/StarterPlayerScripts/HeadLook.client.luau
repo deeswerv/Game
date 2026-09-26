@@ -28,9 +28,6 @@ local RunService = game:GetService("RunService")
 local StarterPlayer = game:GetService("StarterPlayer")
 
 local EmotePlayer = require(ReplicatedStorage:WaitForChild("EmotePlayer"))
--- The movement clips lean the body (a sprint pitches the chest well forward); the neck pose
--- they come with keeps the head level, and the look is built on top of it.
-local Locomotion = require(ReplicatedStorage:WaitForChild("Locomotion"))
 
 local localPlayer = Players.LocalPlayer
 local LookUpdate = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("LookUpdate") :: RemoteEvent
@@ -164,7 +161,7 @@ local function pose(character: Model, look: Look, yaw: number, pitch: number, dt
 
 	local neck = look.neck
 	if neck then
-		neck.C0 = restOf("Head", neck) * Locomotion.NeckFor(character)
+		neck.C0 = restOf("Head", neck)
 			* CFrame.fromEulerAnglesYXZ(math.rad(look.pitch - chestPitch), math.rad(look.yaw - chestYaw), 0)
 	end
 	local waist = look.waist
