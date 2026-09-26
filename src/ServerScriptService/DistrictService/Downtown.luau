@@ -425,6 +425,12 @@ local function building(b: Kit.Builder, x0: number, x1: number, z0: number, z1: 
 			local size = axis == "x" and Vector3.new(deep, tall, wide) or Vector3.new(wide, tall, deep)
 			b:decor(name, size, on(y, deep / 2, along), c, material, opts)
 		end
+		-- A box standing `out` studs clear of the face (balcony fronts and rails).
+		local function stand(name: string, wide: number, tall: number, deep: number, y: number, along: number,
+			out: number, c: Color3)
+			local size = axis == "x" and Vector3.new(deep, tall, wide) or Vector3.new(wide, tall, deep)
+			b:decor(name, size, on(y, out + deep / 2, along), c)
+		end
 		-- A disc flat on the face (for arched window heads), its axis along the normal.
 		local function disc(name: string, diameter: number, deep: number, y: number, along: number, c: Color3)
 			local at = on(y, deep / 2, along)
@@ -506,6 +512,18 @@ local function building(b: Kit.Builder, x0: number, x1: number, z0: number, z1: 
 							end
 						else
 							slab("Lintel", ww + 1.2, 0.5, 0.45, y + wh / 2 + 0.55, along, darker(colour, 0.2))
+							if floor == 2 and k % 2 == 0 then
+								-- A little balcony: a slab, an iron front and sides, a rail, a box of flowers.
+								local floorY = y - wh / 2 - 0.8
+								slab("Balcony", ww + 2, 0.3, 1.6, floorY, along, darker(trim, 0.1))
+								stand("BalconyFront", ww + 2, 1.1, 0.12, floorY + 0.7, along, 1.46, IRON)
+								stand("BalconyRail", ww + 2.1, 0.16, 0.22, floorY + 1.33, along, 1.42, IRON)
+								for _, side in ipairs({ -1, 1 }) do
+									stand("BalconySide", 0.12, 1.1, 1.46, floorY + 0.7, along + side * (ww / 2 + 0.94), 0, IRON)
+								end
+								stand("BalconyFlowers", ww, 0.45, 0.45, floorY + 1.64, along, 1.12, HEDGE)
+								stand("BalconyBlooms", ww - 0.4, 0.3, 0.35, floorY + 2, along, 1.17, FLOWERS[(k + floor) % #FLOWERS + 1])
+							end
 						end
 					end
 				end
@@ -720,6 +738,10 @@ local function plaza(b: Kit.Builder, half: number)
 			corner:decor("Bloom", Vector3.new(1, 0.45, 1), spot + Vector3.new(0, 2.45, 0), colour)
 		end
 		tree(corner:within(CFrame.new(0, 0.15, 0)), 40 + i, i % 2 == 1, true)
+	end
+	-- Cafe tables under striped umbrellas in the square's four quarters.
+	for i, spot in ipairs({ { 28, 14 }, { -28, -14 }, { -14, 28 }, { 14, -28 } }) do
+		cafeTable(b:within(CFrame.new(spot[1], 0.5, spot[2])), BENCH_COLOURS[i])
 	end
 	-- Bollards where the roads meet the square, so it reads as a place for people.
 	for i = 0, 3 do
@@ -958,9 +980,19 @@ local function duelHall(b: Kit.Builder)
 		end
 	end
 	b:part("Roof", Vector3.new(D + 4, 1.4, W + 4), Vector3.new(-D / 2, H + 0.7, 0), Color3.fromRGB(120, 126, 140))
-	b:decor("RoofTrim", Vector3.new(D + 4.4, 0.6, W + 4.4), Vector3.new(-D / 2, H + 1.6, 0), CREAM)
+	-- The roof as seen from the towers round it: a cream parapet round the edge, the court's two
+	-- colours painted across it, and a skylight down the ridge.
+	for _, z in ipairs({ -1, 1 }) do
+		b:decor("RoofTrim", Vector3.new(D + 4.4, 0.6, 1.2), Vector3.new(-D / 2, H + 1.6, z * (W / 2 + 1.6)), CREAM)
+	end
+	for _, x in ipairs({ 1.6, -D - 1.6 }) do
+		b:decor("RoofTrim", Vector3.new(1.2, 0.62, W + 2), Vector3.new(x, H + 1.6, 0), CREAM)
+	end
+	b:decor("RoofPaint", Vector3.new(D / 2 - 4, 0.05, W - 8), Vector3.new(-D / 4 + 1, H + 1.42, 0), BLUE)
+	b:decor("RoofPaint", Vector3.new(D / 2 - 4, 0.05, W - 8), Vector3.new(-3 * D / 4 - 1, H + 1.42, 0), ORANGE)
+	b:decor("Skylight", Vector3.new(D - 16, 0.5, 4), Vector3.new(-D / 2, H + 1.6, 0), GLASS, M.Glass, { reflectance = 0.2 })
 	for _, x in ipairs({ -D * 0.3, -D * 0.7 }) do
-		b:decor("RoofUnit", Vector3.new(6, 3, 5), Vector3.new(x, H + 3.4, 0), Color3.fromRGB(206, 208, 204), M.Metal)
+		b:decor("RoofUnit", Vector3.new(6, 3, 5), Vector3.new(x, H + 2.88, W / 2 - 5), Color3.fromRGB(206, 208, 204), M.Metal)
 	end
 	-- Trusses under the roof, and a pendant light hanging from each.
 	for x = -8, -D + 8, -14 do
@@ -1502,6 +1534,10 @@ local ROCK = Color3.fromRGB(128, 122, 130)
 local ROCK_LIGHT = Color3.fromRGB(160, 154, 160)
 local FALL = Color3.fromRGB(170, 222, 250)
 local FOAM = Color3.fromRGB(242, 250, 255)
+local RAINBOW_FLAGS = {
+	Color3.fromRGB(236, 64, 64), Color3.fromRGB(250, 146, 44), Color3.fromRGB(250, 214, 60),
+	Color3.fromRGB(96, 200, 90), Color3.fromRGB(64, 150, 236), Color3.fromRGB(170, 104, 230), Color3.fromRGB(240, 110, 170),
+}
 local RAINBOW = {
 	Color3.fromRGB(236, 64, 64), Color3.fromRGB(250, 146, 44), Color3.fromRGB(250, 222, 60),
 	Color3.fromRGB(96, 200, 90), Color3.fromRGB(64, 150, 236), Color3.fromRGB(150, 96, 220),
@@ -1721,6 +1757,210 @@ local function park(b: Kit.Builder, halfX: number, halfZ: number)
 		Color3.fromRGB(96, 170, 80), TRIM)
 end
 
+-- ----------------------------------------------------------- street kit --
+
+local SIGNAL_BLACK = Color3.fromRGB(30, 32, 36)
+
+--- A traffic light on the kerb: a pole with a mast arm reaching over the road (-X), a signal
+--- head at its end showing both ways (red, amber, green -- green on), a crossing signal on the
+--- pole, and street-name blades on top. Origin at road level, on the kerb.
+local function trafficLight(b: Kit.Builder, avenueName: string, streetName: string)
+	b:part("SignalBase", Vector3.new(1.3, 0.8, 1.3), Vector3.new(0, 0.9, 0), SIGNAL_BLACK)
+	b:part("SignalPole", Vector3.new(15, 0.55, 0.55), vertical(Vector3.new(0, 8, 0)), SIGNAL_BLACK, nil, { shape = "Cylinder" })
+	b:decor("MastArm", Vector3.new(9, 0.4, 0.4), Vector3.new(-4.5, 14.6, 0), SIGNAL_BLACK)
+	local brace, len = Kit.Span(Vector3.new(0, 12.6, 0), Vector3.new(-3.5, 14.4, 0))
+	b:decor("MastBrace", Vector3.new(0.2, 0.2, len), brace, SIGNAL_BLACK)
+	-- The head: a box, a visor over each lamp, lamps on both faces.
+	local hx = -8.2
+	b:decor("SignalHead", Vector3.new(1.2, 3.64, 1.1), Vector3.new(hx, 12.6, 0), Color3.fromRGB(236, 196, 40))
+	b:decor("HeadBack", Vector3.new(1.5, 3.9, 0.2), Vector3.new(hx, 12.6, 0), SIGNAL_BLACK)
+	for i, spec in ipairs({ { 13.7, Color3.fromRGB(120, 34, 34) }, { 12.6, Color3.fromRGB(130, 96, 30) },
+		{ 11.5, Color3.fromRGB(80, 236, 120) } } :: { { any } }) do
+		for _, face in ipairs({ -1, 1 }) do
+			b:decor("SignalLamp", Vector3.new(0.16, 0.8, 0.8), CFrame.new(hx, spec[1], face * 0.62) * CFrame.Angles(0, math.rad(90), 0),
+				spec[2], nil, { shape = "Cylinder" })
+			if i == 3 then
+				b:decor("Visor", Vector3.new(1, 0.14, 0.5), Vector3.new(hx, spec[1] + 0.52, face * 0.9), SIGNAL_BLACK)
+			end
+		end
+	end
+	-- The crossing signal on the pole, facing along the kerb.
+	b:decor("WalkBox", Vector3.new(0.9, 1.3, 0.9), Vector3.new(0, 8.4, 0.72), SIGNAL_BLACK)
+	b:decor("WalkLamp", Vector3.new(0.1, 0.7, 0.7), CFrame.new(0, 8.4, 1.2) * CFrame.Angles(0, math.rad(90), 0),
+		Color3.fromRGB(250, 250, 244), nil, { shape = "Cylinder" })
+	b:decor("PushButton", Vector3.new(0.4, 0.6, 0.3), Vector3.new(0.35, 4, 0.4), Color3.fromRGB(236, 196, 40))
+	-- Street-name blades crossing on top.
+	local green = Color3.fromRGB(34, 118, 76)
+	b:decor("BladePost", Vector3.new(0.3, 2.6, 0.3), Vector3.new(0, 16.6, 0), SIGNAL_BLACK)
+	b:decor("BladeX", Vector3.new(5.2, 0.9, 0.14), Vector3.new(-2, 16.2, 0), green)
+	b:decor("BladeZ", Vector3.new(0.14, 0.9, 5.2), Vector3.new(0, 17.2, -2), green)
+	for _, face in ipairs({ -1, 1 }) do
+		b:sign(streetName, Kit.Look(Vector3.new(-2, 16.2, face * 0.09), Vector3.new(-2, 16.2, face * 10)), 4.8, 0.7, TRIM,
+			{ lit = true, glow = false, font = Enum.Font.GothamBold, textColour = TRIM, brightness = 1 })
+		b:sign(avenueName, Kit.Look(Vector3.new(face * 0.09, 17.2, -2), Vector3.new(face * 10, 17.2, -2)), 4.8, 0.7, TRIM,
+			{ lit = true, glow = false, font = Enum.Font.GothamBold, textColour = TRIM, brightness = 1 })
+	end
+end
+
+--- A red phone booth, its door toward -Z.
+local function phoneBooth(b: Kit.Builder)
+	local red = Color3.fromRGB(206, 44, 44)
+	b:part("Booth", Vector3.new(3, 7.6, 3), Vector3.new(0, 3.8, 0), red)
+	b:decor("BoothRoof", Vector3.new(3.4, 0.5, 3.4), Vector3.new(0, 7.85, 0), darker(red, 0.15))
+	b:decor("BoothDome", Vector3.new(0.6, 2.6, 2.6), vertical(Vector3.new(0, 8.3, 0)), red, nil, { shape = "Cylinder" })
+	for _, face in ipairs({ { 0, -1 }, { 1, 0 }, { -1, 0 } }) do
+		local fx, fz = face[1], face[2]
+		local size = if fz ~= 0 then Vector3.new(2.2, 4.6, 0.12) else Vector3.new(0.12, 4.6, 2.2)
+		b:decor("BoothGlass", size, Vector3.new(fx * 1.52, 3.8, fz * 1.52), Color3.fromRGB(180, 210, 230), M.Glass,
+			{ transparency = 0.3 })
+		local band = if fz ~= 0 then Vector3.new(2.4, 0.6, 0.14) else Vector3.new(0.14, 0.6, 2.4)
+		b:decor("BoothBand", band, Vector3.new(fx * 1.53, 6.9, fz * 1.53), Color3.fromRGB(30, 30, 34))
+		local at = Vector3.new(fx * 1.62, 6.9, fz * 1.62)
+		painted(b, "PHONE", Kit.Look(at, at + Vector3.new(fx, 0, fz) * 10), 2, 0.45, TRIM, Enum.Font.GothamBold)
+	end
+end
+
+local function mailbox(b: Kit.Builder)
+	local blue = Color3.fromRGB(40, 92, 176)
+	for _, x in ipairs({ -0.55, 0.55 }) do
+		b:decor("MailLeg", Vector3.new(0.2, 1, 1.1), Vector3.new(x, 0.5, 0), SIGNAL_BLACK)
+	end
+	b:part("MailBox", Vector3.new(1.7, 2, 1.5), Vector3.new(0, 2, 0), blue)
+	b:decor("MailTop", Vector3.new(1.44, 1.7, 1.7), CFrame.new(0, 3, 0) * CFrame.Angles(0, math.rad(90), 0), blue, nil,
+		{ shape = "Cylinder" })
+	b:decor("MailSlot", Vector3.new(1, 0.2, 0.1), Vector3.new(0, 2.7, -0.78), SIGNAL_BLACK)
+	b:decor("MailBadge", Vector3.new(0.9, 0.9, 0.08), Vector3.new(0, 1.9, -0.78), TRIM)
+end
+
+local function newsStands(b: Kit.Builder)
+	for i, colour in ipairs({ Color3.fromRGB(214, 52, 52), Color3.fromRGB(250, 196, 50), Color3.fromRGB(56, 140, 220) }) do
+		local x = (i - 2) * 1.35
+		b:part("NewsBox", Vector3.new(1.2, 2.4, 1.1), Vector3.new(x, 1.2, 0), colour)
+		b:decor("NewsWindow", Vector3.new(0.9, 0.9, 0.08), Vector3.new(x, 1.8, -0.56), Color3.fromRGB(236, 236, 230))
+		b:decor("NewsCoin", Vector3.new(0.3, 0.4, 0.1), Vector3.new(x + 0.3, 1, -0.57), SIGNAL_BLACK)
+	end
+end
+
+local function bikeRack(b: Kit.Builder)
+	b:decor("RackRail", Vector3.new(6, 0.2, 0.2), Vector3.new(0, 0.1, 0), STEEL, M.Metal)
+	for x = -2.4, 2.4 + 1e-3, 1.2 do
+		b:decor("Hoop", Vector3.new(0.18, 2.4, 0.18), Vector3.new(x, 1.2, -0.7), STEEL, M.Metal)
+		b:decor("Hoop", Vector3.new(0.18, 2.4, 0.18), Vector3.new(x, 1.2, 0.7), STEEL, M.Metal)
+		b:decor("HoopTop", Vector3.new(0.18, 0.18, 1.58), Vector3.new(x, 2.4, 0), STEEL, M.Metal)
+	end
+end
+
+local function parkingMeter(b: Kit.Builder)
+	b:decor("MeterPost", Vector3.new(0.25, 3, 0.25), Vector3.new(0, 1.5, 0), STEEL, M.Metal)
+	b:decor("MeterHead", Vector3.new(0.7, 1, 0.5), Vector3.new(0, 3.4, 0), Color3.fromRGB(150, 156, 164), M.Metal)
+	b:decor("MeterDial", Vector3.new(0.5, 0.4, 0.06), Vector3.new(0, 3.5, -0.26), Color3.fromRGB(236, 196, 40))
+end
+
+--- Pennant bunting strung between two points with a sag, flags in rainbow colours. The
+--- flags are right-angled wedges turned 45 degrees, so each hangs as a point-down triangle.
+local function bunting(b: Kit.Builder, from: Vector3, to: Vector3, sag: number)
+	local segments = 8
+	local prev = from
+	local function at(t: number): Vector3
+		return from:Lerp(to, t) - Vector3.new(0, math.sin(t * math.pi) * sag, 0)
+	end
+	for k = 1, segments do
+		local p = at(k / segments)
+		local cf, len = Kit.Span(prev, p)
+		b:decor("BuntingLine", Vector3.new(0.08, 0.08, len + 0.04), cf, Color3.fromRGB(240, 240, 236))
+		prev = p
+	end
+	local along = (to - from)
+	local flat = Vector3.new(along.X, 0, along.Z).Unit
+	local normal = Vector3.new(-flat.Z, 0, flat.X)
+	local count = math.floor(along.Magnitude / 2.6)
+	for k = 1, count - 1 do
+		local p = at(k / count)
+		local colour = if k % 5 == 0 then TRIM else RAINBOW_FLAGS[(k % #RAINBOW_FLAGS) + 1]
+		local frame = CFrame.fromMatrix(p, normal, Vector3.new(0, 1, 0)) * CFrame.Angles(math.rad(45), 0, 0)
+		b:decor("Pennant", Vector3.new(0.06, 1.3, 1.3), frame, colour, M.Fabric, { shape = "Wedge" })
+	end
+end
+
+--- A billboard on a roof: legs, a catwalk, a framed board with the ad painted on it. `at`
+--- stands on the roof and looks the way the ad faces.
+local function billboard(b: Kit.Builder, at: CFrame, w: number, h: number, bg: Color3, fg: Color3, text: string,
+	sub: string?)
+	local s = b:within(at)
+	for _, x in ipairs({ -w / 3, w / 3 }) do
+		s:decor("BillboardLeg", Vector3.new(0.6, 4.2, 0.6), Vector3.new(x, 2.1, 0.8), STEEL, M.Metal)
+		local cf, len = Kit.Span(Vector3.new(x, 0.2, 2.6), Vector3.new(x, 4, 0.9))
+		s:decor("BillboardStrut", Vector3.new(0.3, 0.3, len), cf, STEEL, M.Metal)
+	end
+	s:decor("Catwalk", Vector3.new(w, 0.2, 1.2), Vector3.new(0, 3.9, -0.2), STEEL, M.DiamondPlate)
+	s:decor("BillboardFrame", Vector3.new(w + 0.8, h + 0.8, 0.4), Vector3.new(0, 4.4 + h / 2, 0.6), darker(bg, 0.45))
+	s:decor("BillboardFace", Vector3.new(w, h, 0.4), Vector3.new(0, 4.4 + h / 2, 0.45), bg)
+	s:decor("BillboardStripe", Vector3.new(w - 0.1, h * 0.16, 0.44), Vector3.new(0, 4.4 + h * 0.1, 0.44), fg)
+	s:sign(text, Kit.Look(Vector3.new(0, 4.4 + h * 0.6, 0.22), Vector3.new(0, 4.4 + h * 0.6, -10)), w * 0.9, h * 0.5, fg,
+		{ lit = true, glow = false, font = Enum.Font.FredokaOne, textColour = fg, brightness = 1 })
+	if sub then
+		s:sign(sub, Kit.Look(Vector3.new(0, 4.4 + h * 0.1, 0.2), Vector3.new(0, 4.4 + h * 0.1, -10)), w * 0.8, h * 0.13, bg,
+			{ lit = true, glow = false, font = Enum.Font.GothamBlack, textColour = bg, brightness = 1 })
+	end
+end
+
+--- A street-food truck parked with its serving hatch toward -Z: a boxy body, a cab at -X, a
+--- striped awning over the hatch, a menu board, and its name on a sign on the roof.
+local function foodTruck(b: Kit.Builder, colour: Color3, name: string, accent: Color3)
+	local trim = Color3.fromRGB(34, 34, 38)
+	b:part("TruckBody", Vector3.new(11, 6, 6), Vector3.new(1.5, 4, 0), colour)
+	b:part("TruckCab", Vector3.new(4, 4.6, 5.8), Vector3.new(-5.5, 3.3, 0), colour)
+	b:decor("Windshield", Vector3.new(0.12, 2, 5), CFrame.new(-7.52, 4.3, 0), Color3.fromRGB(60, 84, 110), M.Glass,
+		{ reflectance = 0.25 })
+	for _, z in ipairs({ -2.93, 2.93 }) do
+		b:decor("CabWindow", Vector3.new(2.6, 1.7, 0.08), Vector3.new(-5.4, 4.4, z), Color3.fromRGB(60, 84, 110), M.Glass)
+	end
+	b:decor("Bumper", Vector3.new(0.4, 0.7, 6), Vector3.new(-7.7, 1.4, 0), trim)
+	for _, x in ipairs({ -5.4, 4.2 }) do
+		for _, z in ipairs({ -2.7, 2.7 }) do
+			b:decor("Wheel", Vector3.new(0.8, 2.2, 2.2), CFrame.new(x, 1.1, z) * CFrame.Angles(0, math.rad(90), 0), trim,
+				M.Rubber, { shape = "Cylinder" })
+			b:decor("Hub", Vector3.new(0.84, 1, 1), CFrame.new(x, 1.1, z) * CFrame.Angles(0, math.rad(90), 0),
+				Color3.fromRGB(206, 206, 210), M.Metal, { shape = "Cylinder" })
+		end
+	end
+	-- The hatch, open, with a counter and the menu.
+	b:decor("Hatch", Vector3.new(6, 2.6, 0.1), Vector3.new(1.5, 4.9, -3.02), Color3.fromRGB(40, 36, 34))
+	b:decor("Counter", Vector3.new(6.4, 0.3, 1), Vector3.new(1.5, 3.5, -3.4), TRIM)
+	for k = 0, 5 do
+		-- Tall at its +Z end, against the truck; sloping down and out over the counter.
+		b:decor("TruckAwning", Vector3.new(1.1, 0.9, 2), CFrame.new(-1.25 + k * 1.1, 6.9, -3.9),
+			if k % 2 == 0 then accent else TRIM, M.Fabric, { shape = "Wedge" })
+	end
+	b:decor("Stripe", Vector3.new(11.06, 0.6, 6.06), Vector3.new(1.5, 2.2, 0), accent)
+	board(b, name, Kit.Look(Vector3.new(1.5, 8.2, -0.6), Vector3.new(1.5, 8.2, -10)), 7.5, 1.6, accent, TRIM)
+	b:decor("SignPost", Vector3.new(0.3, 1.2, 0.3), Vector3.new(-1.2, 7.4, -0.2), trim)
+	b:decor("SignPost", Vector3.new(0.3, 1.2, 0.3), Vector3.new(4.2, 7.4, -0.2), trim)
+	b:decor("MenuBoard", Vector3.new(0.3, 2.4, 1.8), CFrame.new(6.6, 1.3, -4.4) * CFrame.Angles(0, 0, math.rad(8)), trim)
+	painted(b, "MENU", Kit.Look(Vector3.new(6.78, 1.9, -4.4), Vector3.new(16, 1.9, -4.4)), 1.5, 0.45, TRIM,
+		Enum.Font.GothamBold)
+end
+
+--- An ice-cream van: pastel, a big cone on the roof, the hatch toward -Z.
+local function iceCreamVan(b: Kit.Builder)
+	foodTruck(b, Color3.fromRGB(250, 236, 226), "ICE CREAM", Color3.fromRGB(240, 128, 170))
+	b:decor("ConeBase", Vector3.new(1.6, 1.4, 1.4), vertical(Vector3.new(3.5, 7.75, 1.6)), Color3.fromRGB(214, 164, 96), nil,
+		{ shape = "Cylinder" })
+	b:decor("ConeMid", Vector3.new(1.2, 2, 2), vertical(Vector3.new(3.5, 9.1, 1.6)), Color3.fromRGB(226, 176, 104), nil,
+		{ shape = "Cylinder" })
+	b:decor("Scoop", Vector3.new(2.6, 2.4, 2.6), Vector3.new(3.5, 10.6, 1.6), Color3.fromRGB(250, 196, 214), nil,
+		{ shape = "Ball" })
+	b:decor("Scoop", Vector3.new(2, 1.8, 2), Vector3.new(3.5, 11.9, 1.6), Color3.fromRGB(140, 220, 180), nil,
+		{ shape = "Ball" })
+	b:decor("Cherry", Vector3.new(0.7, 0.7, 0.7), Vector3.new(3.5, 13, 1.6), Color3.fromRGB(220, 40, 60), nil,
+		{ shape = "Ball" })
+end
+
+local function manhole(b: Kit.Builder)
+	b:decor("Manhole", Vector3.new(0.05, 2.6, 2.6), vertical(Vector3.new(0, 0.035, 0)), Color3.fromRGB(58, 58, 64), M.DiamondPlate,
+		{ shape = "Cylinder" })
+end
+
 --- The welcome wall across the south end, behind where travellers arrive: a low stone wall
 --- with the district's name on it, piers with lanterns, flower beds in front.
 local function welcomeWall(b: Kit.Builder)
@@ -1895,12 +2135,111 @@ function Downtown.Build(parent: Instance, centre: Vector3)
 			local cf = alongZ and (CFrame.new(across, 0, d) * CFrame.Angles(0, math.rad(facing), 0))
 				or (CFrame.new(d, 0, across) * CFrame.Angles(0, math.rad(facing), 0))
 			car(root:within(cf), colour)
+			-- A parking meter at the kerb beside every car.
+			local meter = alongZ and Vector3.new(across + math.sign(across) * 4.6, 0.51, d)
+				or Vector3.new(d, 0.51, across + math.sign(across) * 4.6)
+			parkingMeter(root:within(CFrame.new(meter)))
 		end
 	end
 	parkRow(true, 14.5, 70, 180, 27, 180)
 	parkRow(true, -14.5, -150, -70, 27, 0)
 	parkRow(false, 14.5, 70, 170, 33, 90)
 	parkRow(false, -14.5, -180, -70, 33, -90)
+
+	-- ------------------------------------------------------------ street kit --
+
+	-- Traffic lights where each arm meets the plaza crossing, the street names on top.
+	for _, arm in ipairs({ { 0, 1 }, { 0, -1 }, { 1, 0 }, { -1, 0 } }) do
+		local ax, az = arm[1], arm[2]
+		for _, side in ipairs({ -1, 1 }) do
+			local d = PLAZA + 10
+			if ax == 0 then
+				trafficLight(root:within(CFrame.new(side * (ROAD + 1.5), 0, az * d) * CFrame.Angles(0, math.rad(side > 0 and 0 or 180), 0)),
+					"ZEE AVE", "MAIN ST")
+			else
+				trafficLight(root:within(CFrame.new(ax * d, 0, side * (ROAD + 1.5)) * CFrame.Angles(0, math.rad(side > 0 and -90 or 90), 0)),
+					"MAIN ST", "ZEE AVE")
+			end
+		end
+	end
+
+	-- Along the walks, between the lamps and trees, on the building side: phone booths,
+	-- mailboxes and news stands, bike racks, benches and planters, in turn.
+	local kitCount = 0
+	for _, arm in ipairs({ { 0, 1 }, { 0, -1 }, { 1, 0 }, { -1, 0 } }) do
+		local ax, az = arm[1], arm[2]
+		for _, d in ipairs({ 82, 112, 142, 172 }) do
+			if not (az == -1 and d > HW - 60) then
+				for _, side in ipairs({ -1, 1 }) do
+					kitCount += 1
+					local off = ROAD + WALK - 2.5
+					local p: Vector3
+					local yaw: number
+					if ax == 0 then
+						p = Vector3.new(side * off, 0.51, az * d)
+						yaw = side > 0 and 90 or -90
+					else
+						p = Vector3.new(ax * d, 0.51, side * off)
+						yaw = side > 0 and 0 or 180
+					end
+					if clear(p) then
+						local k = root:within(CFrame.new(p) * CFrame.Angles(0, math.rad(yaw), 0))
+						local pick = kitCount % 5
+						if pick == 1 then
+							phoneBooth(k)
+						elseif pick == 2 then
+							mailbox(k:within(CFrame.new(-2.2, 0, 0)))
+							newsStands(k:within(CFrame.new(1.6, 0, 0)))
+						elseif pick == 3 then
+							bikeRack(k)
+						elseif pick == 4 then
+							bench(k:within(CFrame.new(0, -0.51, 0)))
+						else
+							flowerBed(k:within(CFrame.new(0, -0.01, 0)), 6, 2.4, kitCount)
+						end
+					end
+				end
+			end
+		end
+	end
+
+	-- Bunting strung across every arm between the first and third pairs of lamps.
+	for _, arm in ipairs({ { 0, 1 }, { 0, -1 }, { 1, 0 }, { -1, 0 } }) do
+		local ax, az = arm[1], arm[2]
+		for _, d in ipairs({ PLAZA + 20, PLAZA + 80 }) do
+			if ax == 0 then
+				bunting(root, Vector3.new(-(ROAD + 2), 12.4, az * d), Vector3.new(ROAD + 2, 12.4, az * d), 1.2)
+			else
+				bunting(root, Vector3.new(ax * d, 12.4, -(ROAD + 2)), Vector3.new(ax * d, 12.4, ROAD + 2), 1.2)
+			end
+		end
+	end
+
+	-- Manhole covers in the lanes.
+	for _, arm in ipairs({ { 0, 1 }, { 0, -1 }, { 1, 0 }, { -1, 0 } }) do
+		for k, d in ipairs({ 70, 130 }) do
+			local lane = if k == 1 then 4.5 else -4.5
+			local at = if arm[1] == 0 then Vector3.new(lane, 0, arm[2] * d) else Vector3.new(arm[1] * d, 0, lane)
+			manhole(root:within(CFrame.new(at)))
+		end
+	end
+
+	-- A taco truck at the kerb on the east arm, an ice-cream van outside Rainbow Park.
+	foodTruck(root:within(CFrame.new(60, 0, -13.5)), Color3.fromRGB(250, 200, 48), "TACOS ZEE", Color3.fromRGB(220, 60, 50))
+	iceCreamVan(root:within(CFrame.new(-110, 0, 13.5) * CFrame.Angles(0, math.pi, 0)))
+
+	-- Billboards on the roofs, facing the streets.
+	for _, spec in ipairs({
+		{ 88, 30, -40, 1, "ZEE COLA", "ICE COLD  ·  ALWAYS", Color3.fromRGB(214, 44, 48), TRIM },
+		{ 55, 40, 124, -1, "DUEL NIGHT", "EVERY NIGHT  ·  DUEL HALL", NAVY, GOLD },
+		{ -168, 50, 40, -1, "PIZZA PALACE", "HOT SLICES 24/7", Color3.fromRGB(250, 200, 48), Color3.fromRGB(200, 40, 40) },
+		{ -148, 40, -38, 1, "BEATS FM 99.9", "LIVE FROM RAINBOW PARK", Color3.fromRGB(130, 88, 210), TRIM },
+		{ 154, 34, 40, -1, "ZEE BURGER", "THE BIG ONE", ORANGE, TRIM },
+		{ 128, 44, -40, 1, "GET IN THE RING", "1V1  ·  STEP ON A PAD", TEAL, TRIM },
+	} :: { { any } }) do
+		local at = Vector3.new(spec[1], spec[2] + 0.7, spec[3])
+		billboard(root, Kit.Look(at, at + Vector3.new(0, 0, spec[4])), 18, 7, spec[7], spec[8], spec[5], spec[6])
+	end
 
 	-- ---------------------------------------------------------------- blocks --
 
@@ -1974,26 +2313,60 @@ function Downtown.Build(parent: Instance, centre: Vector3)
 			local h = heights[(i % #heights) + 1]
 			local colour = FACADE[(i % #FACADE) + 1]
 			local gap = math.abs(a) < ROAD + WALK
+			local box: { number }? = nil
 			if side == "n" and not gap and math.abs(a) > 32 then
+				box = { a - 19, a + 19, HW - 10, HW + 30 }
 				building(root, a - 19, a + 19, HW - 10, HW + 30, h, colour, { "-z" }, i)
 			elseif side == "s" and not gap then
+				box = { a - 19, a + 19, -HW - 30, -HW + 10 }
 				building(root, a - 19, a + 19, -HW - 30, -HW + 10, h, colour, { "+z" }, i)
 			elseif side == "e" and not gap then
+				box = { HW - 10, HW + 30, a - 19, a + 19 }
 				building(root, HW - 10, HW + 30, a - 19, a + 19, h, colour, { "-x" }, i)
 			elseif side == "w" and not gap then
+				box = { -HW - 30, -HW + 10, a - 19, a + 19 }
 				building(root, -HW - 30, -HW + 10, a - 19, a + 19, h, colour, { "+x" }, i)
+			end
+			if box then
+				-- A crown on every tower: a set-back top storey in a lighter tone with a trim cap,
+				-- and on every third a mast with a red beacon, so the skyline has a silhouette.
+				local cx, cz = (box[1] + box[2]) / 2, (box[3] + box[4]) / 2
+				local cw, cd = (box[2] - box[1]) * 0.56, (box[4] - box[3]) * 0.56
+				root:decor("Crown", Vector3.new(cw, 9, cd), Vector3.new(cx, h + 4.9, cz), lighter(colour, 0.22))
+				root:decor("CrownBand", Vector3.new(cw + 0.3, 1.2, cd + 0.3), Vector3.new(cx, h + 7, cz), darker(colour, 0.15))
+				root:decor("CrownCap", Vector3.new(cw + 1.2, 0.8, cd + 1.2), Vector3.new(cx, h + 9.7, cz), TRIM)
+				if i % 3 == 0 then
+					root:decor("Mast", Vector3.new(16, 0.5, 0.5), vertical(Vector3.new(cx, h + 18, cz)), STEEL, M.Metal,
+						{ shape = "Cylinder" })
+					root:decor("Beacon", Vector3.new(1.1, 1.1, 1.1), Vector3.new(cx, h + 26.3, cz), RED, nil, { shape = "Ball" })
+				end
 			end
 		end
 	end
 	-- Where the cross street leaves the district east and west, a tunnel mouth under a
 	-- bridge building, so the road seems to go on.
 	for _, s in ipairs({ -1, 1 }) do
-		root:part("Bridge", Vector3.new(40, 60, ROAD * 2 + WALK * 2 + 4), Vector3.new(s * (HW + 10), 45, 0), FACADE[2])
-		root:decor("BridgeCourse", Vector3.new(40.6, 1.2, ROAD * 2 + WALK * 2 + 4.6), Vector3.new(s * (HW + 10), 16, 0),
-			lighter(FACADE[2], 0.5))
+		-- A brick block bridging the road, its inward face dressed like any street front:
+		-- rows of framed windows, a cornice, and the way out named over the tunnel.
+		local span = ROAD * 2 + WALK * 2 + 4
+		root:part("Bridge", Vector3.new(40, 60, span), Vector3.new(s * (HW + 10), 45, 0), BRICK, M.Brick)
+		root:decor("BridgeCourse", Vector3.new(40.6, 1.2, span + 0.6), Vector3.new(s * (HW + 10), 16, 0), TRIM)
+		root:decor("BridgeCornice", Vector3.new(41.2, 1.4, span + 1.2), Vector3.new(s * (HW + 10), 73.6, 0), TRIM)
+		root:decor("BridgeFrieze", Vector3.new(40.5, 2, span + 0.5), Vector3.new(s * (HW + 10), 71.4, 0), darker(BRICK, 0.2))
+		local face = s * (HW - 10)
+		for y = 26, 64, 7 do
+			for z = -24, 24, 8 do
+				root:decor("BridgeFrame", Vector3.new(0.22, 4.4, 4.2), Vector3.new(face - s * 0.11, y, z), TRIM)
+				root:decor("BridgeGlass", Vector3.new(0.34, 3.6, 3.4), Vector3.new(face - s * 0.17, y, z), WINDOW, M.Glass,
+					{ reflectance = 0.15 })
+			end
+		end
+		local signAt = Vector3.new(face - s * 0.62, 20.5, 0)
+		board(root, if s > 0 then "EAST END" else "WEST END", Kit.Look(signAt, signAt - Vector3.new(s, 0, 0)), 18, 3,
+			TEAL, TRIM)
 		root:decor("Tunnel", Vector3.new(4, 14, ROAD * 2), Vector3.new(s * (HW - 8), 7, 0), Color3.fromRGB(24, 24, 28))
-		root:part("TunnelWall", Vector3.new(4, 15, 2), Vector3.new(s * (HW - 8), 7.5, ROAD + 1), FACADE[2])
-		root:part("TunnelWall", Vector3.new(4, 15, 2), Vector3.new(s * (HW - 8), 7.5, -ROAD - 1), FACADE[2])
+		root:part("TunnelWall", Vector3.new(4, 15, 2), Vector3.new(s * (HW - 8), 7.5, ROAD + 1), darker(BRICK, 0.2), M.Brick)
+		root:part("TunnelWall", Vector3.new(4, 15, 2), Vector3.new(s * (HW - 8), 7.5, -ROAD - 1), darker(BRICK, 0.2), M.Brick)
 		root:part("TunnelBlock", Vector3.new(2, 14, ROAD * 2), Vector3.new(s * (HW - 5), 7, 0), Color3.fromRGB(10, 10, 12),
 			nil, { transparency = 1 })
 		for z = -ROAD + 3, ROAD - 3, 6 do
