@@ -43,6 +43,26 @@ export type SideRig = {
 
 local rig: { right: SideRig, left: SideRig }? = nil
 
+--- The Motor6D called `name` under `parent`, ignoring anything else with that name.
+---
+--- The engine rigs R15 bodies with an AnimationConstraint beside every joint, carrying the
+--- joint's own name, and StarterPlayer.StarterCharacter was saved with them in -- each one
+--- listed BEFORE its Motor6D. A plain FindFirstChild("RightShoulder") therefore returned the
+--- constraint; reading its C1 threw, the arm rig never measured, and WeaponPose failed on
+--- every call: no gun in the game was ever posed, they all sat in the hand at Roblox's
+--- default grip. Everything that looks a joint up by name goes through here.
+function ArmSolver.Motor(parent: Instance?, name: string): Motor6D?
+	if not parent then
+		return nil
+	end
+	for _, child in ipairs(parent:GetChildren()) do
+		if child:IsA("Motor6D") and child.Name == name then
+			return child
+		end
+	end
+	return nil
+end
+
 local function measureSide(source: Instance, side: string): SideRig?
 	local upperArm = source:FindFirstChild(side .. "UpperArm")
 	local lowerArm = source:FindFirstChild(side .. "LowerArm")
@@ -50,9 +70,9 @@ local function measureSide(source: Instance, side: string): SideRig?
 	if not (upperArm and lowerArm and hand) then
 		return nil
 	end
-	local shoulder = upperArm:FindFirstChild(side .. "Shoulder") :: Motor6D?
-	local elbow = lowerArm:FindFirstChild(side .. "Elbow") :: Motor6D?
-	local wrist = hand:FindFirstChild(side .. "Wrist") :: Motor6D?
+	local shoulder = ArmSolver.Motor(upperArm, side .. "Shoulder")
+	local elbow = ArmSolver.Motor(lowerArm, side .. "Elbow")
+	local wrist = ArmSolver.Motor(hand, side .. "Wrist")
 	if not (shoulder and elbow and wrist) then
 		return nil
 	end

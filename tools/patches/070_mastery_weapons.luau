@@ -70,10 +70,7 @@ return function(ctx)
 		tool:SetAttribute("BuiltFrom", data.source)
 
 		local function weld(p)
-			local w = roblox.Instance.new("WeldConstraint")
-			w.Part0 = handle
-			w.Part1 = p
-			w.Parent = p
+			ctx.weld(handle, p)
 		end
 
 		local frontZ, count = math.huge, 0

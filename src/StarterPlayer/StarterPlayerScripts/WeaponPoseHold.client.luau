@@ -55,9 +55,11 @@ local function armJoints(character: Model, side: string)
 	if not (upperArm and lowerArm and hand) then
 		return nil, nil, nil
 	end
-	return upperArm:FindFirstChild(side .. "Shoulder"),
-		lowerArm:FindFirstChild(side .. "Elbow"),
-		hand:FindFirstChild(side .. "Wrist")
+	-- By class: until the server strips the engine's constraints off a fresh character, each
+	-- joint has an AnimationConstraint of the same name beside it (see ArmSolver.Motor).
+	return ArmSolver.Motor(upperArm, side .. "Shoulder"),
+		ArmSolver.Motor(lowerArm, side .. "Elbow"),
+		ArmSolver.Motor(hand, side .. "Wrist")
 end
 
 -- How fast the weapon catches up with the camera. Instant tracking looks mechanical.

@@ -85,10 +85,7 @@ return function(ctx)
 			end
 		end
 		p.Parent = tool
-		local weld = roblox.Instance.new("WeldConstraint")
-		weld.Part0 = handle
-		weld.Part1 = p
-		weld.Parent = p
+		ctx.weld(handle, p)
 		count += 1
 		return p
 	end

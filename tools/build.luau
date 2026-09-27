@@ -102,6 +102,22 @@ function ctx.new(className: string, parent: any, props: { [string]: any }?): any
 	return inst
 end
 
+--- Welds `part1` to `part0` where the two sit now, the way a weld saved from Studio does.
+---
+--- A WeldConstraint made outside Studio starts in State 3, and a place loaded in that state
+--- holds Part1 at the weld's stored CFrame0 off Part0 -- which nothing here ever sets, so
+--- every piece would load stacked on its Part0. Studio saves an active weld as State 1, which
+--- takes the parts where they are saved; every weapon imported through Studio has its welds
+--- that way. Anything a patch welds goes through here so it is saved the same.
+function ctx.weld(part0: any, part1: any): any
+	local weld = roblox.Instance.new("WeldConstraint")
+	weld.Part0 = part0
+	weld.Part1 = part1;
+	(weld :: any).State = 1
+	weld.Parent = part1
+	return weld
+end
+
 --- Creates (or replaces the source of) a script whose source lives in src/.
 function ctx.script(parent: any, name: string, className: string, file: string): any
 	local existing = parent:FindFirstChild(name)

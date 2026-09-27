@@ -25,15 +25,10 @@ function Hold.setup(World, Rig, place)
 	end
 	local rig = Rig.character(World, place)
 	-- The mirror does not carry a joint's offsets; the arm solver measures the rig from them.
-	-- The rig also carries AnimationConstraints named like its joints; the solver means the
-	-- Motor6Ds, so the constraints are taken out of the copies it reads.
+	-- Nothing else about the rig is changed: it is posed exactly as the build ships it, so an
+	-- engine constraint left in the template (it once was) fails here the way it would in game.
 	local sourceChar = place:GetService("StarterPlayer"):FindFirstChild("StarterCharacter")
 	for _, copy in ipairs({ rig, World.service("StarterPlayer"):FindFirstChild("StarterCharacter") }) do
-		for _, d in ipairs(copy:GetDescendants()) do
-			if d.ClassName == "AnimationConstraint" then
-				d:Destroy()
-			end
-		end
 		for _, m in ipairs(sourceChar:GetDescendants()) do
 			if m:IsA("Motor6D") then
 				local holder = copy:FindFirstChild(m.Parent.Name)
@@ -104,8 +99,10 @@ function Hold.pose(ctx, toolName: string, stance: string?)
 	weld.C0 = gripAttachment and gripAttachment.CFrame or CFrame.new(0, -0.15, 0)
 	weld.Parent = hand
 
+	rig:SetAttribute("PoseGrip", nil)
 	ctx.WeaponPose.Apply(rig, toolName)
-	local grip = rig:GetAttribute("PoseGrip") or CFrame.new()
+	local solved = rig:GetAttribute("PoseGrip")
+	local grip = solved or CFrame.new()
 
 	-- Lay the body out from its joints, with the published pose in place of the rest pose.
 	local override = {
@@ -159,7 +156,7 @@ function Hold.pose(ctx, toolName: string, stance: string?)
 		end
 	end
 
-	local report = { grip = { grip:GetComponents() } }
+	local report = { grip = { grip:GetComponents() }, solved = solved ~= nil }
 	local gripPart = rawTool:FindFirstChild("Grip")
 	if gripPart then
 		local gripWorld = handleCF * rawHandle.CFrame:ToObjectSpace(gripPart.CFrame)

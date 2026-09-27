@@ -734,8 +734,7 @@ local function shoulders(character: Model)
 	-- rather than all together on the torso the way R6's did.
 	local rightArm = character:FindFirstChild("RightUpperArm")
 	local leftArm = character:FindFirstChild("LeftUpperArm")
-	return rightArm and rightArm:FindFirstChild("RightShoulder"),
-		leftArm and leftArm:FindFirstChild("LeftShoulder")
+	return ArmSolver.Motor(rightArm, "RightShoulder"), ArmSolver.Motor(leftArm, "LeftShoulder")
 end
 
 function WeaponPose.Clear(character: Model)

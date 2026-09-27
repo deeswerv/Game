@@ -90,7 +90,8 @@ for _, p in ipairs(tool:GetDescendants()) do
 end
 -- Welds are checked on the place file itself: the harness does not carry a WeldConstraint's
 -- Part0/Part1 references across.
-local rawTool = place:GetService("ReplicatedStorage"):FindFirstChild("storeitems"):FindFirstChild("Warden_DarkMatter")
+local rawStore = place:GetService("ReplicatedStorage"):FindFirstChild("storeitems")
+local rawTool = rawStore:FindFirstChild("Warden_DarkMatter")
 local rawHandle = rawTool:FindFirstChild("Handle")
 for _, p in ipairs(rawTool:GetDescendants()) do
 	if p:IsA("BasePart") and p ~= rawHandle then
@@ -101,6 +102,23 @@ for _, p in ipairs(rawTool:GetDescendants()) do
 	end
 end
 check(unwelded == 0, ("every one of %d parts welded to the Handle"):format(total))
+-- Saved the way Studio saves a live weld (State 1: hold the parts where they are). A weld
+-- left in State 3 loads at its stored offset -- none -- and the whole gun piles onto the
+-- Handle in game. Every weapon is checked, the imported ones being the reference.
+local stateOff = {}
+for _, t in ipairs(rawStore:GetChildren()) do
+	for _, w in ipairs(t:GetDescendants()) do
+		if w:IsA("WeldConstraint") and w.Part0 and w.Part1 and w.State ~= 1 then
+			stateOff[t.Name] = (stateOff[t.Name] or 0) + 1
+		end
+	end
+end
+local offList = {}
+for n, c in pairs(stateOff) do
+	table.insert(offList, ("%s x%d"):format(n, c))
+end
+check(#offList == 0, "every weapon's welds hold its parts where they were built ("
+	.. (#offList == 0 and "all State 1" or table.concat(offList, ", ")) .. ")")
 check(physics == 0, "none collides, blocks a raycast, touches or weighs anything")
 check(total > 400 and total < 900, ("a real rebuild, and not an absurd one (%d parts)"):format(total))
 local length = maxZ - minZ

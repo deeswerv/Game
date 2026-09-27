@@ -41,6 +41,32 @@ local ctx = Hold.setup(World, Rig, place)
 -- carry at 0.26, while the broken ones this guards against sat at 0.41 and 0.45.
 local ON_WEAPON = 0.3
 
+-- The rig the arm solver measures. StarterCharacter was once saved with the engine's own
+-- constraint rig beside its joints -- an AnimationConstraint named like each Motor6D, listed
+-- first -- so looking a joint up by name found the constraint, the solver threw, and no gun
+-- in the game was ever posed. The build strips them; nothing by that name may be anything
+-- but the joint.
+print("the rig")
+local template = place:GetService("StarterPlayer"):FindFirstChild("StarterCharacter")
+local engineRig = 0
+for _, d in ipairs(template:GetDescendants()) do
+	if d.ClassName == "AnimationConstraint" or (d.ClassName == "BallSocketConstraint" and d.Name:sub(-10) == "BallSocket") then
+		engineRig += 1
+	end
+end
+check(engineRig == 0, ("StarterCharacter carries no engine constraint rig (%d found)"):format(engineRig))
+local wrongJoint = {}
+for _, j in ipairs({ { "RightUpperArm", "RightShoulder" }, { "RightLowerArm", "RightElbow" }, { "RightHand", "RightWrist" },
+	{ "LeftUpperArm", "LeftShoulder" }, { "LeftLowerArm", "LeftElbow" }, { "LeftHand", "LeftWrist" },
+	{ "UpperTorso", "Waist" }, { "Head", "Neck" } }) do
+	local part = template:FindFirstChild(j[1])
+	local found = part and part:FindFirstChild(j[2])
+	if not (found and found.ClassName == "Motor6D") then
+		table.insert(wrongJoint, j[2] .. "=" .. (found and found.ClassName or "missing"))
+	end
+end
+check(#wrongJoint == 0, "each joint's name finds its Motor6D (" .. (#wrongJoint == 0 and "all" or table.concat(wrongJoint, ", ")) .. ")")
+
 local names = {}
 for _, tool in ipairs(rs:FindFirstChild("storeitems"):GetChildren()) do
 	local cfg = WeaponConfig.Get(tool.Name)
@@ -55,7 +81,9 @@ for _, name in ipairs(names) do
 	local twoHanded = (cfg.Hold or "TwoHanded") == "TwoHanded"
 	print(name .. (twoHanded and "" or "  (one hand)"))
 	for _, stance in ipairs({ "carry", "aim" }) do
-		local r = Hold.pose(ctx, name, stance).report
+		local ok, result = pcall(Hold.pose, ctx, name, stance)
+		local r = ok and result.report or {}
+		check(ok and r.solved, ("%s: WeaponPose solved a grip%s"):format(stance, ok and "" or (" -- " .. tostring(result))))
 		if twoHanded then
 			local miss = r.leftHandToSupport
 			check(miss ~= nil and miss < ON_WEAPON,
