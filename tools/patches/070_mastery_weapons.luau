@@ -143,6 +143,19 @@ return function(ctx)
 		light.Enabled = false
 		light.Parent = muzzle
 
+		-- The artist's own mount points, as the imported weapons carry them (WeaponMounts):
+		-- Mount_Underbarrel is where the pose solver puts the off hand.
+		for mountName, pointName in pairs({ Mount_Underbarrel = "UnderbarrelPoint", Mount_Sight = "OpticPoint",
+			Mount_Stock = "StockPoint" }) do
+			local at = data.points[pointName]
+			if at then
+				local mount = roblox.Instance.new("Attachment")
+				mount.Name = mountName
+				mount.CFrame = CFrame.new(at[1], at[2], at[3])
+				mount.Parent = handle
+			end
+		end
+
 		-- The authored Dark Matter flash, off the carbine that has it.
 		local flashes = 0
 		local donor = FLASH_FROM[name] and store:FindFirstChild(FLASH_FROM[name])

@@ -97,7 +97,7 @@ right.updateMatrixWorld(true);
 const box = new THREE.Box3().setFromObject(SPEC.glb ? original : rebuilt);
 const centre = box.getCenter(new THREE.Vector3());
 const gun = box.getSize(new THREE.Vector3()).length();
-const dirs = { three: [-0.35, 0.45, 1], side: [0, 0.02, 1], top: [0, 1, 0.02], front: [1, 0.15, 0.3], back: [-1, 0.2, -0.4], tool: [1, 0.45, 0.35] };
+const dirs = { three: [-0.35, 0.45, 1], side: [0, 0.02, 1], top: [0, 1, 0.02], front: [1, 0.15, 0.3], back: [-1, 0.2, -0.4], tool: [1, 0.45, 0.35], hold: [0.55, 0.35, -1], holdtop: [0.05, 1, -0.2] };
 const dist = gun * 1.35;
 const cam = new THREE.PerspectiveCamera(35, (W / 2) / H, 0.001, 100);
 cam.position.copy(centre).add(new THREE.Vector3(...(dirs[VIEW] || dirs.three)).normalize().multiplyScalar(dist));

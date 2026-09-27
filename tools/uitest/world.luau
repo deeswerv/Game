@@ -680,6 +680,8 @@ end
 
 local shared = {}
 local sharedG = {}
+-- The scripts' `shared`, for a test that wants to read what they left in it.
+World.shared = shared
 local loaded = {}
 local loading = {}
 

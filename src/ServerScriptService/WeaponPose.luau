@@ -432,6 +432,10 @@ local MAX_FIT_BEND = math.rad(105)
 -- already correct. Only a LONG slide -- the one that ends up on the stock -- is a problem.
 local MAX_COMFORTABLE_SLIDE = 0.55
 
+-- Two candidate carries that leave the off hand within this of each other count as landing
+-- equally well, and the smaller slide decides between them.
+local MISS_TOLERANCE = 0.03
+
 local function cfgOf(tool: Tool)
 	return WeaponConfig.Get(tool.Name) or WeaponConfig.Defaults
 end
@@ -818,22 +822,38 @@ function WeaponPose.Apply(character: Model, toolName: string)
 			local base = math.rad(authoredPose.elbow or 0)
 			local usable = r.left.reach * SUPPORT_SLACK
 
-			-- How far back down the barrel the hand would have to slide, for a candidate.
-			-- Zero means it lands on the authored grip point itself.
-			local function slideFor(theta: number, yawExtra: number): number?
+			-- For a candidate: how far back down the barrel the hand would have to slide (zero
+			-- means it lands on the authored grip point itself), and how far short of the
+			-- weapon it would still end up (zero means it is on the weapon).
+			--
+			-- The miss is worked out with the same clamps solveSupportArm applies, so it is
+			-- where the hand will really be. Slide alone was not enough to choose on: when no
+			-- candidate is comfortable, the smallest slide wins, and between carrying the gun
+			-- across the body and swinging it out to the right the slides can tie to a
+			-- ten-thousandth of a stud -- the Warden - Dark Matter landed on the swung-out
+			-- carry by 0.0002 and had its off hand 0.45 studs off the weapon, and the Longshot
+			-- the same. A carry that puts the hand ON the gun always beats one that does not.
+			local function slideFor(theta: number, yawExtra: number): (number?, number?)
 				local candidate = resolve(authoredPose, theta, yawExtra)
 				local candidateGrip = solveGrip(character, tool, candidate, stance or "TwoHanded")
 				if not candidateGrip then
-					return nil
+					return nil, nil
 				end
-				local point, axis = supportPoint(character, tool, candidate, candidateGrip)
-				if not (point and axis) then
-					return nil
+				local point, axis, weaponRel = supportPoint(character, tool, candidate, candidateGrip)
+				if not (point and axis and weaponRel) then
+					return nil, nil
 				end
 				if (point - r.left.shoulderPos).Magnitude <= usable then
-					return 0
+					return 0, 0
 				end
-				return math.abs(reachableAlong(point, axis, r.left.shoulderPos, usable))
+				local t = reachableAlong(point, axis, r.left.shoulderPos, usable)
+				local target = point + axis * math.clamp(t, SUPPORT_MIN, SUPPORT_MAX)
+				local forward = (target - weaponRel.Position):Dot(axis)
+				if forward < MIN_SUPPORT_FORWARD then
+					target += axis * (MIN_SUPPORT_FORWARD - forward)
+				end
+				local miss = math.max(0, (target - r.left.shoulderPos).Magnitude - usable)
+				return math.abs(t), miss
 			end
 
 			-- Yaw is the outer loop and is tried from zero upwards, so a weapon short enough to
@@ -848,13 +868,17 @@ function WeaponPose.Apply(character: Model, toolName: string)
 				yawBudget = { 0 }
 			end
 
-			local best, bestSlide = { theta = base, yaw = 0 }, math.huge
+			local best, bestSlide, bestMiss = { theta = base, yaw = 0 }, math.huge, math.huge
 			for _, yawExtra in ipairs(yawBudget) do
 				for extra = 0, 48, 8 do
 					local theta = math.min(base + math.rad(extra), MAX_FIT_BEND)
-					local slide = slideFor(theta, yawExtra)
-					if slide and slide < bestSlide then
-						best, bestSlide = { theta = theta, yaw = yawExtra }, slide
+					local slide, miss = slideFor(theta, yawExtra)
+					-- Closer to the weapon first; between two that land as well as each other,
+					-- the smaller slide.
+					local better = slide ~= nil and miss ~= nil and (miss < bestMiss - MISS_TOLERANCE
+						or (miss <= bestMiss + MISS_TOLERANCE and slide < bestSlide))
+					if better then
+						best, bestSlide, bestMiss = { theta = theta, yaw = yawExtra }, slide :: number, miss :: number
 					end
 					if slide and slide <= MAX_COMFORTABLE_SLIDE then
 						break

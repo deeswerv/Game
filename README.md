@@ -300,6 +300,16 @@ the Tool into `storeitems`. If the GLB is ever imported through Studio under the
 import is kept instead. `tools/uitest/mastery.luau` checks the Tool, the reload, the variant and
 earning it.
 
+**Seeing a gun in the hands.** `tools/weapons/holdview.luau` poses the game's own rig with the
+real `WeaponPose` and draws the result (`node tools/weapons/preview.mjs out/hold.json
+out/hold.png hold`), and `tools/uitest/holds.luau` checks every gun: long guns carried in
+front of the body with the off hand on the weapon, carrying and aiming. It caught why the
+Warden - Dark Matter would not sit in the hands: the pose's reach fit picked between the
+across-the-body carry and a swung-out one by the smaller slide down the barrel, the two tied
+to a ten-thousandth of a stud, and it landed on the swung-out carry with the off hand half a
+stud off the gun (the Longshot too). The fit now puts the hand on the gun first; every other
+gun's hold is unchanged.
+
 ## Attachments
 
 Twelve authored attachments, made for the **Dark Matter Carbine** (Mastery): a **Red Dot**,
