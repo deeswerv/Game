@@ -39,6 +39,7 @@ local Tactics = require(Modules:WaitForChild("Tactics"))
 local WorldEvents = require(Modules:WaitForChild("WorldEvents"))
 local Bounties = require(Modules:WaitForChild("Bounties"))
 local Streaks = require(Modules:WaitForChild("Streaks"))
+local Stickups = require(Modules:WaitForChild("Stickups"))
 local StreakConfig = require(ReplicatedStorage:WaitForChild("StreakConfig"))
 local LevelRoad = require(Modules:WaitForChild("LevelRoad"))
 local Travel = require(Modules:WaitForChild("Travel"))
@@ -153,6 +154,15 @@ end)
 Remote.get("Remotes", "BountyEvent").OnClientEvent:Connect(function(kind: unknown, data: unknown)
 	if type(kind) == "string" then
 		bounties:Handle(kind, data)
+	end
+end)
+-- Stick-ups: your heat bar while you hold a bag, the tag over anyone who does, the news.
+local stickups = safe("Stickups", function()
+	return Stickups.new(screen, playerGui, toast)
+end)
+Remote.get("Remotes", "StickupEvent").OnClientEvent:Connect(function(kind: unknown, data: unknown)
+	if type(kind) == "string" then
+		stickups:Handle(kind, data)
 	end
 end)
 -- Killstreak rewards: the meter over the weapon dock, and the news when one lands. The
@@ -1245,6 +1255,7 @@ local function refreshMenuState()
 	bossBar:SetVisible(clear)
 	toast:SetVisible(clear)
 	bounties:SetVisible(clear)
+	stickups:SetVisible(clear)
 	-- Streaks do not count in a duel, so the meter has nothing to say there.
 	streaks:SetHidden(not clear or scoped or player:GetAttribute("DuelState") == "duel")
 end

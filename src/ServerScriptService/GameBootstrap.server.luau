@@ -58,6 +58,7 @@ local systems = {
 	"SettingsService",     -- saves the settings panel (volumes, camera shake, field of view)
 	"DuelPads",            -- 1v1 pads: the DUEL HALL's pair downtown (the lobby's are retired)
 	"DistrictService",     -- Downtown: the city district (Travel menu), its shops, hall and stash
+	"StickupService",      -- rob a till or an ATM downtown, then hold the bag through the heat
 	"TurfWarService",      -- four Downtown patches: step on one and its crew comes out to fight
 	"MostWantedService",   -- the bounty board's named crime boss, out somewhere in Downtown
 	"TowerService",        -- ZEE TOWER: the elevator to the penthouse, the Don, and the world it unlocks

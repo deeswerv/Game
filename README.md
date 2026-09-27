@@ -44,7 +44,7 @@ The live game always saves.
 | **Y** (or click the level diamond) | Level road: what every level unlocks, and what is next |
 | **H** | Achievements: claim rewards and pick the title you wear |
 | **T** | Travel: jump to the Crossing, Downtown, the Flats, the Mine, the Watchpoint or the Reach (not while under fire or in a duel) |
-| **E** (hold) | Open a supply drop |
+| **E** (hold) | Open a supply drop; rob a till or an ATM downtown |
 | **F1** | Settings: volumes, camera shake, field of view, crosshair colour |
 | **Right mouse** | Aim; with the Longshot (or a strong scope) you look through the scope |
 | **V** | Go to (or leave) the gun range |
@@ -100,6 +100,16 @@ count.
 | 8, then 12, 16, ... | **AIRSTRIKE**: hold **U**, aim, let go. Everyone gets a red zone and a countdown, then a jet runs in and lays six shells along it. The blasts are frag blasts, so walls help and the kills (and streak) are yours |
 
 Dying ends the streak and loses an unused airstrike. `tools/uitest/streaks.luau`.
+
+**Stick-ups.** Downtown's tills (behind the counters at ZEE GUNS and ZEE TACTICS) and its cash
+machines (inside both shops, and outside the 24/7) can be robbed: hold **E** at one (4s for a
+till, 6s for an ATM). You take a bag ($450-750 from a till, $700-1,100 from an ATM) and the
+heat: the store's alarm goes off, the whole server is told where and how much, a gold tag with
+the amount floats over you through walls, and three of the crew that runs the block come up the
+avenue after you. Hold the bag for the heat (60s for a till, 75s for an ATM; a bar under the cash
+counts it down) and it is yours, with 300 XP. Go down first and it is gone, or it goes to
+whichever player put you down. A robbed target stays empty for five minutes; one bag at a time.
+The squad counts toward your streak. `tools/uitest/stickups.luau`.
 
 **MOST WANTED.** The **BOUNTIES** board on the side of the 24/7 in Downtown (next to CONTRACTS)
 names a crime boss every few minutes -- *"THE VICE" Vinnie Russo*, *"BIG SAL" Moretti* and

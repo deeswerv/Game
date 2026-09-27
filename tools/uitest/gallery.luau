@@ -44,7 +44,7 @@ World.serverRemotes({
 		GunEffect = "RemoteEvent", NPCEffect = "RemoteEvent", GunAction = "RemoteEvent",
 		MeleeAction = "RemoteEvent", MeleeEffect = "RemoteEvent", AimUpdate = "RemoteEvent",
 		EmotePlay = "RemoteEvent", UtilityAction = "RemoteEvent", UtilityEvent = "RemoteEvent",
-		StreakEvent = "RemoteEvent", StreakAction = "RemoteEvent",
+		StreakEvent = "RemoteEvent", StreakAction = "RemoteEvent", StickupEvent = "RemoteEvent",
 	},
 })
 require("./fixtures")(World)
@@ -414,6 +414,18 @@ shot("45_airstrike_ready", 0.6)
 World.advance(5)
 World.player:SetAttribute("Streak", 0)
 World.player:SetAttribute("AirstrikeCharges", 0)
+
+-- 46. A stick-up: the till at ZEE GUNS emptied, the bag and the heat on you.
+World.player:SetAttribute("Bag", 620)
+World.player:SetAttribute("Heat", World.workspace:GetServerTimeNow() + 52)
+World.player:SetAttribute("HeatPlace", "ZEE GUNS")
+World.serverFire("Remotes", "StickupEvent", "alarm", { robberId = World.player.UserId, robber = World.player.DisplayName,
+	amount = 620, seconds = 60, place = "ZEE GUNS", kind = "register", at = Vector3.new(0, 0, -20) })
+shot("46_stickup", 0.6)
+World.advance(5)
+World.player:SetAttribute("Bag", nil)
+World.player:SetAttribute("Heat", nil)
+World.player:SetAttribute("HeatPlace", nil)
 
 -- 9. The death card. The character really dies first, as it would.
 do

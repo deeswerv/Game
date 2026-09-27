@@ -219,6 +219,12 @@ local function wire(folder: Instance)
 		end
 	end
 
+	-- The tills and cash machines are there to be robbed (StickupService).
+	local okStickup, Stickups = pcall(require, ServerScriptService:FindFirstChild("StickupService") :: ModuleScript)
+	if okStickup and type(Stickups) == "table" and Stickups.Wire then
+		Stickups.Wire(folder)
+	end
+
 	local site = folder:FindFirstChild("DuelPadSite", true)
 	if site and site:IsA("BasePart") then
 		local ok, DuelPads = pcall(require, ServerScriptService:FindFirstChild("DuelPads") :: ModuleScript)

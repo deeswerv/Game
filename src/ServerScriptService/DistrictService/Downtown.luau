@@ -896,6 +896,30 @@ local function tacticsInterior(b: Kit.Builder, depth: number, width: number)
 	end
 end
 
+--- Mark `part` as something to rob (StickupService); `where` names it. Build adds where the
+--- street is once the district stands.
+local function stickup(part: BasePart, where: string, kind: string)
+	part:SetAttribute("Stickup", where)
+	part:SetAttribute("StickupKind", kind)
+end
+
+--- A cash machine set into a wall, facing -X, origin on the floor at the wall: a steel housing
+--- under a navy ATM header, the screen in its bezel, a keypad on a shelf, the card and cash
+--- slots. The housing is what gets robbed.
+local function atm(b: Kit.Builder, where: string)
+	local housing = b:part("ATM", Vector3.new(0.9, 3.4, 1.4), Vector3.new(-0.45, 1.7, 0), STEEL, M.Metal)
+	stickup(housing, where, "atm")
+	b:decor("ATMHeader", Vector3.new(0.96, 0.55, 1.44), Vector3.new(-0.48, 3.12, 0), NAVY)
+	painted(b, "ATM", Kit.Look(Vector3.new(-0.98, 3.12, 0), Vector3.new(-10, 3.12, 0)), 1.1, 0.4, CREAM)
+	b:decor("ATMBezel", Vector3.new(0.06, 0.86, 1.1), Vector3.new(-0.9, 2.4, 0), Color3.fromRGB(30, 32, 38))
+	b:decor("ATMScreen", Vector3.new(0.06, 0.72, 0.95), Vector3.new(-0.93, 2.4, 0), Color3.fromRGB(46, 110, 140))
+	b:decor("ATMShelf", Vector3.new(0.5, 0.12, 1.2), Vector3.new(-1.12, 1.72, 0), STEEL, M.Metal)
+	b:decor("ATMKeypad", Vector3.new(0.34, 0.06, 0.6), CFrame.new(-1.12, 1.8, 0.15) * CFrame.Angles(0, 0, math.rad(-15)),
+		Color3.fromRGB(40, 42, 48))
+	b:decor("ATMCardSlot", Vector3.new(0.06, 0.08, 0.36), Vector3.new(-0.93, 2.0, -0.38), Color3.fromRGB(20, 20, 24))
+	b:decor("ATMCashSlot", Vector3.new(0.06, 0.12, 0.7), Vector3.new(-0.93, 1.3, 0), Color3.fromRGB(20, 20, 24))
+end
+
 --- A storefront facing -X (toward the avenue) that you can walk into: a painted signboard, a
 --- striped awning, two display windows with flower boxes, an open doorway, and inside, a
 --- counter with the shop's clerk behind it (DistrictService puts a person on `ClerkSpot`)
@@ -1007,7 +1031,11 @@ local function storefront(b: Kit.Builder, name: string, sub: string, colour: Col
 		b:part("CounterEnd", Vector3.new(depth - 1 - (cx - 1.2), 3.6, 1.2),
 			Vector3.new((cx - 1.2 + depth - 1) / 2, 1.8, s * 12.6), colour)
 	end
-	b:decor("Register", Vector3.new(1.4, 1, 1.6), Vector3.new(cx + 0.2, 4.4, -6), Color3.fromRGB(40, 42, 48))
+	-- The till, to rob from the customer's side of the counter.
+	local register = b:decor("Register", Vector3.new(1.4, 1, 1.6), Vector3.new(cx + 0.2, 4.4, -6), Color3.fromRGB(40, 42, 48))
+	stickup(register, name, "register")
+	-- A cash machine inside the door, on the side wall past the window display.
+	atm(b:within(CFrame.new(2.2, 0.2, -(width / 2 - 1.17)) * CFrame.Angles(0, math.rad(90), 0)), name)
 	b:decor("RegisterScreen", Vector3.new(0.1, 0.7, 1.2), Vector3.new(cx - 0.55, 5.1, -6), Color3.fromRGB(80, 200, 130))
 	b:decor("Bell", Vector3.new(0.5, 0.35, 0.5), Vector3.new(cx - 0.5, 4.08, 4), GOLD, M.Metal, { shape = "Ball" })
 	-- Where the clerk stands (DistrictService puts them there), and where you stand to be served.
@@ -1134,6 +1162,8 @@ local function convenience(b: Kit.Builder)
 	b:light("Point", Vector3.new(-8, 9, -2), Color3.fromRGB(246, 250, 255), 1, 22)
 	board(b, "24/7", Kit.Look(Vector3.new(0.5, 11.1, -2), Vector3.new(10, 11.1, -2)), 9, 2.8, GREEN, CREAM)
 	b:decor("Door", Vector3.new(0.3, 7.6, 5), Vector3.new(0.12, 3.8, 11), GLASS, M.Glass, { transparency = 0.35 })
+	-- A cash machine in the wall past the door (the store faces +X, the machine with it).
+	atm(b:within(CFrame.new(0.02, 0, 14.25) * CFrame.Angles(0, math.pi, 0)), "the 24/7")
 	-- An ice chest and a paper stand by the door.
 	b:part("IceChest", Vector3.new(2.4, 3.2, 4), Vector3.new(1.4, 1.6, -14), Color3.fromRGB(236, 242, 248))
 	painted(b, "ICE", Kit.Look(Vector3.new(2.62, 2, -14), Vector3.new(10, 2, -14)), 2.4, 1, Color3.fromRGB(60, 120, 200))
@@ -2983,6 +3013,15 @@ function Downtown.Build(parent: Instance, centre: Vector3)
 
 	-- The edge: nothing to fall off.
 	Kit.Bounds(root, HW - 12, HW - 12, 200)
+
+	-- Everything there is to rob learns where the street is: the point on the avenue (x = 0)
+	-- level with it, which is where StickupService sends the squad up from.
+	for _, d in ipairs(parent:GetDescendants()) do
+		if d:IsA("BasePart") and d:GetAttribute("Stickup") then
+			local z = root.frame:PointToObjectSpace(d.CFrame.Position).Z
+			d:SetAttribute("StickupStreet", root:world(Vector3.new(0, 0.5, z)).Position)
+		end
+	end
 end
 
 return Downtown
