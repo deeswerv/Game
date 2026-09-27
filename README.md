@@ -126,8 +126,14 @@ gets a cut. `tools/uitest/wanted.luau`.
 Watchpoint, the Reach, and the Quartermaster's work out there -- stays locked until you beat the
 Don at the top of **ZEE TOWER**.
 
+**At night the city lights up.** As the day/night cycle runs into dusk the street lamps come on
+one by one, the lights under them brighten, and windows light up across the blocks and the
+skyline: warm ones mostly, the odd blue television. After midnight most of them go dark again as
+people go to bed. By day nothing is touched: the city is exactly as built, with no neon.
+`tools/uitest/citylights.luau`.
+
 Open **Travel** (T) and pick **Downtown**, a cartoon low-poly city in the style of the reference
-street, with no neon anywhere. Buildings are saturated orange, yellow, green, blue, coral,
+street, with no neon anywhere in daylight. Buildings are saturated orange, yellow, green, blue, coral,
 purple, teal and red brick with white trim; the street faces have rows of real windows --
 framed, arched with keystones, or shuttered, and bay windows on the wide ones -- over ground
 floors of named shops (ZEE BEATS, PIZZA, COMICS, BOBA...) under striped awnings, with corner
