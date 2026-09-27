@@ -503,10 +503,9 @@ function buildSlots()
 		return
 	end
 
-	-- Only the slots this weapon can actually take. A pump shotgun has no detachable
-	-- magazine and a pistol has no stock, so offering those would be offering a choice
-	-- that changes nothing. Decided from the weapon's own parts rather than a per-weapon
-	-- list, so a new gun needs no entry anywhere.
+	-- Only the slots this weapon can actually take: the ones an attachment has been
+	-- modelled for on this gun (AttachmentModels). Offering the rest would be offering a
+	-- choice that changes nothing.
 	local fitted = previewTool and storeitems:FindFirstChild(selectedWeapon)
 	for i, slot in ipairs(AttachmentConfig.Slots) do
 		if fitted and not AttachmentBuilder.Supports(previewTool, slot) then
@@ -522,7 +521,8 @@ function buildSlots()
 			end
 		end
 
-		local fitted = option and #option.parts > 0
+		-- Anything but the stock part counts as something fitted.
+		local fitted = option ~= nil and not AttachmentConfig.IsStock(slot, option.id)
 
 		local card = UIKit.frame({
 			Name = slot,

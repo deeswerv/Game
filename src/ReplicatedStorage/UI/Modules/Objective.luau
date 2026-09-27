@@ -117,6 +117,10 @@ end
 --- `rewards` is optional: { coins = n, xp = n }.
 function Objective:Set(active, rewards)
 	if not active then
+		-- A finished job keeps its card up until Complete's own timer takes it down.
+		if self._completing then
+			return
+		end
 		self._card.Visible = false
 		self._id = nil
 		return
@@ -124,6 +128,7 @@ function Objective:Set(active, rewards)
 
 	local fresh = self._id ~= active.id
 	self._id = active.id
+	self._completing = nil
 
 	self._card.Visible = self._hidden ~= true
 	self._title.Text = tostring(active.title or "Objective")
@@ -163,6 +168,39 @@ function Objective:Set(active, rewards)
 			end
 		end
 	end
+end
+
+--- The job just finished. The card shows it done -- full green bar, JOB COMPLETE -- for a
+--- few seconds and then slides away, instead of vanishing the moment the objective is met.
+--- A new job set in the meantime simply takes the card over.
+function Objective:Complete(title: string)
+	local token = {}
+	self._completing = token
+	self._id = "__complete"
+	self._card.Visible = self._hidden ~= true
+	self._title.Text = title
+	self._label.Text = "JOB COMPLETE ✓"
+	self._count.Text = "DONE"
+	self._bar:SetFraction(1, true)
+	self._bar:SetColour(Theme.Colour.Accent)
+	TweenService:Create(self._title, Theme.Tween.Value, { TextColor3 = Theme.Colour.Accent }):Play()
+	clearChips(self)
+	self._lastRewards = nil
+	self._scale.Scale = 1.12
+	TweenService:Create(self._scale, Theme.Tween.Pop, { Scale = 1 }):Play()
+	task.delay(4, function()
+		if self._completing ~= token or self._id ~= "__complete" then
+			return
+		end
+		self._completing = nil
+		TweenService:Create(self._card, Theme.Tween.Open, { Position = UDim2.new(0, -WIDTH, 0.44, 0) }):Play()
+		task.delay(0.4, function()
+			if self._id == "__complete" and self._completing == nil then
+				self._card.Visible = false
+				self._id = nil
+			end
+		end)
+	end)
 end
 
 function Objective:SetVisible(visible: boolean)

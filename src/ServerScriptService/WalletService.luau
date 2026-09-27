@@ -71,6 +71,9 @@ local function attach(player: Player)
 	Replica:SetValue("Coins", balance)
 	coins.Value = balance
 	ready[player] = true
+	-- Public, so something that pays out once on join (ShopService's attachment refund) can
+	-- wait for the balance to be the saved one without requiring this module.
+	player:SetAttribute("WalletReady", true)
 
 	coins:GetPropertyChangedSignal("Value"):Connect(function()
 		local value = math.clamp(math.floor(coins.Value), 0, WalletService.MAX)

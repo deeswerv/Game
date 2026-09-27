@@ -97,7 +97,10 @@ TurfWarService.Zones = {
 	{ id = "CarPark", name = "THE CAR PARK", offset = Vector3.new(47, 0, -161), radius = 20 },
 	{ id = "Courts", name = "THE COURTS", offset = Vector3.new(54, 0, 80), radius = 20 },
 	{ id = "Alley", name = "THE ALLEY", offset = Vector3.new(-146, 0, -84), radius = 11 },
-	{ id = "Park", name = "THE PARK", offset = Vector3.new(-126, 0, 78), radius = 20 },
+	-- On the lawn in front of the star stage, where the Fixer says the crew sits. It used to
+	-- be centred on the pond: the ring ran up the waterfall cliff and through the water, so
+	-- crew came out on the rock 22 studs up or in the pond, and the patch's middle was water.
+	{ id = "Park", name = "THE PARK", offset = Vector3.new(-120, 0, 94), radius = 18 },
 }
 
 local threat = 1
@@ -158,6 +161,8 @@ type War = {
 	endsAt: number,
 	crew: { [Humanoid]: Model },
 	damage: { [Player]: number },
+	-- Players seen standing on the patch while it was fought over.
+	present: { [Player]: boolean },
 	left: number,
 	lastSeen: number,
 	over: boolean,
@@ -470,15 +475,40 @@ local function finish(turf: Turf, war: War, won: boolean)
 	war.over = true
 	local zone = turf.zone
 	if won then
-		-- Everyone who fought shares it; the top damage dealer gets the MVP bonus.
+		-- Who fought for it. Anyone who hurt the crew -- and anyone who was on the patch while
+		-- it was fought over, or finished one of the crew off. Damage alone used to decide
+		-- it, and a player whose hits did not all land on the record (a crew member who fell
+		-- off the waterfall cliff, one finished by someone else, a kill through something
+		-- that does not report damage) could win THE PARK, see TURF DEFENDED, and be neither
+		-- paid nor given the quest. Only the MVP is still decided by damage.
+		local fighters: { [Player]: boolean } = {}
+		for player, dealt in pairs(war.damage) do
+			if dealt > 0 then
+				fighters[player] = true
+			end
+		end
+		for player in pairs(war.present) do
+			fighters[player] = true
+		end
+		for humanoid in pairs(war.crew) do
+			local killer = KillCredit.GetKiller(humanoid)
+			if killer then
+				fighters[killer] = true
+			end
+		end
+		for _, player in ipairs(Players:GetPlayers()) do
+			if standingOn(player, turf) then
+				fighters[player] = true
+			end
+		end
 		local best, bestDamage = nil, 0
 		for player, dealt in pairs(war.damage) do
 			if player.Parent and dealt > bestDamage then
 				best, bestDamage = player, dealt
 			end
 		end
-		for player, dealt in pairs(war.damage) do
-			if player.Parent and dealt > 0 then
+		for player in pairs(fighters) do
+			if player.Parent then
 				local mvp = player == best
 				-- A known name gets paid more: the band the player is in BEFORE this win.
 				local _, band = TurfWarService.Cred(player)
@@ -577,6 +607,7 @@ function TurfWarService.Start(zoneId: string?): boolean
 		endsAt = now + TurfWarService.DURATION + TurfWarService.DURATION_PER_THREAT * (level - 1),
 		crew = {},
 		damage = {},
+		present = {},
 		left = 0,
 		lastSeen = now,
 		over = false,
@@ -683,6 +714,13 @@ function TurfWarService.Step()
 			end
 			if anyoneNear(turf) then
 				war.lastSeen = now
+			end
+			-- Everyone who stands their ground on the patch during the fight is one of its
+			-- fighters, whether or not every hit they landed was recorded against the crew.
+			for _, player in ipairs(Players:GetPlayers()) do
+				if standingOn(player, turf) then
+					war.present[player] = true
+				end
 			end
 			if left == 0 then
 				finish(turf, war, true)

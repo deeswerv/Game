@@ -293,7 +293,11 @@ QuestUpdated.OnClientEvent:Connect(function(newState, completion)
 	state = newState
 	renderTracker()
 
-	if completion then
+	-- The main interface announces a finished job with a JOB COMPLETE banner now (MainUI),
+	-- which queues behind a turf war's TURF DEFENDED instead of sitting under it the way this
+	-- line of text did. This one stays silent unless that interface failed to build.
+	local mainUi = player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("MainUI")
+	if completion and completion.completed and not mainUi then
 		local got = {}
 		if completion.coins then
 			table.insert(got, string.format("+%d coins", completion.coins))

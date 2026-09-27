@@ -42,6 +42,7 @@ local LevelRoad = require(Modules:WaitForChild("LevelRoad"))
 local Travel = require(Modules:WaitForChild("Travel"))
 local Achievements = require(Modules:WaitForChild("Achievements"))
 local WeaponConfig = require(ReplicatedStorage:WaitForChild("WeaponConfig"))
+local GameConfig = require(ReplicatedStorage:WaitForChild("GameConfig"))
 
 local StarterGui = game:GetService("StarterGui")
 
@@ -202,12 +203,49 @@ task.spawn(function()
 		return quest and quest.rewards or nil
 	end
 
-	Remote.get("GameRemotes", "QuestUpdated").OnClientEvent:Connect(function(state)
+	Remote.get("GameRemotes", "QuestUpdated").OnClientEvent:Connect(function(state, note)
 		if journalRef then
 			journalRef:SetState(state)
 		end
 		local active = type(state) == "table" and state.active or nil
-		objective:Set(active, active and rewardsFor(active.id) or nil)
+		if type(note) == "table" and note.completed and not active then
+			-- The job just finished: the card shows it done before it goes, rather than
+			-- vanishing the instant the last kill lands -- which read as nothing happening.
+			objective:Complete(tostring(note.completed))
+		else
+			objective:Set(active, active and rewardsFor(active.id) or nil)
+		end
+
+		if type(note) ~= "table" or not toast then
+			return
+		end
+		if note.completed then
+			-- A banner, not a line of text: it queues behind whatever banner is up (a turf
+			-- win's TURF DEFENDED arrives at the same moment) instead of hiding under it.
+			local got = {}
+			if tonumber(note.coins) then
+				table.insert(got, "+$" .. tostring(note.coins))
+			end
+			if tonumber(note.xp) then
+				table.insert(got, "+" .. tostring(GameConfig.ShownXP(note.xp)) .. " XP")
+			end
+			if tonumber(note.crystals) then
+				table.insert(got, "+" .. tostring(note.crystals) .. " 💎")
+			end
+			if tonumber(note.rep) then
+				table.insert(got, "+" .. tostring(note.rep) .. " CRED")
+			end
+			toast:Banner({
+				title = "JOB COMPLETE",
+				subtitle = string.upper(tostring(note.completed))
+					.. (#got > 0 and ("  ·  " .. table.concat(got, "  ")) or ""),
+				colour = Color3.fromRGB(90, 230, 120),
+				sound = "Ring",
+			})
+		elseif note.hintTitle then
+			toast:Push({ title = tostring(note.hintTitle), text = note.hint and tostring(note.hint) or nil,
+				icon = "📋", colour = Color3.fromRGB(255, 164, 28), duration = 7 })
+		end
 	end)
 end)
 
@@ -614,7 +652,6 @@ local market = safe("Shop", function()
 		getOwnership = gameRemote("GetOwnership"),
 		PurchaseItem = gameRemote("PurchaseItem"),
 		PurchaseCamo = gameRemote("PurchaseCamo"),
-		PurchaseAttachment = gameRemote("PurchaseAttachment"),
 		PurchaseVFX = gameRemote("PurchaseVFX"),
 		VFXAction = gameRemote("VFXAction"),
 		ownershipChanged = gameRemote("OwnershipChanged"),
@@ -638,6 +675,7 @@ local workshop = safe("Armory", function()
 	return Workshop.new(menuLayer, {
 		getOwnership = gameRemote("GetOwnership"),
 		buildAction = remote("BuildAction"),
+		purchaseAttachment = gameRemote("PurchaseAttachment"),
 	})
 end)
 

@@ -536,6 +536,37 @@ function QuestService.EventMatches(obj, kind: string, detail): boolean
 	return false
 end
 
+-- Patch ids to the names on their signs, and where each one is, for the hint below. Short:
+-- the hint is a toast, and a toast line cuts off at about thirty-five characters.
+local PATCHES = {
+	CarPark = { name = "THE CAR PARK", where = "behind ZEE GUNS" },
+	Courts = { name = "THE COURTS", where = "by the apartments" },
+	Alley = { name = "THE ALLEY", where = "behind the gas station" },
+	Park = { name = "THE PARK", where = "by the waterfall" },
+}
+
+--- What to tell a player whose event did not count toward their job, as a title and a line,
+--- or nil when there is nothing useful to say. Only turf wars have one: the right fight in
+--- the wrong place, or at too low a threat.
+function QuestService.MissHint(obj, kind: string, detail): (string?, string?)
+	if kind ~= "turf" or not obj or obj.kind ~= "TurfWin" then
+		return nil, nil
+	end
+	detail = detail or {}
+	if obj.zone and detail.zone ~= obj.zone then
+		local won = PATCHES[detail.zone]
+		local wanted = PATCHES[obj.zone]
+		local title = (won and won.name or "That patch") .. " doesn't count"
+		local text = wanted and string.format("Wants %s, %s", wanted.name, wanted.where)
+			or ("Wants " .. tostring(obj.zone))
+		return title, text
+	end
+	if obj.minThreat and (tonumber(detail.threat) or 1) < obj.minThreat then
+		return "Threat too low", string.format("This job needs threat %d or higher", obj.minThreat)
+	end
+	return nil, nil
+end
+
 function QuestService.RegisterEvent(player: Player, kind: string, detail)
 	local replica = profileOf(player)
 	if not replica then
@@ -543,7 +574,17 @@ function QuestService.RegisterEvent(player: Player, kind: string, detail)
 	end
 	local data = replica.Data
 	local quest = data.CurrentQuest ~= "" and QuestConfig.Get(data.CurrentQuest) or nil
-	if not quest or not QuestService.EventMatches(quest.objective, kind, detail) then
+	if not quest then
+		return
+	end
+	if not QuestService.EventMatches(quest.objective, kind, detail) then
+		-- A turf war won, but not the one the job asks for. Say so rather than leave the
+		-- player wondering why the job did not tick: THE PARK and THE CAR PARK are an easy
+		-- pair to mix up, and a win on the wrong one looks exactly like a win on the right one.
+		local title, hint = QuestService.MissHint(quest.objective, kind, detail)
+		if title then
+			QuestUpdated:FireClient(player, QuestService.GetState(player), { hintTitle = title, hint = hint })
+		end
 		return
 	end
 	local progress = (data.QuestProgress or 0) + 1

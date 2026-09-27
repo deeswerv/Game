@@ -224,9 +224,28 @@ World.advance(1)
 World.serverFire("Remotes", "TurfEvent", "progress", { id = "CarPark", left = 3, total = 5, seconds = 201 })
 shot("23_turf_war", 0.5)
 World.advance(4)
-World.serverFire("Remotes", "TurfEvent", "won", { id = "CarPark", zone = "THE CAR PARK", mvp = "Tester", threat = 3 })
 World.serverFire("Remotes", "TurfEvent", "lost", { id = "Park", zone = "THE PARK", threat = 2 })
 World.advance(4)
+
+-- A turf war won that finishes the job: TURF DEFENDED, the card shows the job done, and the
+-- JOB COMPLETE banner queues behind the turf one instead of hiding under it.
+World.serverFire("GameRemotes", "QuestUpdated", { active = { id = "TakeTheCarPark", title = "The Car Park",
+	label = "Win the turf war at THE CAR PARK", progress = 0, goal = 1 } })
+World.advance(0.5)
+World.serverFire("Remotes", "TurfEvent", "won", { id = "CarPark", zone = "THE CAR PARK", mvp = "Tester", threat = 3 })
+World.serverFire("GameRemotes", "QuestUpdated", { active = nil }, { completed = "The Car Park", coins = 1200,
+	xp = 900, crystals = 2, rep = 10 })
+shot("40_turf_job_done", 0.5)
+World.advance(3.2)
+shot("41_job_complete", 0.4)
+World.advance(4)
+World.serverFire("GameRemotes", "QuestUpdated", { active = { id = "ParkLife", title = "Park Life",
+	label = "Win the turf war at THE PARK", progress = 0, goal = 1 } }, { hintTitle = "THE CAR PARK doesn't count",
+	hint = "Wants THE PARK, by the waterfall" })
+shot("42_wrong_patch", 0.5)
+World.advance(8)
+World.serverFire("GameRemotes", "QuestUpdated", { active = nil })
+World.advance(0.5)
 
 -- The Kingpin steps out, and the bounty with Street Cred.
 World.serverFire("Remotes", "TurfEvent", "kingpin", { stage = "arrive", id = "CarPark", zone = "THE CAR PARK",

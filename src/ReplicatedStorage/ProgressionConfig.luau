@@ -81,13 +81,13 @@ ProgressionConfig.Milestones = {
 	[33] = { attachment = "Muzzle:Suppressor", note = "Quiet rounds: enemies hear half as far" },
 	[35] = { crystals = 10 },
 	[37] = { attachment = "Sight:Scope4x" },
-	[39] = { attachment = "Magazine:Drum" },
+	[39] = { attachment = "Magazine:Extended" },
 	[40] = { title = "Seasoned", crystals = 18 },
 	[42] = { attachment = "Underbarrel:Bipod" },
-	[44] = { attachment = "Sight:Sniper" },
+	[44] = { attachment = "Sight:Holo" },
 	[45] = { title = "Relentless", crystals = 25 },
 	[46] = { attachment = "Stock:Skeleton" },
-	[48] = { attachment = "Underbarrel:Laser" },
+	[48] = { attachment = "Side:Laser" },
 	[50] = { title = "Centurion", crystals = 80, coins = 10000, note = "Max level -- prestige from the Level Road" },
 }
 

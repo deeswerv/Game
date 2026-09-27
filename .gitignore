@@ -3,3 +3,4 @@ sourcemap.json
 out/
 node_modules/
 tools/mapview/three/
+__pycache__/

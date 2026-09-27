@@ -45,8 +45,14 @@ local GROUPS = {
 local GROUP_ORDER = { "Rifles", "SMGs", "Shotguns", "Snipers", "Pistols", "Other" }
 
 local SLOT_ICON = {
-	Sight = "🔭", Muzzle = "🔇", Underbarrel = "✊", Magazine = "📦", Stock = "🪵", Charm = "🍀",
+	Sight = "🔭", Muzzle = "🔇", Underbarrel = "✊", Side = "🔦", Magazine = "📦", Stock = "🪵",
 }
+
+local function comma(n: number): string
+	local text = tostring(math.floor(n))
+	local out = text:reverse():gsub("(%d%d%d)", "%1,"):reverse()
+	return (out:gsub("^,", ""))
+end
 
 -- Level each shop weapon opens at, for the padlock line.
 local LEVEL_FOR: { [string]: number } = {}
@@ -893,6 +899,23 @@ function Workshop:_fillEditor()
 		hint.Size = UDim2.new(1, 0, 0, 40)
 		return
 	end
+	-- Only the slots this gun has models for. Attachments are fitted to the weapon they were
+	-- made for, so a gun nothing has been made for says so instead of offering dead chips.
+	local store = ReplicatedStorage:FindFirstChild("storeitems")
+	local template = store and store:FindFirstChild(weapon)
+	if not template or not AttachmentBuilder.SupportsAny(template) then
+		local hint = Components.Label(self._editor, {
+			text = "No attachments are made for this gun yet. The Dark Matter Carbine takes the full set.",
+			font = Theme.Font.Bold,
+			size = Theme.Text.Body,
+			colour = Theme.Colour.TextMuted,
+			wrap = true,
+			layoutOrder = 1,
+		})
+		hint.Size = UDim2.new(1, 0, 0, 64)
+		return
+	end
+
 	if not build then
 		local hint = Components.Label(self._editor, {
 			text = "The default build is the gun as issued. Press + under the gun to start a build and fit attachments.",
@@ -910,7 +933,7 @@ function Workshop:_fillEditor()
 	local CHIP = Vector2.new(84, 28)
 	for _, slot in ipairs(AttachmentConfig.Slots) do
 		local options = AttachmentConfig.Options[slot] or {}
-		if #options == 0 then
+		if #options == 0 or not AttachmentBuilder.Supports(template, slot) then
 			continue
 		end
 
@@ -940,15 +963,17 @@ function Workshop:_fillEditor()
 			local owned = stock or self:_owns("OwnedAttachments", key)
 			local on = (fitted == option.id) or (fitted == nil and stock)
 
-			local chip = Components.Button(grid, {
+			local price = AttachmentConfig.Price(slot, option.id)
+			local chip
+			chip = Components.Button(grid, {
 				name = option.id,
-				text = owned and option.name or ("🔒 " .. option.name),
+				text = owned and option.name or ("🔒 $" .. comma(price)),
 				layoutOrder = index,
 				size = UDim2.fromOffset(CHIP.X, CHIP.Y),
 				textSize = Theme.Text.Small,
 				onActivated = function()
 					if not owned then
-						self._status.Text = "🔒 Buy " .. option.name .. " in the shop first"
+						self:_offer(slot, option, price, chip)
 						return
 					end
 					build.attachments = build.attachments or {}
@@ -966,6 +991,60 @@ function Workshop:_fillEditor()
 			chip:SetSelected(on)
 		end
 	end
+end
+
+-- Buying an attachment happens here, on the gun, now that the market has no attachment
+-- shelf. Two presses: the first names the part and its price, the second buys it -- so a
+-- stray click on a padlock never spends anything. The server re-checks everything.
+function Workshop:_offer(slot: string, option, price: number, chip)
+	local key = AttachmentConfig.Key(slot, option.id)
+	local remote = self._remotes.purchaseAttachment
+	if not remote then
+		self._status.Text = "🔒 " .. option.name .. " is locked"
+		return
+	end
+	if self._pending ~= key then
+		self._pending = key
+		self._status.Text = string.format("Buy %s for $%s? Press again to buy.", option.name, comma(price))
+		pcall(function()
+			chip:SetText("BUY?")
+		end)
+		task.delay(3, function()
+			if self._pending == key then
+				self._pending = nil
+				pcall(function()
+					chip:SetText("🔒 $" .. comma(price))
+				end)
+			end
+		end)
+		return
+	end
+	self._pending = nil
+	pcall(function()
+		chip:SetText("...")
+		chip:SetEnabled(false)
+	end)
+	task.spawn(function()
+		local ok, result = pcall(function()
+			return remote:InvokeServer(key)
+		end)
+		local bought = ok and type(result) == "table" and result.ok == true
+		if bought then
+			self._status.Text = "✓ " .. option.name .. " unlocked -- fit it to any build of this gun"
+			local owned = self._owned.OwnedAttachments
+			if type(owned) ~= "table" then
+				owned = {}
+				self._owned.OwnedAttachments = owned
+			end
+			if not table.find(owned, key) then
+				table.insert(owned, key)
+			end
+		else
+			local reason = (ok and type(result) == "table" and result.reason) or "Could not buy that"
+			self._status.Text = "✗ " .. tostring(reason)
+		end
+		self:_fillEditor()
+	end)
 end
 
 -- --------------------------------------------------------------- actions --

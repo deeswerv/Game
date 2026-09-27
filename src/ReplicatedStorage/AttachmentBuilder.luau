@@ -1,210 +1,201 @@
 --!strict
 -- Puts attachments onto a weapon.
 --
--- Mount points are worked out from the weapon's own parts rather than authored per gun:
--- the sight sits on top of whatever passes for a receiver, the muzzle device goes on the
--- front face of the muzzle, and so on. That means a weapon supports the whole catalogue
--- as soon as it has the usual pieces, and a new weapon needs nothing added here.
+-- Every attachment is modelled for the weapon it fits (AttachmentModels, generated from the
+-- artist's GLBs): its pieces are laid out in the weapon's Handle space exactly where the
+-- artist put them, so fitting one is placing parts, not working out where they might go.
+-- A weapon takes a slot only when a model exists for it -- there is no guessing a mount
+-- point off the geometry any more, and so no floating sight on a gun it was never made for.
 --
--- Used on the server to fit out the real weapon templates, and on the client to draw the
--- customisation preview, so both see exactly the same thing.
+-- Fitting an attachment can also change the weapon itself, and all of it is undone by
+-- Clear:
+--   hides   the stock parts it replaces go invisible -- the irons fold away under an optic,
+--           the standard magazine under the extended one, the brake under a suppressor.
+--   shift   a muzzle device moves the Muzzle marker (where rounds, flash and tracers start)
+--           and the weapon's authored flash out to the front of the device.
+--   magazine an extended mag's pieces are the magazine the reload takes out, in place of
+--           the standard one's.
+--
+-- Used on the server to fit out the real weapons, and on the client to draw the armory
+-- preview, so both see exactly the same thing.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local AttachmentConfig = require(ReplicatedStorage.AttachmentConfig)
+local AttachmentModels = require(ReplicatedStorage.AttachmentModels)
 
 local AttachmentBuilder = {}
 
 local FOLDER_NAME = "Attachments"
+-- On an attachment's own parts, so Clear can find the ones that cannot live in the folder.
+local ADDED = "AttachmentPart"
+-- On a stock part an attachment covers: its own Transparency, to put back.
+local HIDDEN = "AttHidden"
+-- On a stock magazine part: it was tagged MagPart before an extended mag took over.
+local MAG_OFF = "AttMagOff"
+-- On a part a muzzle device moved: how far, along the Handle's Z, to move it back.
+local SHIFTED = "AttShift"
 
--- The weapon's own axes, in Handle space. Every model in this game is built with the bore
--- along the handle's -Z, which is what the pose solver relies on too.
-local function weaponAxes(tool: Instance)
-	local handle = tool:FindFirstChild("Handle") :: BasePart?
-	if not handle then
-		return nil
-	end
-	local barrel = (tool:FindFirstChild("Barrel") or tool:FindFirstChild("BarrelTop")) :: BasePart?
-	local muzzle = tool:FindFirstChild("Muzzle") :: BasePart?
-	local bore = Vector3.new(0, 0, -1)
-	if barrel and muzzle and (muzzle.Position - barrel.Position).Magnitude > 0.05 then
-		bore = handle.CFrame:VectorToObjectSpace((muzzle.Position - barrel.Position).Unit)
-	end
-	return handle, bore.Unit
+-- The models fitted to this weapon, by slot, or nil. Keyed by the weapon's name, which the
+-- live Tool, the storeitems template and every preview copy all share.
+local function modelsFor(tool: Instance)
+	return AttachmentModels.Weapons[tool.Name]
 end
 
--- How far a part reaches from its own centre along one of the Handle's axes.
---
--- Part.Size is in the part's own frame, and the converted models are full of rotated
--- unions, so half a size component is not half an extent along the weapon. Projecting all
--- three of the part's axes onto the one we care about gives the true reach. Using the
--- largest size component instead -- which is what the first attempt did -- overshot the
--- barrel by half a stud and left muzzle devices hanging in front of the gun.
-local function extentAlong(handle: BasePart, part: BasePart, axis: Vector3): number
-	local rel = handle.CFrame:ToObjectSpace(part.CFrame)
-	local size = part.Size
-	return 0.5 * (math.abs(rel.XVector:Dot(axis)) * size.X
-		+ math.abs(rel.YVector:Dot(axis)) * size.Y
-		+ math.abs(rel.ZVector:Dot(axis)) * size.Z)
-end
-
--- How far an attachment part reaches along the bore from the mount point.
---
--- A "Cylinder" part is built lying along the weapon in Apply -- its size is swapped and it
--- is turned ninety degrees -- so its length down the bore is the Y of the authored size,
--- not the Z. Getting this wrong makes a suppressor look half as long as it is.
-local function partSpanZ(s): (number, number)
-	local half = (s.shape == "Cylinder" and s.size.Y or s.size.Z) * 0.5
-	return s.offset.Z - half, s.offset.Z + half
-end
-
--- Where a slot's attachment should sit, as a CFrame in Handle space.
---
--- `option` is optional but worth passing: it lets a top-mounted attachment be raised only
--- over what it actually covers, rather than over the tallest thing anywhere on the gun.
-function AttachmentBuilder.MountCFrame(tool: Instance, slot: string, option): CFrame?
-	local spec = AttachmentConfig.Mounts[slot]
-	if not spec then
-		return nil
-	end
-	local handle, bore = weaponAxes(tool)
-	if not handle then
-		return nil
-	end
-
-	-- An authored mount point always wins. These come from the weapon's own source file --
-	-- the artist marked where the sight, grip and stock bolt on -- so there is nothing to
-	-- derive and nothing to get wrong. WeaponMounts stamps them onto the Handle at import.
-	local authored = handle:FindFirstChild("Mount_" .. slot)
-	if authored and authored:IsA("Attachment") then
-		return CFrame.new(authored.Position)
-	end
-
-	-- The muzzle is a special case. The Muzzle part is a flash-spawn marker deliberately
-	-- sitting ahead of the barrel so shots do not start inside the gun -- on the converted
-	-- models that is nearly half a stud out. Hanging a suppressor off it left the device
-	-- floating in front of the weapon. A muzzle device instead goes where the barrel
-	-- visually ends, while staying on the bore line the marker defines.
-	if slot == "Muzzle" then
-		local muzzle = tool:FindFirstChild("Muzzle") :: BasePart?
-		if not muzzle then
-			return nil
-		end
-		local bore = handle.CFrame:PointToObjectSpace(muzzle.Position)
-		local existing = tool:FindFirstChild(FOLDER_NAME)
-		local frontZ = math.huge
-		for _, p in ipairs(tool:GetDescendants()) do
-			if p:IsA("BasePart") and p.Transparency < 1
-				and not (existing and p:IsDescendantOf(existing)) then
-				local z = handle.CFrame:PointToObjectSpace(p.Position).Z
-					- extentAlong(handle, p, Vector3.zAxis)
-				if z < frontZ then
-					frontZ = z
-				end
-			end
-		end
-		if frontZ == math.huge then
-			frontZ = bore.Z
-		end
-		-- Butted up against the barrel end, on the bore line.
-		return CFrame.new(Vector3.new(bore.X, bore.Y, frontZ + 0.02))
-	end
-
-	local host: BasePart? = nil
-	for _, name in ipairs(spec.hosts) do
-		local found = tool:FindFirstChild(name)
-		if found and found:IsA("BasePart") then
-			host = found
-			break
-		end
-	end
-	if not host then
-		return nil
-	end
-
-	local centre = handle.CFrame:PointToObjectSpace(host.Position)
-	local point = centre
-
-	-- Sit on the named face of the host, so an attachment rests on the surface rather than
-	-- inside the part. Extents are measured along the weapon's axes, not the part's own.
-	if spec.face == "Top" then
-		-- An optic has to clear the weapon's own irons where it OVERLAPS them, or a scope
-		-- ends up sunk into the front sight block.
-		--
-		-- It must not clear them everywhere, though, which is what this used to do: taking
-		-- the tallest point anywhere on the weapon lifted a red dot the full height of a
-		-- rear sight blade half the gun away from it, and left the sight visibly hovering
-		-- over the rail with daylight underneath. Only obstacles the attachment actually
-		-- sits over count.
-		local top = centre.Y + extentAlong(handle, host, Vector3.yAxis)
-
-		local lo, hi = -math.huge, math.huge
-		if option and option.parts and #option.parts > 0 then
-			lo, hi = math.huge, -math.huge
-			for _, s in ipairs(option.parts) do
-				local a, b = partSpanZ(s)
-				lo = math.min(lo, centre.Z + a)
-				hi = math.max(hi, centre.Z + b)
-			end
-		end
-
-		local existing = tool:FindFirstChild(FOLDER_NAME)
-		for _, p in ipairs(tool:GetDescendants()) do
-			if p:IsA("BasePart") and p.Transparency < 1
-				and not (existing and p:IsDescendantOf(existing)) then
-				local rel = handle.CFrame:PointToObjectSpace(p.Position)
-				local halfZ = extentAlong(handle, p, Vector3.zAxis)
-				if rel.Z + halfZ > lo and rel.Z - halfZ < hi then
-					local y = rel.Y + extentAlong(handle, p, Vector3.yAxis)
-					if y > top then
-						top = y
-					end
-				end
-			end
-		end
-		point = Vector3.new(centre.X, top, centre.Z)
-	elseif spec.face == "Bottom" then
-		point -= Vector3.new(0, extentAlong(handle, host, Vector3.yAxis), 0)
-	elseif spec.face == "Front" then
-		point -= Vector3.new(0, 0, extentAlong(handle, host, Vector3.zAxis))
-	elseif spec.face == "Rear" then
-		point += Vector3.new(0, 0, extentAlong(handle, host, Vector3.zAxis))
-	elseif spec.face == "Side" then
-		point += Vector3.new(extentAlong(handle, host, Vector3.xAxis),
-			-extentAlong(handle, host, Vector3.yAxis) * 0.3, 0)
-	end
-
-	return CFrame.new(point)
-end
-
--- Can this weapon take this kind of attachment at all?
---
--- Decided by whether the weapon has anywhere to put it, rather than by a compatibility
--- list per weapon: a pump shotgun has no detachable magazine and a pistol has no stock,
--- and both facts are already true of their models. The workshop hides slots that fail
--- this, so a player is never offered a choice that would do nothing.
+--- Can this weapon take this kind of attachment at all?
+---
+--- Only where a model has been fitted to it. The armory hides slots that fail this, so a
+--- player is never offered a choice that would do nothing.
 function AttachmentBuilder.Supports(tool: Instance, slot: string): boolean
-	return AttachmentBuilder.MountCFrame(tool, slot) ~= nil
+	return AttachmentModels.HasSlot(tool.Name, slot)
 end
 
--- Remove anything this module previously added.
+--- Does this weapon take any attachment? The armory says so rather than showing an empty
+--- editor for a gun nothing has been made for.
+function AttachmentBuilder.SupportsAny(tool: Instance): boolean
+	for _, slot in ipairs(AttachmentConfig.Slots) do
+		if AttachmentBuilder.Supports(tool, slot) then
+			return true
+		end
+	end
+	return false
+end
+
+--- Where a slot's attachment sits, in Handle space: the centre of its fitted pieces for the
+--- first option that has a model. Kept for anything that wants to frame a slot (the old
+--- per-geometry mount finder is gone).
+function AttachmentBuilder.MountCFrame(tool: Instance, slot: string): CFrame?
+	local models = modelsFor(tool)
+	local bySlot = models and models[slot]
+	if not bySlot then
+		return nil
+	end
+	for _, option in ipairs(AttachmentConfig.Options[slot] or {}) do
+		local fitted = bySlot[option.id]
+		if fitted and #fitted.parts > 0 then
+			local sum = Vector3.zero
+			for _, piece in ipairs(fitted.parts) do
+				sum += piece.cf.Position
+			end
+			return CFrame.new(sum / #fitted.parts)
+		end
+	end
+	return nil
+end
+
+-- Move a part along the Handle's Z by `dz` studs, keeping it welded.
+--
+-- A WeldConstraint captures the offset between its parts when it is enabled, so the weld is
+-- switched off, the part moved and the weld switched back on. Moving it with the weld live
+-- would drag the whole assembly -- the player's arm included -- rather than the one part.
+local function slide(handle: BasePart, part: BasePart, dz: number)
+	local welds = {}
+	for _, d in ipairs(part:GetChildren()) do
+		if d:IsA("WeldConstraint") and d.Enabled then
+			d.Enabled = false
+			table.insert(welds, d)
+		end
+	end
+	local rel = handle.CFrame:ToObjectSpace(part.CFrame)
+	part.CFrame = handle.CFrame * (CFrame.new(0, 0, dz) * rel)
+	for _, weld in ipairs(welds) do
+		weld.Enabled = true
+	end
+end
+
+-- The parts a muzzle device carries forward with it: the marker every shot starts from and
+-- the weapon's own authored flash.
+local function muzzleParts(tool: Instance): { BasePart }
+	local out = {}
+	local marker = tool:FindFirstChild("Muzzle")
+	if marker and marker:IsA("BasePart") then
+		table.insert(out, marker)
+	end
+	for _, d in ipairs(tool:GetDescendants()) do
+		if d:IsA("BasePart") and d:GetAttribute("DMRole") == "MuzzleFlash" then
+			table.insert(out, d)
+		end
+	end
+	return out
+end
+
+--- Remove everything this module added, and put back everything it changed.
 function AttachmentBuilder.Clear(tool: Instance)
 	local folder = tool:FindFirstChild(FOLDER_NAME)
 	if folder then
 		folder:Destroy()
 	end
+	local handle = tool:FindFirstChild("Handle")
+	for _, d in ipairs(tool:GetDescendants()) do
+		if d:IsA("BasePart") then
+			if d:GetAttribute(ADDED) == true then
+				d:Destroy()
+			else
+				local was = d:GetAttribute(HIDDEN)
+				if type(was) == "number" then
+					d.Transparency = was
+					d:SetAttribute(HIDDEN, nil)
+				end
+				if d:GetAttribute(MAG_OFF) == true then
+					d:SetAttribute("MagPart", true)
+					d:SetAttribute(MAG_OFF, nil)
+				end
+				local dz = d:GetAttribute(SHIFTED)
+				if type(dz) == "number" then
+					if handle and handle:IsA("BasePart") then
+						slide(handle, d, -dz)
+					end
+					d:SetAttribute(SHIFTED, nil)
+				end
+			end
+		end
+	end
 end
 
--- Fit a whole loadout: { Sight = "RedDot", Muzzle = "Suppressor", ... }.
--- Anything unknown is skipped rather than erroring, so a stale save cannot break a weapon.
-function AttachmentBuilder.Apply(tool: Instance, loadout: { [string]: string }?)
+-- One piece of a fitted attachment, as a real part welded to the Handle.
+local function build(handle: BasePart, piece: AttachmentModels.Piece, slot: string, id: string): BasePart
+	local part = Instance.new("Part")
+	part.Name = piece.name
+	if piece.shape == "Cylinder" then
+		part.Shape = Enum.PartType.Cylinder
+	elseif piece.shape == "Ball" then
+		part.Shape = Enum.PartType.Ball
+	end
+	part.Size = piece.size
+	part.CFrame = handle.CFrame * piece.cf
+	part.Color = piece.colour
+	part.Material = piece.material
+	part.Reflectance = piece.reflectance
+	part.Transparency = piece.transparency
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.Massless = true
+	part.CastShadow = false
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
+	part:SetAttribute(ADDED, true)
+	part:SetAttribute("AttachmentSlot", slot)
+	part:SetAttribute("AttachmentId", id)
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = handle
+	weld.Part1 = part
+	weld.Parent = part
+	return part
+end
+
+--- Fit a whole loadout: { Sight = "RedDot", Muzzle = "Suppressor", ... }.
+--- Anything unknown, or not modelled for this weapon, is skipped rather than erroring, so a
+--- stale save cannot break a weapon. Returns how many parts were added.
+function AttachmentBuilder.Apply(tool: Instance, loadout: { [string]: string }?): number
 	AttachmentBuilder.Clear(tool)
 	if not loadout then
-		return
+		return 0
 	end
-	local handle = tool:FindFirstChild("Handle") :: BasePart?
-	if not handle then
-		return
+	local handle = tool:FindFirstChild("Handle")
+	local models = modelsFor(tool)
+	if not handle or not handle:IsA("BasePart") or not models then
+		return 0
 	end
 
 	local folder = Instance.new("Folder")
@@ -213,52 +204,50 @@ function AttachmentBuilder.Apply(tool: Instance, loadout: { [string]: string }?)
 	local added = 0
 	for _, slot in ipairs(AttachmentConfig.Slots) do
 		local id = loadout[slot]
-		local option = id and AttachmentConfig.Find(slot, id)
-		if option and #option.parts > 0 then
-			local mount = AttachmentBuilder.MountCFrame(tool, slot, option)
-			if mount then
-				for _, spec in ipairs(option.parts) do
-					local part = Instance.new("Part")
-					part.Name = slot .. "_" .. option.id
-					part.Size = spec.size
-					part.Color = spec.colour
-					part.Material = spec.material or Enum.Material.SmoothPlastic
-					part.Transparency = spec.transparency or 0
-					part.CanCollide = false
-					part.CanQuery = false
-					part.CanTouch = false
-					part.Massless = true
-					part.CastShadow = false
-					part.TopSurface = Enum.SurfaceType.Smooth
-					part.BottomSurface = Enum.SurfaceType.Smooth
-
-					if spec.shape == "Cylinder" then
-						-- A Roblox cylinder runs along X, but these are described running
-						-- down the barrel, so it is turned and its size swapped to match.
-						part.Shape = Enum.PartType.Cylinder
-						part.Size = Vector3.new(spec.size.Y, spec.size.X, spec.size.Z)
-					elseif spec.shape == "Ball" then
-						part.Shape = Enum.PartType.Ball
+		local fitted = id and AttachmentConfig.Find(slot, id) and models[slot] and models[slot][id]
+		if fitted then
+			-- The stock parts it replaces. Hidden by name: a repeated name (the magazine's
+			-- two MagMid halves) is only ever listed when every part of that name goes.
+			local hides = {}
+			for _, name in ipairs(fitted.hides) do
+				hides[name] = true
+			end
+			for _, d in ipairs(tool:GetDescendants()) do
+				if d:IsA("BasePart") and hides[d.Name] and d ~= handle
+					and d:GetAttribute(ADDED) ~= true and d:GetAttribute(HIDDEN) == nil then
+					d:SetAttribute(HIDDEN, d.Transparency)
+					d.Transparency = 1
+					if d:GetAttribute("MagPart") == true then
+						d:SetAttribute("MagPart", nil)
+						d:SetAttribute(MAG_OFF, true)
 					end
+				end
+			end
 
-					local offset = mount * CFrame.new(spec.offset)
-					if spec.shape == "Cylinder" then
-						offset = offset * CFrame.Angles(0, math.rad(90), 0)
-					end
-					part.CFrame = handle.CFrame * offset
+			for _, piece in ipairs(fitted.parts) do
+				local part = build(handle, piece, slot, id)
+				if slot == "Magazine" then
+					-- The reload collects the magazine from the Tool's own children by this
+					-- tag, so the extended mag's pieces sit there rather than in the folder.
+					part:SetAttribute("MagPart", true)
+					part.Parent = tool
+				else
 					part.Parent = folder
+				end
+				added += 1
+			end
 
-					local weld = Instance.new("WeldConstraint")
-					weld.Part0 = handle
-					weld.Part1 = part
-					weld.Parent = part
-					added += 1
+			local dz = fitted.shift
+			if slot == "Muzzle" and type(dz) == "number" and dz ~= 0 then
+				for _, part in ipairs(muzzleParts(tool)) do
+					slide(handle, part, dz)
+					part:SetAttribute(SHIFTED, dz)
 				end
 			end
 		end
 	end
 
-	if added > 0 then
+	if #folder:GetChildren() > 0 then
 		folder.Parent = tool
 	else
 		folder:Destroy()

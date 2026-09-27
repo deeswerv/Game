@@ -123,7 +123,10 @@ local function ownsWeapon(player: Player, id: string): boolean
 	if not ok or not Replica then
 		return false
 	end
+	-- A Mastery Weapon is its own Tool but not a shop item: earned or bought with Robux, it
+	-- is recorded in OwnedVariants, and owning it means being able to carry it.
 	return table.find(Replica.Data.OwnedItems or {}, id) ~= nil
+		or (WeaponConfig.VariantOf(id) ~= nil and table.find(Replica.Data.OwnedVariants or {}, id) ~= nil)
 end
 
 -- ---------------------------------------------------------------- loadout --
@@ -351,7 +354,7 @@ function ShopService.Grant(player: Player, field: string, id: string): boolean
 	end
 	if field ~= "OwnedItems" and field ~= "OwnedCamos"
 		and field ~= "OwnedAttachments" and field ~= "OwnedAbilities"
-		and field ~= "OwnedCosmetics" and field ~= "OwnedVFX" then
+		and field ~= "OwnedCosmetics" and field ~= "OwnedVFX" and field ~= "OwnedVariants" then
 		return false
 	end
 
@@ -590,7 +593,20 @@ function ShopService.OwnsAttachment(player: Player, slot: string, id: string): b
 	local ok, owned = pcall(function()
 		return PlayerDataManager:GetPlayerDataReplica(player):expect().Data.OwnedAttachments
 	end)
-	return ok and listHas(owned or {}, AttachmentConfig.Key(slot, id)) or false
+	if not ok then
+		return false
+	end
+	local key = AttachmentConfig.Key(slot, id)
+	if listHas(owned or {}, key) then
+		return true
+	end
+	-- Bought under its old slot, before MigrateAttachments has run for this profile.
+	for from, to in pairs(AttachmentConfig.Moved) do
+		if to == key and listHas(owned or {}, from) then
+			return true
+		end
+	end
+	return false
 end
 
 function ShopService.GetOwnership(player: Player)
@@ -610,6 +626,16 @@ function ShopService.GetOwnership(player: Player)
 				table.insert(items, name)
 			end
 		end
+		-- Mastery Weapons are weapons you own too. They are listed in OwnedItems here -- not
+		-- in the save -- so the inventory and the armory, which ask "is this gun owned?" of
+		-- OwnedItems, show them unlocked, while the market still tells the two apart by
+		-- OwnedVariants.
+		local variants = Replica.Data.OwnedVariants or {}
+		for _, id in ipairs(variants) do
+			if WeaponConfig.VariantOf(id) and not table.find(items, id) then
+				table.insert(items, id)
+			end
+		end
 		return {
 			OwnedItems = items,
 			OwnedAbilities = Replica.Data.OwnedAbilities or {},
@@ -617,11 +643,12 @@ function ShopService.GetOwnership(player: Player)
 			OwnedAttachments = Replica.Data.OwnedAttachments or {},
 			OwnedCosmetics = Replica.Data.OwnedCosmetics or {},
 			OwnedVFX = Replica.Data.OwnedVFX or {},
+			OwnedVariants = variants,
 		}
 	end)
 	if not ok then
 		return { OwnedItems = {}, OwnedAbilities = {}, OwnedCamos = {}, OwnedAttachments = {}, OwnedCosmetics = {},
-			OwnedVFX = {} }
+			OwnedVFX = {}, OwnedVariants = {} }
 	end
 	return result
 end
@@ -630,7 +657,107 @@ GetOwnership.OnServerInvoke = function(player)
 	return ShopService.GetOwnership(player)
 end
 
+-- ------------------------------------------------------ attachment migration --
+--
+-- The attachment catalogue was replaced with the authored Dark Matter set. A profile from
+-- before that is brought up to date once, the first time it loads:
+--   * an attachment that moved slot (the laser and light, now on the side rail) keeps its
+--     ownership under the new key, and any build that fitted it fits it in the new slot;
+--   * an attachment that no longer exists is refunded at the price it sold for -- earned
+--     ones included, since there is no telling them apart and nobody should be out of pocket;
+--   * builds and saved loadouts lose ids that are gone, rather than carrying them forever.
+-- AttachmentsMigrated marks it done. It is only set once the refund has actually landed, so a
+-- session that ends before the wallet loads simply tries again next time.
+
+--- Bring one player's attachment ownership and builds up to the current catalogue.
+--- Returns how many attachments moved slot and how many coins were refunded.
+function ShopService.MigrateAttachments(player: Player): (number, number)
+	local ok, Replica = pcall(function()
+		return PlayerDataManager:GetPlayerDataReplica(player):expect()
+	end)
+	if not ok or not Replica or Replica.Data.AttachmentsMigrated == true then
+		return 0, 0
+	end
+
+	-- The refund must land on the balance the profile saves. The wallet copies the saved
+	-- balance onto leaderstats when it loads and marks the player WalletReady; money added
+	-- before that would be overwritten, so wait for it.
+	local deadline = os.clock() + 30
+	while player:GetAttribute("WalletReady") ~= true and player.Parent and os.clock() < deadline do
+		task.wait(0.25)
+	end
+	local coins = getCoins(player)
+	if player:GetAttribute("WalletReady") ~= true or not coins or not Replica:IsActive() then
+		return 0, 0
+	end
+
+	local kept, moved, refund = {}, 0, 0
+	for _, raw in ipairs(Replica.Data.OwnedAttachments or {}) do
+		if type(raw) == "string" then
+			local key = AttachmentConfig.Moved[raw] or raw
+			if key ~= raw then
+				moved += 1
+			end
+			local slot, id = key:match("^(%a+):(%w+)$")
+			if slot and id and AttachmentConfig.Find(slot, id) then
+				if not table.find(kept, key) then
+					table.insert(kept, key)
+				end
+			elseif AttachmentConfig.Retired[raw] then
+				refund += AttachmentConfig.Retired[raw]
+			end
+		end
+	end
+
+	-- Builds and per-weapon loadouts: the same move, the same pruning.
+	local builds = Replica.Data.WeaponBuilds
+	if type(builds) == "table" then
+		local updated = {}
+		for weapon, list in pairs(builds) do
+			if type(list) == "table" then
+				local copy = {}
+				for i, build in ipairs(list) do
+					if type(build) == "table" then
+						local b = table.clone(build)
+						b.attachments = AttachmentConfig.Normalise(build.attachments)
+						copy[i] = b
+					end
+				end
+				updated[weapon] = copy
+			end
+		end
+		Replica:SetValue("WeaponBuilds", updated)
+	end
+	local loadouts = Replica.Data.WeaponAttachments
+	if type(loadouts) == "table" then
+		local updated = {}
+		for weapon, loadout in pairs(loadouts) do
+			updated[weapon] = AttachmentConfig.Normalise(loadout)
+		end
+		Replica:SetValue("WeaponAttachments", updated)
+	end
+
+	Replica:SetValue("OwnedAttachments", kept)
+	if refund > 0 then
+		coins.Value += refund
+	end
+	Replica:SetValue("AttachmentsMigrated", true)
+	OwnershipChanged:FireClient(player, "OwnedAttachments", kept)
+	if moved > 0 or refund > 0 then
+		print(("[ShopService] %s: attachments migrated -- %d moved slot, %d coins refunded")
+			:format(player.Name, moved, refund))
+	end
+	return moved, refund
+end
+
 local function onPlayerAdded(player: Player)
+	task.spawn(function()
+		local okMigrate, err = pcall(ShopService.MigrateAttachments, player)
+		if not okMigrate then
+			warn("[ShopService] attachment migration failed for " .. player.Name .. ": " .. tostring(err))
+		end
+	end)
+
 	-- The saved loadout is restored on every spawn, so a death costs you your position and
 	-- nothing else. A player who has never equipped anything carries the starting weapon
 	-- (loadoutOf).

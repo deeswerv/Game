@@ -159,6 +159,10 @@ local SaveStructure = {
 	-- from every profile the first time they saved.
 	OwnedCamos = {},
 	OwnedAttachments = {},
+	-- Set once this profile's attachments have been brought onto the authored catalogue
+	-- (ShopService.MigrateAttachments): retired ones refunded, the laser and light moved to
+	-- the side rail. False on a new profile too, where the migration is a harmless no-op.
+	AttachmentsMigrated = false,
 
 	-- Mastery Weapons: whole variants of a gun, bought with Robux or earned. Separate from
 	-- OwnedItems because a variant is not a weapon you can buy with coins, and the market

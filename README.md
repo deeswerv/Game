@@ -144,8 +144,9 @@ and floating props (set `AUDIT_LIMIT` to list more than 40).
 (north-east), THE ALLEY (south-west) and THE PARK (north-west). Each is marked on the ground by a
 ring of dashes with a sign over it: red and "STEP IN TO START A TURF WAR" when open, orange with
 the count and clock while its war is on, grey with a countdown while it cools down. Walk onto an
-open patch and its crew comes out round the edge; clear them and everyone who landed a hit is
-paid, with half as much again for the MVP. Then that patch goes quiet for three minutes (the
+open patch and its crew comes out round the edge; clear them and everyone who fought for it is
+paid -- anyone who landed a hit, finished one of the crew off, or stood on the patch through the
+fight -- with half as much again for the MVP (the most damage). Then that patch goes quiet for three minutes (the
 other three stay open, and wars on different patches run side by side). A crew wins if the
 clock runs out or everybody walks away from it for 45 seconds. Downtown remembers: every crew
 driven out raises the **THREAT** (I to V) -- the next crew is bigger (5 up to 10: more Gangsters
@@ -158,7 +159,12 @@ banner, ones across town a notice.
 from either): *Rooftop Run* (get onto the apartment roof), *The Car Park*, *Alley Cats* (six crew
 in the alley), *Park Life*, *Full Court Press*, *The Top Floor* (beat the Don), *Turn Up the Heat*
 (two wars at threat III+) and *The Kingpin* -- then a repeatable paid job, *Street Sweep* (win
-two wars). Each pays cash, XP, crystals and **Street Cred**.
+two wars). Each pays cash, XP, crystals and **Street Cred**. Finishing one puts up a **JOB
+COMPLETE** banner (it queues behind a turf war's TURF DEFENDED rather than hiding under it) and
+the objective card shows the job done before it slides away. A turf war won on a different patch
+than the job names says so -- "THE PARK doesn't count / Wants THE CAR PARK, behind ZEE GUNS" --
+instead of saying nothing. THE PARK's patch is the lawn in front of the star stage.
+`tools/uitest/turfquest.luau` runs the real turf wars and quests together.
 
 **The crews** are criminals now: Thugs with knives, Gangsters with SMGs, Shooters with rifles
 and grenades, Enforcers with shotguns, and Capos running them. They call targets to each other,
@@ -260,6 +266,38 @@ Enemies fight like a squad, not a row of turrets:
 - **Strafing.** Holding its ground in a gunfight, an enemy sidesteps between bursts.
 - **Fewer, slower respawns.** Camps refill after 50 seconds to 3 minutes rather than 12, never
   within 45 studs of a player, and at most 24 enemies are alive on a server.
+
+## Attachments
+
+Twelve authored attachments, made for the **Dark Matter Carbine** (Mastery): a **Red Dot**,
+**Holographic** and **4x Scope**; a **Compensator** and **Suppressor**; a **Vertical Grip**,
+**Angled Grip** and **Bipod** under the barrel; a **Laser Sight** and **Flashlight** on the new
+**side rail** (so a light or laser can run with a grip); an **Extended Mag** (+10 rounds) and a
+**Skeleton Stock**. Each one is the artist's model rebuilt piece by piece where it was authored,
+so fitting it is exact: the optic folds the iron sights away, a muzzle device moves the muzzle
+(and the carbine's own flash) out to its end, the extended mag is the one the reload drops, and
+anything the stock part carried (its crystals) goes with it. Buy and fit them in the **Armory**
+(K) on the gun itself -- press a padlocked chip twice to buy it; the shop no longer has an
+attachment shelf. Other guns take none until attachments are made for them.
+
+The old block-built catalogue (2x/8x scopes, brake, flash hider, drum and quick mags, heavy and
+folding stocks, charms) is retired: anyone who owned one is refunded what it sold for, once, on
+their next join, and a laser or light bought "under the barrel" moves to the side rail with any
+builds that used it (`ShopService.MigrateAttachments`). Mastery Weapons now also count as owned
+guns everywhere (the inventory, the armory, equipping), and a mastery tier actually grants one.
+
+The models come from the GLBs through `tools/attachments/`:
+
+```sh
+lune run tools/attachments/export_weapon.luau -- Carbine_DarkMatter out/dm.json   # the gun, in Handle space
+python3 tools/attachments/convert.py out/dm.json <folder of .glb> --preview out/prev
+node tools/attachments/preview.mjs out/prev/Under_Bipod.json out/bipod.png         # GLB vs rebuild
+```
+
+`convert.py` fits the GLB's gun onto the in-game one (similarity transform from the parts they
+share), rebuilds each attachment mesh as a Block or Cylinder, works out which stock parts it
+replaces, and writes `src/ReplicatedStorage/AttachmentModels.luau`. `tools/uitest/attachments.luau`
+checks the catalogue, the fitting, the migration and the shop.
 
 ## Gun handling
 

@@ -24,7 +24,6 @@ local Menu = require(script.Parent.Menu)
 local GameConfig = require(ReplicatedStorage:WaitForChild("GameConfig"))
 local WeaponConfig = require(ReplicatedStorage:WaitForChild("WeaponConfig"))
 local WeaponPreview = require(ReplicatedStorage:WaitForChild("WeaponPreview"))
-local AttachmentConfig = require(ReplicatedStorage:WaitForChild("AttachmentConfig"))
 local VFXConfig = require(ReplicatedStorage:WaitForChild("VFXConfig"))
 
 local player = Players.LocalPlayer
@@ -34,19 +33,16 @@ Market.__index = Market
 
 local CARD = Vector2.new(292, 196)
 
--- Each shelf: which ownership field proves you have it, and which remote sells it. Mastery
+-- Each shelf: which ownership field proves you have it, and which remote sells it. There is
+-- no attachment shelf: attachments are modelled for the gun they fit, so they are bought in
+-- the Armory, on that gun, where you can see them fitted. Mastery
 -- Weapons deliberately have no coin remote -- a variant is bought with Robux through
 -- Roblox's own prompt, or earned, never bought with coins.
 local SHELVES = {
 	{ id = "Weapons",     label = "Guns",        icon = nil,  preview = "Warden", field = "OwnedItems",       remote = "PurchaseItem", equip = false },
 	{ id = "Mastery",     label = "Mastery",     icon = "⭐", field = "OwnedVariants",    remote = nil, equip = false },
-	{ id = "Attachments", label = "Attachments", icon = "🔧", field = "OwnedAttachments", remote = "PurchaseAttachment", equip = false },
 	{ id = "VFX",         label = "VFX",         icon = "✨", field = "OwnedVFX",         remote = "PurchaseVFX", equip = true },
 	{ id = "Robux",       label = "Cash",        icon = "💰", field = nil,                remote = nil, equip = false },
-}
-
-local SLOT_ICON = {
-	Sight = "🔭", Muzzle = "🔇", Underbarrel = "✊", Magazine = "📦", Stock = "🪵", Charm = "🍀",
 }
 
 local function comma(n: number): string
@@ -84,28 +80,6 @@ local function weaponCatalog()
 			levelRequired = item.levelRequired or 1,
 			preview = name,
 		})
-	end
-	table.sort(entries, byRarityThenPrice)
-	return entries
-end
-
-local function attachmentCatalog()
-	local entries = {}
-	for _, slot in ipairs(AttachmentConfig.Slots) do
-		for _, option in ipairs(AttachmentConfig.Options[slot] or {}) do
-			-- Stock parts are free and fitted already, so there is nothing to sell.
-			if not AttachmentConfig.IsStock(slot, option.id) then
-				table.insert(entries, {
-					id = AttachmentConfig.Key(slot, option.id),
-					name = option.name,
-					desc = string.upper(AttachmentConfig.SlotLabels[slot] or slot) .. "  -  fits every weapon",
-					price = AttachmentConfig.Price(slot, option.id),
-					rarity = AttachmentConfig.Rarity(slot, option.id),
-					levelRequired = 1,
-					icon = SLOT_ICON[slot] or "🔧",
-				})
-			end
-		end
 	end
 	table.sort(entries, byRarityThenPrice)
 	return entries
@@ -199,7 +173,6 @@ end
 local CATALOGUES = {
 	Weapons = weaponCatalog,
 	Mastery = masteryCatalog,
-	Attachments = attachmentCatalog,
 	VFX = vfxCatalog,
 	Robux = robuxCatalog,
 }

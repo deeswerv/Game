@@ -119,6 +119,9 @@ local function cleanAttachments(player: Player, weaponName: string, incoming): {
 	if type(incoming) ~= "table" then
 		return clean
 	end
+	-- A save from before the catalogue changed still names the laser under the barrel;
+	-- it follows the attachment to the side rail rather than being dropped.
+	incoming = AttachmentConfig.Normalise(incoming)
 	local template = ReplicatedStorage.storeitems:FindFirstChild(weaponName)
 	for _, slot in ipairs(AttachmentConfig.Slots) do
 		local id = incoming[slot]
