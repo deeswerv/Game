@@ -53,6 +53,7 @@ The live game always saves.
 | **X** | Switch throwable: Frag (from level 3), Flashbang (level 7), Smoke |
 | **Z** | Heal: the equipped heal (the Field Medkit patches 50 health over a second) |
 | **G** (hold) | Emote wheel: scroll or click the tabs for five pages of emotes, 1-8 to pick |
+| **U** (hold, let go) | Call in an airstrike you have earned: a red mark follows your crosshair, let go to call it |
 
 You can also queue by standing on one of the **1V1 pads** in Downtown's DUEL HALL (the lobby's
 pads at the Crossing are retired).
@@ -88,6 +89,17 @@ are **WANTED** -- everyone is told, a red tag with your price floats over you th
 and the price climbs with every kill after (up to $4,000). Whoever takes a wanted player down
 collects the bounty and XP, and the server hears about it. Duels and practice dummies do not
 count.
+
+**Killstreak rewards.** The same streak earns rewards, shown on the meter over the weapon slots
+(it fades back at a streak of 0 and hides in a duel):
+
+| Streak | Reward |
+| --- | --- |
+| 3 | **RADAR**: for 12 seconds every enemy within 260 studs is outlined in red through walls |
+| 5 | **OVERSHIELD**: 60 points of violet shield over your health and armour until it breaks; everyone sees the shell |
+| 8, then 12, 16, ... | **AIRSTRIKE**: hold **U**, aim, let go. Everyone gets a red zone and a countdown, then a jet runs in and lays six shells along it. The blasts are frag blasts, so walls help and the kills (and streak) are yours |
+
+Dying ends the streak and loses an unused airstrike. `tools/uitest/streaks.luau`.
 
 **MOST WANTED.** The **BOUNTIES** board on the side of the 24/7 in Downtown (next to CONTRACTS)
 names a crime boss every few minutes -- *"THE VICE" Vinnie Russo*, *"BIG SAL" Moretti* and

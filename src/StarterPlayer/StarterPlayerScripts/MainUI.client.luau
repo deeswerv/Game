@@ -38,6 +38,8 @@ local BountyBoard = require(Modules:WaitForChild("BountyBoard"))
 local Tactics = require(Modules:WaitForChild("Tactics"))
 local WorldEvents = require(Modules:WaitForChild("WorldEvents"))
 local Bounties = require(Modules:WaitForChild("Bounties"))
+local Streaks = require(Modules:WaitForChild("Streaks"))
+local StreakConfig = require(ReplicatedStorage:WaitForChild("StreakConfig"))
 local LevelRoad = require(Modules:WaitForChild("LevelRoad"))
 local Travel = require(Modules:WaitForChild("Travel"))
 local Achievements = require(Modules:WaitForChild("Achievements"))
@@ -151,6 +153,47 @@ end)
 Remote.get("Remotes", "BountyEvent").OnClientEvent:Connect(function(kind: unknown, data: unknown)
 	if type(kind) == "string" then
 		bounties:Handle(kind, data)
+	end
+end)
+-- Killstreak rewards: the meter over the weapon dock, and the news when one lands. The
+-- streak and the airstrike charges are server-written attributes on the player.
+local streaks = safe("Streaks", function()
+	return Streaks.new(screen)
+end)
+local function refreshStreak()
+	streaks:SetStreak(tonumber(player:GetAttribute("Streak")) or 0)
+	streaks:SetCharges(tonumber(player:GetAttribute("AirstrikeCharges")) or 0)
+end
+refreshStreak()
+player:GetAttributeChangedSignal("Streak"):Connect(refreshStreak)
+player:GetAttributeChangedSignal("AirstrikeCharges"):Connect(refreshStreak)
+local REWARD_NEWS = {
+	Radar = "Enemies near you show through walls",
+	Overshield = "A shield over your health until it breaks",
+	Airstrike = "Aim and press " .. StreakConfig.Airstrike.key.Name .. " to call it in",
+}
+Remote.get("Remotes", "StreakEvent").OnClientEvent:Connect(function(kind: unknown, data: unknown)
+	if type(data) ~= "table" then
+		return
+	end
+	if kind == "reward" then
+		local reward = StreakConfig.Get(tostring((data :: any).id))
+		if reward then
+			streaks:Reward(reward.id)
+			toast:Push({
+				title = reward.name .. (if reward.id == "Airstrike" then " READY" else " ONLINE"),
+				text = REWARD_NEWS[reward.id] or reward.blurb,
+				icon = reward.icon, colour = reward.colour, duration = 5,
+			})
+		end
+	elseif kind == "radar" then
+		streaks:Radar(tonumber((data :: any).duration) or 0)
+	end
+end)
+task.spawn(function()
+	while true do
+		task.wait(1)
+		streaks:Tick()
 	end
 end)
 
@@ -543,6 +586,17 @@ local function onCharacter(character: Model)
 	refreshArmour()
 	track(character:GetAttributeChangedSignal("Armour"):Connect(refreshArmour))
 	track(character:GetAttributeChangedSignal("MaxArmour"):Connect(refreshArmour))
+
+	-- A killstreak's overshield: a violet shell on the health bar, and its chip on the meter.
+	local function refreshOvershield()
+		local current = tonumber(character:GetAttribute("Overshield")) or 0
+		local maximum = tonumber(character:GetAttribute("MaxOvershield")) or 0
+		hud:SetOvershield(current, maximum)
+		streaks:SetOvershield(current, maximum)
+	end
+	refreshOvershield()
+	track(character:GetAttributeChangedSignal("Overshield"):Connect(refreshOvershield))
+	track(character:GetAttributeChangedSignal("MaxOvershield"):Connect(refreshOvershield))
 
 	bindTool(currentTool(character))
 	track(character.ChildAdded:Connect(function(child: Instance)
@@ -1191,9 +1245,12 @@ local function refreshMenuState()
 	bossBar:SetVisible(clear)
 	toast:SetVisible(clear)
 	bounties:SetVisible(clear)
+	-- Streaks do not count in a duel, so the meter has nothing to say there.
+	streaks:SetHidden(not clear or scoped or player:GetAttribute("DuelState") == "duel")
 end
 refreshMenuState()
 player:GetAttributeChangedSignal("UIOpen"):Connect(refreshMenuState)
+player:GetAttributeChangedSignal("DuelState"):Connect(refreshMenuState)
 
 -- The title screen's "1V1 DUEL" shortcut: into the queue the moment the game is on screen.
 player:GetAttributeChangedSignal("TitleAction"):Connect(function()

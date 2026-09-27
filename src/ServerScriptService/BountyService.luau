@@ -31,6 +31,16 @@ BountyService.MAX = 4000
 BountyService.CLAIM_XP = 400
 BountyService.CALLS = { [3] = "KILLING SPREE", [5] = "WANTED", [8] = "RAMPAGE", [12] = "UNSTOPPABLE" }
 
+-- Fired whenever a streak moves: (player, streak) -- up by one on a kill, back to 0 on a death.
+-- The killstreak rewards (StreakRewardService) run off this, so they and the WANTED price
+-- can never count differently. The streak is also on the player as "Streak" for the HUD.
+BountyService.StreakChanged = Instance.new("BindableEvent")
+
+local function setStreak(player: Player, streak: number)
+	player:SetAttribute("Streak", streak)
+	BountyService.StreakChanged:Fire(player, streak)
+end
+
 local remotes = ReplicatedStorage:FindFirstChild("Remotes")
 if not remotes then
 	remotes = Instance.new("Folder")
@@ -110,6 +120,7 @@ KillCredit.KillAwarded.Event:Connect(function(killer: Player, humanoid: Humanoid
 	-- The killer's streak, and what it makes them worth.
 	local streak = (streaks[killer] or 0) + 1
 	streaks[killer] = streak
+	setStreak(killer, streak)
 	local call = BountyService.CALLS[streak]
 	if streak >= BountyService.WANTED_AT then
 		local price = priceFor(streak)
@@ -141,12 +152,14 @@ local function onCharacter(player: Player, character: Model)
 			end)
 		end
 		streaks[player] = 0
+		setStreak(player, 0)
 		player:SetAttribute("Bounty", nil)
 	end)
 end
 
 local function onPlayer(player: Player)
 	streaks[player] = 0
+	player:SetAttribute("Streak", 0)
 	player:SetAttribute("Bounty", nil)
 	if player.Character then
 		task.spawn(onCharacter, player, player.Character)

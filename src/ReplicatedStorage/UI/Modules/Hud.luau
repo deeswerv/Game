@@ -22,6 +22,7 @@ local Hud = {}
 Hud.__index = Hud
 
 local WHITE = Color3.new(1, 1, 1)
+local OVERSHIELD = Color3.fromRGB(176, 123, 255)
 local HEALTH_WIDTH = 300
 local ARMOUR_SEGMENTS = 3
 
@@ -252,7 +253,8 @@ local function buildVitals(self, parent: GuiObject)
 	track.Size = UDim2.fromScale(1, 1)
 	track.Parent = barHolder
 	Components.Corner(track, 8)
-	Components.Stroke(track, Theme.Colour.Outline, 3).Transparency = 0
+	local trackStroke = Components.Stroke(track, Theme.Colour.Outline, 3)
+	trackStroke.Transparency = 0
 
 	local chip = Instance.new("Frame")
 	chip.Name = "Chip"
@@ -293,7 +295,35 @@ local function buildVitals(self, parent: GuiObject)
 	value.Size = UDim2.fromScale(1, 1)
 	value.ZIndex = 3
 
+	-- A killstreak's overshield: a violet band over the top of the fill and a violet rim, so it
+	-- reads as a shell over the health rather than more of it, and how much is left beside
+	-- the name.
+	local shell = Instance.new("Frame")
+	shell.Name = "Overshield"
+	shell.BackgroundColor3 = OVERSHIELD
+	shell.BorderSizePixel = 0
+	shell.Size = UDim2.new(0, 0, 0, 9)
+	shell.Position = UDim2.fromOffset(0, 0)
+	shell.ZIndex = 2
+	shell.Visible = false
+	shell.Parent = track
+	Components.Corner(shell, 8)
+	Components.Gradient(shell, Color3.fromRGB(245, 235, 255), Color3.fromRGB(170, 150, 200))
+	local shellValue = Components.Label(holder, {
+		text = "",
+		font = Theme.Font.Display,
+		size = 20,
+		colour = OVERSHIELD,
+		align = Enum.TextXAlignment.Right,
+		outline = 2,
+	})
+	shellValue.Name = "OvershieldValue"
+	shellValue.Size = UDim2.fromOffset(HEALTH_WIDTH, 34)
+	shellValue.Position = UDim2.fromOffset(0, 0)
+	shellValue.Visible = false
+
 	self._vitals = holder
+	self._shell, self._shellValue, self._trackStroke = shell, shellValue, trackStroke
 	self._playerName = name
 	self._armourRow, self._armourSegments = armourRow, segments
 	self._healthFill, self._healthChip, self._health = fill, chip, value
@@ -560,6 +590,19 @@ function Hud:SetArmour(current: number, maximum: number)
 	for i, seg in ipairs(self._armourSegments) do
 		local inSegment = math.clamp(current - per * (i - 1), 0, per)
 		seg:SetFraction(per > 0 and inSegment / per or 0)
+	end
+end
+
+--- A killstreak's overshield over the health bar. 0 hides it.
+function Hud:SetOvershield(current: number, maximum: number)
+	local on = current > 0 and maximum > 0
+	self._shell.Visible = on
+	self._shellValue.Visible = on
+	self._trackStroke.Color = if on then OVERSHIELD else Theme.Colour.Outline
+	self._trackStroke.Thickness = if on then 3.5 else 3
+	if on then
+		self._shell.Size = UDim2.new(math.clamp(current / maximum, 0, 1), 0, 0, 9)
+		self._shellValue.Text = "🛡 " .. tostring(math.ceil(current))
 	end
 end
 

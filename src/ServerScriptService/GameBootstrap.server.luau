@@ -54,6 +54,7 @@ local systems = {
 	"AchievementService",  -- long-term goals and the titles they give, from the same events
 	"SupplyDropService",   -- a crate on a parachute every few minutes: a race across the map
 	"BountyService",       -- kill streaks, WANTED players and the price on their heads
+	"StreakRewardService", -- what a streak earns: radar at 3, an overshield at 5, an airstrike at 8
 	"SettingsService",     -- saves the settings panel (volumes, camera shake, field of view)
 	"DuelPads",            -- 1v1 pads: the DUEL HALL's pair downtown (the lobby's are retired)
 	"DistrictService",     -- Downtown: the city district (Travel menu), its shops, hall and stash

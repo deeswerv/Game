@@ -382,7 +382,9 @@ INSTANCE.__index = function(self, key)
 	if CALLBACKS[key] then
 		return st.props[key]
 	end
-	local m = Methods[key] or classMethod(st.class, key)
+	-- A class's own method wins over the one every Instance has, as in the engine:
+	-- CollectionService:AddTag(inst, tag) is the service's, not Instance:AddTag(tag).
+	local m = classMethod(st.class, key) or Methods[key]
 	if m then
 		return m
 	end
@@ -1028,11 +1030,13 @@ ClassMethods.Camera = {
 	WorldToScreenPoint = function(_, p)
 		return roblox.Vector3.new(640, 360, 10), true
 	end,
+	-- Every point is taken as the middle of the screen (where the crosshair is), so the ray
+	-- is the camera's own look.
 	ViewportPointToRay = function(self, x, y)
-		return roblox.Ray.new(self.CFrame.Position, roblox.Vector3.new(0, 0, -1))
+		return roblox.Ray.new(self.CFrame.Position, self.CFrame.LookVector)
 	end,
 	ScreenPointToRay = function(self, x, y)
-		return roblox.Ray.new(self.CFrame.Position, roblox.Vector3.new(0, 0, -1))
+		return roblox.Ray.new(self.CFrame.Position, self.CFrame.LookVector)
 	end,
 	GetPartsObscuringTarget = function()
 		return {}

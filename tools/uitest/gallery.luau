@@ -44,6 +44,7 @@ World.serverRemotes({
 		GunEffect = "RemoteEvent", NPCEffect = "RemoteEvent", GunAction = "RemoteEvent",
 		MeleeAction = "RemoteEvent", MeleeEffect = "RemoteEvent", AimUpdate = "RemoteEvent",
 		EmotePlay = "RemoteEvent", UtilityAction = "RemoteEvent", UtilityEvent = "RemoteEvent",
+		StreakEvent = "RemoteEvent", StreakAction = "RemoteEvent",
 	},
 })
 require("./fixtures")(World)
@@ -395,6 +396,24 @@ end
 World.serverFire("Remotes", "KillFeed", "Bandit", tool and tool.Name or "Warden")
 shot("08_kill", 0.3)
 World.advance(2.5)
+
+-- 44, 45. Killstreak rewards: four kills in with the radar up and an overshield taking hits;
+-- then eight, the airstrike ready to call in.
+World.player:SetAttribute("Streak", 4)
+World.serverFire("Remotes", "StreakEvent", "reward", { id = "Radar", streak = 3 })
+World.serverFire("Remotes", "StreakEvent", "radar", { duration = 12, range = 260 })
+World.character:SetAttribute("MaxOvershield", 60)
+World.character:SetAttribute("Overshield", 42)
+shot("44_streak_radar", 0.6)
+World.advance(4)
+World.character:SetAttribute("Overshield", 0)
+World.player:SetAttribute("Streak", 8)
+World.player:SetAttribute("AirstrikeCharges", 1)
+World.serverFire("Remotes", "StreakEvent", "reward", { id = "Airstrike", streak = 8 })
+shot("45_airstrike_ready", 0.6)
+World.advance(5)
+World.player:SetAttribute("Streak", 0)
+World.player:SetAttribute("AirstrikeCharges", 0)
 
 -- 9. The death card. The character really dies first, as it would.
 do

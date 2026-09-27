@@ -145,6 +145,10 @@ end
 -- so nothing a client does can change it. Anything without the attribute is unaffected.
 local ARMOUR_TAKES = 0.65
 
+-- What soaks a hit before health, outermost first: a killstreak's overshield
+-- (StreakRewardService), then armour plates. Both SERVER-written attributes on the character.
+local SOAKS = { "Overshield", "Armour" }
+
 function KillCredit.Mitigate(humanoid: Humanoid?, amount: number): number
 	local model = humanoid and humanoid.Parent
 	if not model or amount <= 0 then
@@ -157,26 +161,32 @@ function KillCredit.Mitigate(humanoid: Humanoid?, amount: number): number
 	if type(rating) == "number" and rating > 0 then
 		amount = math.max(amount - rating, amount * (1 - ARMOUR_TAKES))
 	end
-	-- A player's armour plates (UtilityService): they soak the hit whole until they run out.
-	local plates = model:GetAttribute("Armour")
-	if type(plates) == "number" and plates > 0 then
-		amount = math.max(0, amount - plates)
+	-- A killstreak's overshield, then a player's armour plates (UtilityService): each soaks
+	-- the hit whole until it runs out.
+	for _, pool in ipairs(SOAKS) do
+		local left = model:GetAttribute(pool)
+		if type(left) == "number" and left > 0 then
+			amount = math.max(0, amount - left)
+		end
 	end
 	return amount
 end
 
---- Take a hit out of a player's armour plates first. Returns what is left for their health.
+--- Take a hit out of what a player wears over their health -- the overshield first, then
+--- their armour plates. Returns what is left for their health.
 local function soakPlates(model: Instance?, amount: number): number
 	if not model or amount <= 0 or model:FindFirstChildOfClass("ForceField") then
 		return amount
 	end
-	local plates = model:GetAttribute("Armour")
-	if type(plates) ~= "number" or plates <= 0 then
-		return amount
+	for _, pool in ipairs(SOAKS) do
+		local left = model:GetAttribute(pool)
+		if type(left) == "number" and left > 0 and amount > 0 then
+			local soaked = math.min(left, amount)
+			model:SetAttribute(pool, left - soaked)
+			amount -= soaked
+		end
 	end
-	local soaked = math.min(plates, amount)
-	model:SetAttribute("Armour", plates - soaked)
-	return amount - soaked
+	return amount
 end
 
 -- Apply damage and attribute it. Use this instead of humanoid:TakeDamage.
