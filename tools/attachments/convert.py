@@ -60,9 +60,8 @@ ORDER = list(ATTACHMENTS)
 # GLBs (the shards were placed by hand after import). Neither used for the fit nor ever
 # replaced by an attachment.
 DECORATION = {"DarkMatterCrystals", "DarkMatterEnergy", "VFX", "AttachmentPoints"}
-# Decoration that grows on a particular part of the gun, and so leaves when that part is
-# hidden. Not the VFX: the flash moves with the muzzle, and the shimmer motes float freely.
-GROWN = {"DarkMatterCrystals", "DarkMatterEnergy"}
+# The crystals stay whatever is fitted: every attachment GLB keeps all 146 of them, unmoved --
+# the skeleton stock frames the stock's cluster, the extended mag carries the magazine's.
 
 # See-through pieces: an optic you cannot see through is a blindfold.
 LENS = re.compile(r"(Lens|Window)$")
@@ -341,25 +340,6 @@ def main():
 
     template_pos = np.array([p["cf"][:3] for p in tparts])
 
-    # Which of the weapon's own parts each piece of decoration (crystal, vein) grows from:
-    # the non-decoration part whose box its centre is nearest to -- inside it, in practice.
-    solid = [p for p in tparts if p.get("group") not in DECORATION and p["transparency"] < 1]
-
-    def box_distance(pt, p):
-        cf = p["cf"]
-        rot = np.array(cf[3:]).reshape(3, 3)
-        local = rot.T @ (pt - np.array(cf[:3]))
-        over = np.maximum(np.abs(local) - np.array(p["size"]) / 2, 0)
-        return float(np.linalg.norm(over))
-
-    host_cache = {}
-
-    def host_of(c):
-        key = id(c)
-        if key not in host_cache:
-            at = np.array(c["cf"][:3])
-            host_cache[key] = min(solid, key=lambda p: box_distance(at, p))["name"]
-        return host_cache[key]
     name_count = {}
     for p in tparts:
         name_count[p["name"]] = name_count.get(p["name"], 0) + 1
@@ -383,17 +363,6 @@ def main():
             if not every <= replaced:
                 sys.exit(f"{stem}: would hide {name}, but only some of the parts with that name")
             hides.append(name)
-        # Decoration that grows ON a hidden part goes with it: the stock's crystals and veins
-        # would otherwise hang in the air where the solid stock was, and the standard mag's
-        # would stick out through the extended one.
-        hidden = set(hides)
-        for c in tparts:
-            if c.get("group") in GROWN and c["name"] not in hidden:
-                h = host_of(c)
-                if h in hidden:
-                    hides.append(c["name"])
-                    hidden.add(c["name"])
-        hides.sort()
         parts = []
         preview = []
         for m in att:

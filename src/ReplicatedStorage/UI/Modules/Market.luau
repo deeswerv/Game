@@ -153,15 +153,22 @@ local function masteryCatalog()
 	for _, variant in ipairs(WeaponConfig.Variants or {}) do
 		-- Only list a variant whose Tool is actually in the game.
 		if store and store:FindFirstChild(variant.id) ~= nil then
+			-- Sold for Robux only once a Developer Product is set up for it; until then the
+			-- card says how to earn it instead of showing a price that cannot be paid.
+			local product = tonumber(variant.product) or 0
+			local earn = WeaponConfig.EarnText(variant)
 			table.insert(entries, {
-				id = variant.id,
+				id = product > 0 and product or variant.id,
 				name = variant.name,
-				desc = variant.desc,
+				-- The card's text box holds about two lines: how to earn it is what matters there.
+				desc = earn or variant.desc,
 				rarity = variant.rarity,
-				robux = variant.robux,
+				robux = product > 0 and variant.robux or nil,
 				levelRequired = variant.levelRequired or 1,
 				preview = variant.id,
-				kind = variant.robux and "variant" or nil,
+				owns = variant.id,
+				kind = product > 0 and "variant" or nil,
+				earn = earn,
 				ready = true,
 			})
 		end
@@ -354,7 +361,7 @@ end
 
 function Market:_buildCard(shelf, entry, index: number)
 	local rarityColour = Theme.RarityColour(entry.rarity)
-	local owned = self:_owns(shelf.field, entry.id)
+	local owned = self:_owns(shelf.field, entry.owns or entry.id)
 	local locked = self._level < (entry.levelRequired or 1)
 	local price, willTrade = 0, true
 	if entry.price then
@@ -482,12 +489,18 @@ function Market:_buildCard(shelf, entry, index: number)
 		else
 			label, colour = "EQUIP", Theme.Colour.Accent
 		end
+	elseif owned and entry.earn then
+		-- A Mastery Weapon you have: nothing to buy.
+		label, enabled = "OWNED", false
 	elseif entry.robux then
 		if entry.ready == false then
 			label, enabled = "SOON", false
 		else
 			label, colour = string.format("R$ %s", comma(entry.robux)), Color3.fromRGB(255, 196, 30)
 		end
+	elseif entry.earn then
+		-- Not on sale: it is earned, and the card says how.
+		label, enabled = "EARN IT", false
 	elseif owned then
 		label, enabled = "OWNED", false
 	elseif locked then

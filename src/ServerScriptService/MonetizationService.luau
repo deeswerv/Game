@@ -11,6 +11,20 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GameConfig = require(ReplicatedStorage.GameConfig)
+local WeaponConfig = require(ReplicatedStorage.WeaponConfig)
+
+-- A Mastery Weapon sold as a Developer Product (WeaponConfig.Variants[].product), by id.
+local function variantByProduct(id: number)
+	if id == 0 then
+		return nil
+	end
+	for _, variant in ipairs(WeaponConfig.Variants or {}) do
+		if tonumber(variant.product) == id then
+			return variant
+		end
+	end
+	return nil
+end
 
 -- Receipts already granted. Roblox re-sends a receipt until we confirm it, so this
 -- is what stops a coin bundle being granted twice after a server crash.
@@ -120,12 +134,26 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 	end
 
 	local entry = GameConfig.GetProductById(receiptInfo.ProductId)
-	if not entry then
+	local variant = not entry and variantByProduct(receiptInfo.ProductId) or nil
+	if not entry and not variant then
 		warn("[Monetization] unknown ProductId " .. tostring(receiptInfo.ProductId))
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 
-	if not grantProduct(player, entry) then
+	if variant then
+		-- A Mastery Weapon: the same ownership record earning one writes. Granted already
+		-- (earned first, say) still counts as delivered.
+		local ok, ShopService = pcall(function()
+			return require(game:GetService("ServerScriptService").ShopService) :: any
+		end)
+		if not ok then
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
+		if not ShopService.Grant(player, "OwnedVariants", variant.id)
+			and not ShopService.OwnsInField(player, "OwnedVariants", variant.id) then
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
+	elseif not grantProduct(player, entry) then
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 
@@ -152,6 +180,12 @@ PromptPurchase.OnServerEvent:Connect(function(player, kind, id)
 	if kind == "product" then
 		-- Only prompt for ids that are actually in our catalog.
 		if not GameConfig.GetProductById(id) then
+			return
+		end
+		MarketplaceService:PromptProductPurchase(player, id)
+	elseif kind == "variant" then
+		-- A Mastery Weapon, by its Developer Product id; only ids a variant actually names.
+		if not variantByProduct(id) then
 			return
 		end
 		MarketplaceService:PromptProductPurchase(player, id)

@@ -126,6 +126,13 @@ if vfxTab then
 	World.advance(0.4)
 end
 shot("31_vfx_shop")
+-- The Mastery shelf: both Dark Matter weapons, with how each is earned.
+local masteryTab = World.find(World.playerGui, "Mastery", "TextButton")
+if masteryTab then
+	World.click(masteryTab)
+	World.advance(0.4)
+end
+shot("43_mastery_shelf")
 toggle(Enum.KeyCode.M)
 toggle(Enum.KeyCode.K)
 shot("04_armory")

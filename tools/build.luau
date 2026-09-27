@@ -61,6 +61,7 @@ local ctx = {}
 ctx.game = game
 ctx.roblox = roblox
 ctx.fs = fs
+ctx.serde = serde
 
 function ctx.find(path: string): any
 	local inst: any = game

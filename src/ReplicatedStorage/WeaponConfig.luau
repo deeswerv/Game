@@ -999,6 +999,9 @@ WeaponConfig.Variants = {
 		desc = "Obsidian and grown crystal. The veins wake up when it fires.",
 		rarity = "Mythic",
 		robux = 2000,
+		-- The Developer Product that sells it. 0 until one is made on the Creator Dashboard;
+		-- until then the market says how to earn it rather than showing a price nobody can pay.
+		product = 0,
 		-- Earned as well as sold. Silver is 100 kills with the Carbine -- a few hours, not a
 		-- grind, which is what "earned early" asks for. One word to move it up a tier.
 		earn = { mastery = "Silver", weapon = "Carbine" },
@@ -1028,7 +1031,60 @@ WeaponConfig.Variants = {
 			BodyVFXScale = 0.3,
 		},
 	},
+	{
+		id = "Warden_DarkMatter",
+		base = "Warden",
+		name = "Warden - Dark Matter",
+		desc = "The full-length rifle, grown over with obsidian and crystal. Its own sight, its own light.",
+		rarity = "Mythic",
+		robux = 2500,
+		product = 0,
+		-- Gold is 250 kills with the Warden: a step past the carbine's Silver, as the bigger gun.
+		earn = { mastery = "Gold", weapon = "Warden" },
+		-- Rebuilt part by part from ARCarbineHD_DarkMatter.glb at build time
+		-- (tools/weapons/convert_glb.py -> tools/patches/070_mastery_weapons.luau): the
+		-- receivers, grip, curved magazine and stock sliced to their authored profiles, the
+		-- 180 crystals as faceted shards along their own axes, the energy veins lit. It wears
+		-- the Dark Matter carbine's own authored muzzle flash. If the GLB is ever brought in
+		-- through Studio's 3D importer under this name, the import is used instead.
+		model = "Warden_DarkMatter",
+		visual = {
+			MuzzleFlashColor = Color3.fromRGB(176, 123, 255),
+			TracerColor = Color3.fromRGB(106, 43, 255),
+			TracerWidth = 0.1,
+			HeadshotVFX = "gemstoneCharge",
+			HeadshotVFXScale = 0.85,
+			BodyVFX = "gemstoneCharge",
+			BodyVFXScale = 0.3,
+		},
+	},
 }
+
+--- How a variant is earned, in words for the market card: "Earn at Gold mastery: 250 Warden
+--- kills". Nil for a variant that is not earned.
+function WeaponConfig.EarnText(variant): string?
+	local earn = variant and variant.earn
+	if type(earn) ~= "table" or not earn.mastery or not earn.weapon then
+		return nil
+	end
+	local kills = nil
+	local ok, ProgressionConfig = pcall(function()
+		return require(script.Parent:FindFirstChild("ProgressionConfig") :: ModuleScript)
+	end)
+	if ok and type(ProgressionConfig) == "table" then
+		for _, tier in ipairs(ProgressionConfig.MasteryTiers or {}) do
+			if tier.id == earn.mastery then
+				kills = tier.kills
+			end
+		end
+	end
+	local base = WeaponConfig.Weapons[earn.weapon]
+	local weaponName = (base and base.DisplayName) or earn.weapon
+	if kills then
+		return string.format("Earn at %s mastery: %d %s kills", earn.mastery, kills, weaponName)
+	end
+	return string.format("Earn at %s mastery with the %s", earn.mastery, weaponName)
+end
 
 -- Every variant gets a real Weapons entry, CLONED from its base at load and then overlaid
 -- with whatever it changes. Cloning rather than hand-writing the stats is the guard: a

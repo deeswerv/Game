@@ -196,7 +196,7 @@ AttachmentModels.Weapons = {
 		},
 		Magazine = {
 			Extended = { name = "Extended Mag", source = "Mag_Extended.glb",
-				hides = { "MagBase", "MagFeedLips", "MagFloor", "MagMid", "MagRibL0", "MagRibL1", "MagRibL2", "MagRibR0", "MagRibR1", "MagRibR2", "Magazine", "MagazineLShard0", "MagazineLShard1", "MagazineLShard2", "MagazineLShard3", "MagazineRShard0", "MagazineRShard1", "MagazineRShard2", "MagazineRShard3" },
+				hides = { "MagBase", "MagFeedLips", "MagFloor", "MagMid", "MagRibL0", "MagRibL1", "MagRibL2", "MagRibR0", "MagRibR1", "MagRibR2", "Magazine" },
 				parts = {
 					piece("Body0", "Block", Vector3.new(0.1792, 0.2213, 0.274), CFrame.new(0.0005, 0.15472, -0.5263, -0.001231, -0.999955, 0.009394, 0.056239, 0.00931, 0.998374, -0.998417, 0.001758, 0.056225), Color3.new(0.0588, 0.0627, 0.0902), M.SmoothPlastic, 0.024),
 					piece("RibL0", "Block", Vector3.new(0.0211, 0.0263, 0.1433), CFrame.new(-0.11279, 0.15578, -0.5261, -0.009394, -0.999955, -0.001231, -0.998374, 0.00931, 0.056239, -0.056225, 0.001758, -0.998417), Color3.new(0.0353, 0.0392, 0.0706), M.Metal, 0.056),
@@ -222,7 +222,7 @@ AttachmentModels.Weapons = {
 		},
 		Stock = {
 			Skeleton = { name = "Skeleton Stock", source = "Stock_Skeleton.glb",
-				hides = { "BufferTube", "BufferTubeNotch0", "BufferTubeNotch1", "BufferTubeNotch2", "ButtPad", "SlingLoop", "Stock", "StockAdapter", "StockCheekRiser", "StockCombShard0", "StockCombShard1", "StockCombShard2", "StockCombShard3", "StockCutoutL", "StockCutoutR", "StockLShard0", "StockLShard1", "StockLShard2", "StockLShard3", "StockLShard4", "StockLayerLShard0", "StockLayerLShard1", "StockLayerLShard2", "StockLayerLShard3", "StockLayerRShard0", "StockLayerRShard1", "StockLayerRShard2", "StockLayerRShard3", "StockRShard0", "StockRShard1", "StockRShard2", "StockRShard3", "StockRShard4", "StockToe", "VeinStockL", "VeinStockR" },
+				hides = { "BufferTube", "BufferTubeNotch0", "BufferTubeNotch1", "BufferTubeNotch2", "ButtPad", "SlingLoop", "Stock", "StockAdapter", "StockCheekRiser", "StockCutoutL", "StockCutoutR", "StockToe" },
 				parts = {
 					piece("Adapter", "Block", Vector3.new(0.1792, 0.2319, 0.2635), CFrame.new(0.00539, 0.52757, 0.28022, -0.002163, -0.999955, 0.009224, -0.043713, 0.00931, 0.999001, -0.999042, 0.001758, -0.043731), Color3.new(0.0471, 0.051, 0.0745), M.Metal, 0.205),
 					piece("BufferTube", "Cylinder", Vector3.new(0.7377, 0.1627, 0.1627), CFrame.new(0.00639, 0.56499, 0.65308, -0.002163, 0.999955, -0.009224, -0.043713, -0.00931, -0.999001, -0.999042, -0.001758, 0.043731), Color3.new(0.0471, 0.051, 0.0745), M.Metal, 0.205),

@@ -267,6 +267,39 @@ Enemies fight like a squad, not a row of turrets:
 - **Fewer, slower respawns.** Camps refill after 50 seconds to 3 minutes rather than 12, never
   within 45 studs of a player, and at most 24 enemies are alive on a server.
 
+## Mastery Weapons
+
+Whole Dark Matter versions of a gun, earned by mastering it (or, once a Developer Product id is
+set on the variant in `WeaponConfig.Variants`, bought with Robux). Each keeps its base gun's
+numbers exactly -- a look, never an advantage -- with its own shots (the gem-charge hit effect,
+purple tracers and flash).
+
+- **Carbine - Dark Matter** -- Silver mastery with the Carbine (100 kills). The imported model.
+- **Warden - Dark Matter** -- Gold mastery with the Warden (250 kills). The HD rifle
+  (`ARCarbineHD_DarkMatter.glb`): obsidian receivers, a curved magazine, skeletonised stock, a
+  red dot on its own riser and 180 crystals, rebuilt part for part (670 parts) and wearing the
+  carbine's authored muzzle flash.
+
+The market's **Mastery** shelf lists them with how each is earned ("EARN IT") and marks the ones
+you own; they sit among your guns in the inventory and the armory like any other.
+
+The HD rifle comes from its GLB at build time, with no upload:
+
+```sh
+python3 tools/weapons/convert_glb.py ARCarbineHD_DarkMatter.glb tools/weapons/Warden_DarkMatter.json --length 4.2 --preview out/prev.json
+node tools/weapons/preview.mjs out/prev.json out/compare.png three     # GLB left, rebuild right
+lune run tools/weapons/export_tool.luau -- Warden_DarkMatter out/tool.json   # after a build: the Tool as assembled
+```
+
+`convert_glb.py` turns each mesh into parts in the gun's Handle space -- bevelled boxes into
+Blocks, cylinders and lathed rings into Cylinders (open rings into an eight-slat band so the
+optic's lens shows), profiled extrusions (receivers, grip, magazine, stock, trigger guard)
+sliced into strips of Blocks and Wedges that follow the authored outline, crystal shards into a
+body and a chisel tip along their own axes -- and `tools/patches/070_mastery_weapons.luau` builds
+the Tool into `storeitems`. If the GLB is ever imported through Studio under the same name, the
+import is kept instead. `tools/uitest/mastery.luau` checks the Tool, the reload, the variant and
+earning it.
+
 ## Attachments
 
 Twelve authored attachments, made for the **Dark Matter Carbine** (Mastery): a **Red Dot**,
@@ -275,8 +308,8 @@ Twelve authored attachments, made for the **Dark Matter Carbine** (Mastery): a *
 **side rail** (so a light or laser can run with a grip); an **Extended Mag** (+10 rounds) and a
 **Skeleton Stock**. Each one is the artist's model rebuilt piece by piece where it was authored,
 so fitting it is exact: the optic folds the iron sights away, a muzzle device moves the muzzle
-(and the carbine's own flash) out to its end, the extended mag is the one the reload drops, and
-anything the stock part carried (its crystals) goes with it. Buy and fit them in the **Armory**
+(and the carbine's own flash) out to its end, and the extended mag is the one the reload drops
+(its crystals ride on it). The crystals stay put whatever is fitted, as in the authored GLBs. Buy and fit them in the **Armory**
 (K) on the gun itself -- press a padlocked chip twice to buy it; the shop no longer has an
 attachment shelf. Other guns take none until attachments are made for them.
 
