@@ -492,6 +492,7 @@ end
 -- difference between a HUD that stays correct and one that slowly accumulates dead listeners.
 local characterConnections: { RBXScriptConnection } = {}
 local dead = false          -- PLAY stays down while the death card is up
+local refreshMenuState: () -> () -- (below) what the HUD shows, given menus, scope and death
 
 local function clearCharacter()
 	for _, c in ipairs(characterConnections) do
@@ -575,11 +576,18 @@ local function onCharacter(character: Model)
 	feedback:Reset()
 	dead = false
 	duel:SetPlayAllowed(player:GetAttribute("Scoped") ~= true)
+	-- (The first character arrives before the menu state below is wired up.)
+	if refreshMenuState then
+		refreshMenuState()
+	end
 	local humanoid = character:WaitForChild("Humanoid", 10)
 	if humanoid and humanoid:IsA("Humanoid") then
 		track(humanoid.Died:Connect(function()
 			dead = true
 			duel:SetPlayAllowed(false)
+			if refreshMenuState then
+				refreshMenuState()
+			end
 		end))
 		local lastHealth = humanoid.Health
 		local function refreshHealth()
@@ -1250,7 +1258,7 @@ end)
 -- UIState counts open panels onto this attribute. The HUD steps out of the way rather than
 -- showing through a panel -- and because it reads the shared flag, it cannot disagree with
 -- ShiftLock about whether a menu is open.
-local function refreshMenuState()
+function refreshMenuState()
 	local clear = player:GetAttribute("UIOpen") ~= true
 	-- Looking through a scope: the lens gets the middle of the screen to itself.
 	local scoped = player:GetAttribute("Scoped") == true
@@ -1265,8 +1273,10 @@ local function refreshMenuState()
 	toast:SetVisible(clear)
 	bounties:SetVisible(clear)
 	stickups:SetVisible(clear)
-	-- The compass is for the open world; a duel is one room.
-	wayfinding:SetVisible(clear and not scoped and player:GetAttribute("DuelState") ~= "duel")
+	-- The compass is for the open world; a duel is one room. Dead, the death card has the top
+	-- of the screen, and a banner comes down under it.
+	wayfinding:SetVisible(clear and not scoped and not dead and player:GetAttribute("DuelState") ~= "duel")
+	toast:SetDeathMode(dead)
 	-- Streaks do not count in a duel, so the meter has nothing to say there.
 	streaks:SetHidden(not clear or scoped or player:GetAttribute("DuelState") == "duel")
 end

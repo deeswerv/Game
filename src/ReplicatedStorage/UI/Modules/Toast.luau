@@ -11,6 +11,9 @@ local Theme = require(script.Parent.Theme)
 local Components = require(script.Parent.Components)
 local UISound = require(script.Parent.UISound)
 
+-- Where the banner comes down: under the compass and its distance labels.
+local BANNER_Y = 134
+
 local Toast = {}
 Toast.__index = Toast
 
@@ -55,7 +58,7 @@ function Toast.new(parent: GuiObject)
 	banner.BackgroundTransparency = 0.25
 	banner.BorderSizePixel = 0
 	banner.AnchorPoint = Vector2.new(0.5, 0)
-	banner.Position = UDim2.new(0.5, 0, 0, 112)
+	banner.Position = UDim2.new(0.5, 0, 0, BANNER_Y)
 	banner.Size = UDim2.fromOffset(760, 84)
 	banner.Visible = false
 	banner.ZIndex = Theme.Layer.Toast
@@ -276,6 +279,12 @@ end
 
 function Toast:SetVisible(visible: boolean)
 	self._stack.Visible = visible
+end
+
+--- While the death card holds the top of the screen, a banner (a turf war won while you were
+--- down, say) comes down under it instead of over it.
+function Toast:SetDeathMode(on: boolean)
+	self._banner.Position = UDim2.new(0.5, 0, 0, if on then 404 else BANNER_Y)
 end
 
 return Toast

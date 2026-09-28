@@ -148,6 +148,17 @@ way:HandleSupply("opened", { id = 7 })
 World.advance(0.1)
 check(layer:FindFirstChild("turf:Courts") == nil and layer:FindFirstChild("supply:7") == nil, "and come down when they are over")
 
+local towerText = towerView:FindFirstChild("Distance")
+World.advance(0.1)
+check(towerText.Text:find("ZEE TOWER", 1, true) ~= nil, "facing the tower with nothing else about, it is named: " .. towerText.Text)
+way:Set("near", "job", "◆", roblox.Color3.new(1, 1, 0), "RIGHT HERE", CENTRE + Vector3.new(-12, 0, 40))
+World.advance(0.1)
+local nearText = layer:FindFirstChild("near"):FindFirstChild("Distance")
+check(towerText.Text == "" and nearText.Text:find("RIGHT HERE", 1, true) ~= nil,
+	"a job beside it takes the name; the tower gives way (" .. nearText.Text .. ")")
+way:Clear("near")
+World.advance(0.1)
+
 print("the names of places")
 local title = screen:FindFirstChild("AreaTitle")
 local function shown()

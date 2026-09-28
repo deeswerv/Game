@@ -462,10 +462,17 @@ function Market:_buildCard(shelf, entry, index: number)
 		colour = Color3.fromRGB(230, 232, 238),
 		wrap = true,
 	})
-	desc.Size = UDim2.new(1, -150, 0, 34)
-	desc.Position = UDim2.new(0, 12, 1, -42)
+	desc.Size = UDim2.new(1, -150, 0, 40)
+	desc.Position = UDim2.new(0, 12, 1, -46)
 	desc.TextYAlignment = Enum.TextYAlignment.Center
 	desc.ZIndex = 3
+	-- A long blurb steps its size down to fit beside the price rather than running out of
+	-- the card.
+	desc.TextScaled = true
+	local fit = Instance.new("UITextSizeConstraint")
+	fit.MaxTextSize = Theme.Text.Micro + 1
+	fit.MinTextSize = 9
+	fit.Parent = desc
 
 	if owned then
 		local badge = Components.Chip(card, "✓ OWNED", Theme.Colour.AccentDim)

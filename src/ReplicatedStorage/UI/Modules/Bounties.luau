@@ -39,7 +39,7 @@ function Bounties.new(screen: GuiObject, playerGui: Instance, toast: any)
 	local badge = Instance.new("Frame")
 	badge.Name = "WantedBadge"
 	badge.AnchorPoint = Vector2.new(0.5, 0)
-	badge.Position = UDim2.new(0.5, 0, 0, 202)
+	badge.Position = UDim2.new(0.5, 0, 0, 224)
 	badge.Size = UDim2.fromOffset(250, 34)
 	badge.BackgroundColor3 = RED
 	badge.BorderSizePixel = 0

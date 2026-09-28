@@ -19,7 +19,11 @@ lune run tools/build.luau
 lune run tools/uitest/smoke.luau                    # everything up
 lune run tools/uitest/smoke.luau -- drop=PromptPurchase   # a server service failed to start
 lune run tools/uitest/gallery.luau -- out/ui && node tools/uitest/shoot.mjs out/ui out/ui/*.json
+lune run tools/uitest/gallery.luau -- out/ui 01_hud,23_turf_war     # just these shots
 ```
+
+The renderer honours `UITextSizeConstraint` on scaled text and lays small text out on its own
+line box, so a caption's outline and fill line up the way the engine draws them.
 
 ## Game-rule suites
 
@@ -28,6 +32,9 @@ Each checks one system end to end and exits non-zero on a failure:
 (levels, prestige, coins and the owner panel's commands) and `emotes`
 (the emote pack: the converted tracks against the pack's own keyframes, the server's
 attributes, the client posing a real rig, the props and the paged wheel).
+`outfits` (every NPC archetype dressed through the real Body.Build: garments, hit zones, a
+crew's variety, the clerks), `nameplates` (enemy name tags, elite and boss marks) and
+`wayfinding` (the compass, area titles, job and new-job markers on the real Downtown).
 
 ```sh
 lune run tools/uitest/emotes.luau

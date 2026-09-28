@@ -421,7 +421,12 @@ function Wayfinding:_update()
 	local me = Players.LocalPlayer
 	local root = me.Character and me.Character:FindFirstChild("HumanoidRootPart")
 	local from = if root and root:IsA("BasePart") then root.Position else camera.CFrame.Position
+	-- Where everything sits first, then how it is drawn: a name under the strip needs to know
+	-- what else is near it.
+	type Placed = { m: Marker, rel: number, edge: boolean, metres: string }
+	local placed: { Placed } = {}
 	local live: { [string]: boolean } = {}
+	local half = SPAN / 2 - 6
 	for key, m in pairs(self._markers) do
 		local at = positionOf(m)
 		local offset = at and (at - from)
@@ -429,33 +434,50 @@ function Wayfinding:_update()
 		local show = at ~= nil and (m.kind ~= "landmark" or distance <= LANDMARK_RANGE) and distance > 6
 		if show and offset then
 			live[key] = true
-			local view = Wayfinding._view(self :: any, m)
 			local rel = Wayfinding.Relative(Wayfinding.Bearing(offset.X, offset.Z), heading)
-			local half = SPAN / 2 - 6
-			local edge = math.abs(rel) > half
-			local x = math.clamp(rel, -half, half) * pxPerDeg
-			view.frame.Position = UDim2.new(0.5, x, 0, 0)
-			local metres = ("%dm"):format(math.floor(distance + 0.5))
-			if m.kind == "landmark" then
-				-- A landmark stays out of the way: off the edge it is simply not shown, and its
-				-- name only comes up when you are looking right at it. (Nor is it shown twice:
-				-- a giver with a new job for you is already up as that.)
-				local offered = false
-				for giver in pairs(self._offers) do
-					offered = offered or giverTitle(giver) == m.name
-				end
-				view.frame.Visible = not edge and not offered
-				view.text.Text = if math.abs(rel) < 9 then (m.name or "") .. "  " .. metres else ""
-				view.icon.TextTransparency = if math.abs(rel) < 9 then 0 else 0.35
-			else
-				view.frame.Visible = true
-				view.text.Text = if math.abs(rel) < 12 and m.name then m.name .. "  " .. metres else metres
-				view.arrow.Visible = edge
-				view.arrow.Text = if rel < 0 then "◀" else "▶"
-				view.arrow.Position = UDim2.new(0.5, if rel < 0 then -16 else 16, 0, ICON_Y)
-			end
-			view.frame.ZIndex = if m.kind == "landmark" then 1 else 2
+			table.insert(placed, {
+				m = m, rel = rel, edge = math.abs(rel) > half, metres = ("%dm"):format(math.floor(distance + 0.5)),
+			})
 		end
+	end
+	-- Whether a bright marker (not `except`) sits within `within` degrees of `rel`, nearer the
+	-- middle than `rel` itself when `nearer` is set.
+	local function crowded(except: Marker, rel: number, within: number, nearer: boolean): boolean
+		for _, p in ipairs(placed) do
+			if p.m ~= except and p.m.kind ~= "landmark" and not p.edge and math.abs(p.rel - rel) < within
+				and (not nearer or math.abs(p.rel) < math.abs(rel)) then
+				return true
+			end
+		end
+		return false
+	end
+	for _, p in ipairs(placed) do
+		local m, rel, edge, metres = p.m, p.rel, p.edge, p.metres
+		local view = Wayfinding._view(self :: any, m)
+		view.frame.Position = UDim2.new(0.5, math.clamp(rel, -half, half) * pxPerDeg, 0, 0)
+		if m.kind == "landmark" then
+			-- A landmark stays out of the way: off the edge it is simply not shown, and its
+			-- name only comes up when you are looking right at it and nothing brighter is
+			-- beside it. (Nor is it shown twice: a giver with a new job for you is already up
+			-- as that.)
+			local offered = false
+			for giver in pairs(self._offers) do
+				offered = offered or giverTitle(giver) == m.name
+			end
+			local named = math.abs(rel) < 9 and not crowded(m, rel, 22, false)
+			view.frame.Visible = not edge and not offered
+			view.text.Text = if named then (m.name or "") .. "  " .. metres else ""
+			view.icon.TextTransparency = if math.abs(rel) < 9 then 0 else 0.35
+		else
+			view.frame.Visible = true
+			-- Named when you face it, unless another marker nearer the middle already is.
+			local named = math.abs(rel) < 12 and m.name ~= nil and not crowded(m, rel, 22, true)
+			view.text.Text = if named then (m.name :: string) .. "  " .. metres else metres
+			view.arrow.Visible = edge
+			view.arrow.Text = if rel < 0 then "◀" else "▶"
+			view.arrow.Position = UDim2.new(0.5, if rel < 0 then -16 else 16, 0, ICON_Y)
+		end
+		view.frame.ZIndex = if m.kind == "landmark" then 1 else 2
 	end
 	for key, view in pairs(self._views) do
 		if not live[key] then

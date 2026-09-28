@@ -268,6 +268,9 @@ function renderNode(n, parentInner, inLayout) {
     const layer = document.createElement('span');
     layer.style.position = 'relative';
     layer.style.display = 'block';
+    // The layer's own line box at the text's size: left at the page default (16px), text
+    // smaller than that sat lower in its line than the absolutely placed outline under it.
+    layer.style.fontSize = n.textSize + 'px';
     if (textStroke && textStroke.transparency < 1) {
       const under = makeSpan();
       const c = rgba(textStroke.color, Math.max(textStroke.transparency, n.textT ?? 0));
@@ -286,7 +289,12 @@ function renderNode(n, parentInner, inLayout) {
     layer._over = span;
     box.appendChild(layer);
     inner.appendChild(box);
-    if (n.textScaled) fitQueue.push([box, layer]);
+    if (n.textScaled) {
+      const limit = kids(n, 'UITextSizeConstraint')[0];
+      layer._max = limit && limit.maxText ? limit.maxText : 100;
+      layer._min = limit && limit.minText ? limit.minText : 1;
+      fitQueue.push([box, layer]);
+    }
   }
 
   let children = (n.children || []).filter(isGui);
@@ -340,8 +348,12 @@ document.fonts.ready.then(() => {
     d.style.borderRadius = (r[0] * m + r[1]) + 'px';
   }
   for (const [box, layer] of fitQueue) {
-    const set = px => { for (const sp of [layer._over, layer._under]) if (sp) sp.style.fontSize = px + 'px'; };
-    let lo = 4, hi = 100;
+    const set = px => {
+      layer.style.fontSize = px + 'px';
+      for (const sp of [layer._over, layer._under]) if (sp) sp.style.fontSize = px + 'px';
+    };
+    // Roblox scales to the box, within the label's UITextSizeConstraint.
+    let lo = Math.max(1, layer._min || 1), hi = layer._max || 100;
     for (let i = 0; i < 12; i++) {
       const mid = (lo + hi) / 2;
       set(mid);

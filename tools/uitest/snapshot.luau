@@ -133,6 +133,9 @@ return function(World, outPath: string)
 			n.max = { math.min(inst.MaxSize.X, 1e5), math.min(inst.MaxSize.Y, 1e5) }
 		elseif cls == "UIAspectRatioConstraint" then
 			n.ratio = inst.AspectRatio
+		elseif cls == "UITextSizeConstraint" then
+			n.maxText = inst.MaxTextSize
+			n.minText = inst.MinTextSize
 		else
 			return nil
 		end

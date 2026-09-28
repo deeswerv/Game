@@ -67,19 +67,24 @@ function WorldEvents.new(toast: any, playerGui: Instance, screen: GuiObject?)
 		chip.BackgroundTransparency = 0.15
 		chip.BorderSizePixel = 0
 		chip.Position = UDim2.fromOffset(16, 76)
-		chip.Size = UDim2.fromOffset(380, 34)
+		-- As wide as what it says (a long patch name and a "+2" used to run off both ends of
+		-- a fixed box), and short enough to stay clear of the compass in the middle.
+		chip.AutomaticSize = Enum.AutomaticSize.X
+		chip.Size = UDim2.fromOffset(0, 32)
 		chip.Visible = false
 		chip.Parent = screen
 		Components.Corner(chip, 10)
 		Components.Stroke(chip, Color3.fromRGB(236, 44, 52), 2.5)
+		Components.Padding(chip, 0, 12)
 		local label = Components.Label(chip, {
 			text = "",
 			face = Theme.Face.Condensed,
-			size = 19,
+			size = 17,
 			align = Enum.TextXAlignment.Center,
 			outline = 2,
 		})
-		label.Size = UDim2.fromScale(1, 1)
+		label.AutomaticSize = Enum.AutomaticSize.X
+		label.Size = UDim2.new(0, 0, 1, 0)
 		self._turfChip, self._turfLabel = chip, label
 	end
 	-- Every turf war on, by patch id: { zone, position, ends, left, total, threat }.
@@ -212,9 +217,9 @@ function WorldEvents:_update()
 		self._turfChip.Visible = shown ~= nil
 		if shown then
 			local secs = math.max(0, math.floor(shown.ends - os.clock()))
-			self._turfLabel.Text = string.format("⚔ %s  ·  %s  ·  %d/%d LEFT  ·  %d:%02d%s", shown.zone,
+			self._turfLabel.Text = string.format("⚔ %s · %s · %d/%d LEFT · %d:%02d%s", shown.zone,
 				numeral(shown.threat), shown.left, shown.total, secs // 60, secs % 60,
-				if count > 1 then ("  ·  +" .. (count - 1)) else "")
+				if count > 1 then (" · +" .. (count - 1)) else "")
 		end
 	end
 	for _, marker in pairs(self._markers) do

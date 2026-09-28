@@ -49,7 +49,14 @@ World.serverRemotes({
 })
 require("./fixtures")(World)
 
-local only = args[2]
+-- One shot, or several separated by commas ("01_hud,23_turf_war").
+local only: { [string]: boolean }? = nil
+if args[2] then
+	only = {}
+	for name in string.gmatch(args[2], "[^,]+") do
+		(only :: any)[name] = true
+	end
+end
 local sps = World.service("StarterPlayer"):FindFirstChild("StarterPlayerScripts")
 for _, name in ipairs({ "MainUI", "Killcam", "QuestUI", "WeaponController" }) do
 	World.run(sps:FindFirstChild(name))
@@ -60,7 +67,7 @@ World.advance(0.5)
 
 local shots = {}
 local function shot(name: string, settle: number?)
-	if only and only ~= name then
+	if only and not only[name] then
 		return
 	end
 	World.advance(settle or 0.8)

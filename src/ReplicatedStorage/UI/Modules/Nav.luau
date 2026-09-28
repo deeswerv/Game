@@ -147,30 +147,52 @@ function Nav.new(parent: GuiObject, entries: { Entry })
 		local scale = Instance.new("UIScale")
 		scale.Parent = tile
 
-		local icon = Components.Icon(tile, entry.icon or ICONS[entry.id] or "⭐", 28)
+		local icon = Components.Icon(tile, entry.icon or ICONS[entry.id] or "⭐", 26)
 		icon.AnchorPoint = Vector2.new(0.5, 0)
-		icon.Position = UDim2.new(0.5, 0, 0, 2)
+		icon.Position = UDim2.new(0.5, 0, 0, 4)
 
+		-- The name fits the tile: a long one (CONTRACTS) steps down a size rather than running
+		-- off both edges.
 		local caption = Components.Label(tile, {
 			text = string.upper(entry.label),
 			font = Theme.Font.Bold,
 			size = 11,
 			align = Enum.TextXAlignment.Center,
 		})
-		caption.Size = UDim2.new(1, -2, 0, 12)
-		caption.Position = UDim2.new(0, 1, 1, -16)
-		caption.TextScaled = false
+		caption.Name = "Caption"
+		caption.Size = UDim2.new(1, -6, 0, 12)
+		caption.Position = UDim2.new(0, 3, 1, -16)
+		caption.TextScaled = true
+		local fit = Instance.new("UITextSizeConstraint")
+		fit.MaxTextSize = 11
+		fit.MinTextSize = 7
+		fit.Parent = caption
 
+		-- The key as a small dark keycap tucked in the corner, over the edge of the icon
+		-- rather than lettered straight onto it.
 		local key = (entry.key or ""):gsub("[%[%]]", "")
 		if key ~= "" then
-			local keycap = Components.Label(tile, {
+			local cap = Instance.new("Frame")
+			cap.Name = "KeyCap"
+			cap.BackgroundColor3 = Theme.Colour.Sunken
+			cap.BackgroundTransparency = 0.15
+			cap.BorderSizePixel = 0
+			cap.Position = UDim2.fromOffset(3, 3)
+			cap.Size = UDim2.fromOffset(math.max(13, #key * 7 + 5), 13)
+			cap.ZIndex = 3
+			cap.Parent = tile
+			Components.Corner(cap, 4)
+			Components.Stroke(cap, Theme.Colour.Outline, 1).Transparency = 0.3
+			local keyText = Components.Label(cap, {
 				text = key,
-				font = Theme.Font.Display,
-				size = 11,
+				font = Theme.Font.Bold,
+				size = 10,
 				colour = Theme.Colour.TextDim,
+				align = Enum.TextXAlignment.Center,
+				outline = false,
 			})
-			keycap.Size = UDim2.fromOffset(14, 12)
-			keycap.Position = UDim2.fromOffset(4, 2)
+			keyText.Size = UDim2.fromScale(1, 1)
+			keyText.ZIndex = 4
 		end
 
 		local connections = {

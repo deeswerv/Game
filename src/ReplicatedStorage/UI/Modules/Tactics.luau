@@ -377,7 +377,13 @@ function Tactics.Locker(parent: GuiObject, remote: RemoteFunction)
 		local label = Components.Label(band, { text = info.icon .. "  " .. string.upper(info.label),
 			face = Theme.Face.HeavyItalic, size = 20 })
 		label.Position = UDim2.fromOffset(12, 8)
-		label.Size = UDim2.fromOffset(110, 24)
+		label.Size = UDim2.fromOffset(102, 24)
+		-- Kept inside its column: "BOMBS" at full size ran in under the first card.
+		label.TextScaled = true
+		local fit = Instance.new("UITextSizeConstraint")
+		fit.MaxTextSize = 20
+		fit.MinTextSize = 12
+		fit.Parent = label
 		local slotBlurb = Components.Label(band, { text = info.blurb, size = 12, colour = Theme.Colour.TextMuted,
 			wrap = true })
 		slotBlurb.Position = UDim2.fromOffset(12, 36)

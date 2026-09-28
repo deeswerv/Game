@@ -65,6 +65,13 @@ local function figure(parent: GuiObject, caption: string, top: Color3, bottom: C
 		outline = 2.6,
 	})
 	value.Size = UDim2.new(1, 0, 0, 36)
+	-- "67.6%" is wider than "23": a long figure steps down a size instead of running into
+	-- the slash beside it.
+	value.TextScaled = true
+	local fit = Instance.new("UITextSizeConstraint")
+	fit.MaxTextSize = 32
+	fit.MinTextSize = 18
+	fit.Parent = value
 	local g = Instance.new("UIGradient")
 	g.Color = ColorSequence.new(top, bottom)
 	g.Rotation = 90
@@ -101,7 +108,7 @@ local function statGroup(parent: GuiObject, glyph: string, position: UDim2): Fra
 	group.AutomaticSize = Enum.AutomaticSize.X
 	group.Position = position
 	group.Parent = parent
-	local row = Components.List(group, Enum.FillDirection.Horizontal, 4)
+	local row = Components.List(group, Enum.FillDirection.Horizontal, 8)
 	row.VerticalAlignment = Enum.VerticalAlignment.Center
 	local icon = Components.Icon(group, glyph, 40)
 	icon.LayoutOrder = 0
