@@ -158,11 +158,29 @@ colour while you are there. The places:
   boxes to fight round, bin bags, washing strung overhead, a muscle car, a red light over the
   back door, tags on the walls and yellow bollards at the mouth;
 - a basketball court, a hedged pocket park, parked cars and a skyline all round;
-- on every street: traffic lights at the plaza crossings (ZEE AVE / MAIN ST on the blades),
-  phone booths, mailboxes and news stands, bike racks, planters, parking meters by the parked
-  cars, manholes, rainbow bunting strung across the road, cafe umbrellas in the plaza, a taco
-  truck and an ice-cream van, rooftop billboards, balconies with flower boxes, set-back crowns
-  and beacon masts on the skyline towers, and brick bridges over the tunnels (EAST END / WEST END).
+- on the streets, kept deliberately sparse so the roads read and the tower stays in view from
+  the far end of the avenue: one traffic light per plaza crossing (ZEE AVE / MAIN ST on the
+  blades), a bench, a flower bed or a phone booth every so often along the walks, lamps with
+  alternating teal and red banners, a short row of parked cars on each arm, cafe umbrellas in
+  the plaza, a taco truck and an ice-cream van, rooftop billboards, balconies with flower boxes,
+  set-back crowns and beacon masts on the skyline towers, and brick bridges over the tunnels
+  (EAST END / WEST END, named for the compass). Mailboxes, news stands, bike racks, parking
+  meters, bollards and the bunting over the road are gone: about 1,750 fewer parts, and no clutter
+  to snag on in a fight.
+
+**Finding your way.** A compass runs across the top of the screen: N is up the avenue toward
+ZEE TOWER, E on your right. The landmarks -- ZEE TOWER, the plaza, ZEE GUNS, ZEE TACTICS, the
+DUEL HALL, the job boards, the Fixer, Rainbow Park -- sit on it as small icons and name
+themselves when you look straight at them. Your current job goes up as a gold diamond with its
+distance (every Downtown job knows where it happens: a turf patch, the roof, the tower) and gets
+a marker floating over the spot in the world; when it is behind you it waits at the edge of the
+compass with an arrow pointing the short way round. A turf war going on, a supply drop, the most
+wanted player and anyone carrying a stick-up bag go up too, and come down when they are over.
+Walk into a named place -- ZEE PLAZA, ZEE GUNS, THE ALLEY, RAINBOW PARK, THE COURTS, the DUEL
+HALL, ZEE TOWER... -- and its name comes up big in the middle of the screen with a line under it
+("THE HEART OF DOWNTOWN", "CREW TURF"), the way a new area is announced in an RPG; stepping back
+out into the street does not announce the district again. The compass hides in menus, while
+scoped and in a duel. `tools/uitest/wayfinding.luau`.
 
 Climb the fire escape on the apartments for a **rooftop stash** (once a day). Supply drops land
 in its streets too. `lune run tools/mapview/audit.luau -- json <export>` checks it for z-fighting

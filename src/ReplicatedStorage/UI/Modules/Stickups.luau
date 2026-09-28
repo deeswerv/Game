@@ -27,8 +27,8 @@ local GREEN = Color3.fromRGB(76, 214, 110)
 local CAPTION = Color3.fromRGB(255, 236, 200)
 -- Under the banners that call the job, on the line the WANTED badge uses -- and a step below
 -- it when you are wanted as well.
-local BAR_Y = 184
-local BAR_Y_WANTED = 226
+local BAR_Y = 202
+local BAR_Y_WANTED = 244
 
 local function commas(n: number): string
 	local s = tostring(math.floor(n))

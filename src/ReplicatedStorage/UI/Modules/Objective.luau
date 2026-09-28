@@ -70,10 +70,15 @@ function Objective.new(parent: GuiObject)
 		wrap = true,
 		outline = 2.4,
 	})
-	self._label.Size = UDim2.new(1, -86, 0, 34)
+	self._label.Size = UDim2.new(1, -86, 0, 40)
 	self._label.Position = UDim2.fromOffset(70, 30)
-	self._label.TextScaled = false
-	self._label.TextTruncate = Enum.TextTruncate.AtEnd
+	-- A long objective ("Win the turf war at THE CAR PARK") shrinks onto two lines rather than
+	-- running up into the title above it.
+	self._label.TextScaled = true
+	local fit = Instance.new("UITextSizeConstraint")
+	fit.MaxTextSize = 28
+	fit.MinTextSize = 15
+	fit.Parent = self._label
 
 	local barHolder = Instance.new("Frame")
 	barHolder.BackgroundTransparency = 1

@@ -40,6 +40,7 @@ local WorldEvents = require(Modules:WaitForChild("WorldEvents"))
 local Bounties = require(Modules:WaitForChild("Bounties"))
 local Streaks = require(Modules:WaitForChild("Streaks"))
 local Stickups = require(Modules:WaitForChild("Stickups"))
+local Wayfinding = require(Modules:WaitForChild("Wayfinding"))
 local StreakConfig = require(ReplicatedStorage:WaitForChild("StreakConfig"))
 local LevelRoad = require(Modules:WaitForChild("LevelRoad"))
 local Travel = require(Modules:WaitForChild("Travel"))
@@ -133,6 +134,10 @@ end)
 local toast = safe("Toast", function()
 	return Toast.new(screen)
 end)
+-- Finding your way: the compass, the name of the place you walk into, the marker on your job.
+local wayfinding = safe("Wayfinding", function()
+	return Wayfinding.new(screen, playerGui)
+end)
 -- Supply drops: the banner, the marker over the crate, and who looted it.
 local worldEvents = safe("WorldEvents", function()
 	return WorldEvents.new(toast, playerGui, screen)
@@ -140,11 +145,13 @@ end)
 Remote.get("Remotes", "TurfEvent").OnClientEvent:Connect(function(kind: unknown, data: unknown)
 	if type(kind) == "string" then
 		worldEvents:HandleTurf(kind, data)
+		wayfinding:HandleTurf(kind, data)
 	end
 end)
 Remote.get("Remotes", "SupplyEvent").OnClientEvent:Connect(function(kind: unknown, data: unknown)
 	if type(kind) == "string" then
 		worldEvents:Handle(kind, data)
+		wayfinding:HandleSupply(kind, data)
 	end
 end)
 -- Streaks and bounties: the calls, the WANTED tags, your own price.
@@ -261,6 +268,7 @@ task.spawn(function()
 			journalRef:SetState(state)
 		end
 		local active = type(state) == "table" and state.active or nil
+		wayfinding:SetQuest(active)
 		if type(note) == "table" and note.completed and not active then
 			-- The job just finished: the card shows it done before it goes, rather than
 			-- vanishing the instant the last kill lands -- which read as nothing happening.
@@ -1256,6 +1264,8 @@ local function refreshMenuState()
 	toast:SetVisible(clear)
 	bounties:SetVisible(clear)
 	stickups:SetVisible(clear)
+	-- The compass is for the open world; a duel is one room.
+	wayfinding:SetVisible(clear and not scoped and player:GetAttribute("DuelState") ~= "duel")
 	-- Streaks do not count in a duel, so the meter has nothing to say there.
 	streaks:SetHidden(not clear or scoped or player:GetAttribute("DuelState") == "duel")
 end

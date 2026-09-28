@@ -41,7 +41,7 @@ function BossBar.new(parent: GuiObject)
 	root.Name = "BossBar"
 	root.BackgroundTransparency = 1
 	root.AnchorPoint = Vector2.new(0.5, 0)
-	root.Position = UDim2.new(0.5, 0, 0, 92)
+	root.Position = UDim2.new(0.5, 0, 0, 114)
 	root.Size = UDim2.fromOffset(WIDTH, 74)
 	root.Visible = false
 	root.Parent = parent
@@ -131,7 +131,7 @@ function BossBar.new(parent: GuiObject)
 	})
 	call.Name = "BossPhaseCall"
 	call.AnchorPoint = Vector2.new(0.5, 0)
-	call.Position = UDim2.new(0.5, 0, 0, 176)
+	call.Position = UDim2.new(0.5, 0, 0, 198)
 	call.Size = UDim2.fromOffset(700, 50)
 	call.Visible = false
 	self._call = call

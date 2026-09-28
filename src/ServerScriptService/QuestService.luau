@@ -72,6 +72,35 @@ end
 -- What the client needs to draw the tracker and the dialogue. `giver` picks whose offer is
 -- shown (the Quartermaster unless said otherwise); the active quest is the same for all --
 -- one job at a time, whoever gave it.
+-- Downtown's centre (DistrictService.CENTRE); the turf patches are laid out from it.
+local DOWNTOWN = Vector3.new(-155, 1000, 1500)
+
+--- Where an objective is, for the compass and the marker over it: the spot for a Reach, the
+--- patch for a turf job, the door of ZEE TOWER for the Don. Nil for work that is wherever the
+--- enemies happen to be ("put down fifteen").
+function QuestService.WaypointFor(objective: any): (Vector3?, string?)
+	if type(objective) ~= "table" then
+		return nil, nil
+	end
+	if objective.kind == "Reach" and typeof(objective.position) == "Vector3" then
+		return objective.position, objective.label
+	end
+	if (objective.kind == "TurfWin" or objective.kind == "KillCrew") and type(objective.zone) == "string" then
+		local ok, Turf = pcall(require, ServerScriptService:FindFirstChild("TurfWarService") :: ModuleScript)
+		if ok and type(Turf) == "table" and type(Turf.Zones) == "table" then
+			for _, zone in ipairs(Turf.Zones) do
+				if zone.id == objective.zone then
+					return DOWNTOWN + zone.offset + Vector3.new(0, 1, 0), zone.name
+				end
+			end
+		end
+	end
+	if objective.kind == "TowerWin" then
+		return DOWNTOWN + Vector3.new(0, 3.5, 156), "ZEE TOWER"
+	end
+	return nil, nil
+end
+
 function QuestService.GetState(player: Player, giver: string?)
 	local replica = profileOf(player)
 	if not replica then
@@ -84,6 +113,10 @@ function QuestService.GetState(player: Player, giver: string?)
 	local offer, lockedBy = QuestConfig.NextAvailable(giver or "Quartermaster", levelOf(player), completed,
 		{ Tower = data.TowerCleared == true })
 
+	local waypoint, waypointName = nil, nil
+	if active then
+		waypoint, waypointName = QuestService.WaypointFor(active.objective)
+	end
 	return {
 		active = active and {
 			id = active.id,
@@ -91,6 +124,9 @@ function QuestService.GetState(player: Player, giver: string?)
 			label = active.objective.label,
 			progress = data.QuestProgress or 0,
 			goal = active.objective.count,
+			-- Where to go, when the job is somewhere in particular (the compass points at it).
+			waypoint = waypoint,
+			waypointName = waypointName,
 		} or nil,
 		offer = (not active and offer) and {
 			id = offer.id,

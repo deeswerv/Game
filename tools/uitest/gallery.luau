@@ -427,6 +427,47 @@ World.player:SetAttribute("Bag", nil)
 World.player:SetAttribute("Heat", nil)
 World.player:SetAttribute("HeatPlace", nil)
 
+-- 47. Finding your way: facing north up the street -- landmarks on the compass, a turf war off
+-- to the side, the job ahead, and the name of the place you have just walked into.
+do
+	local CS = World.service("CollectionService")
+	local root = World.character:FindFirstChild("HumanoidRootPart")
+	local at = root.Position
+	local function tagged(tag, name, attrs, offset, size)
+		local p = R.new("Part")
+		p.Name = name
+		p.Anchored = true
+		p.CanCollide = false
+		p.Transparency = 1
+		p.Size = size or Vector3.new(1, 1, 1)
+		p.CFrame = World.CFrame.new(at + offset)
+		for k, v in pairs(attrs) do
+			p:SetAttribute(k, v)
+		end
+		p.Parent = World.workspace
+		CS:AddTag(p, tag)
+		return p
+	end
+	tagged("Waypoint", "Waypoint", { WaypointName = "ZEE TOWER", WaypointIcon = "🏙" }, Vector3.new(0, 0, 160))
+	tagged("Waypoint", "Waypoint", { WaypointName = "ZEE GUNS", WaypointIcon = "🔫" }, Vector3.new(60, 0, 40))
+	tagged("Waypoint", "Waypoint", { WaypointName = "DUEL HALL", WaypointIcon = "⚔" }, Vector3.new(-70, 0, 110))
+	tagged("Waypoint", "Waypoint", { WaypointName = "RAINBOW PARK", WaypointIcon = "🌈" }, Vector3.new(-110, 0, 20))
+	tagged("Area", "Area", { AreaName = "ZEE PLAZA", AreaSub = "THE HEART OF DOWNTOWN" }, Vector3.zero,
+		Vector3.new(80, 30, 80))
+	World.force(World.workspace.CurrentCamera, "CFrame", World.CFrame.lookAt(at + Vector3.new(0, 8, -14),
+		at + Vector3.new(0, 4, 60)))
+	World.serverFire("GameRemotes", "QuestUpdated", { active = { id = "TurfCarPark", title = "Car Park Run",
+		label = "Win the turf war at THE CAR PARK", progress = 0, goal = 1,
+		waypoint = at + Vector3.new(25, 0, 90), waypointName = "THE CAR PARK" } })
+	World.serverFire("Remotes", "TurfEvent", "start", { id = "Courts", zone = "THE COURTS", threat = 2, total = 5,
+		left = 5, seconds = 240, position = at + Vector3.new(-120, 0, 50) })
+	shot("47_wayfinding", 0.9)
+	World.advance(4)
+	World.serverFire("Remotes", "TurfEvent", "won", { id = "Courts", zone = "THE COURTS", threat = 3 })
+	World.serverFire("GameRemotes", "QuestUpdated", { active = nil })
+	World.advance(0.5)
+end
+
 -- 9. The death card. The character really dies first, as it would.
 do
 	local humanoid = World.character:FindFirstChildOfClass("Humanoid")

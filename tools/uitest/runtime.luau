@@ -806,18 +806,26 @@ end
 function Methods:HasTag(tag: string)
 	return table.find(state[self].tags or {}, tag) ~= nil
 end
+-- Every instance carrying each tag, however it got it, for CollectionService:GetTagged.
+local tagIndex: { [string]: { [any]: boolean } } = {}
+Runtime.tagIndex = tagIndex
 function Methods:AddTag(tag: string)
 	local st = state[self]
 	st.tags = st.tags or {}
 	if not table.find(st.tags, tag) then
 		table.insert(st.tags, tag)
 	end
+	tagIndex[tag] = tagIndex[tag] or {}
+	tagIndex[tag][self] = true
 end
 function Methods:RemoveTag(tag: string)
 	local st = state[self]
 	local i = st.tags and table.find(st.tags, tag)
 	if i then
 		table.remove(st.tags, i)
+	end
+	if tagIndex[tag] then
+		tagIndex[tag][self] = nil
 	end
 end
 

@@ -208,6 +208,25 @@ end
 
 levelValue.Value = 12
 
+-- -------------------------------------------------------------- where to go --
+
+print("where each job is (for the compass)")
+take("ParkLife")
+local state = QuestService.GetState(player)
+local park = DOWNTOWN + zone("Park").offset
+check(state and state.active and typeof(state.active.waypoint) == "Vector3"
+	and (state.active.waypoint - park).Magnitude < 2 and state.active.waypointName == "THE PARK",
+	"a turf job points at its patch")
+local reachAt = Vector3.new(1, 2, 3)
+local w = QuestService.WaypointFor({ kind = "Reach", position = reachAt, label = "Somewhere" })
+check(w == reachAt, "a Reach job points at its spot")
+local tower, towerName = QuestService.WaypointFor({ kind = "TowerWin", count = 1 })
+check(tower and towerName == "ZEE TOWER" and math.abs(tower.X - DOWNTOWN.X) < 1 and tower.Z > DOWNTOWN.Z + 100,
+	"the Don's job points at ZEE TOWER, up the avenue")
+check(QuestService.WaypointFor({ kind = "Kill", archetype = "Any", count = 5 }) == nil,
+	"'put down five' has nowhere in particular")
+take("")
+
 -- ---------------------------------------------------------------- the park --
 
 print("holding the Park job, winning THE PARK")

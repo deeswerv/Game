@@ -353,27 +353,49 @@ CM.Debris = {
 	end,
 }
 
-local tagged = {}
+-- One "added" / "removed" signal per tag, shared by everyone who asks, fired by AddTag and
+-- RemoveTag -- so a script watching for a tag hears about things tagged after it started.
+local tagSignals = {}
+local function tagSignal(kind: string, tag: string)
+	local key = kind .. tag
+	tagSignals[key] = tagSignals[key] or R.newSignal("tag" .. key)
+	return tagSignals[key]
+end
 CM.CollectionService = {
+	-- Everything carrying the tag, however it got it: CollectionService:AddTag and
+	-- Instance:AddTag both put it on the instance, as in the engine.
 	GetTagged = function(_, tag)
-		return table.clone(tagged[tag] or {})
+		local out = {}
+		for inst in pairs(R.tagIndex[tag] or {}) do
+			local st = R.state[inst]
+			if st and not st.destroyed and st.tags and table.find(st.tags, tag) then
+				table.insert(out, inst)
+			end
+		end
+		return out
 	end,
 	GetInstanceAddedSignal = function(_, tag)
-		return R.newSignal("tag+" .. tag)
+		return tagSignal("+", tag)
 	end,
 	GetInstanceRemovedSignal = function(_, tag)
-		return R.newSignal("tag-" .. tag)
+		return tagSignal("-", tag)
 	end,
 	HasTag = function(_, inst, tag)
 		return inst:HasTag(tag)
 	end,
 	AddTag = function(_, inst, tag)
+		local had = inst:HasTag(tag)
 		inst:AddTag(tag)
-		tagged[tag] = tagged[tag] or {}
-		table.insert(tagged[tag], inst)
+		if not had then
+			tagSignal("+", tag):Fire(inst)
+		end
 	end,
 	RemoveTag = function(_, inst, tag)
+		local had = inst:HasTag(tag)
 		inst:RemoveTag(tag)
+		if had then
+			tagSignal("-", tag):Fire(inst)
+		end
 	end,
 	GetTags = function(_, inst)
 		return inst:GetTags()

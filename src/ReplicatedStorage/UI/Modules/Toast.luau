@@ -55,7 +55,7 @@ function Toast.new(parent: GuiObject)
 	banner.BackgroundTransparency = 0.25
 	banner.BorderSizePixel = 0
 	banner.AnchorPoint = Vector2.new(0.5, 0)
-	banner.Position = UDim2.new(0.5, 0, 0, 92)
+	banner.Position = UDim2.new(0.5, 0, 0, 112)
 	banner.Size = UDim2.fromOffset(760, 84)
 	banner.Visible = false
 	banner.ZIndex = Theme.Layer.Toast
