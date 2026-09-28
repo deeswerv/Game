@@ -9,6 +9,8 @@
 --   AREAS     walk into ZEE PLAZA, THE ALLEY, RAINBOW PARK... and its name comes up, big, for a
 --             couple of seconds. Downtown marks its areas (parts tagged "Area").
 --   JOB       a gold diamond floats over your job's spot, with how far, through walls.
+--   NEW JOBS  with no job on, whoever has one for you (the Fixer, the Quartermaster) wears a
+--             bobbing gold "!" over their head and goes up on the compass.
 --
 -- Draws and reads the world; the server says where jobs are (QuestService's waypoint), where
 -- turf wars and drops are (their events), and Downtown's builder marks the landmarks ("Waypoint").
@@ -18,8 +20,11 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local CollectionService = game:GetService("CollectionService")
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Theme = require(script.Parent.Theme)
 local Components = require(script.Parent.Components)
+local QuestConfig = require(ReplicatedStorage:WaitForChild("QuestConfig"))
 
 local Wayfinding = {}
 Wayfinding.__index = Wayfinding
@@ -37,6 +42,13 @@ local CYAN = Color3.fromRGB(80, 214, 255)
 local DIM = Color3.fromRGB(200, 204, 214)
 
 local CARDINALS = { [0] = "N", [45] = "NE", [90] = "E", [135] = "SE", [180] = "S", [225] = "SW", [270] = "W", [315] = "NW" }
+
+--- What a quest giver is called on the compass (and on Downtown's landmark for them).
+local function giverTitle(name: string): string
+	local spec = QuestConfig.Givers and QuestConfig.Givers[name]
+	return string.upper(tostring(spec and spec.displayName or name))
+end
+
 
 type JobMarker = { anchor: BasePart?, gui: BillboardGui? }
 
@@ -84,6 +96,8 @@ function Wayfinding.new(screen: GuiObject, playerGui: Instance)
 	self._area = nil :: BasePart?
 	self._shown = {} :: { [string]: number }
 	self._titleToken = 0
+	self._offers = {} :: { [string]: boolean }
+	self._offerMarks = {} :: { [string]: BillboardGui }
 
 	-- The strip.
 	local strip = Instance.new("Frame")
@@ -424,8 +438,13 @@ function Wayfinding:_update()
 			local metres = ("%dm"):format(math.floor(distance + 0.5))
 			if m.kind == "landmark" then
 				-- A landmark stays out of the way: off the edge it is simply not shown, and its
-				-- name only comes up when you are looking right at it.
-				view.frame.Visible = not edge
+				-- name only comes up when you are looking right at it. (Nor is it shown twice:
+				-- a giver with a new job for you is already up as that.)
+				local offered = false
+				for giver in pairs(self._offers) do
+					offered = offered or giverTitle(giver) == m.name
+				end
+				view.frame.Visible = not edge and not offered
 				view.text.Text = if math.abs(rel) < 9 then (m.name or "") .. "  " .. metres else ""
 				view.icon.TextTransparency = if math.abs(rel) < 9 then 0 else 0.35
 			else
@@ -495,6 +514,63 @@ function Wayfinding:Refresh()
 	for key, m in pairs(self._markers) do
 		if (m.kind == "wanted" or m.kind == "bag") and not seen[key] then
 			self:Clear(key)
+		end
+	end
+	self:_refreshOffers()
+end
+
+-- ------------------------------------------------------------- new jobs --
+
+--- Who has a new job for you (QuestService's `available`): nil or {} when nobody does.
+function Wayfinding:SetOffers(available: any)
+	local wanted: { [string]: boolean } = {}
+	if type(available) == "table" then
+		for name, yes in pairs(available) do
+			if yes == true and type(name) == "string" then
+				wanted[name] = true
+			end
+		end
+	end
+	self._offers = wanted
+	self:_refreshOffers()
+end
+
+--- Put the "!" over each giver with a job (once their body is in the world), take it off
+--- the rest.
+function Wayfinding:_refreshOffers()
+	local marks: { [string]: BillboardGui } = self._offerMarks
+	for name, gui in pairs(marks) do
+		local giver = workspace:FindFirstChild("QuestGiver_" .. name)
+		if not self._offers[name] or not giver or not gui.Parent then
+			gui:Destroy()
+			marks[name] = nil
+			self:Clear("offer:" .. name)
+		end
+	end
+	for name in pairs(self._offers) do
+		local giver = workspace:FindFirstChild("QuestGiver_" .. name)
+		local head = giver and giver:FindFirstChild("Head")
+		if head and head:IsA("BasePart") and not marks[name] then
+			self:Set("offer:" .. name, "offer", "!", GOLD, giverTitle(name) .. " · NEW JOB", head)
+			local gui = Instance.new("BillboardGui")
+			gui.Name = "OfferMarker"
+			gui.Adornee = head
+			gui.Size = UDim2.fromOffset(60, 60)
+			gui.StudsOffsetWorldSpace = Vector3.new(0, 4.6, 0)
+			gui.AlwaysOnTop = true
+			gui.MaxDistance = 260
+			gui.LightInfluence = 0
+			gui.ResetOnSpawn = false
+			gui.Enabled = not self._hidden
+			gui.Parent = self._gui
+			local bang = label(gui :: any, "!", 50, GOLD, Theme.Font.Display)
+			bang.Name = "Bang"
+			bang.Size = UDim2.fromScale(1, 1)
+			bang.Position = UDim2.fromScale(0.5, 0.5)
+			-- A slow bob, so it catches the eye across a street without shouting.
+			TweenService:Create(gui, TweenInfo.new(0.9, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+				{ StudsOffsetWorldSpace = Vector3.new(0, 5.3, 0) }):Play()
+			marks[name] = gui
 		end
 	end
 end
@@ -584,6 +660,9 @@ end
 
 function Wayfinding:SetVisible(visible: boolean)
 	self._hidden = not visible
+	for _, gui in pairs(self._offerMarks :: { [string]: BillboardGui }) do
+		gui.Enabled = visible
+	end
 	if not visible then
 		self._title.Visible = false
 	end

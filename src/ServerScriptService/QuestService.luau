@@ -117,6 +117,18 @@ function QuestService.GetState(player: Player, giver: string?)
 	if active then
 		waypoint, waypointName = QuestService.WaypointFor(active.objective)
 	end
+	-- Who has a new job for you right now (none while you are on one): each of them gets a
+	-- "!" over their head and a marker on the compass. Paid contracts are always there, so
+	-- they do not count -- only the story.
+	local available: { [string]: boolean } = {}
+	if not active then
+		for name in pairs(QuestConfig.Givers) do
+			local next = QuestConfig.NextAvailable(name, levelOf(player), completed, { Tower = data.TowerCleared == true })
+			if next and not next.repeatable then
+				available[name] = true
+			end
+		end
+	end
 	return {
 		active = active and {
 			id = active.id,
@@ -144,6 +156,7 @@ function QuestService.GetState(player: Player, giver: string?)
 			rep = offer.rewards.rep,
 			repeatable = offer.repeatable,
 		} or nil,
+		available = available,
 		completedCount = #(data.CompletedQuests or {}),
 		totalQuests = #QuestConfig.Quests,
 		giver = giver or "Quartermaster",
@@ -782,44 +795,99 @@ local function buildSignpost(base: CFrame, text: string): Model
 	return parent
 end
 
+-- What the quest givers wear (NPCService.Outfit): the Quartermaster an old navy field jacket,
+-- the Fixer a purple bomber, gold and shades.
+local GIVER_LOOKS: { [string]: { [string]: any } } = {
+	Quartermaster = {
+		Skin = Color3.fromRGB(224, 172, 128), Shirt = Color3.fromRGB(64, 80, 100), Pants = Color3.fromRGB(58, 62, 70),
+		Sleeves = true, LongSleeves = true,
+		Outfit = {
+			{ "Hair", style = "grey", colour = Color3.fromRGB(96, 90, 86) },
+			{ "Beard", colour = Color3.fromRGB(170, 166, 162) },
+			{ "Jacket", inner = Color3.fromRGB(214, 204, 176) },
+			{ "Belt" }, { "Cargo" },
+			{ "Boots", colour = Color3.fromRGB(74, 54, 40) },
+		} :: { any },
+	},
+	Fixer = {
+		Skin = Color3.fromRGB(150, 104, 78), Shirt = Color3.fromRGB(128, 64, 170), Pants = Color3.fromRGB(34, 34, 40),
+		Sleeves = true, LongSleeves = true,
+		Outfit = {
+			{ "Hair", style = "top", colour = Color3.fromRGB(24, 20, 20) },
+			{ "Shades", frame = Color3.fromRGB(250, 204, 60) },
+			{ "Jacket", inner = Color3.fromRGB(28, 28, 32) },
+			{ "Chain" }, { "Watch" },
+			{ "Sneakers", colour = Color3.fromRGB(240, 240, 236), stripe = Color3.fromRGB(128, 64, 170) },
+		} :: { any },
+	},
+}
+
 local function buildGiver(name: string, spec)
 	local existing = workspace:FindFirstChild("QuestGiver_" .. name)
 	if existing then
 		existing:Destroy()
 	end
 
-	-- Reuse a rig from the world as the body, same as the merchant does.
-	local template
-	for _, d in ipairs(workspace:GetChildren()) do
-		-- Never another quest giver: that clone would bring their signpost along with it.
-		if d:IsA("Model") and d:FindFirstChildOfClass("Humanoid") and d:FindFirstChild("Head")
-			and not Players:GetPlayerFromCharacter(d) and d.Name:sub(1, 11) ~= "QuestGiver_" then
-			template = d
-			break
+	-- The players' own rig, dressed for the part (NPCService.Outfit); if the place has none, a
+	-- rig borrowed from the world and painted the giver's colour.
+	local npc: Model? = nil
+	local outfitModule = ServerScriptService:FindFirstChild("NPCService")
+	outfitModule = outfitModule and outfitModule:FindFirstChild("Outfit")
+	if outfitModule and outfitModule:IsA("ModuleScript") then
+		local ok, Outfit = pcall(require, outfitModule)
+		if ok and type(Outfit) == "table" then
+			local look = GIVER_LOOKS[name] or {
+				Shirt = spec.colour, Sleeves = true,
+				Outfit = { { "Hair" }, { "Jacket" }, { "Belt" }, { "Sneakers" } } :: { any },
+			}
+			npc = Outfit.Standing(look, 11)
 		end
 	end
-	if not template then
-		warn("[Quest] no rig available for the quest giver")
-		return
-	end
-
-	local npc = template:Clone()
-	npc.Name = "QuestGiver_" .. name
-	-- Strip anything that came along from whichever body we borrowed. The nameplate and
-	-- the prompt matter: the market shopkeeper is a valid rig, and cloning them without
-	-- this leaves the quest giver wearing the market's sign.
-	for _, s in ipairs(npc:GetDescendants()) do
-		if s:IsA("LuaSourceContainer") or s:IsA("BodyColors")
-			or s:IsA("BillboardGui") or s:IsA("ProximityPrompt") then
-			s:Destroy()
+	if not npc then
+		local template
+		for _, d in ipairs(workspace:GetChildren()) do
+			-- Never another quest giver: that clone would bring their signpost along with it.
+			if d:IsA("Model") and d:FindFirstChildOfClass("Humanoid") and d:FindFirstChild("Head")
+				and not Players:GetPlayerFromCharacter(d) and d.Name:sub(1, 11) ~= "QuestGiver_" then
+				template = d
+				break
+			end
 		end
+		if not template then
+			warn("[Quest] no rig available for the quest giver")
+			return
+		end
+		local borrowed = template:Clone()
+		-- Strip anything that came along from whichever body we borrowed. The nameplate and
+		-- the prompt matter: the market shopkeeper is a valid rig, and cloning them without
+		-- this leaves the quest giver wearing the market's sign.
+		for _, s in ipairs(borrowed:GetDescendants()) do
+			if s:IsA("LuaSourceContainer") or s:IsA("BodyColors")
+				or s:IsA("BillboardGui") or s:IsA("ProximityPrompt") then
+				s:Destroy()
+			end
+		end
+		local oldSign = borrowed:FindFirstChild("Signpost")
+		if oldSign then
+			oldSign:Destroy()
+		end
+		for _, p in ipairs(borrowed:GetDescendants()) do
+			if p:IsA("BasePart") then
+				p.Anchored = true
+				p.CanCollide = false
+				if p.Name == "Head" or p.Name:find("Arm") then
+					p.Color = Color3.fromRGB(222, 186, 140)
+				else
+					p.Color = spec.colour
+				end
+			end
+		end
+		npc = borrowed
 	end
-	local oldSign = npc:FindFirstChild("Signpost")
-	if oldSign then
-		oldSign:Destroy()
-	end
+	local figure = npc :: Model
+	figure.Name = "QuestGiver_" .. name
 
-	local hum = npc:FindFirstChildOfClass("Humanoid")
+	local hum = figure:FindFirstChildOfClass("Humanoid")
 	if hum then
 		hum.WalkSpeed = 0
 		hum.JumpPower = 0
@@ -828,58 +896,50 @@ local function buildGiver(name: string, spec)
 		hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 	end
 
-	for _, p in ipairs(npc:GetDescendants()) do
-		if p:IsA("BasePart") then
-			p.Anchored = true
-			p.CanCollide = false
-			if p.Name == "Head" or p.Name:find("Arm") then
-				p.Color = Color3.fromRGB(222, 186, 140)
-			else
-				p.Color = spec.colour
-			end
-		end
-	end
-
 	local facing = CFrame.lookAt(spec.position + Vector3.new(0, 3, 0),
 		Vector3.new(spec.lookAt.X, spec.position.Y + 3, spec.lookAt.Z))
-	npc:PivotTo(facing)
-	npc.Parent = workspace
+	figure:PivotTo(facing)
+	figure.Parent = workspace
 
 	-- The signpost stands at the giver's shoulder, turned the same way they are.
 	local ground = CFrame.lookAt(spec.position, Vector3.new(spec.lookAt.X, spec.position.Y, spec.lookAt.Z))
 	local sign = buildSignpost(ground * CFrame.new(2.6, 0, 0.4), spec.signText or "QUESTS")
-	sign.Parent = npc
+	sign.Parent = figure
 
-	local head = npc:FindFirstChild("Head")
+	local head = figure:FindFirstChild("Head")
 	if head and head:IsA("BasePart") then
+		-- White name, gold role, a dark edge on both: the same look as every other name tag.
+		-- Seen through walls, so a giver can be found, but only from nearby (the compass and
+		-- the "!" over their head do the long range).
 		local bb = Instance.new("BillboardGui")
-		bb.Size = UDim2.fromScale(10, 2.6)
-		bb.StudsOffsetWorldSpace = Vector3.new(0, 3.2, 0)
+		bb.Name = "Nameplate"
+		bb.Size = UDim2.fromOffset(190, 50)
+		bb.StudsOffsetWorldSpace = Vector3.new(0, 3.0, 0)
 		bb.AlwaysOnTop = true
-		bb.MaxDistance = 90
+		bb.MaxDistance = 60
+		bb.LightInfluence = 0
 		bb.Parent = head
-
-		local title = Instance.new("TextLabel")
-		title.Size = UDim2.fromScale(1, 0.55)
-		title.BackgroundTransparency = 1
-		title.Font = Enum.Font.GothamBold
-		title.Text = spec.displayName
-		title.TextColor3 = Color3.fromRGB(226, 180, 92)
-		title.TextScaled = true
-		title.Parent = bb
-
-		local sub = Instance.new("TextLabel")
-		sub.Position = UDim2.fromScale(0, 0.55)
-		sub.Size = UDim2.fromScale(1, 0.45)
-		sub.BackgroundTransparency = 1
-		sub.Font = Enum.Font.GothamMedium
-		sub.Text = "Press E to talk"
-		sub.TextColor3 = Color3.fromRGB(150, 148, 142)
-		sub.TextScaled = true
-		sub.Parent = bb
+		local function line(text: string, y: number, h: number, size: number, colour: Color3, font: Enum.Font)
+			local label = Instance.new("TextLabel")
+			label.BackgroundTransparency = 1
+			label.Position = UDim2.new(0, 0, 0, y)
+			label.Size = UDim2.new(1, 0, 0, h)
+			label.Font = font
+			label.TextSize = size
+			label.TextColor3 = colour
+			label.Text = text
+			label.Parent = bb
+			local edge = Instance.new("UIStroke")
+			edge.Color = Color3.fromRGB(8, 8, 12)
+			edge.Thickness = 2
+			edge.LineJoinMode = Enum.LineJoinMode.Round
+			edge.Parent = label
+		end
+		line(spec.displayName, 0, 28, 24, Color3.new(1, 1, 1), Enum.Font.SourceSansBold)
+		line(spec.signText or "QUESTS", 28, 20, 16, Color3.fromRGB(255, 194, 30), Enum.Font.FredokaOne)
 	end
 
-	local torso = npc:FindFirstChild("Torso") or npc:FindFirstChild("HumanoidRootPart")
+	local torso = figure:FindFirstChild("Torso") or figure:FindFirstChild("HumanoidRootPart")
 	if torso and torso:IsA("BasePart") then
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.ActionText = "Talk"

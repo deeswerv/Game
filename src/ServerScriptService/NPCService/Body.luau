@@ -21,6 +21,7 @@ local StarterPlayer = game:GetService("StarterPlayer")
 local WeaponConfig = require(ReplicatedStorage.WeaponConfig)
 local NPCAnimation = require(ReplicatedStorage.NPCAnimation)
 local WeaponPose = require(ServerScriptService.WeaponPose)
+local Outfit = require(script.Parent.Outfit)
 
 local Body = {}
 
@@ -108,73 +109,6 @@ local function getTemplate(): Model?
 	return rig
 end
 
--- ------------------------------------------------------------------ dressing --
-
-local SKIN = { Head = true, LeftHand = true, RightHand = true, LeftLowerArm = true, RightLowerArm = true }
-local SLEEVES = { LeftUpperArm = true, RightUpperArm = true }
-local SHIRT = { UpperTorso = true }
-local PANTS = {
-	LowerTorso = true, LeftUpperLeg = true, RightUpperLeg = true,
-	LeftLowerLeg = true, RightLowerLeg = true,
-}
-local BOOTS = { LeftFoot = true, RightFoot = true }
-
-local function colourFor(partName: string, cfg): Color3?
-	if SKIN[partName] then
-		return cfg.Skin
-	elseif SLEEVES[partName] then
-		return cfg.Sleeves and cfg.Shirt or cfg.Skin
-	elseif SHIRT[partName] then
-		return cfg.Shirt
-	elseif PANTS[partName] then
-		return cfg.Pants
-	elseif BOOTS[partName] then
-		return cfg.Boots or (cfg.Pants :: Color3):Lerp(Color3.new(0, 0, 0), 0.45)
-	end
-	return nil
-end
-
-local function dress(model: Model, cfg)
-	for _, part in ipairs(model:GetChildren()) do
-		if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-			local colour = colourFor(part.Name, cfg)
-			if colour then
-				part.Color = colour
-			end
-			part.Material = Enum.Material.SmoothPlastic
-		end
-	end
-
-	for _, accent in ipairs(cfg.Accents or {}) do
-		local host = model:FindFirstChild(accent.part)
-		if host and host:IsA("BasePart") then
-			local piece = Instance.new("Part")
-			piece.Name = "Accent"
-			piece.Size = accent.size
-			piece.Color = accent.colour
-			piece.Material = Enum.Material.SmoothPlastic
-			piece.TopSurface = Enum.SurfaceType.Smooth
-			piece.BottomSurface = Enum.SurfaceType.Smooth
-			-- Dressing never changes a hitbox: shots pass straight through to the body,
-			-- so a helmet does not turn a headshot into a miss.
-			piece.CanCollide = false
-			piece.CanQuery = false
-			piece.CanTouch = false
-			piece.Massless = true
-			piece.CFrame = host.CFrame * CFrame.new(accent.offset)
-			piece.Parent = model
-
-			local weld = Instance.new("WeldConstraint")
-			weld.Part0 = host
-			weld.Part1 = piece
-			weld.Parent = piece
-		elseif accent.part then
-			warn(("[NPC] %s accent names a part the R15 body does not have: %s")
-				:format(tostring(cfg.Archetype), tostring(accent.part)))
-		end
-	end
-end
-
 --- A fresh, dressed, scaled body for `cfg`. Not yet parented.
 function Body.Build(cfg): (Model?, Humanoid?, BasePart?)
 	local rig = getTemplate()
@@ -192,7 +126,8 @@ function Body.Build(cfg): (Model?, Humanoid?, BasePart?)
 	humanoid.BreakJointsOnDeath = false
 	humanoid.RequiresNeck = false
 
-	dress(model, cfg)
+	-- What they wear (Outfit): each body draws its own colours from the archetype's palette.
+	Outfit.Dress(model, cfg, cfg.OutfitSeed or math.random(1, 999999))
 
 	-- Size last: ScaleTo moves everything, welded accents and joint offsets included.
 	if cfg.Scale and cfg.Scale ~= 1 then

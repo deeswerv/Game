@@ -17,8 +17,10 @@ local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 
 -- Past this a nameplate is noise rather than information, and BillboardGui.MaxDistance
--- culls it for free.
+-- culls it for free. Enemies are labelled over a shorter distance than players: a street full
+-- of crew names a block away is clutter, and the compass already says where the fight is.
 local MAX_DISTANCE = 150
+local NPC_DISTANCE = 95
 
 local HEALTHY = Color3.fromRGB(86, 208, 96)
 local HURT = Color3.fromRGB(226, 78, 72)
@@ -41,6 +43,9 @@ local function styleCorner(inst: Instance, radius: number)
 end
 
 local LEVEL_GOLD = "#FFC21E"
+
+-- The ones with a crown on the plate: the district bosses.
+local BOSSES = { Kingpin = true, TheDon = true, Warlord = true }
 
 local function outline(label: TextLabel, thickness: number)
 	local edge = Instance.new("UIStroke")
@@ -67,7 +72,7 @@ local function buildPlate(displayName: string, character: Model, hostile: boolea
 	gui.Adornee = head
 	gui.Size = UDim2.fromScale(5, 1.25)
 	gui.StudsOffsetWorldSpace = Vector3.new(0, 2.0, 0)
-	gui.MaxDistance = MAX_DISTANCE
+	gui.MaxDistance = if owner then MAX_DISTANCE else NPC_DISTANCE
 	-- Depth tested deliberately. A nameplate that shines through walls is a wallhack, and
 	-- this is a shooter where knowing whether you can actually see someone is the game.
 	gui.AlwaysOnTop = false
@@ -93,12 +98,21 @@ local function buildPlate(displayName: string, character: Model, hostile: boolea
 	-- The level leads the name as a gold diamond tag, the way the references tag players.
 	-- NPCs also carry a name colour the server picked for them -- gold for an elite, green
 	-- for a guard -- so the plate says how dangerous they are, not just what.
+	-- An elite wears a star and a boss a crown, ahead of the name.
+	local mark = ""
+	if not owner then
+		if BOSSES[tostring(character:GetAttribute("Archetype"))] then
+			mark = "👑 "
+		elseif character:GetAttribute("Elite") == true then
+			mark = ('<font color="%s">★</font> '):format(LEVEL_GOLD)
+		end
+	end
 	local function levelTag()
 		local level = if owner then owner:GetAttribute("Level") else character:GetAttribute("Level")
 		if typeof(level) == "number" then
-			name.Text = ('<font color="%s">◆%d</font>  %s'):format(LEVEL_GOLD, level, displayName)
+			name.Text = ('<font color="%s">◆%d</font>  %s%s'):format(LEVEL_GOLD, level, mark, displayName)
 		else
-			name.Text = displayName
+			name.Text = mark .. displayName
 		end
 	end
 	levelTag()

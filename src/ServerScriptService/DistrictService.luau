@@ -88,48 +88,84 @@ local function openStash(player: Player, stash: BasePart)
 	end
 end
 
---- A clerk behind a shop counter: a rig borrowed from the world (as the quest givers are),
---- dressed in the shop's shirt, standing on `spot` and facing the door, with a nameplate.
+-- What each shop's clerk wears (NPCService.Outfit): the gun shop's in a work apron and a cap,
+-- the gear shop's in a staff polo and cargo trousers. The shirt is the shop's own colour.
+local CLERK_LOOKS: { [string]: { [string]: any } } = {
+	["ZEE GUNS"] = {
+		Skin = Color3.fromRGB(198, 142, 102), Pants = Color3.fromRGB(46, 48, 56), Sleeves = true,
+		Outfit = {
+			{ "Hair", style = "short" }, { "Cap", colour = Color3.fromRGB(28, 28, 32), logo = Color3.fromRGB(250, 204, 60) },
+			{ "Tee" }, { "Apron", colour = Color3.fromRGB(120, 82, 52) }, { "Watch" },
+			{ "Sneakers", colour = Color3.fromRGB(34, 34, 38), sole = Color3.fromRGB(236, 234, 228) },
+		} :: { any },
+	},
+	["ZEE TACTICS"] = {
+		Skin = Color3.fromRGB(241, 194, 150), Pants = Color3.fromRGB(70, 74, 58), Sleeves = true,
+		Outfit = {
+			{ "Hair", style = "crop" }, { "Polo", logo = Color3.fromRGB(90, 200, 220) }, { "Belt" }, { "Cargo" },
+			{ "Boots", colour = Color3.fromRGB(58, 48, 38) },
+		} :: { any },
+	},
+}
+
+--- A clerk behind a shop counter, standing on `spot` and facing the door, with a nameplate:
+--- the players' own rig in the shop's work clothes (or, if the place has no such rig, one
+--- borrowed from the world and painted the shop's colour).
 local function clerk(spot: BasePart)
 	local parent = spot.Parent
 	if not parent or parent:FindFirstChild("Clerk") then
 		return
 	end
-	local template: Model? = nil
-	for _, d in ipairs(workspace:GetChildren()) do
-		if d:IsA("Model") and d:FindFirstChildOfClass("Humanoid") and d:FindFirstChild("Head")
-			and not game:GetService("Players"):GetPlayerFromCharacter(d) and d.Name:sub(1, 11) ~= "QuestGiver_" then
-			template = d
-			break
-		end
-	end
-	if not template then
-		return
-	end
-	local npc = template:Clone()
-	npc.Name = "Clerk"
-	for _, d in ipairs(npc:GetDescendants()) do
-		if d:IsA("LuaSourceContainer") or d:IsA("BodyColors") or d:IsA("BillboardGui") or d:IsA("ProximityPrompt")
-			or d.Name == "Signpost" then
-			d:Destroy()
-		end
-	end
 	local shirt = spot:GetAttribute("ClerkShirt")
 	local shirtColour = if typeof(shirt) == "Color3" then shirt else Color3.fromRGB(60, 60, 70)
-	for _, p in ipairs(npc:GetDescendants()) do
-		if p:IsA("BasePart") then
-			p.Anchored = true
-			p.CanCollide = false
-			if p.Name == "Head" or p.Name:find("Arm") or p.Name:find("Hand") then
-				p.Color = Color3.fromRGB(214, 170, 128)
-			elseif p.Name:find("Leg") or p.Name:find("Foot") then
-				p.Color = Color3.fromRGB(46, 48, 56)
-			else
-				p.Color = shirtColour
-			end
+	local npc: Model? = nil
+	local outfitModule = ServerScriptService:FindFirstChild("NPCService")
+	outfitModule = outfitModule and outfitModule:FindFirstChild("Outfit")
+	if outfitModule and outfitModule:IsA("ModuleScript") then
+		local ok, Outfit = pcall(require, outfitModule)
+		if ok and type(Outfit) == "table" then
+			local look = table.clone(CLERK_LOOKS[tostring(spot:GetAttribute("ClerkTitle"))] or CLERK_LOOKS["ZEE GUNS"])
+			look.Shirt = shirtColour
+			npc = Outfit.Standing(look, 7)
 		end
 	end
-	local humanoid = npc:FindFirstChildOfClass("Humanoid")
+	if not npc then
+		local template: Model? = nil
+		for _, d in ipairs(workspace:GetChildren()) do
+			if d:IsA("Model") and d:FindFirstChildOfClass("Humanoid") and d:FindFirstChild("Head")
+				and not game:GetService("Players"):GetPlayerFromCharacter(d) and d.Name:sub(1, 11) ~= "QuestGiver_" then
+				template = d
+				break
+			end
+		end
+		if not template then
+			return
+		end
+		local borrowed = template:Clone()
+		for _, d in ipairs(borrowed:GetDescendants()) do
+			if d:IsA("LuaSourceContainer") or d:IsA("BodyColors") or d:IsA("BillboardGui") or d:IsA("ProximityPrompt")
+				or d.Name == "Signpost" then
+				d:Destroy()
+			end
+		end
+		for _, p in ipairs(borrowed:GetDescendants()) do
+			if p:IsA("BasePart") then
+				p.Anchored = true
+				p.CanCollide = false
+				if p.Name == "Head" or p.Name:find("Arm") or p.Name:find("Hand") then
+					p.Color = Color3.fromRGB(214, 170, 128)
+				elseif p.Name:find("Leg") or p.Name:find("Foot") then
+					p.Color = Color3.fromRGB(46, 48, 56)
+				else
+					p.Color = shirtColour
+				end
+			end
+		end
+		npc = borrowed
+	end
+	local figure = npc :: Model
+	figure.Name = "Clerk"
+	local humanoid = figure:FindFirstChildOfClass("Humanoid")
 	if humanoid then
 		humanoid.WalkSpeed = 0
 		humanoid.JumpPower = 0
@@ -139,35 +175,36 @@ local function clerk(spot: BasePart)
 	end
 	-- Facing -X: out over the counter toward the door.
 	local stand = spot.Position + Vector3.new(0, 3, 0)
-	npc:PivotTo(CFrame.lookAt(stand, stand + Vector3.new(-1, 0, 0)))
-	npc.Parent = parent
-	local head = npc:FindFirstChild("Head")
+	figure:PivotTo(CFrame.lookAt(stand, stand + Vector3.new(-1, 0, 0)))
+	figure.Parent = parent
+	local head = figure:FindFirstChild("Head")
 	if head and head:IsA("BasePart") then
+		-- The same look as every other name tag: white name, gold role, a dark edge on both.
 		local plate = Instance.new("BillboardGui")
 		plate.Name = "Nameplate"
-		plate.Size = UDim2.fromOffset(160, 44)
+		plate.Size = UDim2.fromOffset(170, 46)
 		plate.StudsOffsetWorldSpace = Vector3.new(0, 2.4, 0)
 		plate.MaxDistance = 40
+		plate.LightInfluence = 0
 		plate.Parent = head
-		local name = Instance.new("TextLabel")
-		name.BackgroundTransparency = 1
-		name.Size = UDim2.new(1, 0, 0.55, 0)
-		name.Font = Enum.Font.FredokaOne
-		name.TextScaled = true
-		name.TextColor3 = Color3.new(1, 1, 1)
-		name.TextStrokeTransparency = 0.2
-		name.Text = tostring(spot:GetAttribute("ClerkName") or "Clerk")
-		name.Parent = plate
-		local title = Instance.new("TextLabel")
-		title.BackgroundTransparency = 1
-		title.Position = UDim2.fromScale(0, 0.55)
-		title.Size = UDim2.new(1, 0, 0.45, 0)
-		title.Font = Enum.Font.GothamBold
-		title.TextScaled = true
-		title.TextColor3 = Color3.fromRGB(255, 214, 90)
-		title.TextStrokeTransparency = 0.3
-		title.Text = tostring(spot:GetAttribute("ClerkTitle") or "")
-		title.Parent = plate
+		local function line(text: string, y: number, h: number, size: number, colour: Color3, font: Enum.Font)
+			local label = Instance.new("TextLabel")
+			label.BackgroundTransparency = 1
+			label.Position = UDim2.new(0, 0, 0, y)
+			label.Size = UDim2.new(1, 0, 0, h)
+			label.Font = font
+			label.TextSize = size
+			label.TextColor3 = colour
+			label.Text = text
+			label.Parent = plate
+			local edge = Instance.new("UIStroke")
+			edge.Color = Color3.fromRGB(8, 8, 12)
+			edge.Thickness = 2
+			edge.LineJoinMode = Enum.LineJoinMode.Round
+			edge.Parent = label
+		end
+		line(tostring(spot:GetAttribute("ClerkName") or "Clerk"), 0, 26, 22, Color3.new(1, 1, 1), Enum.Font.SourceSansBold)
+		line(tostring(spot:GetAttribute("ClerkTitle") or ""), 26, 18, 15, Color3.fromRGB(255, 194, 30), Enum.Font.FredokaOne)
 	end
 end
 

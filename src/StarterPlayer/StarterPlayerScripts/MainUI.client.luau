@@ -269,6 +269,7 @@ task.spawn(function()
 		end
 		local active = type(state) == "table" and state.active or nil
 		wayfinding:SetQuest(active)
+		wayfinding:SetOffers(if type(state) == "table" then state.available else nil)
 		if type(note) == "table" and note.completed and not active then
 			-- The job just finished: the card shows it done before it goes, rather than
 			-- vanishing the instant the last kill lands -- which read as nothing happening.

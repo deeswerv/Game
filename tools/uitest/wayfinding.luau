@@ -173,6 +173,35 @@ root.CFrame = CFrame.new(CENTRE + Vector3.new(0, 3, 0))
 World.advance(0.5)
 check(shown() == nil, "and straight back into the plaza is not news either")
 
+print("who has a new job")
+local giver = R.new("Model")
+giver.Name = "QuestGiver_Fixer"
+local giverHead = R.new("Part")
+giverHead.Name = "Head"
+giverHead.CFrame = CFrame.new(CENTRE + Vector3.new(46, 5, 42))
+giverHead.Parent = giver
+giver.Parent = World.workspace
+way:SetOffers({ Fixer = true })
+World.advance(0.1)
+local bang = playerGui:FindFirstChild("OfferMarker")
+check(bang and bang:IsA("BillboardGui") and bang.Adornee == giverHead and bang.AlwaysOnTop,
+	"the Fixer has a job for you: a \"!\" over their head")
+local offerView = layer:FindFirstChild("offer:Fixer")
+local fixerLandmark = layer:FindFirstChild("landmark:THE FIXER")
+check(offerView ~= nil and (fixerLandmark == nil or not fixerLandmark.Visible),
+	"and they go up on the compass, in place of their landmark")
+way:SetOffers({})
+World.advance(0.1)
+check(playerGui:FindFirstChild("OfferMarker") == nil and layer:FindFirstChild("offer:Fixer") == nil,
+	"taking the job takes the \"!\" down")
+way:SetOffers({ Fixer = true })
+World.advance(0.1)
+way:SetVisible(false)
+check(not playerGui:FindFirstChild("OfferMarker").Enabled, "and it hides with the rest of the compass in a menu")
+way:SetVisible(true)
+way:SetOffers(nil)
+giver.Parent = nil
+
 local bad = {}
 for _, e in ipairs(R.errors or {}) do
 	if tostring(e):match("Wayfinding") then

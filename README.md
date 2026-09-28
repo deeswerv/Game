@@ -174,7 +174,9 @@ DUEL HALL, the job boards, the Fixer, Rainbow Park -- sit on it as small icons a
 themselves when you look straight at them. Your current job goes up as a gold diamond with its
 distance (every Downtown job knows where it happens: a turf patch, the roof, the tower) and gets
 a marker floating over the spot in the world; when it is behind you it waits at the edge of the
-compass with an arrow pointing the short way round. A turf war going on, a supply drop, the most
+compass with an arrow pointing the short way round. Between jobs, whoever has a new one for
+you -- the Fixer, the Quartermaster -- wears a bobbing gold **!** over their head and goes up on
+the compass, so the next thing to do is always somewhere you can see. A turf war going on, a supply drop, the most
 wanted player and anyone carrying a stick-up bag go up too, and come down when they are over.
 Walk into a named place -- ZEE PLAZA, ZEE GUNS, THE ALLEY, RAINBOW PARK, THE COURTS, the DUEL
 HALL, ZEE TOWER... -- and its name comes up big in the middle of the screen with a line under it
@@ -293,6 +295,27 @@ Six raiders hold the camp (down from eight). `lune run tools/uitest/flats.luau` 
 post has room, the ways through are open and the high ground can be reached.
 
 ## Enemies
+
+**Dressed for the part.** Every enemy is the players' own rig in clothes made to measure
+(`NPCService/Outfit.luau`): Thugs in hoodies with the strings and pocket, beanies, the crew's
+red bandana, a crossbody bag and white sneakers; Gangsters in the red tracksuit with white
+stripes down the arms and legs, a backwards cap and a gold chain; Shooters in balaclavas,
+plate carriers, gloves, knee pads and a thigh holster; the Enforcer bald, goateed and in shades
+with a leather jacket over a white tee; the Capo in a purple suit; the Kingpin and THE DON in
+white suits with fedoras, ties, pocket squares (and, on the Don, a rose). Out of town the
+Bandits wear hoods and bandoliers, Soldiers helmets with goggles, Brutes and the Warlord plate,
+pauldrons and crests. A crew is a crowd, not clones: each body draws its own hoodie, jeans,
+skin tone and hair from its archetype's palette, while what marks the crew (the bandana, the
+tracksuit) stays the same. Nothing worn can be shot, touched or bumped into, so headshots
+land exactly as before. The shop clerks and the quest givers stand on the same rig in their
+own clothes (a gun-shop apron and cap, a staff polo, the Quartermaster's field jacket, the
+Fixer's purple bomber and gold). `lune run tools/mapview/npcs.luau -- out.json` renders the
+whole lineup; `tools/uitest/outfits.luau` checks it.
+
+**Name tags.** An enemy's plate shows its level and name within 95 studs (a player's within
+150), never through walls; an elite wears a gold star on it and a district boss a crown.
+Clerks and quest givers wear the same style of tag (white name, gold role).
+`tools/uitest/nameplates.luau`.
 
 Enemies fight like a squad, not a row of turrets:
 

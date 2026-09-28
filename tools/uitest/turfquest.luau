@@ -225,7 +225,11 @@ check(tower and towerName == "ZEE TOWER" and math.abs(tower.X - DOWNTOWN.X) < 1 
 	"the Don's job points at ZEE TOWER, up the avenue")
 check(QuestService.WaypointFor({ kind = "Kill", archetype = "Any", count = 5 }) == nil,
 	"'put down five' has nowhere in particular")
+check(next(state.available) == nil, "on a job, nobody is flagged as having a new one")
 take("")
+local free = QuestService.GetState(player)
+check(free and free.available and free.available.Fixer == true,
+	"between jobs, the Fixer has a new one for you (the \"!\" over their head)")
 
 -- ---------------------------------------------------------------- the park --
 

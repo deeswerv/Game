@@ -78,15 +78,23 @@ NPCConfig.Defaults = {
 	Medkits = 0,                -- bandages per life: hurt and out of sight, it patches up
 	Strafe = false,             -- sidesteps between bursts while holding its ground
 
-	-- Look. Kept as data so a new enemy type is still just a table entry: body colours,
-	-- an overall size, and a few welded blocks that say what it is at a glance.
+	-- Look. Kept as data so a new enemy type is still just a table entry: body colours, an
+	-- overall size, and an outfit that says what it is at a glance.
 	Skin = Color3.fromRGB(198, 164, 128),
 	Shirt = Color3.fromRGB(90, 92, 100),
 	Pants = Color3.fromRGB(58, 60, 68),
 	Boots = nil,                -- defaults to a darker Pants
 	Sleeves = false,            -- true colours the upper arms with the shirt
 	Scale = 1,
-	Accents = {},               -- { part = R15 part name, size, offset, colour }
+	-- What they wear (NPCService.Outfit): a list of garments, each made to measure for the
+	-- part it goes on -- { "Beanie", colour = ... }, { "Hoodie" }, { "Sneakers", stripe = ... }.
+	-- Colours are a Color3 or the name of one of the look's colours ("Shirt", "Accent"...).
+	Outfit = {},
+	-- Colours each body draws its own from: { Skin = "tones" | { Color3... }, Shirt = {...},
+	-- Pants = {...}, Hair = {...} }. Anything not given uses Skin / Shirt / Pants above.
+	Palette = nil,
+	LongSleeves = false,        -- true: the shirt goes to the wrists
+	Accents = {},               -- the old way: { part = R15 part name, size, offset, colour }
 }
 
 NPCConfig.Archetypes = {
@@ -127,14 +135,16 @@ NPCConfig.Archetypes = {
 		Skin = Color3.fromRGB(190, 152, 118),
 		Shirt = Color3.fromRGB(96, 46, 44),
 		Pants = Color3.fromRGB(52, 40, 38),
-		Accents = {
-			{ part = "Head", size = Vector3.new(1.34, 0.5, 1.34), offset = Vector3.new(0, 0.42, 0.04),
-			  colour = Color3.fromRGB(72, 34, 34) },                       -- hood
-			{ part = "Head", size = Vector3.new(1.26, 0.4, 0.3), offset = Vector3.new(0, -0.14, -0.52),
-			  colour = Color3.fromRGB(38, 34, 34) },                       -- mask over the face
-			{ part = "UpperTorso", size = Vector3.new(1.9, 0.28, 1.2), offset = Vector3.new(0, 0.32, 0),
-			  colour = Color3.fromRGB(64, 44, 38) },                       -- bandolier
-		},
+		Palette = { Skin = "tones", Shirt = { Color3.fromRGB(96, 46, 44), Color3.fromRGB(84, 58, 40), Color3.fromRGB(70, 52, 50) } },
+		LongSleeves = true,
+		Outfit = {
+			{ "Hood", colour = Color3.fromRGB(72, 34, 34) },
+			{ "Bandana", colour = Color3.fromRGB(38, 34, 34) },
+			{ "Bandolier" },
+			{ "Belt" },
+			{ "Cuffs" },
+			{ "Boots", colour = Color3.fromRGB(74, 52, 36) },
+		} :: { any },
 	},
 
 	-- The rank and file. An assault rifle, a sidearm, bursts rather than a hose, and the
@@ -174,12 +184,15 @@ NPCConfig.Archetypes = {
 		Shirt = Color3.fromRGB(104, 110, 80),
 		Pants = Color3.fromRGB(70, 74, 56),
 		Sleeves = true,
-		Accents = {
-			{ part = "Head", size = Vector3.new(1.36, 0.46, 1.36), offset = Vector3.new(0, 0.47, 0),
-			  colour = Color3.fromRGB(78, 84, 60) },                       -- helmet
-			{ part = "UpperTorso", size = Vector3.new(1.94, 1.2, 1.24), offset = Vector3.new(0, -0.05, 0),
-			  colour = Color3.fromRGB(88, 92, 70) },                       -- vest
-		},
+		Palette = { Skin = "tones" },
+		Outfit = {
+			{ "Helmet", colour = Color3.fromRGB(78, 84, 60), goggles = true },
+			{ "Vest", colour = Color3.fromRGB(88, 92, 70) },
+			{ "Gloves", colour = Color3.fromRGB(52, 50, 44) },
+			{ "Cargo" },
+			{ "Kneepads", colour = Color3.fromRGB(58, 60, 46) },
+			{ "Boots", colour = Color3.fromRGB(58, 48, 38) },
+		} :: { any },
 	},
 
 	-- Slow, heavy, and swings a warhammer. Oversized and armoured so it reads as a threat
@@ -214,16 +227,16 @@ NPCConfig.Archetypes = {
 		Skin = Color3.fromRGB(156, 118, 96),
 		Shirt = Color3.fromRGB(74, 40, 40),
 		Pants = Color3.fromRGB(46, 30, 30),
-		Accents = {
-			{ part = "Head", size = Vector3.new(1.36, 0.62, 1.36), offset = Vector3.new(0, 0.38, 0),
-			  colour = Color3.fromRGB(58, 56, 62) },                       -- iron helm
-			{ part = "UpperTorso", size = Vector3.new(2.0, 1.1, 1.3), offset = Vector3.new(0, 0.15, 0),
-			  colour = Color3.fromRGB(66, 64, 70) },                       -- chest plate
-			{ part = "LeftUpperArm", size = Vector3.new(0.8, 0.5, 0.95), offset = Vector3.new(0, 0.38, 0),
-			  colour = Color3.fromRGB(58, 56, 62) },                       -- pauldrons
-			{ part = "RightUpperArm", size = Vector3.new(0.8, 0.5, 0.95), offset = Vector3.new(0, 0.38, 0),
-			  colour = Color3.fromRGB(58, 56, 62) },
-		},
+		Palette = { Skin = "tones" },
+		Outfit = {
+			{ "Helmet", colour = Color3.fromRGB(58, 56, 62), crest = Color3.fromRGB(150, 40, 40) },
+			{ "Beard", style = "full", colour = Color3.fromRGB(60, 40, 30) },
+			{ "Chestplate", colour = Color3.fromRGB(66, 64, 70) },
+			{ "Pauldrons", colour = Color3.fromRGB(58, 56, 62) },
+			{ "Belt", colour = Color3.fromRGB(52, 34, 26), buckle = Color3.fromRGB(170, 140, 90) },
+			{ "Gloves", colour = Color3.fromRGB(52, 38, 30) },
+			{ "Boots", colour = Color3.fromRGB(46, 34, 28) },
+		} :: { any },
 	},
 
 	-- Keeps its distance and takes slow, deliberate shots. Looks for long sightlines, gives
@@ -261,14 +274,15 @@ NPCConfig.Archetypes = {
 		Shirt = Color3.fromRGB(62, 74, 92),
 		Pants = Color3.fromRGB(44, 52, 64),
 		Sleeves = true,
-		Accents = {
-			{ part = "Head", size = Vector3.new(1.3, 0.3, 1.3), offset = Vector3.new(0, 0.5, 0),
-			  colour = Color3.fromRGB(48, 58, 74) },                       -- cap
-			{ part = "Head", size = Vector3.new(1.2, 0.12, 0.5), offset = Vector3.new(0, 0.4, -0.72),
-			  colour = Color3.fromRGB(48, 58, 74) },                       -- peak
-			{ part = "UpperTorso", size = Vector3.new(1.92, 1.0, 1.22), offset = Vector3.new(0, -0.1, 0),
-			  colour = Color3.fromRGB(74, 88, 108) },                      -- webbing vest
-		},
+		Palette = { Skin = "tones" },
+		Outfit = {
+			{ "Cap", colour = Color3.fromRGB(48, 58, 74) },
+			{ "Hair", style = "short" },
+			{ "Webbing", colour = Color3.fromRGB(74, 88, 108) },
+			{ "Gloves", colour = Color3.fromRGB(40, 44, 52) },
+			{ "Cargo" },
+			{ "Boots", colour = Color3.fromRGB(52, 46, 40) },
+		} :: { any },
 	},
 
 	-- The dangerous one. A top-tier rifle, fast reactions, uses cover, flanks, and reloads
@@ -314,14 +328,16 @@ NPCConfig.Archetypes = {
 		Shirt = Color3.fromRGB(42, 46, 54),
 		Pants = Color3.fromRGB(34, 36, 42),
 		Sleeves = true,
-		Accents = {
-			{ part = "Head", size = Vector3.new(1.36, 0.5, 1.36), offset = Vector3.new(0, 0.45, 0),
-			  colour = Color3.fromRGB(26, 28, 34) },                       -- helmet
-			{ part = "Head", size = Vector3.new(1.1, 0.26, 0.2), offset = Vector3.new(0, 0.06, -0.6),
-			  colour = Color3.fromRGB(60, 150, 170) },                     -- visor
-			{ part = "UpperTorso", size = Vector3.new(1.96, 1.25, 1.26), offset = Vector3.new(0, -0.05, 0),
-			  colour = Color3.fromRGB(30, 32, 38) },                       -- plate carrier
-		},
+		Palette = { Skin = "tones" },
+		Outfit = {
+			{ "Helmet", colour = Color3.fromRGB(26, 28, 34), visor = Color3.fromRGB(60, 150, 170) },
+			{ "Vest", colour = Color3.fromRGB(30, 32, 38), patch = Color3.fromRGB(60, 150, 170) },
+			{ "Gloves", colour = Color3.fromRGB(22, 22, 26) },
+			{ "Kneepads", colour = Color3.fromRGB(22, 22, 26) },
+			{ "Holster" },
+			{ "Cargo" },
+			{ "Boots", colour = Color3.fromRGB(24, 24, 28) },
+		} :: { any },
 	},
 
 	-- ---------------------------------------------------------- downtown --
@@ -369,14 +385,21 @@ NPCConfig.Archetypes = {
 		Shirt = Color3.fromRGB(66, 68, 76),
 		Pants = Color3.fromRGB(52, 70, 110),
 		Sleeves = true,
-		Accents = {
-			{ part = "Head", size = Vector3.new(1.3, 0.5, 1.3), offset = Vector3.new(0, 0.46, 0),
-			  colour = Color3.fromRGB(34, 34, 38) },                       -- beanie
-			{ part = "Head", size = Vector3.new(1.26, 0.42, 0.3), offset = Vector3.new(0, -0.16, -0.52),
-			  colour = Color3.fromRGB(196, 40, 44) },                      -- red bandana
-			{ part = "UpperTorso", size = Vector3.new(1.6, 0.5, 1.3), offset = Vector3.new(0, 0.62, 0.3),
-			  colour = Color3.fromRGB(56, 58, 64) },                       -- hood down
+		-- Everyone in the crew draws their own hoodie, jeans and skin; the red bandana is the crew's.
+		Palette = {
+			Skin = "tones",
+			Shirt = { Color3.fromRGB(66, 68, 76), Color3.fromRGB(82, 90, 64), Color3.fromRGB(44, 56, 86), Color3.fromRGB(104, 44, 48), Color3.fromRGB(36, 36, 40), Color3.fromRGB(120, 110, 96) },
+			Pants = { Color3.fromRGB(52, 70, 110), Color3.fromRGB(38, 48, 78), Color3.fromRGB(30, 30, 34), Color3.fromRGB(96, 104, 120) },
 		},
+		LongSleeves = true,
+		Outfit = {
+			{ "Hoodie" },
+			{ "Beanie", colour = Color3.fromRGB(30, 30, 34) },
+			{ "Bandana", colour = Color3.fromRGB(196, 40, 44) },
+			{ "StrapBag", colour = Color3.fromRGB(28, 28, 32) },
+			{ "Cuffs" },
+			{ "Sneakers", colour = Color3.fromRGB(236, 234, 228), stripe = Color3.fromRGB(196, 40, 44) },
+		} :: { any },
 	},
 
 	-- Red tracksuit, cap on backwards, a gold chain and an SMG. Pushes in pairs.
@@ -415,16 +438,18 @@ NPCConfig.Archetypes = {
 		Shirt = Color3.fromRGB(190, 40, 44),
 		Pants = Color3.fromRGB(34, 34, 40),
 		Sleeves = true,
-		Accents = {
-			{ part = "Head", size = Vector3.new(1.3, 0.34, 1.3), offset = Vector3.new(0, 0.5, 0.06),
-			  colour = Color3.fromRGB(28, 28, 32) },                       -- cap
-			{ part = "Head", size = Vector3.new(0.9, 0.1, 0.6), offset = Vector3.new(0, 0.4, 0.82),
-			  colour = Color3.fromRGB(28, 28, 32) },                       -- peak, backwards
-			{ part = "UpperTorso", size = Vector3.new(1.3, 0.14, 0.12), offset = Vector3.new(0, 0.5, -0.58),
-			  colour = Color3.fromRGB(250, 204, 60) },                     -- gold chain
-			{ part = "UpperTorso", size = Vector3.new(0.12, 1.3, 0.12), offset = Vector3.new(0.35, 0, -0.57),
-			  colour = Color3.fromRGB(240, 240, 240) },                    -- tracksuit stripe
-		},
+		-- The red tracksuit is the crew's; who is inside it varies.
+		Palette = { Skin = "tones", Shirt = { Color3.fromRGB(190, 40, 44), Color3.fromRGB(176, 34, 40), Color3.fromRGB(204, 52, 50) } },
+		LongSleeves = true,
+		Outfit = {
+			{ "Tracksuit", stripe = Color3.fromRGB(240, 240, 236) },
+			{ "Cap", colour = Color3.fromRGB(28, 28, 32), backwards = true },
+			{ "Hair", style = "short" },
+			{ "Chain", colour = Color3.fromRGB(250, 204, 60) },
+			{ "Earring" },
+			{ "Cuffs", colour = Color3.fromRGB(240, 240, 236) },
+			{ "Sneakers", colour = Color3.fromRGB(240, 240, 236), toe = Color3.fromRGB(240, 240, 236), stripe = Color3.fromRGB(190, 40, 44) },
+		} :: { any },
 	},
 
 	-- Balaclava and a black jacket over a vest. A rifle, cover, grenades, patience.
@@ -466,14 +491,17 @@ NPCConfig.Archetypes = {
 		Shirt = Color3.fromRGB(36, 38, 44),
 		Pants = Color3.fromRGB(46, 48, 56),
 		Sleeves = true,
-		Accents = {
-			{ part = "Head", size = Vector3.new(1.3, 1.2, 1.3), offset = Vector3.new(0, 0.02, 0),
-			  colour = Color3.fromRGB(24, 24, 28) },                       -- balaclava
-			{ part = "Head", size = Vector3.new(0.9, 0.22, 0.1), offset = Vector3.new(0, 0.12, -0.64),
-			  colour = Color3.fromRGB(186, 150, 118) },                    -- eye slit
-			{ part = "UpperTorso", size = Vector3.new(1.96, 1.2, 1.24), offset = Vector3.new(0, -0.05, 0),
-			  colour = Color3.fromRGB(54, 58, 50) },                       -- vest
-		},
+		Palette = { Skin = "tones", Pants = { Color3.fromRGB(46, 48, 56), Color3.fromRGB(58, 60, 50), Color3.fromRGB(40, 40, 44) } },
+		LongSleeves = true,
+		Outfit = {
+			{ "Balaclava" },
+			{ "Vest", colour = Color3.fromRGB(54, 58, 50) },
+			{ "Gloves", colour = Color3.fromRGB(24, 24, 28) },
+			{ "Cargo" },
+			{ "Kneepads" },
+			{ "Holster" },
+			{ "Boots", colour = Color3.fromRGB(32, 30, 30) },
+		} :: { any },
 	},
 
 	-- Big, bald, shades and a leather jacket, and a shotgun. Walks through your cover.
@@ -511,14 +539,16 @@ NPCConfig.Archetypes = {
 		Shirt = Color3.fromRGB(92, 58, 38),
 		Pants = Color3.fromRGB(38, 36, 40),
 		Sleeves = true,
-		Accents = {
-			{ part = "Head", size = Vector3.new(1.1, 0.22, 0.12), offset = Vector3.new(0, 0.1, -0.62),
-			  colour = Color3.fromRGB(20, 20, 24) },                       -- shades
-			{ part = "UpperTorso", size = Vector3.new(1.4, 0.16, 0.14), offset = Vector3.new(0, 0.5, -0.6),
-			  colour = Color3.fromRGB(210, 210, 214) },                    -- silver chain
-			{ part = "UpperTorso", size = Vector3.new(2.1, 0.5, 1.3), offset = Vector3.new(0, 0.66, 0),
-			  colour = Color3.fromRGB(70, 44, 30) },                       -- jacket collar
-		},
+		Palette = { Skin = "tones", Pants = { Color3.fromRGB(38, 36, 40), Color3.fromRGB(40, 52, 80), Color3.fromRGB(30, 30, 34) } },
+		Outfit = {
+			{ "Hair", style = "bald" },
+			{ "Beard", style = "goatee", colour = Color3.fromRGB(34, 26, 22) },
+			{ "Shades" },
+			{ "Jacket", colour = Color3.fromRGB(92, 58, 38), inner = Color3.fromRGB(236, 234, 228) },
+			{ "Chain", colour = Color3.fromRGB(210, 210, 214), pendant = false },
+			{ "Belt" },
+			{ "Boots", colour = Color3.fromRGB(40, 30, 26) },
+		} :: { any },
 	},
 
 	-- A named Most Wanted target (BountyService): a purple suit, shades, and the sense to use
@@ -566,14 +596,16 @@ NPCConfig.Archetypes = {
 		Shirt = Color3.fromRGB(110, 60, 160),
 		Pants = Color3.fromRGB(80, 44, 118),
 		Sleeves = true,
-		Accents = {
-			{ part = "Head", size = Vector3.new(1.1, 0.22, 0.12), offset = Vector3.new(0, 0.1, -0.62),
-			  colour = Color3.fromRGB(20, 20, 24) },                       -- shades
-			{ part = "UpperTorso", size = Vector3.new(0.7, 0.9, 0.12), offset = Vector3.new(0, 0.1, -0.56),
-			  colour = Color3.fromRGB(240, 236, 226) },                    -- white shirt
-			{ part = "UpperTorso", size = Vector3.new(1.4, 0.16, 0.14), offset = Vector3.new(0, 0.55, -0.6),
-			  colour = Color3.fromRGB(250, 204, 60) },                     -- gold chain
-		},
+		Palette = { Skin = "tones" },
+		LongSleeves = true,
+		Outfit = {
+			{ "Hair", style = "slick" },
+			{ "Shades", frame = Color3.fromRGB(250, 204, 60) },
+			{ "Suit", inner = Color3.fromRGB(240, 236, 226), tie = false, square = Color3.fromRGB(250, 204, 60) },
+			{ "Chain", colour = Color3.fromRGB(250, 204, 60) },
+			{ "Watch" },
+			{ "Loafers", colour = Color3.fromRGB(34, 30, 30) },
+		} :: { any },
 	},
 
 	-- The Downtown boss (TurfWarService): steps out when the crews have been driven off at
@@ -622,18 +654,16 @@ NPCConfig.Archetypes = {
 		Shirt = Color3.fromRGB(240, 236, 226),
 		Pants = Color3.fromRGB(226, 222, 212),
 		Sleeves = true,
-		Accents = {
-			{ part = "Head", size = Vector3.new(1.9, 0.14, 1.9), offset = Vector3.new(0, 0.42, 0),
-			  colour = Color3.fromRGB(34, 30, 30) },                       -- hat brim
-			{ part = "Head", size = Vector3.new(1.2, 0.62, 1.2), offset = Vector3.new(0, 0.76, 0),
-			  colour = Color3.fromRGB(34, 30, 30) },                       -- hat crown
-			{ part = "Head", size = Vector3.new(1.22, 0.16, 1.22), offset = Vector3.new(0, 0.54, 0),
-			  colour = Color3.fromRGB(214, 44, 48) },                      -- hat band
-			{ part = "UpperTorso", size = Vector3.new(0.9, 0.9, 0.12), offset = Vector3.new(0, 0.1, -0.56),
-			  colour = Color3.fromRGB(214, 44, 48) },                      -- shirt and tie
-			{ part = "UpperTorso", size = Vector3.new(1.4, 0.16, 0.14), offset = Vector3.new(0, 0.55, -0.58),
-			  colour = Color3.fromRGB(250, 204, 60) },                     -- gold chain
-		},
+		LongSleeves = true,
+		Outfit = {
+			{ "Hair", style = "short", colour = Color3.fromRGB(30, 24, 22) },
+			{ "Fedora", colour = Color3.fromRGB(34, 30, 30), band = Color3.fromRGB(214, 44, 48) },
+			{ "Beard", style = "goatee", colour = Color3.fromRGB(30, 24, 22) },
+			{ "Suit", inner = Color3.fromRGB(214, 44, 48), tie = Color3.fromRGB(34, 30, 30), square = Color3.fromRGB(214, 44, 48) },
+			{ "Chain", colour = Color3.fromRGB(250, 204, 60) },
+			{ "Watch" },
+			{ "Loafers", colour = Color3.fromRGB(236, 232, 222), sole = Color3.fromRGB(40, 36, 36) },
+		} :: { any },
 	},
 
 	-- THE DON: who the Kingpin answered to. Only ever up at the top of ZEE TOWER (TowerService
@@ -683,22 +713,16 @@ NPCConfig.Archetypes = {
 		Shirt = Color3.fromRGB(248, 246, 240),
 		Pants = Color3.fromRGB(240, 236, 228),
 		Sleeves = true,
-		Accents = {
-			{ part = "Head", size = Vector3.new(2, 0.14, 2), offset = Vector3.new(0, 0.42, 0),
-			  colour = Color3.fromRGB(246, 242, 232) },                    -- fedora brim, white
-			{ part = "Head", size = Vector3.new(1.24, 0.66, 1.24), offset = Vector3.new(0, 0.78, 0),
-			  colour = Color3.fromRGB(246, 242, 232) },                    -- fedora crown
-			{ part = "Head", size = Vector3.new(1.26, 0.18, 1.26), offset = Vector3.new(0, 0.55, 0),
-			  colour = Color3.fromRGB(28, 26, 30) },                       -- black band
-			{ part = "UpperTorso", size = Vector3.new(0.7, 1, 0.12), offset = Vector3.new(0, 0.05, -0.56),
-			  colour = Color3.fromRGB(28, 26, 30) },                       -- black shirt
-			{ part = "UpperTorso", size = Vector3.new(0.26, 0.8, 0.14), offset = Vector3.new(0, 0.05, -0.6),
-			  colour = Color3.fromRGB(250, 204, 60) },                     -- gold tie
-			{ part = "UpperTorso", size = Vector3.new(1.5, 0.18, 0.16), offset = Vector3.new(0, 0.58, -0.6),
-			  colour = Color3.fromRGB(250, 204, 60) },                     -- gold chain
-			{ part = "UpperTorso", size = Vector3.new(0.34, 0.26, 0.12), offset = Vector3.new(-0.5, 0.4, -0.58),
-			  colour = Color3.fromRGB(214, 44, 48) },                      -- a red rose on the lapel
-		},
+		LongSleeves = true,
+		Outfit = {
+			{ "Hair", style = "grey", colour = Color3.fromRGB(58, 52, 50) },
+			{ "Fedora", colour = Color3.fromRGB(246, 242, 232), band = Color3.fromRGB(28, 26, 30) },
+			{ "Beard", style = "full", colour = Color3.fromRGB(150, 146, 146) },
+			{ "Suit", inner = Color3.fromRGB(28, 26, 30), tie = Color3.fromRGB(250, 204, 60), square = Color3.fromRGB(250, 204, 60), flower = Color3.fromRGB(214, 44, 48) },
+			{ "Chain", colour = Color3.fromRGB(250, 204, 60) },
+			{ "Watch" },
+			{ "Loafers", colour = Color3.fromRGB(28, 26, 30) },
+		} :: { any },
 	},
 
 	-- Friendly patrol that fights Hostiles; proves NPC-vs-NPC combat. Now actually fires the
@@ -733,12 +757,14 @@ NPCConfig.Archetypes = {
 		Shirt = Color3.fromRGB(66, 88, 72),
 		Pants = Color3.fromRGB(44, 58, 48),
 		Sleeves = true,
-		Accents = {
-			{ part = "Head", size = Vector3.new(1.34, 0.42, 1.34), offset = Vector3.new(0, 0.48, 0),
-			  colour = Color3.fromRGB(120, 124, 118) },                    -- helmet
-			{ part = "UpperTorso", size = Vector3.new(1.9, 1.3, 1.2), offset = Vector3.new(0, -0.1, 0),
-			  colour = Color3.fromRGB(96, 118, 100) },                     -- tabard
-		},
+		Palette = { Skin = "tones" },
+		Outfit = {
+			{ "Helmet", colour = Color3.fromRGB(120, 124, 118) },
+			{ "Tabard", colour = Color3.fromRGB(96, 118, 100), emblem = Color3.fromRGB(250, 204, 60) },
+			{ "Belt", colour = Color3.fromRGB(58, 44, 32), buckle = Color3.fromRGB(250, 204, 60) },
+			{ "Gloves", colour = Color3.fromRGB(64, 50, 38) },
+			{ "Boots", colour = Color3.fromRGB(64, 50, 38) },
+		} :: { any },
 	},
 
 	-- Zone bosses. One per island, standing at a landmark rather than wandering: a boss you
@@ -788,6 +814,17 @@ NPCConfig.Archetypes = {
 		Skin = Color3.fromRGB(148, 116, 96),
 		Shirt = Color3.fromRGB(58, 30, 34),
 		Pants = Color3.fromRGB(38, 22, 26),
+		Sleeves = true,
+		Outfit = {
+			{ "Helmet", colour = Color3.fromRGB(58, 30, 34), crest = Color3.fromRGB(250, 204, 60) },
+			{ "Beard", style = "full", colour = Color3.fromRGB(40, 26, 22) },
+			{ "Chestplate", colour = Color3.fromRGB(74, 70, 78) },
+			{ "Pauldrons", colour = Color3.fromRGB(96, 36, 40) },
+			{ "Cape", colour = Color3.fromRGB(120, 30, 34) },
+			{ "Belt", colour = Color3.fromRGB(40, 26, 22), buckle = Color3.fromRGB(250, 204, 60) },
+			{ "Gloves", colour = Color3.fromRGB(40, 26, 22) },
+			{ "Boots", colour = Color3.fromRGB(40, 26, 22) },
+		} :: { any },
 	},
 }
 
