@@ -209,12 +209,12 @@ check(sent ~= nil and sent[2] == "KillShatter" and sent[3] == victim and (sent[4
 print("per gun")
 check(VFXService.EquipWeapon(player, "Carbine", "Kill", "KillVoid").ok, "the Carbine gets its own kill effect")
 check(VFXConfig.Resolve(player, "Kill", "Carbine") == "KillVoid", "kills with the Carbine play Void")
-check(VFXConfig.Resolve(player, "Kill", "Scattergun") == "KillShatter", "every other gun keeps the equipped Shatter")
+check(VFXConfig.Resolve(player, "Kill", "Blackwood") == "KillShatter", "every other gun keeps the equipped Shatter")
 check(not VFXService.EquipWeapon(player, "Carbine", "Kill", "KillLightning").ok, "an effect you do not own is refused")
 check(not VFXService.EquipWeapon(player, "Carbine", "Kill", "TracerGold").ok, "a tracer is not a kill effect")
 check(not VFXService.EquipWeapon(player, "NoSuchGun", "Kill", "KillVoid").ok, "nor a gun that does not exist")
-check(VFXService.EquipWeapon(player, "Scattergun", "Tracer", "TracerGold").ok
-	and VFXConfig.Resolve(player, "Tracer", "Scattergun") == "TracerGold" and VFXConfig.Resolve(player, "Tracer", "Carbine") == nil,
+check(VFXService.EquipWeapon(player, "Blackwood", "Tracer", "TracerGold").ok
+	and VFXConfig.Resolve(player, "Tracer", "Blackwood") == "TracerGold" and VFXConfig.Resolve(player, "Tracer", "Carbine") == nil,
 	"a tracer on one gun only")
 check(VFXService.EquipWeapon(player, "Fang", "Kill", "none").ok and VFXConfig.Resolve(player, "Kill", "Fang") == nil,
 	"\"none\" plays nothing on that gun")

@@ -326,8 +326,8 @@ end
 -- The barrel's own long axis, turned to point at the muzzle.
 --
 -- Taking barrel-centre -> muzzle-centre seems more obvious but is wrong on any weapon
--- whose muzzle is not centred on the barrel part: the Scattergun stacks two barrels and
--- puts the muzzle between them, which tilted its "bore" four degrees nose-down. And
+-- whose muzzle is not centred on the barrel part: a double-barrel puts the muzzle between
+-- its two barrels, which tilted its "bore" four degrees nose-down. And
 -- handle -> muzzle, the first thing tried here, folds in the whole drop from the grip up
 -- to the barrel. The part's own axis carries neither error; the muzzle is only used to
 -- decide which end is the front.
@@ -589,7 +589,7 @@ end
 -- It does NOT reach the stock. Opened up to 1.9 the solver happily slid the off hand all
 -- the way back onto the butt pad, which is not a grip anyone uses.
 -- Tightened from 1.6. At 1.6 the hand could slide far enough back to grip the Blackwood's
--- stock, the Scattergun's trigger and the Carbine's grip collar -- it was touching the
+-- stock, a pump gun's trigger and the Carbine's grip collar -- it was touching the
 -- weapon, which is what the solver was asked for, but nowhere a hand belongs. Held to 1.15
 -- it stays in the handguard-to-magwell band, which is the range of real support grips.
 local SUPPORT_MIN, SUPPORT_MAX = -1.15, 0.9
@@ -677,8 +677,8 @@ local function solveSupportArm(character: Model, tool: Tool, pose, grip: CFrame)
 		-- The support hand is never behind the firing hand.
 		--
 		-- Sliding back down the barrel to find something reachable is fine right up until it
-		-- slides PAST the grip: the Blackwood ended up holding its own stock and the Scattergun
-		-- its trigger. Both were genuinely touching the weapon, which is all the solver had been
+		-- slides PAST the grip: the Blackwood ended up holding its own stock and another pump
+		-- gun its trigger. Both were genuinely touching the weapon, which is all the solver had been
 		-- asked for -- it had no notion that some parts of a gun are not handholds.
 		--
 		-- The weapon's own frame is centred on the Handle, so the grip is simply its origin, and

@@ -5,6 +5,7 @@ local ReplicaService = require(game:GetService("ReplicatedStorage").Replica.Repl
 local ProfileService = require(game:GetService("ReplicatedStorage").AutoSave)
 local Promise = require(game:GetService("ReplicatedStorage").InterceptValue)
 local SaveStructure = require(script.SaveStructure)
+local RetiredItems = require(script.RetiredItems)
 
 local Profiles = {}
 local Replicas = {}
@@ -101,6 +102,14 @@ local function PlayerAdded(Player: Player)
 	if Profile then
 		Profile:AddUserId(Player.UserId)
 		Profile:Reconcile()
+		-- Weapons taken out of the game: strip them from the save before anything reads it,
+		-- and owe the owner what they paid.
+		local okRetire, refunded, found = pcall(RetiredItems.Migrate, Profile.Data)
+		if okRetire and refunded > 0 then
+			print(("[Data] %s: retired %s, refunding %d coins"):format(Player.Name, table.concat(found, ", "), refunded))
+		elseif not okRetire then
+			warn("[Data] retiring old items for " .. Player.Name .. " failed: " .. tostring(refunded))
+		end
 
 		Profile:ListenToRelease(function()
 			Profiles[Player] = nil

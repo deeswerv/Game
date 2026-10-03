@@ -147,36 +147,6 @@ WeaponConfig.Weapons = {
 		Holster = true,
 	},
 
-	Scattergun = {
-		Type = "Gun",
-		Class = "Shotgun",
-		DeathKnockback = 100,        -- a shotgun should visibly throw them
-		Slot = "Large",
-		Rarity = "Rare",
-		-- Pump action: no magazine leaves the weapon, and the pump is racked every reload.
-		MagFed = false,
-		ChargePart = "Pump",
-		ChargeWhenEmpty = false,
-		Description = "Eight pellets at once. Devastating up close, useless at range.",
-		Damage = 11,                 -- per pellet: 88 if every pellet lands
-		HeadshotMultiplier = 1.5,
-		PelletsPerShot = 8,
-		FireRate = 0.85,
-		Automatic = false,
-		MagazineSize = 5,
-		ReloadTime = 2.6,
-		Range = 90,                  -- deliberately short
-		SpreadMin = 5.5,
-		SpreadMax = 9.0,
-		SpreadPerShot = 1.2,
-		AdsSpreadScale = 0.65,       -- aiming helps, but it is still a shotgun
-		RecoilPitch = 5.5,
-		RecoilYaw = 1.2,
-		RecoilKickback = 0.5,
-		AdsFov = 62,
-		TracerColor = Color3.fromRGB(255, 180, 120),
-		TracerWidth = 0.07,
-	},
 
 	Hornet = {
 		Type = "Gun",

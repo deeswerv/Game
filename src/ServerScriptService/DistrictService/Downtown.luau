@@ -1402,113 +1402,134 @@ local function apartments(b: Kit.Builder)
 end
 
 --- THE PENTHOUSE, on the roof of ZEE TOWER: the Don's floor, and the arena for the fight with
---- him. A black-marble deck a little wider than the shaft all round, edged in gold and glass.
---- From the front: an infinity pool along the edge looking down the avenue, a terrace of
---- loungers, a glass-roofed pavilion on gold columns (the lounge -- a sunken sofa, a grand
---- piano, a bar, the Don's desk under a chandelier), the feature wall with the gold Z and the
---- vault, and behind it the helipad (the Don's helicopter is `DonHeli`) and the elevator you
---- arrive by. Four pylons carry the crown and the spire over it all. Invisible walls and a lid
---- keep everybody on the roof.
+--- him. A black-marble deck well wider than the shaft all round (112 x 84), edged in gold and
+--- glass. Laid out for a gunfight first and a penthouse second: an open ring of floor all the
+--- way round, with cover in it rather than walls --
+---
+---   front    an infinity pool along the edge looking down the avenue, a terrace of loungers
+---   middle   a glass-roofed pavilion on gold columns over the Don's lounge (a U of low sofas,
+---            a table of money) and his desk under a chandelier
+---   flanks   the bar down the east edge, the grand piano by the glass on the west, marble
+---            planters with hedges -- waist-high things to fight round
+---   back     a short feature wall with the gold Z and the vault, open at both ends, the
+---            helipad (the Don's helicopter is `DonHeli`) and the elevator you arrive by
+---
+--- Four pylons carry the crown and the spire over it all. The only walls you cannot see are at
+--- the very edge of the deck (and a lid): nothing invisible stands anywhere on the floor.
 ---
 --- Origin at the middle of the roof, on the roof; -Z toward the avenue. The deck's top is y 1.
 local function penthouse(b: Kit.Builder)
-	local W, D = 84, 60
+	local W, D = 112, 84
+	local HW_, HD = W / 2, D / 2
 	local marble = Color3.fromRGB(34, 32, 40)
 	local marbleLight = Color3.fromRGB(236, 232, 226)
 	local gold = Color3.fromRGB(236, 184, 64)
 	local deckTop = 1
 	b:part("PenthouseDeck", Vector3.new(W, 2, D), Vector3.new(0, 0, 0), marble, M.Marble)
 	-- Gold inlay across the floor, and a gold band round the deck's edge.
-	for x = -36, 36, 12 do
+	for x = -48, 48, 12 do
 		b:decor("Inlay", Vector3.new(0.3, 0.04, D - 2), Vector3.new(x, deckTop + 0.02, 0), gold, M.Metal)
 	end
-	for z = -24, 24, 12 do
+	for z = -36, 36, 12 do
 		b:decor("Inlay", Vector3.new(W - 2, 0.04, 0.3), Vector3.new(0, deckTop + 0.03, z), gold, M.Metal)
 	end
 	-- The underside, as the street sees it: a cream soffit with a ring of lamps round its edge.
 	b:decor("Soffit", Vector3.new(W - 0.4, 0.1, D - 0.4), Vector3.new(0, -1.06, 0), Color3.fromRGB(236, 226, 206))
-	for x = -W / 2 + 3, W / 2 - 3 + 1e-3, 6 do
+	for x = -HW_ + 4, HW_ - 4 + 1e-3, 8 do
 		for _, s in ipairs({ -1, 1 }) do
-			b:decor("SoffitLamp", Vector3.new(0.8, 0.2, 0.8), Vector3.new(x, -1.2, s * (D / 2 - 1.2)), LAMP_GLASS)
+			b:decor("SoffitLamp", Vector3.new(0.8, 0.2, 0.8), Vector3.new(x, -1.2, s * (HD - 1.2)), LAMP_GLASS)
 		end
 	end
-	for z = -D / 2 + 3.6, D / 2 - 3.6 + 1e-3, 6 do
+	for z = -HD + 6, HD - 6 + 1e-3, 8 do
 		for _, s in ipairs({ -1, 1 }) do
-			b:decor("SoffitLamp", Vector3.new(0.8, 0.2, 0.8), Vector3.new(s * (W / 2 - 1.2), -1.2, z), LAMP_GLASS)
+			b:decor("SoffitLamp", Vector3.new(0.8, 0.2, 0.8), Vector3.new(s * (HW_ - 1.2), -1.2, z), LAMP_GLASS)
 		end
 	end
-	for _, at in ipairs({ Vector3.new(-30, -3, -24), Vector3.new(30, -3, -24), Vector3.new(0, -3, -27) }) do
-		b:light("Point", at, WARM, 1.1, 22)
+	for _, at in ipairs({ Vector3.new(-36, -3, -34), Vector3.new(36, -3, -34), Vector3.new(0, -3, -38) }) do
+		b:light("Point", at, WARM, 1.1, 24)
 	end
 	for _, s in ipairs({ -1, 1 }) do
-		b:decor("Fascia", Vector3.new(W + 0.3, 0.6, 0.2), Vector3.new(0, 0.2, s * (D / 2 + 0.05)), gold, M.Metal)
-		b:decor("Fascia", Vector3.new(0.2, 0.6, D + 0.3), Vector3.new(s * (W / 2 + 0.05), 0.2, 0), gold, M.Metal)
-		-- Struts under the side cantilevers, from the shaft out to the deck's edge.
-		for _, z in ipairs({ -20, 0, 20 }) do
-			local cf, len = Kit.Span(Vector3.new(s * 30, -9, z), Vector3.new(s * (W / 2 - 1), -1, z))
-			b:decor("Strut", Vector3.new(0.8, 0.8, len), cf, gold, M.Metal)
+		b:decor("Fascia", Vector3.new(W + 0.3, 0.6, 0.2), Vector3.new(0, 0.2, s * (HD + 0.05)), gold, M.Metal)
+		b:decor("Fascia", Vector3.new(0.2, 0.6, D + 0.3), Vector3.new(s * (HW_ + 0.05), 0.2, 0), gold, M.Metal)
+		-- Struts carrying the cantilevers: from the shaft's sides out to the deck's side edges,
+		-- and from its front and back out to the deck's front and back.
+		for _, z in ipairs({ -16, 0, 16 }) do
+			local cf, len = Kit.Span(Vector3.new(s * 30, -12, z), Vector3.new(s * (HW_ - 1), -1, z))
+			b:decor("Strut", Vector3.new(0.9, 0.9, len), cf, gold, M.Metal)
+		end
+		for _, x in ipairs({ -24, 0, 24 }) do
+			local cf, len = Kit.Span(Vector3.new(x, -12, s * 20), Vector3.new(x, -1, s * (HD - 1)))
+			b:decor("Strut", Vector3.new(0.9, 0.9, len), cf, gold, M.Metal)
 		end
 	end
 
 	-- The glass balustrade round the edge, gold posts and a gold rail on top.
 	local rail = 3.6
 	for _, s in ipairs({ -1, 1 }) do
-		b:part("Balustrade", Vector3.new(W - 1.2, rail, 0.3), Vector3.new(0, deckTop + rail / 2, s * (D / 2 - 0.6)), GLASS,
+		b:part("Balustrade", Vector3.new(W - 1.2, rail, 0.3), Vector3.new(0, deckTop + rail / 2, s * (HD - 0.6)), GLASS,
 			M.Glass, { transparency = 0.6, reflectance = 0.1 })
-		b:part("Balustrade", Vector3.new(0.3, rail, D - 1.8), Vector3.new(s * (W / 2 - 0.6), deckTop + rail / 2, 0), GLASS,
+		b:part("Balustrade", Vector3.new(0.3, rail, D - 1.8), Vector3.new(s * (HW_ - 0.6), deckTop + rail / 2, 0), GLASS,
 			M.Glass, { transparency = 0.6, reflectance = 0.1 })
-		b:decor("HandRail", Vector3.new(W - 0.9, 0.3, 0.5), Vector3.new(0, deckTop + rail + 0.15, s * (D / 2 - 0.6)), gold,
+		b:decor("HandRail", Vector3.new(W - 0.9, 0.3, 0.5), Vector3.new(0, deckTop + rail + 0.15, s * (HD - 0.6)), gold,
 			M.Metal)
-		b:decor("HandRail", Vector3.new(0.5, 0.3, D - 1.5), Vector3.new(s * (W / 2 - 0.6), deckTop + rail + 0.16, 0), gold,
+		b:decor("HandRail", Vector3.new(0.5, 0.3, D - 1.5), Vector3.new(s * (HW_ - 0.6), deckTop + rail + 0.16, 0), gold,
 			M.Metal)
-		for x = -W / 2 + 0.6, W / 2 - 0.6 + 1e-3, 6 do
-			b:decor("RailPost", Vector3.new(0.45, rail, 0.45), Vector3.new(x, deckTop + rail / 2, s * (D / 2 - 0.6)), gold,
+		for x = -HW_ + 0.6, HW_ - 0.6 + 1e-3, 8 do
+			b:decor("RailPost", Vector3.new(0.45, rail, 0.45), Vector3.new(x, deckTop + rail / 2, s * (HD - 0.6)), gold,
+				M.Metal)
+		end
+		for z = -HD + 0.6, HD - 0.6 + 1e-3, 8 do
+			b:decor("RailPost", Vector3.new(0.45, rail, 0.45), Vector3.new(s * (HW_ - 0.6), deckTop + rail / 2, z), gold,
 				M.Metal)
 		end
 	end
-	-- Nobody leaves by the edge: invisible walls well above the rail, and a lid.
+	-- Nobody leaves by the edge: invisible walls just outside the rail, and a lid. These are
+	-- the ONLY invisible walls up here (TowerService and tools/uitest/tower.luau hold that).
 	for _, s in ipairs({ -1, 1 }) do
-		b:part("TowerBound", Vector3.new(W + 2, 50, 1), Vector3.new(0, deckTop + 25, s * (D / 2 + 0.5)), gold, nil,
+		b:part("TowerBound", Vector3.new(W + 2, 50, 1), Vector3.new(0, deckTop + 25, s * (HD + 0.5)), gold, nil,
 			{ transparency = 1, query = false, shadow = false })
-		b:part("TowerBound", Vector3.new(1, 50, D + 2), Vector3.new(s * (W / 2 + 0.5), deckTop + 25, 0), gold, nil,
+		b:part("TowerBound", Vector3.new(1, 50, D + 2), Vector3.new(s * (HW_ + 0.5), deckTop + 25, 0), gold, nil,
 			{ transparency = 1, query = false, shadow = false })
 	end
 	b:part("TowerBound", Vector3.new(W + 2, 1, D + 2), Vector3.new(0, deckTop + 50.5, 0), gold, nil,
 		{ transparency = 1, query = false, shadow = false })
 
 	-- The infinity pool along the front edge, looking down the avenue.
-	local pool = b:within(CFrame.new(0, deckTop, -24.6))
-	pool:decor("PoolTile", Vector3.new(56, 0.04, 6.4), Vector3.new(0, 0.09, 0), Color3.fromRGB(120, 206, 230))
-	pool:decor("PoolWater", Vector3.new(56, 0.1, 6.4), Vector3.new(0, 0.56, 0), Color3.fromRGB(70, 180, 226), M.Glass,
+	local pool = b:within(CFrame.new(0, deckTop, -HD + 7.4))
+	pool:decor("PoolTile", Vector3.new(72, 0.04, 6.4), Vector3.new(0, 0.09, 0), Color3.fromRGB(120, 206, 230))
+	pool:decor("PoolWater", Vector3.new(72, 0.1, 6.4), Vector3.new(0, 0.56, 0), Color3.fromRGB(70, 180, 226), M.Glass,
 		{ transparency = 0.35, reflectance = 0.2 })
 	for _, s in ipairs({ -1, 1 }) do
-		pool:part("PoolRim", Vector3.new(57.6, 0.7, 0.8), Vector3.new(0, 0.35, s * 3.6), marbleLight, M.Marble)
-		pool:part("PoolRim", Vector3.new(0.8, 0.7, 6.4), Vector3.new(s * 28.4, 0.35, 0), marbleLight, M.Marble)
+		pool:part("PoolRim", Vector3.new(73.6, 0.7, 0.8), Vector3.new(0, 0.35, s * 3.6), marbleLight, M.Marble)
+		pool:part("PoolRim", Vector3.new(0.8, 0.7, 6.4), Vector3.new(s * 36.4, 0.35, 0), marbleLight, M.Marble)
 	end
-	b:light("Point", Vector3.new(0, deckTop + 0.4, -24.6), Color3.fromRGB(120, 210, 255), 1.4, 24)
+	b:light("Point", Vector3.new(0, deckTop + 0.4, -HD + 7.4), Color3.fromRGB(120, 210, 255), 1.4, 30)
 
-	-- The terrace: loungers facing the view, gold umbrellas between them.
-	for i, x in ipairs({ -26, -17, 17, 26 }) do
-		local l = b:within(CFrame.new(x, deckTop, -15) * CFrame.Angles(0, 0, 0))
-		l:part("Lounger", Vector3.new(2.4, 0.9, 6), Vector3.new(0, 0.65, 0), marbleLight)
-		l:decor("LoungerBack", Vector3.new(2.4, 0.4, 2.6), CFrame.new(0, 1.6, 2.2) * CFrame.Angles(math.rad(35), 0, 0),
-			marbleLight)
-		l:decor("Towel", Vector3.new(1.8, 0.06, 3), Vector3.new(0, 1.13, -0.8), if i % 2 == 0 then gold else TEAL, M.Fabric)
-		if i % 2 == 1 then
-			local u = b:within(CFrame.new(x + 4.5, deckTop, -15))
-			u:decor("UmbrellaPole", Vector3.new(0.25, 7, 0.25), Vector3.new(0, 3.5, 0), gold, M.Metal)
-			u:decor("Umbrella", Vector3.new(1.2, 7, 7), CFrame.new(0, 7.2, 0) * CFrame.Angles(0, 0, math.rad(90)), CREAM,
-				M.Fabric, { shape = "Cylinder" })
-			u:decor("UmbrellaTrim", Vector3.new(0.3, 7.2, 7.2), CFrame.new(0, 6.6, 0) * CFrame.Angles(0, 0, math.rad(90)),
-				gold, M.Fabric, { shape = "Cylinder" })
+	-- The terrace: loungers facing the view in pairs, a gold umbrella over each pair. Low
+	-- enough to shoot over, solid enough to duck behind.
+	for _, pair in ipairs({ -38, -22, 22, 38 }) do
+		for i, dx in ipairs({ -2.2, 2.2 }) do
+			local l = b:within(CFrame.new(pair + dx, deckTop, -24))
+			l:part("Lounger", Vector3.new(2.4, 0.9, 6), Vector3.new(0, 0.65, 0), marbleLight)
+			l:decor("LoungerBack", Vector3.new(2.4, 0.4, 2.6), CFrame.new(0, 1.6, 2.2) * CFrame.Angles(math.rad(35), 0, 0),
+				marbleLight)
+			l:decor("Towel", Vector3.new(1.8, 0.06, 3), Vector3.new(0, 1.13, -0.8), if i == 1 then gold else TEAL, M.Fabric)
 		end
+		local u = b:within(CFrame.new(pair, deckTop, -21))
+		u:decor("UmbrellaPole", Vector3.new(0.25, 7, 0.25), Vector3.new(0, 3.5, 0), gold, M.Metal)
+		u:decor("Umbrella", Vector3.new(1.2, 7.4, 7.4), CFrame.new(0, 7.2, 0) * CFrame.Angles(0, 0, math.rad(90)), CREAM,
+			M.Fabric, { shape = "Cylinder" })
+		u:decor("UmbrellaTrim", Vector3.new(0.3, 7.6, 7.6), CFrame.new(0, 6.6, 0) * CFrame.Angles(0, 0, math.rad(90)),
+			gold, M.Fabric, { shape = "Cylinder" })
 	end
 
 	-- The pavilion: a glass roof on gold columns; the four corner columns run on up as the
-	-- crown's pylons.
+	-- crown's pylons. Columns are the only things inside it taller than a sofa, so it is a
+	-- room you can see and shoot across.
 	local roofY = deckTop + 15
-	for _, x in ipairs({ -22, -7.4, 7.4, 22 }) do
-		for _, z in ipairs({ -8, 16 }) do
+	local PZ = 2 -- the pavilion's middle
+	for _, x in ipairs({ -24, -8, 8, 24 }) do
+		for _, z in ipairs({ PZ - 12, PZ + 12 }) do
 			local corner = math.abs(x) > 20
 			local height = if corner then 40 else roofY - deckTop
 			b:part("Column", Vector3.new(height, 1.6, 1.6), CFrame.new(x, deckTop + height / 2, z)
@@ -1519,16 +1540,16 @@ local function penthouse(b: Kit.Builder)
 				{ Angle = 35 })
 		end
 	end
-	b:decor("GlassRoof", Vector3.new(46, 0.3, 26), Vector3.new(0, roofY + 0.3, 4), Color3.fromRGB(190, 220, 236), M.Glass,
+	b:decor("GlassRoof", Vector3.new(50, 0.3, 26), Vector3.new(0, roofY + 0.3, PZ), Color3.fromRGB(190, 220, 236), M.Glass,
 		{ transparency = 0.55, reflectance = 0.2 })
-	for _, z in ipairs({ -8, 4, 16 }) do
-		b:decor("RoofBeam", Vector3.new(46.6, 0.6, 0.5), Vector3.new(0, roofY + 0.1, z), gold, M.Metal)
+	for _, z in ipairs({ PZ - 12, PZ, PZ + 12 }) do
+		b:decor("RoofBeam", Vector3.new(50.6, 0.6, 0.5), Vector3.new(0, roofY + 0.1, z), gold, M.Metal)
 	end
-	for _, x in ipairs({ -22, -7.4, 7.4, 22 }) do
-		b:decor("RoofBeam", Vector3.new(0.5, 0.6, 24.5), Vector3.new(x, roofY + 0.11, 4), gold, M.Metal)
+	for _, x in ipairs({ -24, -8, 8, 24 }) do
+		b:decor("RoofBeam", Vector3.new(0.5, 0.6, 24.5), Vector3.new(x, roofY + 0.11, PZ), gold, M.Metal)
 	end
 	-- The chandelier over the lounge.
-	local ch = b:within(CFrame.new(-8, roofY - 3.2, 4))
+	local ch = b:within(CFrame.new(-12, roofY - 3.2, PZ))
 	ch:decor("ChandelierChain", Vector3.new(0.15, 2.6, 0.15), Vector3.new(0, 1.9, 0), gold, M.Metal)
 	for i, r in ipairs({ 3, 2 }) do
 		ch:decor("ChandelierRing", Vector3.new(0.25, r * 2, r * 2), CFrame.new(0, -i * 0.7, 0)
@@ -1539,10 +1560,10 @@ local function penthouse(b: Kit.Builder)
 				LAMP_GLASS, M.Glass, { shape = "Ball", transparency = 0.1 })
 		end
 	end
-	ch:light("Point", Vector3.new(0, -1.6, 0), WARM, 2, 30)
+	ch:light("Point", Vector3.new(0, -1.6, 0), WARM, 2, 34)
 
-	-- The lounge: a sunken-feeling U of white sofas round a table of money.
-	local lounge = b:within(CFrame.new(-11, deckTop, 3))
+	-- The lounge: a U of low white sofas round a table of money, open toward the front.
+	local lounge = b:within(CFrame.new(-13, deckTop, PZ + 2))
 	lounge:decor("Rug", Vector3.new(12.4, 0.06, 11), Vector3.new(0, 0.06, 0), Color3.fromRGB(150, 36, 44), M.Fabric)
 	for _, spec in ipairs({ { Vector3.new(10, 1.6, 2.2), Vector3.new(0, 0.8, 4.6) }, { Vector3.new(2.2, 1.6, 8), Vector3.new(-5.4, 0.8, 0.4) },
 		{ Vector3.new(2.2, 1.6, 8), Vector3.new(5.4, 0.8, 0.4) } }) do
@@ -1556,8 +1577,17 @@ local function penthouse(b: Kit.Builder)
 	end
 	lounge:decor("Briefcase", Vector3.new(1.6, 0.5, 1.1), Vector3.new(1.4, 1.35, 0.7), Color3.fromRGB(40, 30, 26))
 
-	-- The grand piano, lid up.
-	local piano = b:within(CFrame.new(10, deckTop, 1) * CFrame.Angles(0, math.rad(-20), 0))
+	-- The Don's desk, facing the front, under the glass.
+	local desk = b:within(CFrame.new(10, deckTop, PZ + 8))
+	desk:part("Desk", Vector3.new(9, 3, 3.4), Vector3.new(0, 1.5, 0), Color3.fromRGB(62, 36, 24), M.Wood)
+	desk:decor("DeskTop", Vector3.new(9.4, 0.25, 3.8), Vector3.new(0, 3.1, 0), Color3.fromRGB(20, 18, 20), M.Marble)
+	desk:decor("DeskLamp", Vector3.new(0.9, 1.4, 0.9), Vector3.new(-3.4, 3.9, 0.6), gold, M.Metal)
+	desk:decor("Globe", Vector3.new(1.2, 1.2, 1.2), Vector3.new(3.4, 3.85, 0.4), Color3.fromRGB(60, 120, 170), nil,
+		{ shape = "Ball" })
+	desk:part("DeskChair", Vector3.new(2.4, 5, 2.4), Vector3.new(0, 2.5, 2.8), Color3.fromRGB(120, 30, 36), M.Fabric)
+
+	-- The grand piano, lid up, by the glass on the west side.
+	local piano = b:within(CFrame.new(-44, deckTop, 10) * CFrame.Angles(0, math.rad(70), 0))
 	piano:part("Piano", Vector3.new(4.6, 1.6, 6), Vector3.new(0, 2.6, 0), Color3.fromRGB(14, 14, 18))
 	piano:decor("PianoLid", Vector3.new(4.4, 0.15, 5.6), CFrame.new(0.6, 4.2, 0) * CFrame.Angles(0, 0, math.rad(32)),
 		Color3.fromRGB(20, 20, 26))
@@ -1567,54 +1597,58 @@ local function penthouse(b: Kit.Builder)
 	end
 	piano:part("PianoBench", Vector3.new(3, 1.4, 1.2), Vector3.new(0, 0.7, -5), Color3.fromRGB(14, 14, 18))
 
-	-- The bar down the east side, bottles on a mirrored shelf behind it.
-	local bar = b:within(CFrame.new(19, deckTop, 4))
-	bar:part("Bar", Vector3.new(2.2, 3.6, 14), Vector3.new(0, 1.8, 0), Color3.fromRGB(26, 24, 30), M.Marble)
-	bar:decor("BarTop", Vector3.new(2.6, 0.3, 14.4), Vector3.new(0, 3.75, 0), gold, M.Metal)
-	bar:decor("BarShelf", Vector3.new(0.3, 5, 14), Vector3.new(2.6, 5.5, 0), Color3.fromRGB(150, 170, 186), M.Glass,
+	-- The bar down the east edge, bottles on a mirrored shelf behind it: a long counter to fight
+	-- along, with the shelf against the glass.
+	local bar = b:within(CFrame.new(46, deckTop, 4))
+	bar:part("Bar", Vector3.new(2.2, 3.6, 16), Vector3.new(0, 1.8, 0), Color3.fromRGB(26, 24, 30), M.Marble)
+	bar:decor("BarTop", Vector3.new(2.6, 0.3, 16.4), Vector3.new(0, 3.75, 0), gold, M.Metal)
+	bar:part("BarShelf", Vector3.new(0.6, 6.4, 16), Vector3.new(6.4, 3.2, 0), Color3.fromRGB(26, 24, 30), M.Marble)
+	bar:decor("BarMirror", Vector3.new(0.2, 4.4, 15), Vector3.new(6.05, 4.4, 0), Color3.fromRGB(150, 170, 186), M.Glass,
 		{ reflectance = 0.3 })
-	for k = 0, 11 do
-		bar:decor("Bottle", Vector3.new(0.4, 1.1, 0.4), Vector3.new(2.3, 4.45 + (k % 2) * 2, -6 + k * 1.1),
+	for k = 0, 13 do
+		bar:decor("Bottle", Vector3.new(0.4, 1.1, 0.4), Vector3.new(5.8, 2.6 + (k % 2) * 2.2, -7 + k * 1.08),
 			({ Color3.fromRGB(60, 120, 60), Color3.fromRGB(150, 90, 40), Color3.fromRGB(200, 200, 210),
 				Color3.fromRGB(140, 30, 40) })[k % 4 + 1], M.Glass, { transparency = 0.2 })
 	end
-	for _, z in ipairs({ -4, 0, 4 }) do
+	for _, z in ipairs({ -5, 0, 5 }) do
 		bar:decor("Stool", Vector3.new(1.3, 0.3, 1.3), Vector3.new(-2.2, 2.6, z), gold, M.Metal, { shape = "Cylinder" })
 		bar:decor("StoolLeg", Vector3.new(0.2, 2.4, 0.2), Vector3.new(-2.2, 1.2, z), gold, M.Metal)
 	end
 
-	-- The Don's desk under the chandelier's glow.
-	local desk = b:within(CFrame.new(0, deckTop, 12))
-	desk:part("Desk", Vector3.new(9, 3, 3.4), Vector3.new(0, 1.5, 0), Color3.fromRGB(62, 36, 24), M.Wood)
-	desk:decor("DeskTop", Vector3.new(9.4, 0.25, 3.8), Vector3.new(0, 3.1, 0), Color3.fromRGB(20, 18, 20), M.Marble)
-	desk:decor("DeskLamp", Vector3.new(0.9, 1.4, 0.9), Vector3.new(-3.4, 3.9, 0.6), gold, M.Metal)
-	desk:decor("Globe", Vector3.new(1.2, 1.2, 1.2), Vector3.new(3.4, 3.85, 0.4), Color3.fromRGB(60, 120, 170), nil,
-		{ shape = "Ball" })
-	desk:part("DeskChair", Vector3.new(2.4, 5, 2.4), Vector3.new(0, 2.5, 2.8), Color3.fromRGB(120, 30, 36), M.Fabric)
+	-- Marble planters with clipped hedges: waist-high cover across both flanks.
+	for _, at in ipairs({ Vector3.new(-32, 0, -10), Vector3.new(32, 0, -10), Vector3.new(-30, 0, 24),
+		Vector3.new(30, 0, 18) }) do
+		local pl = b:within(CFrame.new(at.X, deckTop, at.Z))
+		pl:part("Planter", Vector3.new(7, 2.2, 2.6), Vector3.new(0, 1.1, 0), marbleLight, M.Marble)
+		pl:decor("PlanterTrim", Vector3.new(7.3, 0.3, 2.9), Vector3.new(0, 2.25, 0), gold, M.Metal)
+		pl:decor("Hedge", Vector3.new(6.4, 1.2, 2), Vector3.new(0, 2.9, 0), HEDGE, M.Grass)
+	end
 
-	-- The feature wall: marble, the gold Z in a ring, the vault. Cover, too.
-	local wall = b:within(CFrame.new(0, deckTop, 18))
-	wall:part("FeatureWall", Vector3.new(40, 13, 1.4), Vector3.new(0, 6.5, 0), marbleLight, M.Marble)
-	wall:decor("WallTrim", Vector3.new(40.4, 0.6, 1.6), Vector3.new(0, 13.1, 0), gold, M.Metal)
+	-- The feature wall: marble, the gold Z in a ring, the vault. Short enough to run round at
+	-- both ends, so the back of the roof is never cut off from the front.
+	local wall = b:within(CFrame.new(0, deckTop, 24))
+	wall:part("FeatureWall", Vector3.new(30, 13, 1.4), Vector3.new(0, 6.5, 0), marbleLight, M.Marble)
+	wall:decor("WallTrim", Vector3.new(30.4, 0.6, 1.6), Vector3.new(0, 13.1, 0), gold, M.Metal)
 	wall:decor("ZRing", Vector3.new(0.2, 9, 9), CFrame.new(-6, 7, -0.75) * CFrame.Angles(0, math.rad(90), 0), gold, M.Metal,
 		{ shape = "Cylinder" })
 	wall:decor("ZDisc", Vector3.new(0.2, 8, 8), CFrame.new(-6, 7, -0.8) * CFrame.Angles(0, math.rad(90), 0), marble, M.Marble,
 		{ shape = "Cylinder" })
 	painted(wall, "Z", Kit.Look(Vector3.new(-6, 7, -0.95), Vector3.new(-6, 7, -10)), 6, 6.4, gold)
 	painted(wall, "THE PENTHOUSE", Kit.Look(Vector3.new(-6, 1.6, -0.76), Vector3.new(-6, 1.6, -10)), 10, 1, gold)
-	wall:decor("Vault", Vector3.new(0.5, 7, 7), CFrame.new(10, 5.2, -0.9) * CFrame.Angles(0, math.rad(90), 0),
+	wall:decor("Vault", Vector3.new(0.5, 7, 7), CFrame.new(8, 5.2, -0.9) * CFrame.Angles(0, math.rad(90), 0),
 		Color3.fromRGB(150, 156, 164), M.DiamondPlate, { shape = "Cylinder" })
-	wall:decor("VaultRim", Vector3.new(0.3, 7.8, 7.8), CFrame.new(10, 5.2, -0.75) * CFrame.Angles(0, math.rad(90), 0), gold,
+	wall:decor("VaultRim", Vector3.new(0.3, 7.8, 7.8), CFrame.new(8, 5.2, -0.75) * CFrame.Angles(0, math.rad(90), 0), gold,
 		M.Metal, { shape = "Cylinder" })
 	for k = 0, 2 do
 		wall:decor("VaultSpoke", Vector3.new(4.6, 0.35, 0.3),
-			CFrame.new(10, 5.2, -1.25) * CFrame.Angles(0, 0, k * math.pi / 3), gold, M.Metal)
+			CFrame.new(8, 5.2, -1.25) * CFrame.Angles(0, 0, k * math.pi / 3), gold, M.Metal)
 	end
-	wall:decor("VaultHub", Vector3.new(0.4, 1.2, 1.2), CFrame.new(10, 5.2, -1.3) * CFrame.Angles(0, math.rad(90), 0), gold,
+	wall:decor("VaultHub", Vector3.new(0.4, 1.2, 1.2), CFrame.new(8, 5.2, -1.3) * CFrame.Angles(0, math.rad(90), 0), gold,
 		M.Metal, { shape = "Cylinder" })
 
-	-- Palms in gold planters at the corners of the open floor.
-	for _, at in ipairs({ Vector3.new(-36, 0, -10), Vector3.new(36, 0, -10), Vector3.new(-36, 0, 8), Vector3.new(36, 0, 8) }) do
+	-- Palms in gold planters at the four corners of the floor.
+	for _, at in ipairs({ Vector3.new(-50, 0, -14), Vector3.new(50, 0, -14), Vector3.new(-50, 0, 28),
+		Vector3.new(50, 0, 30) }) do
 		local palm = b:within(CFrame.new(at.X, deckTop, at.Z))
 		palm:part("Planter", Vector3.new(4, 2.2, 4), Vector3.new(0, 1.1, 0), gold, M.Metal)
 		palm:decor("PlanterSoil", Vector3.new(3.6, 0.1, 3.6), Vector3.new(0, 2.2, 0), SOIL)
@@ -1630,11 +1664,11 @@ local function penthouse(b: Kit.Builder)
 		end
 	end
 
-	-- The helipad behind the wall, and the Don's helicopter on it.
-	local pad = b:within(CFrame.new(14, deckTop, 24.5))
-	pad:part("Helipad", Vector3.new(28, 0.4, 9.4), Vector3.new(0, 0.2, 0), Color3.fromRGB(46, 50, 58))
-	pad:decor("PadEdge", Vector3.new(28.2, 0.06, 9.6), Vector3.new(0, 0.43, 0), Color3.fromRGB(250, 204, 60))
-	pad:decor("PadInner", Vector3.new(27, 0.06, 8.6), Vector3.new(0, 0.47, 0), Color3.fromRGB(46, 50, 58))
+	-- The helipad in the back corner, and the Don's helicopter on it.
+	local pad = b:within(CFrame.new(24, deckTop, 34))
+	pad:part("Helipad", Vector3.new(30, 0.4, 12), Vector3.new(0, 0.2, 0), Color3.fromRGB(46, 50, 58))
+	pad:decor("PadEdge", Vector3.new(30.2, 0.06, 12.2), Vector3.new(0, 0.43, 0), Color3.fromRGB(250, 204, 60))
+	pad:decor("PadInner", Vector3.new(29, 0.06, 11.2), Vector3.new(0, 0.47, 0), Color3.fromRGB(46, 50, 58))
 	pad:decor("PadH", Vector3.new(0.8, 0.06, 5), Vector3.new(-2, 0.53, 0), CREAM)
 	pad:decor("PadH", Vector3.new(0.8, 0.06, 5), Vector3.new(2, 0.53, 0), CREAM)
 	pad:decor("PadH", Vector3.new(4, 0.06, 0.8), Vector3.new(0, 0.545, 0), CREAM)
@@ -1656,8 +1690,9 @@ local function penthouse(b: Kit.Builder)
 		heli:decor("Skid", Vector3.new(8, 0.3, 0.3), Vector3.new(0, 0.6, z), STEEL, M.Metal)
 	end
 
-	-- The elevator you come up in, and leave by.
-	local lift = b:within(CFrame.new(-34, deckTop, 25))
+	-- The elevator you come up in, and leave by, in the other back corner -- facing straight
+	-- down the roof at the pavilion, nothing in the way.
+	local lift = b:within(CFrame.new(-42, deckTop, 36))
 	lift:part("ElevatorCore", Vector3.new(12, 13, 8), Vector3.new(0, 6.5, 0), marbleLight, M.Marble)
 	lift:decor("ElevatorTrim", Vector3.new(12.4, 0.6, 8.4), Vector3.new(0, 13.1, 0), gold, M.Metal)
 	lift:decor("ElevatorFrame", Vector3.new(6.4, 9.4, 0.4), Vector3.new(0, 4.7, -4.1), gold, M.Metal)
@@ -1666,15 +1701,17 @@ local function penthouse(b: Kit.Builder)
 			M.Metal, { reflectance = 0.2 })
 	end
 	painted(lift, "88", Kit.Look(Vector3.new(0, 10.2, -4.45), Vector3.new(0, 10.2, -10)), 2.4, 1.2, gold)
-	local arrive = lift:decor("TowerArrival", Vector3.new(4, 0.06, 3), Vector3.new(0, 0.04, -8), marble, nil,
+	local arrive = lift:decor("TowerArrival", Vector3.new(4, 0.06, 3), Vector3.new(0, 0.04, -9), marble, nil,
 		{ transparency = 1 })
 	arrive:SetAttribute("Facing", "-Z")
 	local leave = lift:decor("TowerExit", Vector3.new(5, 0.08, 2.4), Vector3.new(0, 0.05, -5.6), gold, M.Fabric)
 	leave:SetAttribute("PromptText", "Take the elevator down")
 	leave:SetAttribute("PromptObject", "Leave ZEE TOWER")
-	-- Where the Don stands to start with, and where his people come from.
-	b:decor("TowerBossSpot", Vector3.new(2, 0.06, 2), Vector3.new(-2, deckTop + 0.04, 8), marble, nil, { transparency = 1 })
-	for i, at in ipairs({ Vector3.new(-34, 0, 14), Vector3.new(14, 0, 22), Vector3.new(30, 0, -4), Vector3.new(-30, 0, -4) }) do
+	-- Where the Don stands to start with (in front of the pavilion), and where his people come
+	-- from: the elevator, the helipad, both flanks and the terrace.
+	b:decor("TowerBossSpot", Vector3.new(2, 0.06, 2), Vector3.new(0, deckTop + 0.04, -6), marble, nil, { transparency = 1 })
+	for i, at in ipairs({ Vector3.new(-42, 0, 24), Vector3.new(24, 0, 26), Vector3.new(44, 0, -16), Vector3.new(-44, 0, -16),
+		Vector3.new(0, 0, -18) }) do
 		local spot = b:decor("TowerAddSpot", Vector3.new(2, 0.06, 2), at + Vector3.new(0, deckTop + 0.04, 0), marble, nil,
 			{ transparency = 1 })
 		spot:SetAttribute("Order", i)
@@ -1683,19 +1720,20 @@ local function penthouse(b: Kit.Builder)
 	-- The crown: the four corner columns carry a gold frame, and the spire rises out of it.
 	local crownY = deckTop + 40
 	for _, s in ipairs({ -1, 1 }) do
-		b:decor("CrownBeam", Vector3.new(46, 1.4, 1.4), Vector3.new(0, crownY, s * 12 + 4), gold, M.Metal)
-		b:decor("CrownBeam", Vector3.new(1.4, 1.4, 25.4), Vector3.new(s * 22, crownY + 0.02, 4), gold, M.Metal)
-		local cf, len = Kit.Span(Vector3.new(s * 22, crownY, 4), Vector3.new(0, crownY + 12, 4))
+		b:decor("CrownBeam", Vector3.new(50, 1.4, 1.4), Vector3.new(0, crownY, PZ + s * 12), gold, M.Metal)
+		b:decor("CrownBeam", Vector3.new(1.4, 1.4, 25.4), Vector3.new(s * 24, crownY + 0.02, PZ), gold, M.Metal)
+		local cf, len = Kit.Span(Vector3.new(s * 24, crownY, PZ), Vector3.new(0, crownY + 12, PZ))
 		b:decor("CrownArch", Vector3.new(1, 1, len), cf, gold, M.Metal)
 	end
-	b:part("Spire", Vector3.new(26, 1.4, 1.4), vertical(Vector3.new(0, crownY + 12 + 13, 4)), Color3.fromRGB(226, 216, 196),
+	b:part("Spire", Vector3.new(26, 1.4, 1.4), vertical(Vector3.new(0, crownY + 12 + 13, PZ)), Color3.fromRGB(226, 216, 196),
 		nil, { shape = "Cylinder" })
-	b:decor("SpireBand", Vector3.new(1, 2.4, 2.4), vertical(Vector3.new(0, crownY + 13, 4)), gold, nil, { shape = "Cylinder" })
-	b:decor("Beacon", Vector3.new(1.6, 1.6, 1.6), Vector3.new(0, crownY + 38.8, 4), RED, nil, { shape = "Ball" })
-	b:light("Point", Vector3.new(0, crownY + 38.8, 4), RED, 1.5, 20)
-	b:light("Point", Vector3.new(-20, deckTop + 6, -14), WARM, 1.2, 36)
-	b:light("Point", Vector3.new(20, deckTop + 6, -14), WARM, 1.2, 36)
-	b:light("Point", Vector3.new(-20, deckTop + 8, 24), WARM, 1, 30)
+	b:decor("SpireBand", Vector3.new(1, 2.4, 2.4), vertical(Vector3.new(0, crownY + 13, PZ)), gold, nil, { shape = "Cylinder" })
+	b:decor("Beacon", Vector3.new(1.6, 1.6, 1.6), Vector3.new(0, crownY + 38.8, PZ), RED, nil, { shape = "Ball" })
+	b:light("Point", Vector3.new(0, crownY + 38.8, PZ), RED, 1.5, 20)
+	for _, at in ipairs({ Vector3.new(-28, deckTop + 7, -20), Vector3.new(28, deckTop + 7, -20), Vector3.new(-30, deckTop + 8, 28),
+		Vector3.new(30, deckTop + 8, 28) }) do
+		b:light("Point", at, WARM, 1.1, 40)
+	end
 end
 
 --- ZEE TOWER at the north end of the avenue: a stone-and-glass skyscraper with three
@@ -2916,8 +2954,20 @@ function Downtown.Build(parent: Instance, centre: Vector3)
 			{ math.abs(x) > math.abs(z) and (x > 0 and "-x" or "+x") or (z > 0 and "-z" or "+z") }, 100 + k, true)
 	end
 
-	-- The edge: nothing to fall off.
+	-- The edge: nothing to fall off. The north wall stops below ZEE TOWER's roof: left full
+	-- height it ran straight through the penthouse (the tower's back is past it), and split
+	-- the Don's roof in two -- you came out of the elevator behind an invisible wall, with the
+	-- Don and his people on the other side of it. Nothing at street level is up that high.
 	Kit.Bounds(root, HW - 12, HW - 12, 200)
+	local bounds = root.parent:FindFirstChild("Bounds")
+	for _, wall in ipairs(if bounds then bounds:GetChildren() else {}) do
+		local at = if wall:IsA("BasePart") then root.frame:PointToObjectSpace(wall.CFrame.Position) else nil
+		if wall:IsA("BasePart") and wall.Name == "BoundZ" and at and at.Z > 0 then
+			local top, bottom = 140, -5
+			wall.Size = Vector3.new(wall.Size.X, top - bottom, wall.Size.Z)
+			wall.CFrame = root.frame * CFrame.new(at.X, (top + bottom) / 2, at.Z)
+		end
+	end
 
 	-- ------------------------------------------------------------ finding your way --
 	--

@@ -232,6 +232,10 @@ local SaveStructure = {
 	-- once, at the kill that crosses the line; this is what makes that safe to re-check on
 	-- every kill without handing out a camo a second time.
 	MasteryAwarded = {},
+
+	-- Coins owed back for something taken out of the game (RetiredItems), paid into the
+	-- balance by WalletService on the next join and then zeroed.
+	PendingRefund = 0,
 }
 
 return SaveStructure

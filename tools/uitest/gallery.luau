@@ -352,7 +352,7 @@ do
 	shot("14_scope")
 	R.fire(World.service("UserInputService"), "InputEnded", io, false)
 	World.advance(0.6)
-	local shotgun = equip("Scattergun")
+	local shotgun = equip("Blackwood")
 	shotgun:SetAttribute("Ammo", 1)
 	shotgun:SetAttribute("MaxAmmo", 6)
 	World.advance(0.5)

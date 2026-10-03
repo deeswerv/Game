@@ -47,7 +47,7 @@ TowerService.PHASES = {
 	  adds = { "Enforcer", "Shooter", "Gangster", "Gangster" }, bombEvery = 5, heli = true },
 }
 TowerService.BOMB = { radius = 8, damage = 42, warn = 1.6 }
-TowerService.STRAFE = { every = 6, warn = 1.5, width = 5, length = 76, damage = 38 }
+TowerService.STRAFE = { every = 6, warn = 1.5, width = 5, length = 100, damage = 38 }
 TowerService.FIRST_REWARD = { coins = 8000, xp = 4000, crystals = 25, cred = 25 }
 TowerService.REPEAT_REWARD = { coins = 2000, xp = 1500, crystals = 4, cred = 5 }
 
@@ -644,12 +644,13 @@ function TowerService.Step()
 		local spot = marker("TowerBossSpot")
 		if rest and spot then
 			local t = now - f.heliAt
-			local centre = Vector3.new(spot.Position.X, spot.Position.Y, spot.Position.Z - 8)
+			local centre = Vector3.new(spot.Position.X, spot.Position.Y, spot.Position.Z + 6)
 			local lift = math.clamp(t / 3, 0, 1)
 			local angle = t * 0.32
-			local orbit = centre + Vector3.new(math.cos(angle) * 58, 22, math.sin(angle) * 46)
+			-- Round the roof, just outside its rail (the deck is 112 x 84).
+			local orbit = centre + Vector3.new(math.cos(angle) * 66, 22, math.sin(angle) * 52)
 			local at = rest.Position:Lerp(orbit, lift)
-			local ahead = centre + Vector3.new(math.cos(angle + 0.2) * 58, 22, math.sin(angle + 0.2) * 46)
+			local ahead = centre + Vector3.new(math.cos(angle + 0.2) * 66, 22, math.sin(angle + 0.2) * 52)
 			local facing = CFrame.lookAt(at, Vector3.new(ahead.X, at.Y, ahead.Z)) * CFrame.Angles(0, math.rad(90), 0)
 			poseHeli(facing * CFrame.Angles(0, 0, math.rad(-8 * lift)), t * 18)
 		end

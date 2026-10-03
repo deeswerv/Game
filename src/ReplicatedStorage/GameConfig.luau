@@ -237,15 +237,6 @@ GameConfig.ShopItems = {
 		levelRequired = 11,
 	},
 	{
-		id = "Scattergun",
-		name = "Scattergun",
-		desc = "Eight pellets a shot. Lethal in a corridor, hopeless across a field.",
-		price = 2200,
-		item = "Scattergun",
-		image = "",
-		levelRequired = 11,
-	},
-	{
 		id = "Fang",
 		name = "Fang",
 		desc = "Fast dagger. Backstabs deal triple damage.",

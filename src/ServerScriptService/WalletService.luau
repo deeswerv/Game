@@ -67,6 +67,13 @@ local function attach(player: Player)
 		Replica:SetValue("CoinsMigrated", true)
 		print(("[Wallet] %s: coins moved onto the profile (%d)"):format(player.Name, balance))
 	end
+	-- Anything owed back (a weapon taken out of the game, see PlayerDataManager.RetiredItems).
+	local owed = math.max(0, math.floor(tonumber(Replica.Data.PendingRefund) or 0))
+	if owed > 0 then
+		balance += owed
+		Replica:SetValue("PendingRefund", 0)
+		print(("[Wallet] %s: refunded %d coins"):format(player.Name, owed))
+	end
 	balance = math.clamp(balance, 0, WalletService.MAX)
 	Replica:SetValue("Coins", balance)
 	coins.Value = balance
