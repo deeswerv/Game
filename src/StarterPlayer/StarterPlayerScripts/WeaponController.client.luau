@@ -1186,7 +1186,9 @@ RunService.RenderStepped:Connect(function(dt)
 		-- The same cone the server will fire: running and jumping open it, a rested weapon
 		-- closes it (GunHandling).
 		local speed, airborne = GunHandling.Motion(player.Character)
-		local spread = GunHandling.Spread(cfg, heat, ads, speed, airborne, os.clock() - lastShot)
+		-- Our own crouch from the key, not the server's echo of it.
+		local spread = GunHandling.Spread(cfg, heat, ads, speed, airborne, os.clock() - lastShot,
+			player:GetAttribute("Crouching") == true)
 		-- Convert the cone angle to pixels at the current FOV, plus whatever the last shots
 		-- bloomed it by.
 		bloom = math.max(0, bloom - bloom * math.min(10 * dt, 1))

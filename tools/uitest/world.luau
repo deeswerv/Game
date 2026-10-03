@@ -183,6 +183,7 @@ World.camera = camera
 
 local runService = service("RunService")
 local renderSteps = {}
+World.renderSteps = renderSteps
 CM.RunService = {
 	IsClient = function()
 		return true
@@ -222,8 +223,10 @@ CM.UserInputService = {
 	GetMouseLocation = function()
 		return roblox.Vector2.new(640, 360)
 	end,
+	-- By the key's name: an EnumItem is not the same userdata from one access to the next, so
+	-- keying the table by the item itself never found a held key.
 	IsKeyDown = function(_, key)
-		return keysDown[key] == true
+		return keysDown[tostring(key)] == true
 	end,
 	IsMouseButtonPressed = function()
 		return false
@@ -909,12 +912,12 @@ local function inputObject(props)
 end
 
 function World.pressKey(key, holdFor: number?)
-	keysDown[key] = true
+	keysDown[tostring(key)] = true
 	local down = inputObject({ KeyCode = key, UserInputType = roblox.Enum.UserInputType.Keyboard,
 		UserInputState = roblox.Enum.UserInputState.Begin })
 	fire(uis, "InputBegan", down, false)
 	World.advance(holdFor or 0.1)
-	keysDown[key] = nil
+	keysDown[tostring(key)] = nil
 	local up = inputObject({ KeyCode = key, UserInputType = roblox.Enum.UserInputType.Keyboard,
 		UserInputState = roblox.Enum.UserInputState.End })
 	fire(uis, "InputEnded", up, false)
@@ -922,7 +925,7 @@ function World.pressKey(key, holdFor: number?)
 end
 
 function World.holdKey(key, down: boolean)
-	keysDown[key] = down or nil
+	keysDown[tostring(key)] = down or nil
 	local io = inputObject({ KeyCode = key, UserInputType = roblox.Enum.UserInputType.Keyboard,
 		UserInputState = down and roblox.Enum.UserInputState.Begin or roblox.Enum.UserInputState.End })
 	fire(uis, down and "InputBegan" or "InputEnded", io, false)

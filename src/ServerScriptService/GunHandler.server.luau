@@ -127,8 +127,8 @@ end
 --- whether the weapon was rested (GunHandling -- the crosshair draws the same numbers).
 local function currentSpread(st, cfg, ads: boolean, character: Model, sinceShot: number): number
 	updateHeat(st, cfg)
-	local speed, airborne = GunHandling.Motion(character)
-	return GunHandling.Spread(cfg, st.heat, ads, speed, airborne, sinceShot)
+	local speed, airborne, crouched = GunHandling.Motion(character)
+	return GunHandling.Spread(cfg, st.heat, ads, speed, airborne, sinceShot, crouched)
 end
 
 -- Rotate a direction by a random cone of `degrees`.

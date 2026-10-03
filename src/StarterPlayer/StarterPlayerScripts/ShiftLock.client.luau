@@ -19,6 +19,8 @@ local UserInputService = game:GetService("UserInputService")
 
 local ViewKick = require(ReplicatedStorage:WaitForChild("ViewKick"))
 local CombatFX = require(ReplicatedStorage:WaitForChild("CombatFX"))
+local Motion = require(ReplicatedStorage:WaitForChild("Motion"))
+local UISound = require(ReplicatedStorage:WaitForChild("UI"):WaitForChild("Modules"):WaitForChild("UISound"))
 
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
@@ -40,6 +42,12 @@ local OFFSET_ADS = Vector3.new(1.55, 0.35, 0)
 local OFFSET_SPRINT = Vector3.new(3.05, 0.20, 0)
 -- Slide drops the camera and pulls it in, so the ground rushes past close to the lens.
 local OFFSET_SLIDE = Vector3.new(2.35, -1.05, 0)
+-- Crouched, the eyeline comes down with the body (the hips drop Motion.CROUCH_DROP).
+local OFFSET_CROUCH = Vector3.new(2.7, -0.4, 0)
+local OFFSET_CROUCH_ADS = Vector3.new(1.55, -0.5, 0)
+-- A roll ducks the camera and holds it a little wider, so the world tumbling past is the
+-- thing you see rather than the back of your own head.
+local OFFSET_ROLL = Vector3.new(2.95, -0.55, 0)
 
 -- How fast the framing catches up, per second. Aiming has to be noticeably snappier than
 -- coming out of it, or the weapon reaches the shoulder before the camera does.
@@ -89,6 +97,28 @@ local slideReadyAt = 0
 local slideDir = Vector3.zero
 local fovBoost = 0
 local wasAirborne = false
+-- Crouch (hold C or Ctrl) and the roll (Q). See the crouch and roll sections below.
+local crouching = false
+local rollUntil = 0
+local rollReadyAt = 0
+local rollWorld = Vector3.zero
+local rollWasDown = false
+
+-- Crouch and roll are told to the server (MovementService), which marks the character so
+-- everyone else sees them; this client poses its own body from Motion.Local straight away.
+local movementRemote: RemoteEvent? = nil
+local function tellServer(kind: string, value: any)
+	if not movementRemote then
+		local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+		local found = remotes and remotes:FindFirstChild("Movement")
+		if found and found:IsA("RemoteEvent") then
+			movementRemote = found
+		end
+	end
+	if movementRemote then
+		movementRemote:FireServer(kind, value)
+	end
+end
 
 -- The fastest the character was falling during the current descent.
 --
@@ -123,6 +153,13 @@ local function onCharacterAdded(char: Model)
 	fovBoost = 0
 	wasAirborne = false
 	player:SetAttribute("Sprinting", false)
+	-- A new body starts standing, with a roll ready.
+	crouching = false
+	rollUntil = 0
+	rollReadyAt = 0
+	Motion.Local.crouch = false
+	Motion.Local.roll = nil
+	player:SetAttribute("Crouching", false)
 
 	-- A shake left running through a death would otherwise still be decaying when the
 	-- replacement character spawns, which looks like the new body is already hurt.
@@ -270,6 +307,48 @@ local function beginSlide()
 	ViewKick.Land(0.55)
 end
 
+-- ---------------------------------------------------------------------- roll --
+
+-- Q: a quick roll the way you are moving (W forward, S back, A/D to the side; standing
+-- still, forward). The push is driven straight onto the velocity for the roll's length and
+-- bleeds off on its own, exactly like the slide, so nothing is ever left switched on. It
+-- replaces the old dash on Q. Polled, like crouch, so nothing that claims the key first can
+-- swallow it.
+local function rollKeyDown(): boolean
+	if UserInputService:GetFocusedTextBox() then
+		return false
+	end
+	return UserInputService:IsKeyDown(Enum.KeyCode.Q)
+end
+
+local function beginRoll()
+	local hum, rootPart = humanoid, root
+	if not hum or not rootPart or hum.Health <= 0 or menuIsOpen() then
+		return
+	end
+	local now = os.clock()
+	if now < rollReadyAt then
+		return
+	end
+	local state = hum:GetState()
+	if state == Enum.HumanoidStateType.Freefall or state == Enum.HumanoidStateType.Jumping
+		or state == Enum.HumanoidStateType.Seated or hum.Sit then
+		return
+	end
+	-- Out of a slide is fine: the roll takes over.
+	slideUntil = 0
+	local dir = Motion.RollDirection(rootPart.CFrame:VectorToObjectSpace(hum.MoveDirection))
+	local world = rootPart.CFrame:VectorToWorldSpace(dir)
+	rollWorld = Vector3.new(world.X, 0, world.Z).Unit
+	rollUntil = now + Motion.ROLL_TIME
+	rollReadyAt = rollUntil + Motion.ROLL_COOLDOWN
+	Motion.Local.roll = { dir = dir, start = now }
+	tellServer("roll", dir)
+	ViewKick.Land(0.35)
+	CombatFX.LandDust(rootPart.Position - Vector3.new(0, 2.6, 0), 0.5, character)
+	UISound.Play("Whoosh", 0.9, 0.32)
+end
+
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then
 		return
@@ -294,6 +373,9 @@ end)
 -- shift while standing still, falling, or aiming should not widen the FOV.
 local function wantsSprint(hum: Humanoid): boolean
 	if not (sprintKeyDown() or sprintLatched) or menuIsOpen() or isAiming() then
+		return false
+	end
+	if crouching or os.clock() < rollUntil then
 		return false
 	end
 	if hum.Health <= 0 then
@@ -405,6 +487,44 @@ RunService:BindToRenderStep("TacticalCamera", Enum.RenderPriority.Camera.Value +
 		end
 	end
 
+	-- ------------------------------------------------------------------- roll --
+
+	local rollDown = rollKeyDown()
+	if rollDown and not rollWasDown then
+		beginRoll()
+	end
+	rollWasDown = rollDown
+	local rolling = now < rollUntil
+	if rolling then
+		local state = hum:GetState()
+		if state == Enum.HumanoidStateType.Freefall or state == Enum.HumanoidStateType.Jumping then
+			-- Off a ledge or a jump mid-roll: the push stops, the body finishes its turn.
+			rollUntil = now
+			rolling = false
+		else
+			local speed = Motion.RollSpeed(Motion.ROLL_TIME - (rollUntil - now))
+			local velocity = rootPart.AssemblyLinearVelocity
+			rootPart.AssemblyLinearVelocity = Vector3.new(rollWorld.X * speed, velocity.Y, rollWorld.Z * speed)
+		end
+	end
+	local localRoll = Motion.Local.roll
+	if localRoll and now - localRoll.start >= Motion.ROLL_TIME then
+		Motion.Local.roll = nil
+	end
+
+	-- ----------------------------------------------------------------- crouch --
+
+	-- Held, not toggled: let go of C and you are standing, whatever else happened while it
+	-- was down, so there is no state to get stuck in. Not while sliding or rolling.
+	local wantCrouch = crouchDown and not menuIsOpen() and not sliding and not rolling
+	if wantCrouch ~= crouching then
+		crouching = wantCrouch
+		Motion.Local.crouch = crouching
+		player:SetAttribute("Crouching", crouching)
+		tellServer("crouch", crouching)
+		UISound.Play("Click", if crouching then 0.6 else 0.75, 0.6)
+	end
+
 	-- ------------------------------------------------------------ sprint state --
 
 	local shouldSprint = wantsSprint(hum)
@@ -416,8 +536,10 @@ RunService:BindToRenderStep("TacticalCamera", Enum.RenderPriority.Camera.Value +
 	-- Only drive WalkSpeed between the two values this script owns. Anything else has
 	-- been set by another system -- a slow effect, a stun -- and must be left alone.
 	local sprintSpeed = baseWalkSpeed * SPRINT_MULTIPLIER
-	local want = sprinting and sprintSpeed or baseWalkSpeed
-	if hum.WalkSpeed ~= want and (hum.WalkSpeed == baseWalkSpeed or hum.WalkSpeed == sprintSpeed) then
+	local crouchSpeed = baseWalkSpeed * Motion.CROUCH_SPEED
+	local want = if crouching then crouchSpeed elseif sprinting then sprintSpeed else baseWalkSpeed
+	if hum.WalkSpeed ~= want
+		and (hum.WalkSpeed == baseWalkSpeed or hum.WalkSpeed == sprintSpeed or hum.WalkSpeed == crouchSpeed) then
 		hum.WalkSpeed = want
 	end
 
@@ -426,6 +548,10 @@ RunService:BindToRenderStep("TacticalCamera", Enum.RenderPriority.Camera.Value +
 	local targetOffset
 	if sliding then
 		targetOffset = OFFSET_SLIDE
+	elseif rolling then
+		targetOffset = OFFSET_ROLL
+	elseif crouching then
+		targetOffset = if isAiming() then OFFSET_CROUCH_ADS else OFFSET_CROUCH
 	elseif isAiming() then
 		targetOffset = OFFSET_ADS
 	elseif sprinting then
@@ -459,5 +585,10 @@ RunService:BindToRenderStep("TacticalCamera", Enum.RenderPriority.Camera.Value +
 		return
 	end
 
+	-- Mid-roll the body holds the heading it rolled from, so the tumble stays the way it
+	-- was going even if the camera swings round.
+	if rolling then
+		return
+	end
 	rootPart.CFrame = CFrame.lookAt(rootPart.Position, rootPart.Position + flat.Unit)
 end)

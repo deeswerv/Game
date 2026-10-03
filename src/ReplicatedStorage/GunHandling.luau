@@ -62,6 +62,9 @@ function GunHandling.Traits(cfg: any): Traits
 	}
 end
 
+-- Crouched (and on the ground), the cone is this much of standing.
+GunHandling.CROUCH_SCALE = 0.75
+
 --- Extra cone for the way the shooter is moving.
 function GunHandling.MovementSpread(cfg: any, speed: number, airborne: boolean, ads: boolean): number
 	local traits = GunHandling.Traits(cfg)
@@ -87,9 +90,9 @@ function GunHandling.Rested(cfg: any, heat: number, sinceShot: number): boolean
 end
 
 --- The whole cone for a shot, in degrees: listed spread and heat, aiming, first-shot
---- accuracy and movement.
+--- accuracy and movement. Crouched, the whole cone tightens (GunHandling.CROUCH_SCALE).
 function GunHandling.Spread(cfg: any, heat: number, ads: boolean, speed: number, airborne: boolean,
-	sinceShot: number): number
+	sinceShot: number, crouched: boolean?): number
 	local base = math.clamp(cfg.SpreadMin + heat, cfg.SpreadMin, cfg.SpreadMax)
 	if ads then
 		base *= cfg.AdsSpreadScale
@@ -98,7 +101,11 @@ function GunHandling.Spread(cfg: any, heat: number, ads: boolean, speed: number,
 	if GunHandling.Rested(cfg, heat, sinceShot) and (ads or not traits.FirstShotAdsOnly) then
 		base *= traits.FirstShot
 	end
-	return base + GunHandling.MovementSpread(cfg, speed, airborne, ads)
+	local cone = base + GunHandling.MovementSpread(cfg, speed, airborne, ads)
+	if crouched and not airborne then
+		cone *= GunHandling.CROUCH_SCALE
+	end
+	return cone
 end
 
 --- How long a reload takes, and whether it is the quick (tactical) one.
@@ -109,17 +116,18 @@ function GunHandling.ReloadTime(cfg: any, ammoLeft: number): (number, boolean)
 	return cfg.ReloadTime, false
 end
 
---- How a character is moving, read off its root and humanoid.
-function GunHandling.Motion(character: Model?): (number, boolean)
+--- How a character is moving, read off its root and humanoid: speed, airborne, crouched
+--- (the Crouching attribute MovementService writes on the character).
+function GunHandling.Motion(character: Model?): (number, boolean, boolean)
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	if not root or not root:IsA("BasePart") or not humanoid then
-		return 0, false
+	if not character or not root or not root:IsA("BasePart") or not humanoid then
+		return 0, false, false
 	end
 	local v = root.AssemblyLinearVelocity
 	local speed = if typeof(v) == "Vector3" then Vector3.new(v.X, 0, v.Z).Magnitude else 0
 	local airborne = humanoid.FloorMaterial == Enum.Material.Air and not humanoid.Sit
-	return speed, airborne
+	return speed, airborne, character:GetAttribute("Crouching") == true
 end
 
 --- What it costs a round to pass through `part` from `entry` along `dir`, and where it
