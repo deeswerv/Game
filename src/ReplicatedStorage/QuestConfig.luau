@@ -20,15 +20,15 @@ export type Quest = { [string]: any }
 --              fought at that threat level or higher (TurfWarService reports them)
 -- TowerWin  -> beat the Don at the top of ZEE TOWER `count` times (TowerService reports it)
 --
--- Hanami Valley's jobs (HanamiService reports them as events):
--- Rescue    -> free `count` captives from the bamboo camp
--- Inspect   -> read `count` clues in the Ironworks
+-- Hanami City's jobs (HanamiService reports them as events):
+-- Rescue    -> free `count` captives from the gang's hideout in the rail shed
+-- Inspect   -> read `count` clues in the Steelworks
 -- Collect   -> take `count` iron seals from where they are hidden
--- Survive   -> hold the farm (`site = "Farm"`) through every wave of a raid
+-- Survive   -> hold the fish market (`site = "Market"`) through every wave of a raid
 -- Boss      -> beat a Hanami boss (`boss = "Foreman"` or `"Shogun"`)
 -- `unique = true` counts each different thing once (the same clue read twice is one clue);
 -- `prefix` narrows which things ("Seal" for the seals). KillInZone also takes `zonePrefix`
--- for a whole region ("Hanami_": anywhere in the valley).
+-- for a whole region ("Hanami_": anywhere in the city).
 -- Any objective with a `position` is marked on the compass there (`where` names it).
 --
 -- `requires = "Tower"` holds a quest back until the player has beaten the boss at the top of
@@ -241,11 +241,11 @@ end
 
 -- ------------------------------------------------------------ hanami --
 --
--- Chapter two: HANAMI VALLEY, opened by beating the Don. Elder Hoshi tells the story -- what
--- the Kurogane clan did to the valley, up the Thousand Gates to the Iron Shogun -- and every
+-- Chapter two: HANAMI CITY, opened by beating the Don. Elder Hoshi tells the story -- what
+-- the Kurogane clan did to the city, up the Thousand Gates to the Iron Shogun -- and every
 -- step is a different kind of job: walk somewhere, clear a street, free the captives, read
--- the clues, a mini-boss, hold the farm through a raid, find the hidden seals, the climb, and
--- the final fight. Captain Rei, at the red bridge, pays for the clan's specialists.
+-- the clues, a mini-boss, hold the market through a raid, find the hidden seals, the climb, and
+-- the final fight. Captain Rei, at the red bridge over the canal, pays for the clan's specialists.
 local Hanami = require(script.Parent:WaitForChild("HanamiConfig"))
 local HANAMI_FLOOR = Hanami.CENTRE.Y
 for _, q in ipairs({
@@ -255,8 +255,8 @@ for _, q in ipairs({
 		title = "Petals and Iron",
 		giver = "Elder",
 		levelRequired = 10,
-		summary = "Cross the red bridge and see what the Kurogane clan has made of Lantern Row.",
-		dialogue = "So you're the one who brought down the Don. Then hear an old man. The year his crates started coming up our river, the Kurogane clan came with them -- and their Shogun took the Keep. Cross the red bridge, walk to the gate of Lantern Row, and see for yourself.",
+		summary = "Cross the red bridge over the canal, through the Scramble, and see what the Kurogane clan has made of Lantern Row.",
+		dialogue = "So you're the one who brought down the Don. Then hear an old man. The year his crates started coming in on the trains, the Kurogane clan came with them -- and their Shogun took the castle. Up the arcade, over the red bridge, through the Scramble: Lantern Row's gate is on your left. Go and see for yourself.",
 		objective = { kind = "Reach", position = Hanami.Site("LanternGate"), radius = 18, count = 1,
 			label = "Reach the Lantern Row gate" },
 		rewards = { coins = 1200, xp = 900 },
@@ -268,7 +268,7 @@ for _, q in ipairs({
 		giver = "Elder",
 		levelRequired = 10,
 		summary = "Drive the Kurogane out of Lantern Row: eight of them, on its streets and roofs.",
-		dialogue = "Those streets were the prettiest in the valley. Now the clan drinks there, and the lanterns burn for them. Put eight of them down in Lantern Row. Mind the roofs -- their riflemen like a high place.",
+		dialogue = "Those alleys were the liveliest in the city. Now the clan drinks there, and the lanterns burn for them. Put eight of them down in Lantern Row. Mind the roofs -- their riflemen like a high place.",
 		objective = { kind = "KillInZone", zone = "Hanami_LanternRow", archetype = "Any", count = 8,
 			position = Hanami.At(-150, 0, 30), where = "LANTERN ROW", label = "Kurogane driven out of Lantern Row" },
 		rewards = { coins = 1800, xp = 1400, crystals = 2 },
@@ -279,10 +279,10 @@ for _, q in ipairs({
 		title = "Taken in the Night",
 		giver = "Elder",
 		levelRequired = 11,
-		summary = "Three villagers are tied up at the bandit camp in Bamboo Hollow. Cut them loose.",
-		dialogue = "Three of ours went missing. Little Sora's brother went to look and found them: tied to posts at a camp deep in Bamboo Hollow, west of the village. The ronin guard them. Get them out -- hold still beside each one long enough to cut the rope.",
+		summary = "Three townsfolk are tied up in the gang's hideout, the old brick shed in the rail yard. Cut them loose.",
+		dialogue = "Three of ours went missing. Little Sora's brother went to look and found them: tied to posts in the old engine shed in the rail yard, past the shrine on the other side of the station. The ronin guard them. Get them out -- hold still beside each one long enough to cut the rope.",
 		objective = { kind = "Rescue", unique = true, prefix = "Captive", count = 3, position = Hanami.Site("Camp"),
-			where = "THE BAMBOO CAMP", label = "Villagers freed" },
+			where = "THE RAIL SHED", label = "Townsfolk freed" },
 		rewards = { coins = 2000, xp = 1600, crystals = 3 },
 	},
 	{
@@ -291,10 +291,10 @@ for _, q in ipairs({
 		title = "Iron and Ash",
 		giver = "Elder",
 		levelRequired = 11,
-		summary = "Search the Ironworks for proof of where the iron goes: four different clues.",
-		dialogue = "Everything the foundry makes goes up to the Keep, and nobody knows why. Search the Ironworks across the river -- the ledgers, the crates, the foreman's papers. Bring me four things that tell the story.",
-		objective = { kind = "Inspect", unique = true, count = 4, position = Hanami.At(140, 0, 20), where = "THE IRONWORKS",
-			label = "Clues found in the Ironworks" },
+		summary = "Search the Steelworks for proof of where the steel goes: four different clues.",
+		dialogue = "Everything the foundry makes goes up to the castle, and nobody knows why. Search the Steelworks past the Scramble -- the warehouse ledgers, the crates on the quay, the site office, the gate.  Bring me four things that tell the story.",
+		objective = { kind = "Inspect", unique = true, count = 4, position = Hanami.At(120, 0, 10), where = "THE STEELWORKS",
+			label = "Clues found in the Steelworks" },
 		rewards = { coins = 2200, xp = 1800, crystals = 3 },
 	},
 	{
@@ -304,7 +304,7 @@ for _, q in ipairs({
 		giver = "Elder",
 		levelRequired = 12,
 		summary = "Foreman Tetsu runs the foundry with a hammer. Take him down in his own yard.",
-		dialogue = "Foreman Tetsu. Built like a furnace door and twice as hot. He keeps the Ironworks running for the Shogun -- with his hammer, on the workers. He stands in the foundry yard. When he's hurt he calls for help and the ground cracks around him. Stay moving.",
+		dialogue = "Foreman Tetsu. Built like a furnace door and twice as hot. He keeps the Steelworks running for the Shogun -- with his hammer, on the workers. He stands in the furnace yard. When he's hurt he calls for help and the ground cracks around him. Stay moving.",
 		objective = { kind = "Boss", boss = "Foreman", count = 1, position = Hanami.Site("Foundry"), where = "THE FOUNDRY",
 			label = "Defeat Foreman Tetsu" },
 		rewards = { coins = 3000, xp = 2400, crystals = 5 },
@@ -312,13 +312,13 @@ for _, q in ipairs({
 	{
 		id = "HoldTheFarm",
 		requires = "Tower",
-		title = "Hold the Farm",
+		title = "Hold the Market",
 		giver = "Elder",
 		levelRequired = 12,
-		summary = "The clan is coming for the farm in the paddies. Stand in the yard and hold it through three waves.",
-		dialogue = "With Tetsu gone the clan wants its levy, and it will take it from the farm in the paddies, east of the village. Go to the farmyard and tell them you'll defend it. Three waves, and they'll be after the house -- keep them off it.",
-		objective = { kind = "Survive", site = "Farm", count = 1, position = Hanami.Site("Farmhouse"), where = "THE FARM",
-			label = "Hold the farm through the raid" },
+		summary = "The clan is coming for the fish market. Stand on the auction floor and hold it through three waves.",
+		dialogue = "With Tetsu gone the clan wants its levy, and it will take it from the fish market, west of the station. Go to the auction floor and tell them you'll defend it. Three waves, and they'll be after the catch on the floor -- keep them off it.",
+		objective = { kind = "Survive", site = "Market", count = 1, position = Hanami.Site("Market"), where = "THE FISH MARKET",
+			label = "Hold the market through the raid" },
 		rewards = { coins = 3200, xp = 2600, crystals = 5 },
 	},
 	{
@@ -327,8 +327,8 @@ for _, q in ipairs({
 		title = "Iron Seals",
 		giver = "Elder",
 		levelRequired = 13,
-		summary = "Five iron seals open the Keep's gate. Find them: the teahouse roof, a Lantern Row terrace, the crane, behind the waterfall, the hill at the paddies' far corner.",
-		dialogue = "The Keep's gate opens for a Kurogane seal and nothing else. Their couriers hide them all over the valley -- Aiko saw one on the teahouse roof. Others: up a Lantern Row terrace, on the crane in the docks, in the nook behind the waterfall, on the hill in the far corner of the paddies. Look for the red glow. Bring me five.",
+		summary = "Five iron seals open the castle gate. Find them: the ramen shop's roof by the canal, a Lantern Row terrace, the dock crane, the signal box in the rail yard, under the railway at the market's far end.",
+		dialogue = "The castle gate opens for a Kurogane seal and nothing else. Their couriers hide them all over the city -- Aiko saw one on the ramen shop's roof by the canal. Others: up a Lantern Row terrace, on the crane in the docks, in the nook behind the waterfall, on the hill in the far corner of the paddies. Look for the red glow. Bring me five.",
 		objective = { kind = "Collect", unique = true, prefix = "Seal", count = 5, label = "Iron seals found" },
 		rewards = { coins = 3400, xp = 2800, crystals = 6 },
 	},
@@ -338,10 +338,10 @@ for _, q in ipairs({
 		title = "The Thousand Gates",
 		giver = "Elder",
 		levelRequired = 14,
-		summary = "Climb the Thousand Gates, the red stair north of the crossroads, to the gate of Kurogane Keep.",
-		dialogue = "With the seals, the gate will open. The stair to the Keep starts north of the crossroads -- a thousand red gates, they say, though I never counted. The Oni guard the top. Climb it.",
+		summary = "Climb the Thousand Gates, the red stair north of the Scramble, to the gate of Kurogane Castle.",
+		dialogue = "With the seals, the gate will open. The stair to the castle starts north of the Scramble -- a thousand red gates, they say, though I never counted. The Oni guard the top. Climb it.",
 		objective = { kind = "Reach", position = Hanami.Site("KeepGate"), radius = 18, minY = HANAMI_FLOOR + 24, count = 1,
-			label = "Climb to the gate of Kurogane Keep" },
+			label = "Climb to the gate of Kurogane Castle" },
 		rewards = { coins = 3000, xp = 2600, crystals = 4 },
 	},
 	{
@@ -351,13 +351,13 @@ for _, q in ipairs({
 		giver = "Elder",
 		levelRequired = 14,
 		summary = "Walk into the Shogun's court and end it. Three phases; bring friends.",
-		dialogue = "He was the valley's guardian once. The iron got into him. He waits in the court at the top of the Keep, and he will not fight anyone who hasn't earned it. When he's hurt the blossoms turn to blades, and at the end he fights like iron itself. End it, and let the Sakura bloom again.",
+		dialogue = "He was the city's guardian once. The iron got into him. He waits in the court at the top of the castle, and he will not fight anyone who hasn't earned it. When he's hurt the blossoms turn to blades, and at the end he fights like iron itself. End it, and let the Sakura bloom again.",
 		objective = { kind = "Boss", boss = "Shogun", count = 1, position = Hanami.Site("Court"), where = "THE SHOGUN'S COURT",
 			label = "Defeat the Iron Shogun" },
 		rewards = { coins = 6000, xp = 5000, crystals = 12 },
 	},
 
-	-- Captain Rei: what is left of the valley guard, paying for the clan's specialists.
+	-- Captain Rei: what is left of the city guard, paying for the clan's specialists.
 	{
 		id = "ShieldWall",
 		requires = "Tower",
@@ -386,8 +386,8 @@ for _, q in ipairs({
 		title = "Giants of the Foundry",
 		giver = "Captain",
 		levelRequired = 12,
-		summary = "Two Juggernauts walk the Ironworks. Bring them down.",
-		dialogue = "The Juggernauts are the size of a door and wear plate under the coat. They don't hurry and they don't stop. Two of them patrol the Ironworks. Take your time, take cover, take them down.",
+		summary = "Two Juggernauts walk the Steelworks. Bring them down.",
+		dialogue = "The Juggernauts are the size of a door and wear plate under the coat. They don't hurry and they don't stop. Two of them patrol the Steelworks. Take your time, take cover, take them down.",
 		objective = { kind = "Kill", archetype = "Juggernaut", count = 2, label = "Juggernauts defeated" },
 		rewards = { coins = 2400, xp = 1800, crystals = 3 },
 	},
@@ -398,7 +398,7 @@ for _, q in ipairs({
 		giver = "Captain",
 		levelRequired = 14,
 		summary = "Four Oni, the Shogun's own guard, masked and throwing grenades.",
-		dialogue = "The Oni are his own. Masks, good rifles, and grenades when you hide. They hold the Keep and the docks. Four of them and the Shogun sleeps a little worse.",
+		dialogue = "The Oni are his own. Masks, good rifles, and grenades when you hide. They hold the castle and the docks. Four of them and the Shogun sleeps a little worse.",
 		objective = { kind = "Kill", archetype = "Oni", count = 4, label = "Oni defeated" },
 		rewards = { coins = 3000, xp = 2400, crystals = 4 },
 	},
@@ -420,23 +420,23 @@ QuestConfig.Givers = {
 		signText = "QUESTS",
 		where = "at the Crossing, by the harbour",
 	},
-	-- Hanami Valley: the elder at the foot of the shrine steps, under the Great Sakura; the
-	-- captain at the village end of the red bridge, looking back at the village.
+	-- Hanami City: the elder inside the shrine's torii, off the station square; the captain at
+	-- the station end of the red bridge, looking back down the arcade.
 	Elder = {
 		displayName = "Elder Hoshi",
 		position = Hanami.Site("Elder"),
 		lookAt = Hanami.Site("GreatSakura"),
 		colour = Color3.fromRGB(236, 150, 180),
 		signText = "STORY",
-		where = "under the Great Sakura, Hanami Valley",
+		where = "at the shrine by the station, Hanami City",
 	},
 	Captain = {
 		displayName = "Captain Rei",
 		position = Hanami.Site("Captain"),
-		lookAt = Hanami.At(-12, 0, -130),
+		lookAt = Hanami.At(0, 0, -112),
 		colour = Color3.fromRGB(196, 54, 60),
 		signText = "BOUNTIES",
-		where = "at the red bridge, Hanami Valley",
+		where = "at the red bridge, Hanami City",
 	},
 	-- Downtown's fixer, on the grey paving south of ZEE COURTS (by the card table), looking
 	-- back down the cross street at the plaza.
@@ -489,13 +489,13 @@ QuestConfig.Contracts = ({
 		objective = { kind = "Kill", archetype = "Elite", count = 6, label = "Elites put down" },
 		rewards = { xp = 48000, crystals = 30 },
 	},
-	-- Captain Rei's: pay up front, thin the clan out anywhere in the valley.
+	-- Captain Rei's: pay up front, thin the clan out anywhere in the city.
 	{
-		id = "Contract_Patrol", title = "Valley Patrol", giver = "Captain",
+		id = "Contract_Patrol", title = "City Patrol", giver = "Captain",
 		levelRequired = 12, cost = 5000, repeatable = true,
-		summary = "Fifteen Kurogane, anywhere in Hanami Valley. Paid for up front.",
-		dialogue = "Five thousand for the patrol, and I'll owe you. Fifteen of the clan, anywhere in the valley. Keep them looking over their shoulders.",
-		objective = { kind = "KillInZone", zonePrefix = "Hanami_", archetype = "Any", count = 15, label = "Kurogane put down in the valley" },
+		summary = "Fifteen Kurogane, anywhere in Hanami City. Paid for up front.",
+		dialogue = "Five thousand for the patrol, and I'll owe you. Fifteen of the clan, anywhere in the city. Keep them looking over their shoulders.",
+		objective = { kind = "KillInZone", zonePrefix = "Hanami_", archetype = "Any", count = 15, label = "Kurogane put down in the city" },
 		rewards = { xp = 5600, crystals = 7 },
 	},
 	-- The Fixer's repeatable job: pay up front, win two wars anywhere, keep the streets clean.

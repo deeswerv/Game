@@ -1,8 +1,8 @@
 --!strict
--- Hanami Valley on the HUD: everything HanamiService tells a player while they are in it.
+-- Hanami City on the HUD: everything HanamiService tells a player while they are in it.
 --
---   * The farm raid: a bar under the banners with the wave, the raiders left and how much of
---     the farm is still standing, draining red as they reach it.
+--   * The market raid: a bar under the banners with the wave, the raiders left and how much of
+--     the auction floor is still held, draining red as they reach it.
 --   * A clue: a paper card with what you found, held long enough to read.
 --   * The jobs and the fights: freeing a captive, a seal, the bell, Foreman Tetsu, the Iron
 --     Shogun's intro, phases and fall -- a banner if it is your moment, a card if it is news.
@@ -61,7 +61,7 @@ function Hanami.new(screen: GuiObject, toast: any)
 	icon.AnchorPoint = Vector2.new(0, 0.5)
 	icon.Position = UDim2.new(0, 6, 0.5, -2)
 	local title = Components.Label(bar, {
-		text = "DEFEND THE FARM",
+		text = "DEFEND THE MARKET",
 		face = Theme.Face.HeavyItalic,
 		size = 20,
 		colour = SAKURA,
@@ -179,7 +179,7 @@ function Hanami:_raid(data: any)
 	TweenService:Create(self._fill, TweenInfo.new(0.4), { Size = UDim2.fromScale(health / 100, 1), BackgroundColor3 = colour })
 		:Play()
 	if (self._lastIntegrity or 100) - health >= 1 then
-		-- They are at the farm: the edge flashes.
+		-- They are on the auction floor: the edge flashes.
 		self._barStroke.Color = IRON
 		TweenService:Create(self._barStroke, TweenInfo.new(0.6), { Color = SAKURA }):Play()
 	end
@@ -214,18 +214,18 @@ function Hanami:Handle(kind: string, data: any)
 	local toast = self._toast
 	if kind == "enter" then
 		if not info.cleared then
-			toast:Push({ title = "Hanami Valley", text = "Elder Hoshi waits under the Great Sakura", icon = "🌸",
+			toast:Push({ title = "Hanami City", text = "Elder Hoshi waits at the shrine off the station square", icon = "🌸",
 				colour = SAKURA, duration = 6 })
 		end
 	elseif kind == "note" then
 		toast:Push({ title = tostring(info.title or ""), text = info.text and tostring(info.text) or nil, icon = "🌸",
 			colour = Theme.Colour.TextMuted })
 	elseif kind == "blessed" then
-		toast:Push({ title = "The bell rings", text = "Healed, and the valley is quiet around you for a moment", icon = "🔔",
+		toast:Push({ title = "The bell rings", text = "Healed, and the city is quiet around you for a moment", icon = "🔔",
 			colour = SAKURA })
 	elseif kind == "rescued" then
 		local left = tonumber(info.left) or 0
-		toast:Push({ title = "Villager freed", text = if left > 0 then ("%d still held at the camp"):format(left)
+		toast:Push({ title = "Captive freed", text = if left > 0 then ("%d still held in the shed"):format(left)
 			else "Everyone is out -- they're running home", icon = "🙏", colour = GREEN })
 	elseif kind == "clue" then
 		self:_clue(info)
@@ -235,7 +235,7 @@ function Hanami:Handle(kind: string, data: any)
 	elseif kind == "raid" then
 		self:_raid(info)
 		if info.started and tonumber(info.wave) == 1 then
-			toast:Banner({ title = "THE RAIDERS ARE COMING", subtitle = "HOLD THE FARM  ·  KEEP THEM OFF THE HOUSE",
+			toast:Banner({ title = "THE RAIDERS ARE COMING", subtitle = "HOLD THE MARKET  ·  KEEP THEM OFF THE AUCTION FLOOR",
 				colour = SAKURA, sound = "Slam" })
 		elseif info.started then
 			toast:Push({ title = ("Wave %d"):format(tonumber(info.wave) or 0), text = "Raiders coming over the dikes",
@@ -246,11 +246,11 @@ function Hanami:Handle(kind: string, data: any)
 	elseif kind == "raidWon" then
 		self._bar.Visible = false
 		self._lastIntegrity = nil
-		toast:Banner({ title = "THE FARM STANDS", subtitle = payout(info), colour = GREEN, sound = "Ring" })
+		toast:Banner({ title = "THE MARKET STANDS", subtitle = payout(info), colour = GREEN, sound = "Ring" })
 	elseif kind == "raidLost" then
 		self._bar.Visible = false
 		self._lastIntegrity = nil
-		toast:Push({ title = "The farm fell", text = tostring(info.why or ""), icon = "🔥", colour = IRON, duration = 6 })
+		toast:Push({ title = "The market fell", text = tostring(info.why or ""), icon = "🔥", colour = IRON, duration = 6 })
 	elseif kind == "bossIntro" then
 		toast:Banner({ title = tostring(info.name or "BOSS"), subtitle = tostring(info.line or ""), colour = IRON,
 			sound = "Slam", duration = 4 })
@@ -267,7 +267,7 @@ function Hanami:Handle(kind: string, data: any)
 			toast:Push({ title = "NEW TITLE", text = tostring(info.title), icon = "🏯", colour = GOLD, duration = 7 })
 		end
 		if info.final and info.first then
-			toast:Banner({ title = "HANAMI VALLEY IS FREE", subtitle = "The Kurogane are broken. The Sakura blooms again.",
+			toast:Banner({ title = "HANAMI CITY IS FREE", subtitle = "The Kurogane are broken. The Sakura blooms again.",
 				colour = SAKURA, sound = "Ring", duration = 5 })
 		end
 	elseif kind == "bossReset" then

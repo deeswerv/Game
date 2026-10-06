@@ -1,16 +1,16 @@
 --!strict
--- HANAMI VALLEY's jobs, out in the world. Each reports what happened to the quest tracker
+-- HANAMI CITY's jobs, out in the world. Each reports what happened to the quest tracker
 -- (HanamiService.Note -> QuestService.RegisterEvent), so a quest can ask for any of them:
 --
---   RESCUE    villagers tied to posts at the camp in the bamboo: hold E to cut them loose and
---             they run for home ("rescue"). The camp takes more before long.
---   INSPECT   the clues the Kurogane left lying in the Ironworks: a ledger, crates, orders, a
+--   RESCUE    townsfolk tied to posts in the gang's hideout in the old rail shed: hold E to cut
+--             them loose and they run for home ("rescue"). The gang takes more before long.
+--   INSPECT   the clues the Kurogane left lying in the Steelworks: a ledger, crates, orders, a
 --             map -- hold E to read one ("inspect", by clue).
---   COLLECT   iron seals hidden on the valley's high and hidden places ("collect", by seal).
---   SURVIVE   the raid on the farm in the paddies: start it at the farmhouse and hold the yard
---             through three waves of raiders while the farmhouse stands ("survive"). Raiders
---             that reach the house wear it down; lose the house, or everybody, and the raid
---             is lost.
+--   COLLECT   iron seals hidden on the city's high and hidden places ("collect", by seal).
+--   SURVIVE   the raid on the fish market: start it on the auction floor and hold the hall
+--             through three waves of raiders while the catch is still there ("survive").
+--             Raiders that reach the auction floor wear it down; lose it, or everybody, and
+--             the raid is lost.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -23,7 +23,7 @@ Jobs.RETIE = 120               -- the camp has new captives this long after one 
 Jobs.RAID_BREAK = 6            -- between waves
 Jobs.RAID_COOLDOWN = 120       -- after a raid is won, before the next can start
 Jobs.RAID_EMPTY = 20           -- nobody in the yard this long and the raid is lost
-Jobs.HOUSE_WEAR = 2.2          -- farmhouse integrity a raider at the door takes each second
+Jobs.HOUSE_WEAR = 2.2          -- what a raider on the auction floor takes from it each second
 Jobs.RAID_REWARD = { coins = 1200, xp = 900, crystals = 4, cred = 6 }
 
 local H: any = nil
@@ -197,7 +197,7 @@ type Raid = {
 }
 local raid: Raid? = nil
 local raidReadyAt = 0
-local farmers: { Model } = {}
+local farmers: { Model } = {}  -- the market hands on the auction floor
 
 local function site(): Vector3
 	return at(HanamiConfig.Raid.site)
@@ -208,7 +208,7 @@ local function inYard(root: BasePart): boolean
 	return Vector3.new(d.X, 0, d.Z).Magnitude <= HanamiConfig.Raid.radius and math.abs(d.Y) < 20
 end
 
--- Everyone near the farm hears how the raid goes -- and whoever defended it hears the end of
+-- Everyone near the market hears how the raid goes -- and whoever defended it hears the end of
 -- it wherever they have got to.
 local function tellRaid(kind: string, data: { [string]: any }, defenders: { [Player]: boolean }?)
 	for _, p in ipairs(Players:GetPlayers()) do
@@ -267,19 +267,19 @@ local function endRaid(won: boolean, why: string?)
 		for p in pairs(r.defenders) do
 			if p.Parent then
 				H.Pay(p, Jobs.RAID_REWARD)
-				H.Note(p, "survive", { site = "Farm" })
+				H.Note(p, "survive", { site = "Market" })
 				H.Event:FireClient(p, "raidWon", { coins = Jobs.RAID_REWARD.coins, xp = Jobs.RAID_REWARD.xp,
 					crystals = Jobs.RAID_REWARD.crystals })
 			end
 		end
 	else
 		raidReadyAt = H.Clock() + 30
-		tellRaid("raidLost", { why = why or "The raiders took the farm" }, r.defenders)
+		tellRaid("raidLost", { why = why or "The raiders took the market" }, r.defenders)
 	end
 	clearRaiders(r, if won then 4 else 8)
 end
 
---- Start the raid on the farm, as `player`. Returns whether it started, and why not.
+--- Start the raid on the market, as `player`. Returns whether it started, and why not.
 function Jobs.StartRaid(player: Player): (boolean, string?)
 	if raid then
 		return false, "already on"
@@ -323,7 +323,7 @@ local function stepRaid(now: number)
 	end
 	r.emptyFor = if anyone then 0 else r.emptyFor + dt
 	if r.emptyFor >= Jobs.RAID_EMPTY then
-		endRaid(false, "Nobody held the farm")
+		endRaid(false, "Nobody held the market")
 		return
 	end
 	-- The raiders: keep them coming at the yard, and let the ones at the door wear it down.
@@ -333,7 +333,7 @@ local function stepRaid(now: number)
 		local root = m:FindFirstChild("HumanoidRootPart")
 		if m.Parent and humanoid and humanoid.Health > 0 and root and root:IsA("BasePart") then
 			table.insert(living, m)
-			local d = root.Position - (site() + Vector3.new(0, 0, 10))
+			local d = root.Position - site()
 			if Vector3.new(d.X, 0, d.Z).Magnitude < 12 then
 				r.integrity -= Jobs.HOUSE_WEAR * dt
 			end
@@ -345,7 +345,7 @@ local function stepRaid(now: number)
 		pcall(NPCService.Noise, site(), 260, nil)
 	end
 	if r.integrity <= 0 then
-		endRaid(false, "The farmhouse fell")
+		endRaid(false, "The market fell")
 		return
 	end
 	if r.nextWaveAt then
@@ -385,24 +385,22 @@ function Jobs.Wire(folder: Instance)
 				d:SetAttribute("Wired", true)
 				wireSeal(d, jobs)
 			elseif d.Name == "RaidSite" and not d:FindFirstChildOfClass("ProximityPrompt") then
-				local p = prompt(d, "Defend the Farm", "The farmhouse · 3 waves", 1, 12)
+				local p = prompt(d, "Defend the Market", "The auction floor · 3 waves", 1, 12)
 				p.Triggered:Connect(function(player)
 					Jobs.StartRaid(player)
 				end)
 			end
 		end
 	end
-	-- The farmers on the porch, who put their hands up when the raiders come.
+	-- The market hands on the auction floor, who put their hands up when the raiders come.
 	if #farmers == 0 then
-		-- (The house's door faces north, onto the yard: the porch is just in front of it.)
-		local porch: { { any } } = { { Vector3.new(-4, 0.9, 13), "Farmer Kenta" }, { Vector3.new(5, 0.9, 13), "Haru" } }
-		for i, spec in ipairs(porch) do
-			local figure = H.Figure({ Shirt = Color3.fromRGB(150, 120, 80), Pants = Color3.fromRGB(80, 70, 60), Sleeves = true,
-				Outfit = { { "Kasa", colour = Color3.fromRGB(206, 180, 120) }, { "Obi", colour = Color3.fromRGB(110, 80, 60) }, { "Loafers" } } :: { any } },
-				820 + i, spec[2], "FARMER")
+		for i, spec in ipairs(HanamiConfig.Raid.workers) do
+			local figure = H.Figure({ Shirt = Color3.fromRGB(236, 236, 230), Pants = Color3.fromRGB(40, 60, 100), Sleeves = true,
+				Outfit = { { "Hachimaki", colour = Color3.fromRGB(240, 240, 236) }, { "Apron", colour = Color3.fromRGB(40, 70, 130) }, { "Boots", colour = Color3.fromRGB(240, 240, 236) } } :: { any } },
+				820 + i, spec.name, "MARKET HAND")
 			if figure then
-				local here = HanamiConfig.Raid.site + spec[1]
-				H.PlaceFigure(figure, here, here + Vector3.new(0, 0, 10), jobs)
+				local here = spec.at
+				H.PlaceFigure(figure, here, HanamiConfig.Raid.site, jobs)
 				table.insert(farmers, figure)
 			end
 		end
@@ -425,7 +423,7 @@ end
 --- The valley emptied: end anything running.
 function Jobs.Reset()
 	if raid then
-		endRaid(false, "The raiders took the farm")
+		endRaid(false, "The raiders took the market")
 	end
 end
 

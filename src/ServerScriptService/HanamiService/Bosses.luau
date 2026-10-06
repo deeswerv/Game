@@ -1,16 +1,16 @@
 --!strict
--- HANAMI VALLEY's two fights. Both bosses are NPCs (NPCService does their moving, swinging and
+-- HANAMI CITY's two fights. Both bosses are NPCs (NPCService does their moving, swinging and
 -- dying); this decides when they appear, what their phases do, the hazards they throw, and
 -- who gets paid.
 --
--- FOREMAN TETSU, in the furnace yard of the Ironworks -- the mini-boss. A hammer and a temper:
+-- FOREMAN TETSU, in the furnace yard of the Steelworks -- the mini-boss. A hammer and a temper:
 --
 --   I    THE SHIFT           him and his hammer
 --   II   STOKE THE FURNACE   (60%) two Ronin come off the line, and molten splashes land where
 --                            you stand -- an orange ring first, then the burn
 --   III  OVERTIME            (30%) a Juggernaut joins, the splashes come faster, he speeds up
 --
--- THE IRON SHOGUN, in his court at the top of the Keep -- the final fight. Step into the court
+-- THE IRON SHOGUN, in his court at the top of the castle -- the final fight. Step into the court
 -- and he rises from the throne (level 12 and over):
 --
 --   I    THE IRON BLADE      him and two Oni; every few seconds he draws back and sends a

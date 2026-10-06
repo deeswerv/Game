@@ -1,9 +1,9 @@
 --!strict
--- HANAMI VALLEY at run time: the world past Downtown, opened by beating the Don at the top of
+-- HANAMI CITY at run time: the world past Downtown, opened by beating the Don at the top of
 -- ZEE TOWER (TravelService lists it then).
 --
---   * Builds the valley (HanamiService.Valley) and wires what you can use in it: the trader's
---     counter opens the market, the shrine's bell heals you, the villagers of Hanamura talk.
+--   * Builds the city (HanamiService.City) and wires what you can use in it: the trader's
+--     counter in the arcade opens the market, the shrine's bell heals you, the locals talk.
 --   * Keeps the Kurogane clan in it, but only while somebody is there to meet them: the first
 --     player in wakes the valley -- every post of HanamiConfig.Population gets its fighter,
 --     and the fallen come back after a while -- and an empty valley is cleared again. So the
@@ -21,7 +21,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local HanamiConfig = require(ReplicatedStorage.HanamiConfig)
 local KillCredit = require(ServerScriptService.KillCredit)
-local Valley = require(script.Valley)
+local City = require(script.City)
 
 local HanamiService = {}
 
@@ -280,37 +280,37 @@ end
 
 -- ---------------------------------------------------------------- villagers --
 
--- The people of Hanamura: where they stand (valley frame, turned to face `face`), how they
--- dress, and what they will tell you.
+-- The people of the station quarter: where they stand (city frame, turned to face `face`), how
+-- they dress, and what they will tell you.
 HanamiService.Villagers = {
-	{ name = "Grandma Ume", role = "VILLAGER", at = Vector3.new(-22, 0, -154), face = Vector3.new(-26, 0, -148),
+	{ name = "Grandma Ume", role = "LOCAL", at = Vector3.new(-12, 0, -172), face = Vector3.new(0, 0, -186),
 	  look = { Shirt = Color3.fromRGB(110, 90, 140), Pants = Color3.fromRGB(70, 60, 80), Sleeves = true,
 		Outfit = { { "Hair", style = "grey", colour = Color3.fromRGB(200, 200, 204) }, { "Obi", colour = Color3.fromRGB(236, 190, 80) },
 			{ "Loafers" } } :: { any } },
-	  lines = { "The blossoms came early this year. So did the Kurogane.", "My well's the only thing in this village they haven't taxed.",
-		"If you're going up to the Keep, child, eat something first." } },
-	{ name = "Little Sora", role = "VILLAGER", at = Vector3.new(10, 0, -184), face = Vector3.new(0, 0, -168),
+	  lines = { "The blossoms came early this year. So did the Kurogane.", "Sixty years I've sat under this tree. They tax the benches now.",
+		"If you're going up to the castle, child, eat something first. The ramen by the canal is good." } },
+	{ name = "Little Sora", role = "LOCAL", at = Vector3.new(14, 0, -200), face = Vector3.new(0, 0, -210),
 	  look = { Shirt = Color3.fromRGB(240, 150, 60), Pants = Color3.fromRGB(60, 80, 120), Sleeves = false, Scale = 0.8,
 		Outfit = { { "Hair", style = "top" }, { "Sneakers" } } :: { any } },
-	  lines = { "My brother went into the bamboo to look for the others. He hasn't come back.",
-		"The men in the straw hats took Mr. Kenta's cart AND his ox!", "Is it true you beat the Don? Show me how!" } },
-	{ name = "Jiro", role = "FISHERMAN", at = Vector3.new(12, 0, -100), face = Vector3.new(0, 0, -86),
+	  lines = { "My brother went into the rail yard to look for the others. He hasn't come back.",
+		"The men in the straw hats took Mr. Kenta's whole catch AND his truck!", "Is it true you beat the Don? Show me how!" } },
+	{ name = "Jiro", role = "FISHMONGER", at = Vector3.new(14, 0, -95), face = Vector3.new(0, 0, -75),
 	  look = { Shirt = Color3.fromRGB(70, 110, 130), Pants = Color3.fromRGB(60, 60, 64), Sleeves = true,
-		Outfit = { { "Kasa", colour = Color3.fromRGB(196, 170, 110) }, { "Beard", style = "full", colour = Color3.fromRGB(60, 50, 44) },
-			{ "Boots" } } :: { any } },
-	  lines = { "The river's full of their crates. Iron, all of it, going up to the Keep.",
-		"Foreman Tetsu runs the Ironworks with a hammer. On the workers, mostly.", "Fish don't bite when the furnace runs." } },
-	{ name = "Brother Ryo", role = "SHRINE MONK", at = Vector3.new(9, 1.5, -130), face = Vector3.new(9, 1.5, -140),
+		Outfit = { { "Hachimaki", colour = Color3.fromRGB(240, 240, 236) }, { "Beard", style = "full", colour = Color3.fromRGB(60, 50, 44) },
+			{ "Apron", colour = Color3.fromRGB(40, 70, 130) }, { "Boots" } } :: { any } },
+	  lines = { "The trains bring their crates at night. Iron, all of it, going up to the castle.",
+		"Foreman Tetsu runs the Steelworks with a hammer. On the workers, mostly.", "Nobody buys fish when the furnace smoke comes down the canal." } },
+	{ name = "Brother Ryo", role = "SHRINE MONK", at = Vector3.new(-82, 1.5, -194), face = Vector3.new(-60, 1.5, -194),
 	  look = { Shirt = Color3.fromRGB(236, 190, 80), Pants = Color3.fromRGB(236, 190, 80), Sleeves = true,
 		Outfit = { { "Hair", style = "bald" }, { "Obi", colour = Color3.fromRGB(160, 36, 44) }, { "Loafers" } } :: { any } },
 	  lines = { "Ring the bell if you're wounded. The shrine still keeps its own.",
-		"The Shogun was a guardian of this valley once. Iron got into him.", "Breathe. The blossoms will still be here tomorrow." } },
-	{ name = "Aiko", role = "TEA MASTER", at = Vector3.new(-46, 0, -204), face = Vector3.new(-30, 0, -200),
+		"The Shogun was a guardian of this city once. Iron got into him.", "Breathe. The blossoms will still be here tomorrow." } },
+	{ name = "Aiko", role = "CAFE OWNER", at = Vector3.new(-4, 0, -146), face = Vector3.new(-8, 0, -146),
 	  look = { Shirt = Color3.fromRGB(196, 80, 110), Pants = Color3.fromRGB(80, 40, 60), Sleeves = true,
-		Outfit = { { "Hair", style = "slick", colour = Color3.fromRGB(30, 26, 30) }, { "Obi", colour = Color3.fromRGB(246, 236, 214) },
+		Outfit = { { "Hair", style = "slick", colour = Color3.fromRGB(30, 26, 30) }, { "Apron", colour = Color3.fromRGB(246, 236, 214) },
 			{ "Loafers" } } :: { any } },
-	  lines = { "Tea? The view's better from our roof -- the stairs are round the back.",
-		"A Kurogane courier left something on our roof last night. I didn't touch it.", "Lantern Row used to be lovely, before the clan." } },
+	  lines = { "Coffee? The arcade's the only street the clan doesn't patrol.",
+		"A Kurogane courier left something on the ramen shop's roof last night. There's a ladder up the side.", "Lantern Row used to be lovely, before the clan." } },
 }
 
 local function speak(figure: Model, text: string)
@@ -512,7 +512,7 @@ function HanamiService.Build()
 	local folder = Instance.new("Folder")
 	folder.Name = HanamiService.FOLDER
 	local ok, err = pcall(function()
-		Valley.Build(folder, HanamiConfig.CENTRE)
+		City.Build(folder, HanamiConfig.CENTRE)
 	end)
 	if not ok then
 		warn("[Hanami] failed to build: " .. tostring(err))

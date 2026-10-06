@@ -828,8 +828,8 @@ NPCConfig.Archetypes = {
 		} :: { any },
 	},
 
-	-- ------------------------------------------------------ hanami valley --
-	-- The Kurogane clan, who hold HANAMI VALLEY for the Shogun. Each one a different problem:
+	-- ------------------------------------------------------ hanami city --
+	-- The Kurogane clan, who hold HANAMI CITY for the Shogun. Each one a different problem:
 	--
 	--   Ronin         the rank and file: a katana, or a pistol for one in three
 	--   Rifleman      holds the roofs and the long sightlines with a rifle
@@ -838,10 +838,10 @@ NPCConfig.Archetypes = {
 	--   Shieldbearer  an iron shield in front that stops bullets (Shield) -- flank it, blow it
 	--                 up, cut it down, or shoot the shield to pieces
 	--   Oni           the clan's elite: masked, quick, accurate, grenades and a medkit
-	--   Foreman       Foreman Tetsu, who runs the Ironworks (a boss: HanamiService fights him)
-	--   Shogun        the Iron Shogun, in his court at the top of the Keep (the final boss)
+	--   Foreman       Foreman Tetsu, who runs the Steelworks (a boss: HanamiService fights him)
+	--   Shogun        the Iron Shogun, in his court at the top of the castle (the final boss)
 	--
-	-- They wear the clan's black and crimson; `Clan` marks them for the valley's jobs.
+	-- They wear the clan's black and crimson; `Clan` marks them for the city's jobs.
 
 	Ronin = {
 		DisplayName = "Kurogane Ronin",
@@ -1281,8 +1281,8 @@ NPCConfig.Zones = {
 }
 
 -- Anywhere not inside a zone is treated as starter ground rather than erroring.
--- HANAMI VALLEY's areas (HanamiConfig), each its own zone with its own levels, so a Ronin in the
--- outskirts is a level 10 and an Oni at the Keep a level 16.
+-- HANAMI CITY's areas (HanamiConfig), each its own zone with its own levels, so a Ronin in the
+-- rail yard is a level 10 and an Oni at the castle a level 16.
 do
 	-- (Guarded: tools load this file on its own, without the rest of ReplicatedStorage.)
 	local ok, Hanami = pcall(function()

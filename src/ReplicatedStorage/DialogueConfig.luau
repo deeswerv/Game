@@ -250,25 +250,25 @@ DialogueConfig.Trees.Fixer = ({
 	},
 } :: Tree)
 
--- Hanami Valley's elder, under the Great Sakura: the valley's story, one step at a time.
+-- Hanami City's elder, at the shrine off the station square: the city's story, one step at a time.
 DialogueConfig.Trees.Elder = ({
 	entry = "root",
 	nodes = {
 		root = {
 			body = {
 				{ requires = { hasActive = true },
-				  text = "{quest} -- {progress} of {goal}. The valley is patient, but the clan is not. Go on." },
+				  text = "{quest} -- {progress} of {goal}. The city is patient, but the clan is not. Go on." },
 				{ requires = { hasOffer = true, completedAtLeast = 20 }, text = "You return, and the blossoms with you. @offer" },
 				{ requires = { hasOffer = true }, text = "@offer" },
 				{ requires = { minLevel = 14 },
-				  text = "It is done, or it is waiting for you to grow. Either way: sit, rest, ring the bell at the shrine. The valley owes you its spring." },
+				  text = "It is done, or it is waiting for you to grow. Either way: sit, rest, ring the bell at the shrine. The city owes you its spring." },
 				{ text = "Not yet, child. The clan would eat you. Come back with a few more levels behind you." },
 			},
 			choices = {
 				{ id = "accept",   text = "I'll do it.",                  requires = { hasOffer = true }, action = { kind = "AcceptQuest" } },
 				{ id = "progress", text = "How far have I come?",         requires = { hasActive = true }, action = { kind = "Goto", node = "progress" } },
 				{ id = "abandon",  text = "I must set this aside.",       requires = { hasActive = true }, action = { kind = "Goto", node = "confirmAbandon" } },
-				{ id = "valley",   text = "What happened to this valley?", action = { kind = "Goto", node = "valley" } },
+				{ id = "valley",   text = "What happened to this city?",  action = { kind = "Goto", node = "valley" } },
 				{ id = "shogun",   text = "Who is the Shogun?",           action = { kind = "Goto", node = "shogun" } },
 				{ id = "leave",    text = "Farewell.",                    action = { kind = "Close" } },
 			},
@@ -298,7 +298,7 @@ DialogueConfig.Trees.Elder = ({
 
 		valley = {
 			body = {
-				{ text = "Hanamura was a village of tea and rice and festivals. Then the Don's crates came up the river -- iron, powder, guns -- and the Kurogane clan came to collect them. Lantern Row is theirs now, the Ironworks run day and night, and the Keep on the hill takes everything we grow." },
+				{ text = "Hanami was a city of cherry trees and festivals, lanterns on every alley. Then the Don's crates came in on the night trains -- iron, powder, guns -- and the Kurogane clan came to collect them. Lantern Row is theirs now, the Steelworks run day and night, and the black castle on the hill takes a cut of everything we sell." },
 			},
 			choices = {
 				{ id = "back",  text = "Back.",  action = { kind = "Goto", node = "root" } },
@@ -309,7 +309,7 @@ DialogueConfig.Trees.Elder = ({
 		shogun = {
 			body = {
 				{ requires = { minLevel = 12 },
-				  text = "He was the valley's guardian, sworn at this very shrine. The Don's iron made him strong and then made him iron. He waits in his court at the top of the Thousand Gates. When he is hurt, blossoms fall like blades -- and at the very end, he does not slow down." },
+				  text = "He was the city's guardian, sworn at this very shrine. The Don's iron made him strong and then made him iron. He waits in his court at the top of the Thousand Gates. When he is hurt, blossoms fall like blades -- and at the very end, he does not slow down." },
 				{ text = "A name you are not ready to carry. Grow first." },
 			},
 			choices = {
@@ -320,7 +320,7 @@ DialogueConfig.Trees.Elder = ({
 	},
 } :: Tree)
 
--- Captain Rei, at the red bridge: the valley guard's bounties on the clan's specialists.
+-- Captain Rei, at the red bridge: the city guard's bounties on the clan's specialists.
 DialogueConfig.Trees.Captain = ({
 	entry = "root",
 	nodes = {

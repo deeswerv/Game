@@ -173,9 +173,12 @@ local function clerk(spot: BasePart)
 		humanoid.Health = math.huge
 		humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 	end
-	-- Facing -X: out over the counter toward the door.
+	-- Facing out over the counter toward the door: -X, unless the shop says otherwise.
 	local stand = spot.Position + Vector3.new(0, 3, 0)
-	figure:PivotTo(CFrame.lookAt(stand, stand + Vector3.new(-1, 0, 0)))
+	local facing = spot:GetAttribute("ClerkFacing")
+	local look = if typeof(facing) == "Vector3" and facing.Magnitude > 0.01 then Vector3.new(facing.X, 0, facing.Z).Unit
+		else Vector3.new(-1, 0, 0)
+	figure:PivotTo(CFrame.lookAt(stand, stand + look))
 	figure.Parent = parent
 	local head = figure:FindFirstChild("Head")
 	if head and head:IsA("BasePart") then

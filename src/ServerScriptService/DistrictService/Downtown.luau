@@ -1575,30 +1575,154 @@ local function gasStation(b: Kit.Builder)
 	b:decor("PylonFoot", Vector3.new(2.4, 1, 2.4), Vector3.new(20, 1, -16), CURB)
 end
 
---- The 24/7 store with the contracts board outside. Origin at the shop front, facing +X.
+--- The 24/7 behind the forecourt: a store you walk into through a glass front. Shelves in
+--- rows, the drinks fridges along the back, the coffee machine and the hot case, magazines in
+--- the window, the counter by the door with its till and its clerk (robbable, like the shops:
+--- the till is a stick-up target, the clerk puts their hands up), the ATM outside, and the
+--- CONTRACTS and BOUNTIES boards on its north wall. Origin at the shop front, facing +X.
 local function convenience(b: Kit.Builder)
-	b:part("Store", Vector3.new(26, 14, 30), Vector3.new(-13, 7, 0), Color3.fromRGB(240, 234, 220))
-	b:decor("Roofline", Vector3.new(26.6, 1.2, 30.6), Vector3.new(-13, 14.2, 0), GREEN)
-	b:decor("Stripe", Vector3.new(0.2, 0.6, 30.2), Vector3.new(0.02, 12.9, 0), GOLD)
-	b:decor("Glass", Vector3.new(0.3, 8, 20), Vector3.new(0.1, 5, -2), GLASS, M.Glass, { transparency = 0.45, reflectance = 0.2 })
-	b:decor("CeilingLight", Vector3.new(0.3, 0.2, 18), Vector3.new(-4, 9.6, -2), LAMP_GLASS)
-	for i = 0, 3 do
-		b:decor("Shelf", Vector3.new(1.2, 5, 16), Vector3.new(-6 - i * 4, 2.5, -2), Color3.fromRGB(206, 206, 210), M.Metal)
+	-- In a folder of its own, so its clerk and its till go together (StickupService.ClerkOf).
+	local shop = Instance.new("Folder")
+	shop.Name = "ZEE 24/7"
+	shop.Parent = b.parent
+	local outer = b
+	b = Kit.new(shop, b.frame)
+	local D, W, H = 26, 30, 14
+	local ceil = 10.8
+	local wall = Color3.fromRGB(240, 234, 220)
+	local tile = Color3.fromRGB(236, 236, 230)
+	-- The shell: a back wall, two side walls, a roof, a green fascia round the top.
+	b:part("BackWall", Vector3.new(1, H, W), Vector3.new(-D + 0.5, H / 2, 0), wall)
+	for _, s in ipairs({ -1, 1 }) do
+		b:part("SideWall", Vector3.new(D - 1, H, 1), Vector3.new(-(D - 1) / 2, H / 2, s * (W / 2 - 0.5)), wall)
 	end
-	b:light("Point", Vector3.new(-8, 9, -2), Color3.fromRGB(246, 250, 255), 1, 22)
-	board(b, "24/7", Kit.Look(Vector3.new(0.5, 11.1, -2), Vector3.new(10, 11.1, -2)), 9, 2.8, GREEN, CREAM)
-	b:decor("Door", Vector3.new(0.3, 7.6, 5), Vector3.new(0.12, 3.8, 11), GLASS, M.Glass, { transparency = 0.35 })
-	-- A cash machine in the wall past the door (the store faces +X, the machine with it).
-	atm(b:within(CFrame.new(0.02, 0, 14.25) * CFrame.Angles(0, math.pi, 0)), "the 24/7")
-	-- An ice chest and a paper stand by the door.
-	b:part("IceChest", Vector3.new(2.4, 3.2, 4), Vector3.new(1.4, 1.6, -14), Color3.fromRGB(236, 242, 248))
-	painted(b, "ICE", Kit.Look(Vector3.new(2.62, 2, -14), Vector3.new(10, 2, -14)), 2.4, 1, Color3.fromRGB(60, 120, 200))
-	b:part("PaperStand", Vector3.new(1.4, 3, 1.6), Vector3.new(1, 1.5, 7), BLUE)
+	b:part("Roof", Vector3.new(D + 0.6, 1, W + 0.6), Vector3.new(-D / 2 + 0.3, H + 0.5, 0), Color3.fromRGB(196, 196, 192))
+	b:decor("Roofline", Vector3.new(D + 1.2, 1.6, W + 1.2), Vector3.new(-D / 2 + 0.3, H + 0.2, 0), GREEN)
+	b:decor("Stripe", Vector3.new(0.3, 0.5, W + 1.3), Vector3.new(0.95, 13.1, 0), GOLD)
+	b:decor("Stripe", Vector3.new(0.3, 0.5, W + 1.3), Vector3.new(0.95, 12.4, 0), RED)
+	-- The front: a head over full-height glass, the doorway open between its frames.
+	b:part("FrontHead", Vector3.new(1, H - ceil, W), Vector3.new(-0.5, (H + ceil) / 2, 0), wall)
+	local doorZ0, doorZ1 = 4, 10
+	for _, seg in ipairs({ { -W / 2 + 1, doorZ0 }, { doorZ1, W / 2 - 1 } }) do
+		local len = seg[2] - seg[1]
+		local zc = (seg[1] + seg[2]) / 2
+		b:part("Window", Vector3.new(0.3, ceil - 0.8, len), Vector3.new(-0.3, (ceil + 0.8) / 2, zc), GLASS, M.Glass,
+			{ transparency = 0.6, reflectance = 0.15 })
+		b:part("Kick", Vector3.new(0.5, 0.8, len), Vector3.new(-0.3, 0.4, zc), Color3.fromRGB(70, 74, 82))
+		for z = seg[1], seg[2] + 1e-3, len / math.max(1, math.floor(len / 5)) do
+			b:decor("Mullion", Vector3.new(0.5, ceil, 0.35), Vector3.new(-0.3, ceil / 2, z), Color3.fromRGB(70, 74, 82))
+		end
+	end
+	for _, z in ipairs({ doorZ0, doorZ1 }) do
+		b:decor("DoorFrame", Vector3.new(0.7, ceil, 0.5), Vector3.new(-0.3, ceil / 2, z), Color3.fromRGB(70, 74, 82))
+	end
+	b:decor("DoorTrack", Vector3.new(0.6, 0.6, doorZ1 - doorZ0 + 3), Vector3.new(-0.4, ceil - 0.3, (doorZ0 + doorZ1) / 2),
+		Color3.fromRGB(70, 74, 82))
+	-- The sliding doors, open: tucked behind the glass either side.
+	for _, z in ipairs({ doorZ0 - 1.4, doorZ1 + 1.4 }) do
+		b:decor("SlidingDoor", Vector3.new(0.2, ceil - 1, 2.8), Vector3.new(-0.75, (ceil - 1) / 2, z), GLASS, M.Glass,
+			{ transparency = 0.5 })
+	end
+	b:decor("DoorMat", Vector3.new(3, 0.06, doorZ1 - doorZ0), Vector3.new(1.6, 0.03, (doorZ0 + doorZ1) / 2), Color3.fromRGB(60, 62, 68),
+		M.Fabric)
+	-- Posters on the glass, the name over it.
+	for i, p in ipairs({ { "ICE COLD", Color3.fromRGB(60, 140, 220), -11 }, { "HOT COFFEE", RED, -5 }, { "OPEN 24H", GREEN, 12.6 } } :: { { any } }) do
+		local z = p[3] :: number
+		b:decor("Poster", Vector3.new(0.06, 1.6, 3.2), Vector3.new(-0.5, 7.6 - (i % 2) * 0.3, z), p[2] :: Color3)
+		painted(b, p[1] :: string, Kit.Look(Vector3.new(-0.56, 7.6 - (i % 2) * 0.3, z), Vector3.new(-10, 7.6 - (i % 2) * 0.3, z)),
+			2.9, 0.9, CREAM)
+	end
+	board(b, "ZEE 24/7", Kit.Look(Vector3.new(0.5, 12.2, -3), Vector3.new(10, 12.2, -3)), 12, 2.6, GREEN, CREAM)
+	painted(b, "MARKET · COFFEE · ATM", Kit.Look(Vector3.new(1.0, 12.2, 9), Vector3.new(10, 12.2, 9)), 8, 0.8, CREAM, Enum.Font.GothamBold)
+
+	-- Inside: the floor, the ceiling and its lights, the walls lined.
+	b:part("ShopFloor", Vector3.new(D - 1, 0.2, W - 2), Vector3.new(-D / 2, 0.1, 0), tile)
+	for x = -22, -2, 4 do
+		b:decor("FloorLine", Vector3.new(0.1, 0.02, W - 2.2), Vector3.new(x, 0.21, 0), Color3.fromRGB(214, 214, 208))
+	end
+	b:decor("Ceiling", Vector3.new(D - 1.2, 0.1, W - 2.2), Vector3.new(-D / 2 - 0.1, ceil - 0.05, 0), Color3.fromRGB(246, 246, 244))
+	for x = -20, -4, 8 do
+		for _, z in ipairs({ -6, 4 }) do
+			b:decor("LightPanel", Vector3.new(5, 0.12, 1.2), Vector3.new(x, ceil - 0.12, z), LAMP_GLASS)
+		end
+	end
+	b:light("Point", Vector3.new(-12, ceil - 1.2, 0), Color3.fromRGB(246, 250, 255), 1.4, 28)
+	for _, s in ipairs({ -1, 1 }) do
+		b:decor("Lining", Vector3.new(D - 2, ceil - 0.2, 0.1), Vector3.new(-D / 2, ceil / 2, s * (W / 2 - 1.06)), Color3.fromRGB(232, 236, 230))
+	end
+	-- The drinks fridges along the back: glass doors on rows of bright cans and bottles.
+	local fz0, fz1 = -6, W / 2 - 1.2
+	b:part("Fridges", Vector3.new(2.4, 8, fz1 - fz0), Vector3.new(-D + 2.2, 4, (fz0 + fz1) / 2), Color3.fromRGB(226, 228, 232))
+	local drinks = { Color3.fromRGB(220, 52, 52), Color3.fromRGB(250, 204, 44), Color3.fromRGB(40, 96, 204), Color3.fromRGB(36, 156, 92),
+		Color3.fromRGB(244, 128, 34), Color3.fromRGB(236, 86, 150) }
+	for k, y in ipairs({ 1.6, 3.2, 4.8, 6.4 }) do
+		for j = 0, 3 do
+			local z = fz0 + (j + 0.5) * (fz1 - fz0) / 4
+			b:decor("Drinks", Vector3.new(0.2, 1.1, (fz1 - fz0) / 4 - 0.6), Vector3.new(-D + 3.5, y, z), drinks[(k + j) % #drinks + 1])
+		end
+	end
+	b:decor("FridgeGlass", Vector3.new(0.15, 7, fz1 - fz0 - 0.4), Vector3.new(-D + 3.48, 4.1, (fz0 + fz1) / 2), Color3.fromRGB(200, 226, 240),
+		M.Glass, { transparency = 0.6 })
+	for j = 1, 3 do
+		b:decor("FridgeFrame", Vector3.new(0.3, 7.2, 0.3), Vector3.new(-D + 3.55, 4.1, fz0 + j * (fz1 - fz0) / 4), Color3.fromRGB(150, 156, 164))
+	end
+	b:decor("FridgeSign", Vector3.new(0.2, 1.2, 8), Vector3.new(-D + 3.4, 8.9, (fz0 + fz1) / 2), Color3.fromRGB(60, 140, 220))
+	painted(b, "COLD DRINKS", Kit.Look(Vector3.new(-D + 3.52, 8.9, (fz0 + fz1) / 2), Vector3.new(10, 8.9, (fz0 + fz1) / 2)), 7, 0.9, CREAM)
+	-- Three rows of shelves, stocked both sides (solid: cover, if it comes to that).
+	local goods = { Color3.fromRGB(240, 196, 70), Color3.fromRGB(220, 90, 70), Color3.fromRGB(90, 160, 220), Color3.fromRGB(120, 190, 100),
+		Color3.fromRGB(236, 236, 230), Color3.fromRGB(200, 120, 200) }
+	for r, z in ipairs({ -1.5, 4.5, 10.5 }) do
+		b:part("Gondola", Vector3.new(11, 4.4, 1.6), Vector3.new(-14.5, 2.2, z), Color3.fromRGB(210, 212, 216), M.Metal)
+		b:decor("GondolaCap", Vector3.new(11.2, 0.3, 1.8), Vector3.new(-14.5, 4.55, z), Color3.fromRGB(70, 160, 110))
+		for k, y in ipairs({ 1, 2.3, 3.6 }) do
+			for _, side in ipairs({ -1, 1 }) do
+				b:decor("Goods", Vector3.new(10.4, 0.8, 0.2), Vector3.new(-14.5, y, z + side * 0.85), goods[(r + k + side) % #goods + 1])
+			end
+		end
+	end
+	-- The counter by the door: a long run with its end closed, the till on it, the coffee
+	-- machine and the hot case at the far end, the shelf of smokes and lottery behind.
+	local cz = -9
+	b:part("Counter", Vector3.new(10, 3.6, 2.4), Vector3.new(-5.6, 1.8, cz), Color3.fromRGB(64, 120, 90))
+	b:decor("CounterTop", Vector3.new(10.4, 0.3, 2.9), Vector3.new(-5.6, 3.75, cz), Color3.fromRGB(230, 226, 214))
+	b:part("CounterEnd", Vector3.new(1.2, 3.6, W / 2 - 1 + cz - 1.2), Vector3.new(-11, 1.8, (cz - 1.2 - (W / 2 - 1)) / 2), Color3.fromRGB(64, 120, 90))
+	till(b:within(CFrame.new(-4, 3.9, cz) * CFrame.Angles(0, math.pi / 2, 0)), "the 24/7")
+	b:decor("CoffeeMachine", Vector3.new(1.4, 2.2, 1.6), Vector3.new(-9, 5, cz), Color3.fromRGB(40, 42, 48))
+	b:decor("CoffeeLight", Vector3.new(0.6, 0.4, 0.1), Vector3.new(-9, 5.6, cz + 0.82), Color3.fromRGB(240, 120, 60))
+	b:decor("HotCase", Vector3.new(2.4, 1.6, 1.6), Vector3.new(-1.6, 4.7, cz), Color3.fromRGB(240, 170, 90), M.Glass, { transparency = 0.2 })
+	b:decor("BackShelf", Vector3.new(9, 6, 1), Vector3.new(-5.6, 5, -W / 2 + 1.6), Color3.fromRGB(110, 76, 54))
+	for k, y in ipairs({ 3.4, 5, 6.6 }) do
+		b:decor("Smokes", Vector3.new(8.4, 1, 0.2), Vector3.new(-5.6, y, -W / 2 + 2.2), goods[k + 2])
+	end
+	-- Where the clerk stands, behind the counter looking out over it at the shop.
+	local spot = b:decor("ClerkSpot", Vector3.new(1, 0.1, 1), Vector3.new(-5, 0.25, -11.6), GREEN, nil, { transparency = 1 })
+	spot:SetAttribute("ClerkName", "Mae")
+	spot:SetAttribute("ClerkTitle", "ZEE 24/7")
+	spot:SetAttribute("ClerkShirt", GREEN)
+	spot:SetAttribute("ClerkFacing", b:world(CFrame.new(0, 0, 1)).Position - b:world(CFrame.new()).Position)
+	-- The magazine rack in the window and a basket stack by the door.
+	b:part("MagazineRack", Vector3.new(1.2, 3.2, 7), Vector3.new(-2, 1.6, 13.4 - 3.5 - 0.6), Color3.fromRGB(200, 202, 206))
+	for k = 0, 2 do
+		b:decor("Magazines", Vector3.new(0.2, 0.9, 6.4), Vector3.new(-1.32, 1 + k * 1, 9.3), goods[k + 1])
+	end
+	b:decor("Baskets", Vector3.new(1.4, 1.4, 1.8), Vector3.new(-2.2, 0.9, 2.6), RED)
+
+	-- Outside: the ATM in the wall past the door, the ice chest, the paper stand, a bench.
+	atm(outer:within(CFrame.new(0.02, 0, 14.25) * CFrame.Angles(0, math.pi, 0)), "the 24/7")
+	b:part("IceChest", Vector3.new(2.4, 3.2, 4), Vector3.new(1.6, 1.6, -12.4), Color3.fromRGB(236, 242, 248))
+	painted(b, "ICE", Kit.Look(Vector3.new(2.82, 2, -12.4), Vector3.new(10, 2, -12.4)), 2.4, 1, Color3.fromRGB(60, 120, 200))
+	b:part("PaperStand", Vector3.new(1.4, 3, 1.6), Vector3.new(1.2, 1.5, 12), BLUE)
+	b:part("BenchSeat", Vector3.new(1.6, 0.3, 5), Vector3.new(1.6, 1.6, -5), WOOD)
+	for _, z in ipairs({ -7, -3 }) do
+		b:decor("BenchLeg", Vector3.new(1.4, 1.5, 0.3), Vector3.new(1.6, 0.75, z), IRON)
+	end
+	b:part("Bin", Vector3.new(1.2, 2.4, 1.2), Vector3.new(1.4, 1.2, 2.2), Color3.fromRGB(64, 70, 78))
+	b:decor("BinLid", Vector3.new(1.3, 0.2, 1.3), Vector3.new(1.4, 2.5, 2.2), GREEN)
 
 	-- The job boards on the store's north wall, facing the cross street: CONTRACTS and
 	-- BOUNTIES, side by side under their own lamps.
-	jobBoard(b:within(CFrame.new(-19, 0, 15) * CFrame.Angles(0, math.pi, 0)), "contracts")
-	jobBoard(b:within(CFrame.new(-7, 0, 15) * CFrame.Angles(0, math.pi, 0)), "bounties")
+	jobBoard(outer:within(CFrame.new(-19, 0, 15) * CFrame.Angles(0, math.pi, 0)), "contracts")
+	jobBoard(outer:within(CFrame.new(-7, 0, 15) * CFrame.Angles(0, math.pi, 0)), "bounties")
 end
 
 --- The DUEL HALL: an open-fronted sports hall facing +X, the floor split into a blue half and

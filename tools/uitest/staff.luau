@@ -2,7 +2,7 @@
 -- The shops' people and a robbery as it looks, checked without Studio on the real Downtown
 -- (DistrictService builds it and puts the clerks in; StickupService wires the targets):
 --
---   * each shop is its own folder with its own clerk (there used to be only one: both shops
+--   * each shop -- and the 24/7 at the gas station, behind its glass front -- is its own folder with its own clerk (there used to be only one: both shops
 --     shared a folder and the second clerk was never made), its till -- a model with a drawer
 --     shut inside its body -- and its cash machine; the clerks stand anchored at the root
 --     only, so they can be posed, tagged Staff;
@@ -146,6 +146,29 @@ end
 local cornerPrompt = corner and corner:FindFirstChild("StickupPrompt")
 check(cornerPrompt and cornerPrompt.ActionText == "Rob ATM" and cornerPrompt.ObjectText == "24/7",
 	"the 24/7's cash machine says Rob ATM / 24/7")
+-- The 24/7 at the gas station: a store you walk into, with its own clerk behind the counter
+-- and a till to rob, like the shops.
+local store = downtown:FindFirstChild("ZEE 24/7")
+local storeClerk = store and store:FindFirstChild("Clerk")
+local storeTill = store and store:FindFirstChild("Till")
+local storeRegister = storeTill and storeTill:FindFirstChild("Register")
+check(store and store:IsA("Folder") and storeClerk and storeClerk:HasTag("Staff"), "the 24/7: a folder of its own, its own clerk")
+check(storeRegister and storeRegister:GetAttribute("Stickup") == "the 24/7" and storeRegister:GetAttribute("StickupKind") == "register",
+	"the 24/7: a till to rob")
+check(storeRegister and Stickups.ClerkOf(storeRegister) == storeClerk, "the 24/7: robbing its till puts its own clerk's hands up")
+if storeClerk and storeRegister then
+	-- The clerk looks out over the counter at the shop -- the side the till faces.
+	local root = storeClerk:FindFirstChild("HumanoidRootPart")
+	local tillFace = -storeRegister.CFrame.RightVector
+	check(root and root.CFrame.LookVector:Dot(tillFace) > 0.9, "the 24/7: the clerk faces the customer, over the till")
+end
+local glass = 0
+for _, d in ipairs(store and store:GetChildren() or {}) do
+	if d:IsA("BasePart") and d.Name == "Window" and d.Transparency >= 0.5 and d.CanCollide then
+		glass += 1
+	end
+end
+check(glass >= 2, ("the 24/7: a glass front you can see into (%d panes)"):format(glass))
 
 -- -------------------------------------------------------------- the clients --
 

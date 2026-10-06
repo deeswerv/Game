@@ -44,7 +44,7 @@ local CHAPTERS = {
 	{ id = "Downtown", label = "Downtown", icon = "🏙", kicker = "CHAPTER 1", title = "DOWNTOWN",
 	  blurb = "MAKE A NAME, THEN TAKE ZEE TOWER",
 	  colour = Color3.fromRGB(214, 84, 150) },
-	{ id = "Hanami", label = "Hanami", icon = "🌸", kicker = "CHAPTER 2", title = "HANAMI VALLEY",
+	{ id = "Hanami", label = "Hanami", icon = "🌸", kicker = "CHAPTER 2", title = "HANAMI CITY",
 	  blurb = "END THE IRON SHOGUN",
 	  colour = Color3.fromRGB(226, 110, 150) },
 	{ id = "Beyond", label = "Beyond", icon = "🗺", kicker = "SIDE ROADS", title = "BEYOND THE CITY",

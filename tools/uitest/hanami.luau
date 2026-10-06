@@ -1,24 +1,24 @@
 --!nocheck
--- HANAMI VALLEY (HanamiService), the world past ZEE TOWER, checked without Studio on the real
--- valley the service builds:
+-- HANAMI CITY (HanamiService), the world past ZEE TOWER, checked without Studio on the real
+-- city the service builds:
 --
---   * the valley: every marker the jobs and fights need, the area boxes and waypoints, its own
+--   * the city: every marker the jobs and fights need, the area boxes and waypoints, its own
 --     look; the Travel menu's arrival, the givers, the captives, the clues, the seals, the raid
 --     site, both bosses and every post of the population stand on something solid and not
 --     inside anything;
 --   * the population wakes when somebody walks in (and only then), refills a fallen post after
---     a while, and goes back to sleep when the valley has been empty for a minute;
+--     a while, and goes back to sleep when the city has been empty for a minute;
 --   * the shrine's bell heals you -- not mid-fight, and not twice in a row;
 --   * Elder Hoshi's story, every step through the real QuestService: walk to the Lantern Row
 --     gate; clear Lantern Row (a kill anywhere else does not count); free the three captives
 --     (who kneel, tied, until you do -- and the camp takes more later); read four DIFFERENT
 --     clues (the same one twice counts once); FOREMAN TETSU and his phases (adds, molten
---     splashes that hurt); hold the farm through three waves (and lose it, both ways); find
+--     splashes that hurt); hold the market through three waves (and lose it, both ways); find
 --     five DIFFERENT seals; climb the Thousand Gates (the foot of the stair does not count);
 --     and the IRON SHOGUN: not for anyone under level 12, then an intro, a court of guards,
 --     blade waves, the blossom storm, iron fury, and the first clear saved with its title;
 --     after a rest he is back for less; an empty court resets him;
---   * Captain Rei's bounties, and the repeatable patrol that counts anywhere in the valley.
+--   * Captain Rei's bounties, and the repeatable patrol that counts anywhere in the city.
 --
 -- NPCService makes bare NPC models (the AI is not what is being checked); the clock is wound
 -- by hand.
@@ -315,7 +315,7 @@ for name, want in pairs({ HanamiArrival = 1, CaptiveSpot = #HanamiConfig.Captive
 	local have = named[name] and #named[name] or 0
 	check(have == want, ("%s: %d (wants %d)"):format(name, have, want))
 end
-check(parts < 12000, ("a sane part count (%d)"):format(parts))
+check(parts < 20000, ("a sane part count (%d)"):format(parts))
 local counter = named.HanamiCounter and named.HanamiCounter[1]
 check(counter and counter:GetAttribute("OpenPanel") == "Market" and promptOn(counter) ~= nil,
 	"the trader's counter opens the shop")
@@ -382,7 +382,7 @@ end
 for i, c in ipairs(HanamiConfig.Captives) do
 	standable(HanamiConfig.CENTRE + c, "captive " .. i)
 end
-standable(site("Farmhouse") + Vector3.new(0, 0, 15), "the farmyard")
+standable(site("Market"), "the auction floor")
 standable(named.ForemanSpot[1].Position, "Foreman Tetsu's spot")
 standable(named.ShogunSpot[1].Position, "the Shogun's spot")
 for i, p in ipairs(named.CourtAddSpot) do
@@ -608,10 +608,10 @@ now += Bosses.FOREMAN.respawn + 1
 step()
 check(Bosses.Foreman() ~= nil and Bosses.Foreman() ~= foreman, "and back on shift after a long rest")
 
-print("Hold the Farm")
+print("Hold the Market")
 take("HoldTheFarm")
 local raidSite = named.RaidSite[1]
-standAt(site("Farmhouse") + Vector3.new(0, 0, 15))
+standAt(site("Market"))
 table.clear(sent)
 trigger(promptOn(raidSite))
 local farmers = {}
@@ -620,8 +620,8 @@ for _, d in ipairs(workspace:GetDescendants()) do
 		table.insert(farmers, d)
 	end
 end
-check(Jobs.Raid() ~= nil and last("raid") ~= nil, "the raid starts at the farmhouse")
-check(#farmers == 2, "the farmers on the porch put their hands up")
+check(Jobs.Raid() ~= nil and last("raid") ~= nil, "the raid starts on the auction floor")
+check(#farmers == 2, "the market hands put their hands up")
 local waves = #HanamiConfig.Raid.waves
 for w = 1, waves do
 	now += Jobs.RAID_BREAK + 4
@@ -631,7 +631,7 @@ for w = 1, waves do
 	end)
 	check(#raiders == #HanamiConfig.Raid.waves[w] and Jobs.Raid().wave == w, ("wave %d: %d raiders"):format(w, #raiders))
 	if w == 1 then
-		check(NPCService.noise > 0, "they are drawn to the farm")
+		check(NPCService.noise > 0, "they are drawn to the market")
 	end
 	for _, m in ipairs(raiders) do
 		kill(m)
@@ -639,13 +639,13 @@ for w = 1, waves do
 	now += 1
 	step()
 end
-check(Jobs.Raid() == nil and last("raidWon") ~= nil, "three waves held: the farm stands")
+check(Jobs.Raid() == nil and last("raidWon") ~= nil, "three waves held: the market stands")
 check(done("HoldTheFarm"), "and the job is done")
 local handsDown = true
 for _, f in ipairs(farmers) do
 	handsDown = handsDown and f:GetAttribute("HandsUpAt") == nil
 end
-check(handsDown, "the farmers put their hands down")
+check(handsDown, "the market hands put their hands down")
 ok, why = Jobs.StartRaid(player)
 check(not ok and why == "cooldown", "the raiders need time to regroup")
 now += Jobs.RAID_COOLDOWN + 1
@@ -655,7 +655,7 @@ step()
 local raider = living(function(m)
 	return m:GetAttribute("HanamiRaid") == true
 end)[1]
-raider.PrimaryPart.CFrame = CFrame.new(site("Farmhouse") + Vector3.new(0, 3, 10))
+raider.PrimaryPart.CFrame = CFrame.new(site("Market") + Vector3.new(0, 3, 6))
 for _ = 1, 30 do
 	now += 2
 	step()
@@ -663,8 +663,8 @@ for _ = 1, 30 do
 		break
 	end
 end
-check(Jobs.Raid() == nil and last("raidLost") and last("raidLost").why == "The farmhouse fell",
-	"a raider left at the door wears the farmhouse down, and the farm falls")
+check(Jobs.Raid() == nil and last("raidLost") and last("raidLost").why == "The market fell",
+	"a raider left on the auction floor wears it down, and the market falls")
 now += 31
 ok, why = Jobs.StartRaid(player)
 check(ok, "the raiders come back: " .. tostring(why))
@@ -673,7 +673,7 @@ for _ = 1, 15 do
 	now += 2
 	step()
 end
-check(Jobs.Raid() == nil and last("raidLost").why == "Nobody held the farm", "and nobody in the yard loses it too")
+check(Jobs.Raid() == nil and last("raidLost").why == "Nobody held the market", "and nobody in the hall loses it too")
 
 print("Iron Seals: five different seals")
 setLevel(13)

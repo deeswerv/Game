@@ -2,8 +2,8 @@
 -- Stick-ups (Downtown's tills and cash machines, StickupService, the HUD), checked without
 -- Studio:
 --
---   * Downtown has five things to rob -- the tills at ZEE GUNS and ZEE TACTICS, a cash
---     machine inside each and one outside the 24/7 -- each with a hold-E prompt, room to
+--   * Downtown has six things to rob -- the tills at ZEE GUNS, ZEE TACTICS and the 24/7, a cash
+--     machine inside each shop and one outside the 24/7 -- each with a hold-E prompt, room to
 --     stand at it, and nothing built through it;
 --   * robbing one: the bag and the heat go on you, everyone is told where and how much, a
 --     squad of three comes up the avenue and is steered onto you; the target is empty for a
@@ -181,8 +181,8 @@ for _, t in ipairs(Stickups.Targets()) do
 		tills[t.name] = t
 	end
 end
-check(wired == 5, ("five targets (%d)"):format(wired))
-check(tills["ZEE GUNS"] and tills["ZEE TACTICS"], "the tills at ZEE GUNS and ZEE TACTICS")
+check(wired == 6, ("six targets (%d)"):format(wired))
+check(tills["ZEE GUNS"] and tills["ZEE TACTICS"] and tills["the 24/7"], "the tills at ZEE GUNS, ZEE TACTICS and the 24/7")
 check(atms["ZEE GUNS"] and atms["ZEE TACTICS"] and atms["the 24/7"], "cash machines inside both, and outside the 24/7")
 for _, t in ipairs(Stickups.Targets()) do
 	local prompt = t.part:FindFirstChild("StickupPrompt")

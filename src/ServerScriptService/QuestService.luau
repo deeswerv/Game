@@ -98,8 +98,8 @@ function QuestService.WaypointFor(objective: any): (Vector3?, string?)
 	if objective.kind == "TowerWin" then
 		return DOWNTOWN + Vector3.new(0, 3.5, 156), "ZEE TOWER"
 	end
-	-- Anything else that says where it happens (Hanami Valley's jobs: the camp, the
-	-- Ironworks, the farm, the Keep) is marked there.
+	-- Anything else that says where it happens (Hanami City's jobs: the rail shed, the
+	-- Steelworks, the market, the castle) is marked there.
 	if typeof(objective.position) == "Vector3" then
 		return objective.position, objective.where or objective.label
 	end
@@ -497,7 +497,7 @@ function QuestService.ObjectiveMatches(obj: any, victimArchetype: string?, ctx: 
 		if not victimArchetype or not ctx then
 			return false
 		end
-		-- `zonePrefix` takes a whole region of zones ("Hanami_": anywhere in the valley).
+		-- `zonePrefix` takes a whole region of zones ("Hanami_": anywhere in the city).
 		if obj.zonePrefix then
 			if type(ctx.zone) ~= "string" or ctx.zone:sub(1, #obj.zonePrefix) ~= obj.zonePrefix then
 				return false
@@ -584,7 +584,7 @@ end)
 --
 -- Things other services tell the quest tracker about, that are not kills: a turf war won
 -- (TurfWarService, with which patch and at what threat), the Don beaten (TowerService), and
--- Hanami Valley's jobs (HanamiService).
+-- Hanami City's jobs (HanamiService).
 
 -- Which objective kind each Hanami event advances.
 QuestService.EVENT_OBJECTIVES = {
@@ -604,8 +604,8 @@ function QuestService.EventMatches(obj: any, kind: string, detail: any): boolean
 	if kind == "tower" and obj.kind == "TowerWin" then
 		return true
 	end
-	-- Hanami Valley's jobs (HanamiService): a captive freed, a clue read, a seal taken, the
-	-- farm held, a boss beaten. `boss`, `site` and `prefix` narrow which one counts.
+	-- Hanami City's jobs (HanamiService): a captive freed, a clue read, a seal taken, the
+	-- market held, a boss beaten. `boss`, `site` and `prefix` narrow which one counts.
 	local wants = QuestService.EVENT_OBJECTIVES[kind]
 	if wants and obj.kind == wants then
 		detail = detail or {}
@@ -861,7 +861,7 @@ local GIVER_LOOKS: { [string]: { [string]: any } } = {
 			{ "Boots", colour = Color3.fromRGB(74, 54, 40) },
 		} :: { any },
 	},
-	-- Hanami Valley: the village elder under the Great Sakura, and the captain of what is left
+	-- Hanami City: the elder at the shrine by the station, and the captain of what is left
 	-- of its guard, at the bridge.
 	Elder = {
 		Skin = Color3.fromRGB(226, 186, 150), Shirt = Color3.fromRGB(82, 70, 110), Pants = Color3.fromRGB(64, 56, 84),

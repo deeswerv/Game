@@ -173,7 +173,7 @@ Remote.get("Remotes", "StickupEvent").OnClientEvent:Connect(function(kind: unkno
 		stickups:Handle(kind, data)
 	end
 end)
--- Hanami Valley: the farm raid bar, the clues, the bosses.
+-- Hanami City: the market raid bar, the clues, the bosses.
 local hanami = safe("Hanami", function()
 	return Hanami.new(screen, toast)
 end)
@@ -1018,7 +1018,7 @@ do
 				colour = TOWER_GOLD, sound = "Ring" })
 			if info.first then
 				toast:Banner({ title = "THE WORLD OPENS",
-					subtitle = "Hanami Valley, the Flats, Watchpoint and the Reach are on your Travel menu",
+					subtitle = "Hanami City, the Flats, Watchpoint and the Reach are on your Travel menu",
 					colour = Theme.Colour.Accent, sound = "Ring" })
 			end
 		elseif kind == "reset" then
