@@ -50,7 +50,7 @@ World.serverRemotes({
 		KillFeed = "RemoteEvent", KillFeedAll = "RemoteEvent", DeathReport = "RemoteEvent",
 		GunEffect = "RemoteEvent", NPCEffect = "RemoteEvent", ChestEffect = "RemoteEvent",
 		EmotePlay = "RemoteEvent", LookUpdate = "RemoteEvent", UtilityAction = "RemoteEvent", UtilityEvent = "RemoteEvent",
-		StreakEvent = "RemoteEvent", StreakAction = "RemoteEvent", StickupEvent = "RemoteEvent",
+		StreakEvent = "RemoteEvent", StreakAction = "RemoteEvent", StickupEvent = "RemoteEvent", HanamiEvent = "RemoteEvent",
 	},
 })
 

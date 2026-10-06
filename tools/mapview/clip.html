@@ -1,0 +1,115 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>html,body{margin:0;background:#000;overflow:hidden} canvas{display:block}</style>
+<script type="importmap">
+{ "imports": { "three": "./three/build/three.module.js", "three/addons/": "./three/examples/jsm/" } }
+</script>
+</head>
+<body>
+<script type="module">
+// A movement clip (motionclip.luau) frame by frame: the rig as the Roblox Boy body -- rounded
+// blocks for the torso and limbs, the classic rounded-cylinder head with a face -- dressed in
+// a white tee, dark trousers and white trainers, on a checkered floor with posts along the way
+// so the speed and any sliding of the feet can be seen.
+import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+const DATA = window.CLIP;
+const W = 960, H = 540;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xb8d4ea);
+scene.fog = new THREE.Fog(0xb8d4ea, 80, 260);
+scene.add(new THREE.HemisphereLight(0xeaf4ff, 0x5a5040, 1.2));
+const sun = new THREE.DirectionalLight(0xfff2dc, 2.2);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+const sc = sun.shadow.camera;
+sc.left = -12; sc.right = 12; sc.top = 12; sc.bottom = -12; sc.near = 1; sc.far = 80;
+scene.add(sun); scene.add(sun.target);
+
+// The floor: 4-stud checks, and a post every 10 studs either side of the path.
+{
+  const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#c9c9c4'; g.fillRect(0, 0, 128, 128);
+  g.fillStyle = '#b4b4ae'; g.fillRect(0, 0, 64, 64); g.fillRect(64, 64, 64, 64);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(100, 100);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(800, 800), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95 }));
+  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+  const postMat = new THREE.MeshStandardMaterial({ color: 0xd8604a, roughness: 0.6 });
+  for (let z = -400; z <= 400; z += 10) for (const x of [-8]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.6, 3, 0.6), postMat);
+    post.position.set(x, 1.5, z); post.castShadow = true; scene.add(post);
+  }
+}
+
+// The body.
+const SKIN = 0xd2a88a, TEE = 0xf4f4f0, PANTS = 0x2b2f38, SHOE = 0xf0f0ec;
+const DRESS = {
+  Head: SKIN, UpperTorso: TEE, LowerTorso: PANTS,
+  LeftUpperArm: TEE, RightUpperArm: TEE, LeftLowerArm: SKIN, RightLowerArm: SKIN, LeftHand: SKIN, RightHand: SKIN,
+  LeftUpperLeg: PANTS, RightUpperLeg: PANTS, LeftLowerLeg: PANTS, RightLowerLeg: PANTS, LeftFoot: SHOE, RightFoot: SHOE,
+};
+const meshes = {};
+for (const p of DATA.rig) {
+  const [sx, sy, sz] = p.z;
+  const mat = new THREE.MeshStandardMaterial({ color: DRESS[p.n] ?? 0x888888, roughness: 0.55 });
+  let mesh;
+  if (p.n === 'Head') {
+    // The classic head: a cylinder with rounded top and bottom edges.
+    const r = Math.min(sx, sz) / 2, h = sy, e = r * 0.38;
+    const pts = [new THREE.Vector2(0, -h / 2)];
+    for (let i = 0; i <= 6; i++) { const a = -Math.PI / 2 + (i / 6) * Math.PI / 2; pts.push(new THREE.Vector2(r - e + Math.cos(a) * e, -h / 2 + e + Math.sin(a) * e)); }
+    for (let i = 0; i <= 6; i++) { const a = (i / 6) * Math.PI / 2; pts.push(new THREE.Vector2(r - e + Math.cos(a) * e, h / 2 - e + Math.sin(a) * e)); }
+    pts.push(new THREE.Vector2(0, h / 2));
+    mesh = new THREE.Mesh(new THREE.LatheGeometry(pts, 28), mat);
+    // A face on its front (-Z): two eyes and a smile.
+    const ink = new THREE.MeshBasicMaterial({ color: 0x1a1a1a });
+    for (const x of [-0.17, 0.17]) {
+      const eye = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.11, 4, 8), ink);
+      eye.position.set(x, 0.1, -r + 0.005); mesh.add(eye);
+    }
+    const smile = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.028, 6, 16, Math.PI * 0.7), ink);
+    smile.rotation.z = Math.PI + Math.PI * 0.15; smile.position.set(0, -0.08, -r + 0.01); mesh.add(smile);
+  } else {
+    const rad = Math.min(sx, sy, sz) * (p.n.includes('Torso') ? 0.2 : 0.28);
+    mesh = new THREE.Mesh(new RoundedBoxGeometry(sx * 0.98, sy * 0.98, sz * 0.98, 3, rad), mat);
+  }
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  mesh.matrixAutoUpdate = false;
+  scene.add(mesh);
+  meshes[p.n] = mesh;
+}
+
+const camera = new THREE.PerspectiveCamera(DATA.fov || 70, W / H, 0.1, 1000);
+
+window.renderFrame = (i) => {
+  const f = DATA.frames[i];
+  let cx = 0, cz = 0;
+  for (const [name, m] of Object.entries(f.parts)) {
+    const mesh = meshes[name];
+    if (!mesh) continue;
+    mesh.matrix.set(m[3], m[4], m[5], m[0], m[6], m[7], m[8], m[1], m[9], m[10], m[11], m[2], 0, 0, 0, 1);
+    if (name === 'LowerTorso') { cx = m[0]; cz = m[2]; }
+  }
+  sun.position.set(cx + 18, 30, cz + 10); sun.target.position.set(cx, 0, cz);
+  camera.position.set(f.cam[0], f.cam[1], f.cam[2]);
+  camera.lookAt(f.cam[3], f.cam[4], f.cam[5]);
+  renderer.render(scene, camera);
+  return renderer.domElement.toDataURL('image/jpeg', 0.88);
+};
+window.CLIP_READY = true;
+</script>
+</body>
+</html>

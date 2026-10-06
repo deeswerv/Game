@@ -18,6 +18,8 @@
 --   * while EmoteAnimator is posing a character, it owns every joint -- the head look stands
 --     aside and comes back in smoothly afterwards;
 --   * looking behind yourself fades the turn out instead of snapping it across at 180 degrees.
+--   * the chest's turn goes on top of the gait's own chest pose (MotionAnimator's, shared
+--     through Motion.Waist), so running and strafing keep their shoulders.
 --
 -- The Settings panel's HEAD FOLLOWS CAMERA scales how far (0% turns it off), for your head as
 -- everyone else sees it too.
@@ -28,6 +30,7 @@ local RunService = game:GetService("RunService")
 local StarterPlayer = game:GetService("StarterPlayer")
 
 local EmotePlayer = require(ReplicatedStorage:WaitForChild("EmotePlayer"))
+local Motion = require(ReplicatedStorage:WaitForChild("Motion"))
 
 local localPlayer = Players.LocalPlayer
 local LookUpdate = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("LookUpdate") :: RemoteEvent
@@ -166,7 +169,12 @@ local function pose(character: Model, look: Look, yaw: number, pitch: number, dt
 	end
 	local waist = look.waist
 	if waist and not armed then
-		waist.C0 = restOf("UpperTorso", waist) * CFrame.fromEulerAnglesYXZ(math.rad(chestPitch), math.rad(chestYaw), 0)
+		-- On top of the gait's chest (the turn back against the hips, the strafe's turn back to
+		-- the front), when MotionAnimator has posed it this frame.
+		local rest = restOf("UpperTorso", waist)
+		local turn = CFrame.fromEulerAnglesYXZ(math.rad(chestPitch), math.rad(chestYaw), 0)
+		local gait = Motion.Waist[waist]
+		waist.C0 = if gait then rest * turn * rest:Inverse() * gait else rest * turn
 	end
 end
 

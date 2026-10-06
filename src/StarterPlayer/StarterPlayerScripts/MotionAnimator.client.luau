@@ -112,6 +112,7 @@ local function release(entry: Entry, character: Model)
 			joint.motor.C0 = joint.rest
 		end
 		joint.touched = false
+		Motion.Waist[joint.motor] = nil
 	end
 end
 
@@ -211,13 +212,19 @@ local function animate(character: Model, dt: number, eye: Vector3, isLocal: bool
 		if armed and Motion.ARMED_SKIP[name] then
 			-- The gun hold writes these after this, from its own rest; nothing to undo.
 			joint.touched = false
+			Motion.Waist[motor] = nil
 		elseif pose and cover > 1e-3 then
 			local transform = motor.Transform
 			motor.C0 = joint.rest * transform:Lerp(pose, cover) * transform:Inverse()
 			joint.touched = true
+			if name == "UpperTorso" then
+				-- HeadLook turns the chest on top of this, after us.
+				Motion.Waist[motor] = motor.C0
+			end
 		elseif joint.touched then
 			motor.C0 = joint.rest
 			joint.touched = false
+			Motion.Waist[motor] = nil
 		end
 	end
 end

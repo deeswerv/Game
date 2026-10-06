@@ -9,15 +9,17 @@
 --   walk/run  keyframed cycles, the way an animator draws them, blended by speed: a walk
 --             (heel down, roll over, push off), a run (land ahead, soak it, drive off the
 --             toes, heel kicked up behind, knee driven through, a moment in the air) and a
---             sprint (all of it further). The hips sit as high as the planted leg reaches, so
---             the feet stay on the floor; the body leans into it (hard when sprinting), the
---             hips turn with the swinging leg and the chest back against them, a strafe banks
---             and steps sideways, backing up plays the cycle in reverse. With a gun out the
---             hold keeps the chest square to the aim (`state.chest`), and a sprint drops the
---             gun into a carry across the body.
+--             sprint (all of it further). The stride fits the speed so planted feet stay
+--             planted, and the hips sit as high as the planted leg reaches, so the feet stay on
+--             the floor; the body leans into it (hard when sprinting), the arms pump from the
+--             shoulder with the elbows bent, the hips turn with the swinging leg and the chest
+--             back against them, a strafe turns the hips and legs into it (the chest stays to
+--             the front), backing up plays the cycle in reverse. With a gun out the hold keeps
+--             the chest square to the aim (`state.chest`), and a sprint drops the gun into a
+--             carry across the body.
 --   crouch    hips down, knees bent, feet kept flat under you; walking crouched is a shorter,
 --             lower stride
---   air       knees tucked, arms out for balance (higher when dropping fast)
+--   air       knees tucked, arms up and out for balance
 --   land      a dip through the knees, scaled by how hard you came down
 --   roll      a tucked somersault toward the roll's direction (forward, back, or a side roll),
 --             the body dropping into it so it stays on the ground -- and about 18 studs of
@@ -33,6 +35,10 @@
 
 local Motion = {}
 
+Motion.EASE = 16                  -- how fast the joints ease toward the pose, per second
+-- The hips and legs ease faster: the hips' height is worked out from where the legs are, so
+-- the more the two lag behind the pose, the further a planted foot sinks or floats.
+Motion.LEG_EASE = 45
 Motion.ROLL_TIME = 0.55           -- seconds, start to standing
 Motion.ROLL_COOLDOWN = 0.9        -- after a roll ends, before another
 Motion.ROLL_SPEED = { 54, 22 }    -- studs/s at the start and the end of the push (~18 studs)
@@ -46,6 +52,9 @@ Motion.ROLL_CENTRE = Vector3.new(0, 0.9, -0.25)
 -- MotionAnimator can pose our body without waiting for the server's attributes.
 type LocalMotion = { crouch: boolean, roll: { dir: Vector3, start: number }? }
 Motion.Local = { crouch = false, roll = nil } :: LocalMotion
+-- The waist C0 MotionAnimator wrote this frame, by joint (client only), so HeadLook can turn
+-- the chest toward the camera on top of the gait's own chest pose instead of replacing it.
+Motion.Waist = (setmetatable({}, { __mode = "k" }) :: any) :: { [Motor6D]: CFrame }
 
 -- Leg segments of the locked rig (hip to knee, knee to ankle), for keeping the feet down.
 local THIGH, SHIN = 0.98, 0.69
@@ -82,6 +91,10 @@ Motion.JOINTS = {
 	"LowerTorso", "UpperTorso",
 	"LeftUpperArm", "LeftLowerArm", "LeftHand", "RightUpperArm", "RightLowerArm", "RightHand",
 	"LeftUpperLeg", "LeftLowerLeg", "LeftFoot", "RightUpperLeg", "RightLowerLeg", "RightFoot",
+}
+local LEGS = {
+	LowerTorso = true, LeftUpperLeg = true, LeftLowerLeg = true, LeftFoot = true,
+	RightUpperLeg = true, RightLowerLeg = true, RightFoot = true,
 }
 -- The joints a held gun owns (WeaponPoseHold writes them after this).
 Motion.ARMED_SKIP = {
@@ -201,32 +214,33 @@ type Cycle = { keys: { Key }, stance: number }
 
 -- A walk: heel down, roll over the foot, push off the toes, swing through. Always a foot down.
 local WALK: Cycle = { stance = 0.6, keys = {
-	{ t = 0.00, thigh = 22, knee = 4, foot = 12 },
-	{ t = 0.14, thigh = 13, knee = 16, foot = 0 },
-	{ t = 0.36, thigh = -5, knee = 6, foot = 0 },
-	{ t = 0.56, thigh = -21, knee = 18, foot = -26 },
-	{ t = 0.72, thigh = -6, knee = 56, foot = -14 },
-	{ t = 0.87, thigh = 20, knee = 26, foot = 2 },
+	{ t = 0.00, thigh = 26, knee = 4, foot = 14 },
+	{ t = 0.12, thigh = 16, knee = 18, foot = 0 },
+	{ t = 0.36, thigh = -8, knee = 6, foot = 0 },
+	{ t = 0.56, thigh = -26, knee = 20, foot = -28 },
+	{ t = 0.72, thigh = -6, knee = 60, foot = -14 },
+	{ t = 0.88, thigh = 24, knee = 22, foot = 4 },
 } }
 -- A run: the foot lands ahead, the knee soaks the weight, the toes drive off, the heel kicks up
 -- behind, the knee drives through high, the shin swings out to reach -- and both feet are off
--- the ground in between.
-local RUN: Cycle = { stance = 0.34, keys = {
-	{ t = 0.00, thigh = 30, knee = 14, foot = 8 },
-	{ t = 0.14, thigh = 6, knee = 40, foot = 0 },
-	{ t = 0.34, thigh = -36, knee = 16, foot = -42 },
-	{ t = 0.52, thigh = -14, knee = 112, foot = -38 },
-	{ t = 0.71, thigh = 58, knee = 96, foot = -14 },
-	{ t = 0.88, thigh = 44, knee = 34, foot = 4 },
+-- the ground in between. A short contact and a long, bounding stride: the Roblox Boy's legs
+-- are short for his body, so a run built on a human's proportions reads as a jog on him.
+local RUN: Cycle = { stance = 0.3, keys = {
+	{ t = 0.00, thigh = 36, knee = 16, foot = 8 },
+	{ t = 0.12, thigh = 12, knee = 44, foot = 0 },
+	{ t = 0.30, thigh = -42, knee = 16, foot = -44 },
+	{ t = 0.48, thigh = -16, knee = 122, foot = -40 },
+	{ t = 0.68, thigh = 64, knee = 104, foot = -16 },
+	{ t = 0.86, thigh = 54, knee = 36, foot = 4 },
 } }
 -- A sprint: everything further -- a longer reach, a harder drive, the heel right up.
-local SPRINT: Cycle = { stance = 0.3, keys = {
-	{ t = 0.00, thigh = 40, knee = 12, foot = 10 },
-	{ t = 0.13, thigh = 10, knee = 42, foot = 0 },
-	{ t = 0.30, thigh = -48, knee = 16, foot = -50 },
-	{ t = 0.48, thigh = -22, knee = 134, foot = -42 },
-	{ t = 0.68, thigh = 70, knee = 104, foot = -16 },
-	{ t = 0.86, thigh = 56, knee = 34, foot = 6 },
+local SPRINT: Cycle = { stance = 0.27, keys = {
+	{ t = 0.00, thigh = 42, knee = 14, foot = 8 },
+	{ t = 0.11, thigh = 16, knee = 38, foot = 0 },
+	{ t = 0.27, thigh = -48, knee = 14, foot = -50 },
+	{ t = 0.45, thigh = -20, knee = 138, foot = -44 },
+	{ t = 0.66, thigh = 76, knee = 112, foot = -18 },
+	{ t = 0.85, thigh = 62, knee = 36, foot = 6 },
 } }
 Motion.WALK, Motion.RUN, Motion.SPRINT = WALK, RUN, SPRINT
 
@@ -267,6 +281,47 @@ local function sample(cycle: Cycle, t: number): (number, number, number)
 end
 Motion.Sample = sample
 
+--- How far the foot travels back under the hip while it is on the ground, for a cycle: the
+--- distance the body must cover in that time for the planted foot not to slide.
+local function sweepOf(cycle: Cycle): number
+	local function ahead(t: number): number
+		local thigh, knee = sample(cycle, t)
+		return THIGH * sin(thigh) + SHIN * sin(thigh - knee)
+	end
+	return ahead(0) - ahead(cycle.stance)
+end
+local SWEEP = { walk = sweepOf(WALK), run = sweepOf(RUN), sprint = sweepOf(SPRINT) }
+Motion.SWEEP = SWEEP
+
+--- The gait at `speed` (studs a second), and the stride that fits it.
+---
+--- How much it is moving at all, and in which gait: a walk turns into a run between 9 and 15,
+--- a run into a sprint past 17 with sprint held (crouched, or backing up, it stays nearer a
+--- walk). Then the stride and its frequency, the way a body chooses them: each gait has a
+--- natural cadence that rises a little with speed, and the stride stretches or shortens until
+--- the planted foot sweeps back under the hips exactly as fast as the body goes over it -- so
+--- the feet stay planted. Past the longest stride a gait has, the cadence rises instead.
+--- Returns move, runW, sprintW, the stride (scales every leg angle) and cycles a second.
+function Motion.Gait(speed: number, sprinting: boolean, crouch: number, back: number): (number, number, number, number, number)
+	local move = smoothstep(speed / 5)
+	local runW = smoothstep((speed - 9) / 6)
+	local sprintW = if sprinting then smoothstep((speed - 17) / 6) else 0
+	runW *= (1 - crouch) * (1 - 0.6 * back)
+	sprintW *= (1 - crouch) * (1 - back)
+	local natural = 1.5 + 0.09 * speed
+	natural += (1.45 + 0.048 * speed - natural) * runW
+	natural += (1.5 + 0.045 * speed - natural) * sprintW
+	natural *= 1 + 0.12 * crouch
+	local sweep = SWEEP.walk + (SWEEP.run - SWEEP.walk) * runW
+	sweep += (SWEEP.sprint - sweep) * sprintW
+	local stance = WALK.stance + (RUN.stance - WALK.stance) * runW
+	stance += (SPRINT.stance - stance) * sprintW
+	local longest = 1.25 * (1 - 0.15 * crouch) * (1 - 0.2 * back)
+	local stride = math.clamp(speed * stance / (natural * sweep), 0.3, longest)
+	local frequency = math.clamp(speed * stance / (sweep * stride), 0.9, 3.2)
+	return move, runW, sprintW, stride * move, frequency
+end
+
 --- How far below the hip the lowest corner of the foot is, for a leg at these world angles.
 local function legReach(thigh: number, knee: number, foot: number): number
 	local tip = if foot < 0 then TOE * sin(-foot) else HEEL * sin(foot)
@@ -277,11 +332,6 @@ end
 --- (lean, bank and twist, without the bob), which the gun hold takes back out of the chest.
 local function groundPose(state: State, input: Input): ({ [string]: CFrame }, CFrame)
 	local speed = state.speed
-	-- How much it is moving at all, and in which gait: a walk turns into a run between 9 and 15
-	-- studs a second, and a run into a sprint past 17 with sprint held.
-	local move = smoothstep(speed / 5)
-	local runW = smoothstep((speed - 9) / 6)
-	local sprintW = if input.sprint then smoothstep((speed - 17) / 6) else 0
 	local crouch = state.crouch
 	local air, land = state.air, state.land
 	local armed = input.armed
@@ -291,11 +341,18 @@ local function groundPose(state: State, input: Input): ({ [string]: CFrame }, CF
 	local forwardness = -dir.Z
 	local back = smoothstep((-forwardness - 0.25) / 0.5)
 	local travel = if back > 0.5 then -dir else dir
-	local axis = stepAxis(travel)
-	-- Crouched, or backing up, the stride stays nearer a walk.
-	runW *= (1 - crouch) * (1 - 0.6 * back)
-	sprintW *= (1 - crouch) * (1 - back)
-	local stride = move * (1 - 0.35 * crouch) * (1 - 0.25 * back)
+	-- How much it is moving, in which gait, and how long the stride is.
+	local move, runW, sprintW, stride = Motion.Gait(speed, input.sprint, crouch, back)
+	-- Going sideways, the hips turn toward the way the legs travel and the legs and feet turn
+	-- further, so the legs run rather than swinging out to the side like a jumping jack; the
+	-- chest turns back to face the front. (Faded out where backing up and stepping sideways
+	-- meet, where the legs' way of going flips over.)
+	local travelYaw = math.atan2(-travel.X, -travel.Z)
+	local turnIn = move * smoothstep(math.abs(back - 0.5) / 0.25)
+	local hipYaw = math.clamp(0.5 * travelYaw, -rad(40), rad(40)) * turnIn
+	local legYaw = math.clamp(0.7 * travelYaw, -rad(60), rad(60)) * turnIn
+	local legFrame = CFrame.Angles(0, legYaw, 0)
+	local axis = stepAxis(legFrame:VectorToObjectSpace(travel))
 
 	local tCycle = state.phase / (2 * math.pi)
 	if back > 0.5 then
@@ -339,27 +396,29 @@ local function groundPose(state: State, input: Input): ({ [string]: CFrame }, CF
 	local reach = math.max(legReach(legs.Left.thigh, legs.Left.knee, legs.Left.foot),
 		legReach(legs.Right.thigh, legs.Right.knee, legs.Right.foot))
 	local stance = WALK.stance + (RUN.stance - WALK.stance) * runW
+	stance += (SPRINT.stance - stance) * sprintW
 	local flight = 0
 	for _, leg in pairs(legs) do
 		if leg.t >= stance and leg.t < 0.5 then
 			flight = math.max(flight, sin(math.pi * (leg.t - stance) / (0.5 - stance)))
 		end
 	end
-	local lift = flight * (0.07 * runW + 0.06 * sprintW) * stride
+	local lift = flight * (0.1 * runW + 0.06 * sprintW) * stride
 	local breathe = 0.03 * sin(state.time * 2.2) * (1 - move)
 	local height = (reach - REST_LEG) * (1 - air) + lift + breathe - 0.12 * air
 
 	-- Lean into the run (harder sprinting, less with a gun up), bank into a strafe, and turn
 	-- the hips with the leg that is swinging through.
-	local leanDeg = 3 * move + 9 * runW + 9 * sprintW + 10 * crouch
+	local leanDeg = 3 * move + 12 * runW + 5 * sprintW + 10 * crouch
 	if armed then
 		leanDeg *= 0.75
 	end
 	local lean = rad(leanDeg) * (0.35 + 0.65 * math.max(forwardness, 0))
 	local bank = rad(6) * dir.X * runW
-	local swing = math.clamp((legs.Left.thigh - legs.Right.thigh) / rad(70), -1, 1) * move
-	local twist = -rad(7 + 3 * runW) * swing * (0.4 + 0.6 * math.abs(dir.Z))
-	local pelvis = CFrame.Angles(0, twist, 0) * CFrame.Angles(-lean, 0, -bank)
+	-- (+1 when the left leg is furthest forward: a smooth swing that never stalls at the ends.)
+	local swing = math.cos(2 * math.pi * (legs.Left.t - 0.94)) * move
+	local twist = -rad(6 + 3 * runW) * swing * (0.4 + 0.6 * math.abs(dir.Z))
+	local pelvis = CFrame.Angles(0, hipYaw + twist, 0) * CFrame.Angles(-lean, 0, -bank)
 
 	local poses: { [string]: CFrame } = {}
 	poses.LowerTorso = CFrame.new(0, height, 0) * pelvis
@@ -368,26 +427,47 @@ local function groundPose(state: State, input: Input): ({ [string]: CFrame }, CF
 	for _, side in ipairs({ "Left", "Right" }) do
 		local leg = legs[side]
 		local spread = (if side == "Left" then -1 else 1) * rad(2 + 3 * crouch)
-		poses[side .. "UpperLeg"] = unturn * around(axis, leg.thigh) * CFrame.Angles(0, 0, spread)
-		poses[side .. "LowerLeg"] = CFrame.Angles(-leg.knee, 0, 0)
-		-- The sole's pitch in the world, less the shin's.
-		poses[side .. "Foot"] = CFrame.Angles(leg.foot - (leg.thigh - leg.knee), 0, 0)
+		local thigh = legFrame * around(axis, leg.thigh) * CFrame.Angles(0, 0, spread)
+		local knee = CFrame.Angles(-leg.knee, 0, 0)
+		poses[side .. "UpperLeg"] = unturn * thigh
+		poses[side .. "LowerLeg"] = knee
+		-- The sole at its own pitch in the world, pointing the way the leg is turned: whatever
+		-- the thigh and shin are doing, taken back out.
+		poses[side .. "Foot"] = (thigh * knee):Inverse() * legFrame * CFrame.Angles(leg.foot, 0, 0)
 	end
 
-	-- Arms (no gun): pump against the legs, elbows bent -- loose at a walk, driving in a run.
+	-- Arms (no gun): each swings from the shoulder with the opposite leg, a smooth pendulum.
+	-- Walking, loose and nearly straight. Running, a real pump: the elbow bent past a right
+	-- angle, the hand coming up to the chest in front and the elbow driving well back behind.
+	-- The swing is centred on straight down in the WORLD: leaning the body forward tips the
+	-- shoulders with it, and without taking that back out the arms hang behind and never come
+	-- through in front -- the bent forearm just sticks out level, like a jab. The elbow closes
+	-- as the arm comes forward and opens as it goes back, the hand comes a little in across the
+	-- body at the front, and the fist is curled at the wrist (the Roblox Boy's hands are big:
+	-- held straight out at the end of a bent arm they read as a block pointing forward).
+	local armS = swing / math.max(move, 1e-3)
+	local facingSwing = 0.35 + 0.65 * math.abs(dir.Z)
 	for _, side in ipairs({ "Left", "Right" }) do
 		local out = if side == "Left" then -1 else 1
-		local opposite = if side == "Left" then -swing else swing
-		local amp = rad(24 + 12 * runW + 10 * sprintW) * (0.3 + 0.7 * math.abs(dir.Z))
-		local elbow = rad(12) * move + rad(56) * runW + rad(10) * sprintW + rad(16) * runW * math.max(0, opposite)
-		local spread = rad(5 + 20 * air) + rad(4) * (1 - move)
-		poses[side .. "UpperArm"] = CFrame.Angles(amp * opposite + rad(8) * runW + rad(18) * air + rad(10) * crouch, 0,
-			out * spread)
-		poses[side .. "LowerArm"] = CFrame.Angles(rad(10) + elbow + rad(20) * crouch, 0, 0)
-		poses[side .. "Hand"] = CFrame.identity
+		local s = (if side == "Right" then armS else -armS) * move
+		local fwd, bwd = math.max(s, 0), math.max(-s, 0)
+		local reachF = rad(18 + 22 * runW + 12 * sprintW)
+		local reachB = rad(16 + 20 * runW + 14 * sprintW)
+		-- In the air the stride stops (the phase holds), so the pump eases out into arms up and
+		-- out for balance, elbows soft -- not one fist frozen up in front.
+		local ground = 1 - 0.8 * air
+		local pitch = lean + (reachF * fwd - reachB * bwd) * facingSwing * ground + rad(42) * air + rad(10) * crouch
+		local elbow = (rad(10) + rad(8) * move + rad(50) * runW + rad(14) * sprintW
+			+ (rad(8) * move + rad(18) * runW + rad(8) * sprintW) * fwd - rad(14) * runW * bwd) * ground
+			+ rad(24) * air
+		local spread = rad(6 + 34 * air) + rad(3) * (1 - move) + rad(4) * runW
+		local across = rad(8) * fwd * runW
+		poses[side .. "UpperArm"] = CFrame.Angles(pitch, 0, out * (spread - across))
+		poses[side .. "LowerArm"] = CFrame.Angles(elbow + rad(20) * crouch, 0, 0)
+		poses[side .. "Hand"] = CFrame.Angles(-0.25 * elbow, 0, 0)
 	end
 	-- The chest turns back against the hips (and rounds a little crouched).
-	poses.UpperTorso = CFrame.Angles(rad(-6) * crouch + rad(2) * sin(state.time * 2.2) * (1 - move), -twist * 1.6, 0)
+	poses.UpperTorso = CFrame.Angles(rad(-6) * crouch + rad(2) * sin(state.time * 2.2) * (1 - move), -twist * 1.25 - hipYaw, 0)
 	return poses, pelvis
 end
 
@@ -410,8 +490,10 @@ function Motion.Step(state: State, input: Input): ({ [string]: CFrame }, number)
 			state.dir = want
 		end
 	end
-	-- The stride's frequency follows the speed: a walk ambles, a sprint churns.
-	local frequency = 0.9 + 0.08 * state.speed
+	-- The stride's frequency follows the speed, so that a planted foot stays planted: in stance
+	-- the body covers exactly the distance the foot sweeps back under it (Motion.Gait).
+	local backing = smoothstep((state.dir.Z - 0.25) / 0.5)
+	local _, _, _, _, frequency = Motion.Gait(state.speed, input.sprint, state.crouch, backing)
 	if input.grounded then
 		state.phase = (state.phase + 2 * math.pi * frequency * dt) % (2 * math.pi)
 	end
@@ -425,25 +507,28 @@ function Motion.Step(state: State, input: Input): ({ [string]: CFrame }, number)
 
 	local target = groundPose(state, input)
 	local rolling = 0
-	local rate = 16
+	local rate, legRate = Motion.EASE, Motion.LEG_EASE
+	local exactRoot = false
 	if input.roll and input.roll.t >= 0 and input.roll.t < Motion.ROLL_TIME then
 		local rollPoses, weight = Motion.RollPose(input.roll.t / Motion.ROLL_TIME, input.roll.dir)
 		for name, pose in pairs(rollPoses) do
 			target[name] = (target[name] or CFrame.identity):Lerp(pose, weight)
 		end
-		rate = 60
+		rate, legRate = 60, 60
 		rolling = weight
+		exactRoot = true
 	end
 
-	local k = math.clamp(dt * rate, 0, 1)
+	local k = 1 - math.exp(-rate * dt)
+	local kLeg = 1 - math.exp(-legRate * dt)
 	for _, name in ipairs(Motion.JOINTS) do
 		local want = target[name] or CFrame.identity
 		-- The roll's full turn cannot be eased toward (a lerp takes the short way round), so
 		-- the root follows it exactly while rolling.
-		if name == "LowerTorso" and rate > 20 then
+		if name == "LowerTorso" and exactRoot then
 			state.poses[name] = want
 		else
-			state.poses[name] = state.poses[name]:Lerp(want, k)
+			state.poses[name] = state.poses[name]:Lerp(want, if LEGS[name] then kLeg else k)
 		end
 	end
 
