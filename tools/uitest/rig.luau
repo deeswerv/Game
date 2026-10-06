@@ -60,6 +60,17 @@ function Rig.character(World, place)
 	return rig, rests
 end
 
+--- Wire the joints of the place's StarterCharacter copy only (no character made): for suites
+--- that build figures from it.
+function Rig.starter(World, place)
+	local source = place:GetService("StarterPlayer"):FindFirstChild("StarterCharacter")
+	local starter = World.service("StarterPlayer"):FindFirstChild("StarterCharacter")
+	if source and starter then
+		wire(World, source, starter, nil)
+	end
+	return starter
+end
+
 --- The Motor6D that moves `partName`.
 function Rig.motor(rig, partName: string)
 	for _, d in ipairs(rig:GetDescendants()) do

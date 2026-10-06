@@ -4,6 +4,9 @@
 --   * Hold E at a marked target -- the tills behind the counters at ZEE GUNS and ZEE TACTICS,
 --     the cash machines outside them and at the 24/7 (Downtown marks them `Stickup` = where,
 --     `StickupKind` = "register" or "atm"; DistrictService hands them to Wire).
+--   * The clerk behind the counter puts their hands up and the till's drawer slides out, the
+--     money flying out of it into your hands (or the cash machine spits it at you) -- all
+--     presentation, on every client (StaffLife.client, Stickups.client).
 --   * You come away with the bag, and the heat: the alarm goes off, the whole server is told
 --     where and how much, a gold tag with the amount floats over you through walls, and the
 --     crew that runs the block sends three of its own up the avenue after you. They are
@@ -35,6 +38,7 @@ StickupService.SQUAD = { "Enforcer", "Gangster", "Shooter" }
 StickupService.SQUAD_OUT = 45       -- how far up and down the avenue they come from
 StickupService.CALL_EVERY = 2       -- how often the squad is pointed at the robber
 StickupService.DISPERSE = 20        -- a squad left standing goes home this long after
+StickupService.HANDS_UP = 14        -- how long the shop's clerk keeps their hands up
 
 -- Swappable for tests.
 StickupService.Clock = os.clock
@@ -114,7 +118,7 @@ end
 local function refreshPrompt(target: Target)
 	local empty = StickupService.Clock() < target.readyAt
 	local kind = StickupService.Kinds[target.kind]
-	target.prompt.ActionText = if empty then "Emptied" else "Rob " .. (if target.kind == "atm" then "the ATM" else "the till")
+	target.prompt.ActionText = if empty then "Emptied" else (if target.kind == "atm" then "Rob ATM" else "Rob Register")
 	target.prompt.HoldDuration = if empty then 0 else kind.hold
 end
 
@@ -204,6 +208,23 @@ function StickupService.Step(job: Job)
 	end
 end
 
+--- The shop's clerk, if the target has one: the "Clerk" model in the shop the target stands
+--- in (the till and the cash machine are models of their own inside it).
+function StickupService.ClerkOf(part: BasePart): Model?
+	local at: Instance? = part.Parent
+	for _ = 1, 3 do
+		if not at then
+			return nil
+		end
+		local clerk = at:FindFirstChild("Clerk")
+		if clerk and clerk:IsA("Model") then
+			return clerk
+		end
+		at = at.Parent
+	end
+	return nil
+end
+
 --- Rob `part` as `player`. Returns whether the job started, and why not.
 function StickupService.Rob(player: Player, part: BasePart): (boolean, string?)
 	local target = targets[part]
@@ -263,8 +284,18 @@ function StickupService.Rob(player: Player, part: BasePart): (boolean, string?)
 		end
 	end
 
+	-- Whoever is behind the counter puts their hands up and keeps them there, facing the
+	-- robber (StaffLife.client poses it from these).
+	local clerk = StickupService.ClerkOf(part)
+	if clerk then
+		clerk:SetAttribute("HandsUpAt", workspace:GetServerTimeNow())
+		clerk:SetAttribute("HandsUpFor", StickupService.HANDS_UP)
+		clerk:SetAttribute("RobberId", player.UserId)
+	end
+
+	-- `part` lets every client open the till or the machine and throw the money out of it.
 	stickupEvent:FireAllClients("alarm", {
-		at = part.Position, place = describe(target), kind = target.kind, robber = player.DisplayName,
+		at = part.Position, part = part, place = describe(target), kind = target.kind, robber = player.DisplayName,
 		robberId = player.UserId, amount = loot, seconds = kind.heat, endsAt = serverEndsAt,
 	})
 	print(("[Stickup] %s robbed %s for $%d"):format(player.Name, describe(target), loot))
@@ -294,7 +325,8 @@ function StickupService.Wire(folder: Instance): number
 			end
 			local prompt = Instance.new("ProximityPrompt")
 			prompt.Name = "StickupPrompt"
-			prompt.ObjectText = if kind == "atm" then "ATM" else tostring(d:GetAttribute("Stickup"))
+			-- "[E] Rob Register / ZEE GUNS", "[E] Rob ATM / 24/7".
+			prompt.ObjectText = (tostring(d:GetAttribute("Stickup")):gsub("^the ", ""))
 			prompt.KeyboardKeyCode = Enum.KeyCode.E
 			prompt.RequiresLineOfSight = false
 			prompt.MaxActivationDistance = 8

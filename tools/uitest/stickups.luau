@@ -302,7 +302,7 @@ check(#events("busted") == 1 and coins.Value == coinsBefore and player:GetAttrib
 print("restocked")
 now += Stickups.COOLDOWN + 1
 Stickups.Refresh()
-check(Stickups.Rob ~= nil and till.prompt.ActionText == "Rob the till", "the till fills up again: " .. till.prompt.ActionText)
+check(Stickups.Rob ~= nil and till.prompt.ActionText == "Rob Register", "the till fills up again: " .. till.prompt.ActionText)
 
 -- ----------------------------------------------------------------------- HUD --
 

@@ -76,7 +76,7 @@ end
 
 local sps = World.service("StarterPlayer"):FindFirstChild("StarterPlayerScripts")
 local SCRIPTS = { "MainUI", "Killcam", "QuestUI", "PromptUI", "ChestUI", "NPCAnimator", "EmoteWheel", "EmoteAnimator",
-	"HeadLook", "AdminUI", "Utility", "Streaks", "Stickups", "CityLights" }
+	"HeadLook", "AdminUI", "Utility", "Streaks", "Stickups", "CityLights", "StaffLife", "MotionAnimator" }
 for _, name in ipairs(SCRIPTS) do
 	local template = sps:FindFirstChild(name)
 	if template then

@@ -695,12 +695,13 @@ function Methods:Destroy()
 end
 Methods.Remove = Methods.Destroy
 
-function Methods:Clone()
+local function cloneInto(self, copies)
 	local st = state[self]
 	if st.props.Archivable == false then
 		return nil
 	end
 	local copy = newInstance(st.class, st.source)
+	copies[self] = copy
 	local cst = state[copy]
 	for k, v in pairs(st.props) do
 		cst.props[k] = v
@@ -713,10 +714,27 @@ function Methods:Clone()
 	end
 	cst.extra = st.extra and table.clone(st.extra) or nil
 	for _, c in ipairs(st.children) do
-		local cc = c:Clone()
+		local cc = cloneInto(c, copies)
 		if cc then
 			state[cc].parent = copy
 			table.insert(cst.children, cc)
+		end
+	end
+	return copy
+end
+
+function Methods:Clone()
+	local copies = {}
+	local copy = cloneInto(self, copies)
+	-- As the engine does: a reference to something inside the copied tree (a joint's Part0
+	-- and Part1, a model's PrimaryPart) points at the copy of it, not the original.
+	for _, c in pairs(copies) do
+		local cst = state[c]
+		for k, v in pairs(cst.props) do
+			local moved = type(v) ~= "number" and copies[v]
+			if moved then
+				cst.props[k] = moved
+			end
 		end
 	end
 	return copy

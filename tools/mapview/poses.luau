@@ -6,7 +6,9 @@
 --
 -- Sequences: run (a stride at running speed), sprint, walk, strafe (moving right), back
 -- (backpedalling), crouch (standing, then crouched, then crouch-walking), roll (forward),
--- rollside (to the right), air (a jump and the landing), idle. Each frame is the rig posed by
+-- rollside (to the right), air (a jump and the landing), idle; and the clerks' and quest
+-- givers' (ReplicatedStorage.StaffPose): handsup (a robbery, from the jolt to held), folded (a
+-- clerk at rest), talk, wave. Each frame is the rig posed by
 -- forward kinematics through its real Motor6Ds, so what shows is what the joints would do.
 -- Also prints the lowest point of every frame (feet should stay near the floor; a roll should
 -- not sink into it).
@@ -36,6 +38,7 @@ for key, value in pairs(roblox) do
 end
 setmetatable(env, { __index = _G })
 local Motion = luau.load(fs.readFile("src/ReplicatedStorage/Motion.luau"), { debugName = "Motion", environment = env })()
+local StaffPose = luau.load(fs.readFile("src/ReplicatedStorage/StaffPose.luau"), { debugName = "StaffPose", environment = env })()
 
 local source = game:GetService("StarterPlayer"):FindFirstChild("StarterCharacter")
 
@@ -100,6 +103,7 @@ if sequence == "bake" then
 	process.exit(0)
 end
 
+local STAFF = { handsup = true, folded = true, talk = true, wave = true }
 local frames = {}
 local function input(over)
 	local t = {
@@ -170,6 +174,21 @@ elseif sequence == "roll" or sequence == "rollside" or sequence == "rollback" th
 		t += Motion.ROLL_TIME / 15
 		return input({ roll = { dir = dir, t = t - Motion.ROLL_TIME / 15 }, velocity = dir * 20 })
 	end, 2)
+elseif sequence == "handsup" then
+	for _, since in ipairs({ 0, 0.08, 0.16, 0.26, 0.4, 0.8, 2.0 }) do
+		table.insert(frames, StaffPose.Blend(StaffPose.Idle(since, 0, "folded"), StaffPose.HandsUp(since, since), 1))
+	end
+elseif sequence == "folded" or sequence == "talk" or sequence == "wave" then
+	for i = 0, 6 do
+		local t = i * 0.22
+		local base = StaffPose.Idle(t, 0, if sequence == "folded" then "folded" else nil)
+		if sequence == "talk" then
+			base = StaffPose.Blend(base, StaffPose.Talk(t), 1)
+		elseif sequence == "wave" then
+			base = StaffPose.Blend(base, StaffPose.Wave(0.3 + t * 0.9), 1)
+		end
+		table.insert(frames, base)
+	end
 elseif sequence == "air" then
 	run(24, function(i)
 		return input({ grounded = i > 16, landed = if i == 17 then 0.8 else nil, velocity = V(0, 0, -6) })
@@ -191,7 +210,8 @@ floor.Parent = stage
 local _, restLow = posed({}, roblox.CFrame.new())
 local lows = {}
 for i, f in ipairs(frames) do
-	local at = roblox.CFrame.new((i - 1) * 5, -restLow, 0) * roblox.CFrame.Angles(0, math.rad(if sequence == "strafe" or sequence == "rollside" then 180 else 130), 0)
+	local at = roblox.CFrame.new((i - 1) * 5, -restLow, 0) * roblox.CFrame.Angles(0, math.rad(if sequence == "strafe" or sequence == "rollside" then 180
+		elseif STAFF[sequence] then 155 else 130), 0)
 	local rig, low = posed(f, at)
 	rig.Parent = stage
 	table.insert(lows, ("%.2f"):format(low))

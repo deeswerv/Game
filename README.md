@@ -124,6 +124,24 @@ counts it down) and it is yours, with 300 XP. Go down first and it is gone, or i
 whichever player put you down. A robbed target stays empty for five minutes; one bag at a time.
 The squad counts toward your streak. `tools/uitest/stickups.luau`.
 
+It plays out in front of you: the clerk jolts, a red "!" pops over their head, and they turn to
+face you with both hands up, shaking, until the job is long done. The till is a real register --
+keys, a receipt printer, a customer display -- and its drawer springs out with a ka-chunk and a
+ching, the display shows what went, and the notes jump out, tumble, flutter down and whip into
+your hands while "+$620" floats up off the counter; the drawer shuts itself a few seconds later.
+A cash machine's screen goes red, reads DISPENSING, spits a stream of notes out of the slot at
+you, then says OUT OF CASH. All of it is local and cosmetic: the money is in the bag before any
+of it moves. Clerks and quest givers have a life the rest of the time too: they breathe and shift
+their weight (a clerk waits with arms folded), look at whoever comes close, wave the first time
+you walk up, and talk with their hands when you open their shop or their dialogue.
+`tools/uitest/staff.luau`.
+
+**Prompts.** Every "press E" in the game is the game's own: a key cap you could press, the action
+in big type ("Rob Register", "Open Shop", "Talk"), what it is on underneath and HOLD when it must
+be held. It grows and rises into place, the thing it belongs to is outlined while it is up,
+holding fills the key and a bar along the bottom, and a completed press flashes and pops. A
+robbery wears red; everything else the accent green. The text follows the prompt as it changes.
+
 **MOST WANTED.** The **BOUNTIES** board on the side of the 24/7 in Downtown (next to CONTRACTS)
 names a crime boss every few minutes -- *"THE VICE" Vinnie Russo*, *"BIG SAL" Moretti* and
 friends -- a Capo with two of their crew, holed up somewhere in the district. The board shows
@@ -160,7 +178,10 @@ colour while you are there. The places:
   racked on the wall, pistol cases and a workbench (press E for attachments and builds), and
   a gear shop with heals on the shelves, vests on mannequins and bombs on a pegboard. A clerk
   stands behind each counter -- press E at the counter to buy;
-- **ZEE GAS** and the **24/7** with the **CONTRACTS** and **BOUNTIES** boards on its wall;
+- **ZEE GAS** and the **24/7** with the **CONTRACTS** and **BOUNTIES** boards on its wall: four
+  branded pumps with their screens, grade buttons, racked nozzles and hoses, bins and squeegee
+  buckets on the islands, lane arrows and oil stains on the forecourt, a car filling up, the air
+  machine and a cage of gas bottles under a canopy with a lit soffit and a gold-striped fascia;
 - **THE FIXER's corner** on the paving south of the courts: a purple JOBS canopy over a card
   table;
 - the **DUEL HALL**, a sports hall with its own 1v1 pads, its name painted down its sides;
@@ -170,7 +191,17 @@ colour while you are there. The places:
 - **THE ALLEY** behind the gas station: brick backs with fire escapes, dumpsters, pallets and
   boxes to fight round, bin bags, washing strung overhead, a muscle car, a red light over the
   back door, tags on the walls and yellow bollards at the mouth;
-- a basketball court, a hedged pocket park, parked cars and a skyline all round;
+- a basketball court, a hedged pocket park (cypresses where the path comes in, flowering
+  shrubs by the benches), parked cars and a skyline all round;
+- cars in five shapes, not one box in five paints: saloons with a raked windscreen and a boot,
+  tall hatchbacks, square SUVs with roof rails and a spare on the back, pickups with a crate in
+  the bed, and yellow taxis with a checker band and a TAXI light -- tinted glass, chunky tyres on
+  silver rims, grilles, plates and lamps;
+- trees in three shapes (a full dome, an upright oval, a spreading umbrella) with shrubs round
+  the planters, clipped cypresses at ZEE TOWER's doors, and every ground-floor shop dressed for
+  what it sells: a glazed door, a blade sign with its icon hung over the pavement, and a
+  chalkboard, a menu stand, a barber's pole, a rack of stock or buckets of flowers by the door;
+- the tills and cash machines are proper models (see **Stick-ups**);
 - on the streets, kept deliberately sparse so the roads read and the tower stays in view from
   the far end of the avenue: one traffic light per plaza crossing (ZEE AVE / MAIN ST on the
   blades), a bench, a flower bed or a phone booth every so often along the walks, lamps with

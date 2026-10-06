@@ -72,7 +72,8 @@ local warned = {}
 local oldWarn = World.env and World.env.warn
 local allBuilt, allSafe, allWelded, allOnHost, allInBudget, zonesIntact = true, true, true, true, true, true
 local worst, worstName = 0, ""
-local source = World.service("StarterPlayer"):FindFirstChild("StarterCharacter")
+-- With its joints wired up, as the engine has them (the mirror carries no references).
+local source = require("./rig").starter(World, place)
 local sizes = {}
 for _, p in ipairs(source:GetChildren()) do
 	if p:IsA("BasePart") then
@@ -185,15 +186,34 @@ local figure = Outfit.Standing({
 	Shirt = roblox.Color3.fromRGB(40, 140, 80), Sleeves = true,
 	Outfit = { { "Hair" }, { "Cap", logo = roblox.Color3.new(1, 1, 0) }, { "Tee" }, { "Apron" }, { "Sneakers" } },
 }, 7)
+-- Held up by the root alone: everything else hangs off it by the rig's joints, so the body
+-- cannot fall over but every joint can still be posed (StaffLife.client).
 local anchored = figure ~= nil
-for _, p in ipairs(figure and figure:GetDescendants() or {}) do
-	if p:IsA("BasePart") then
-		anchored = anchored and p.Anchored
+local held = {}
+for _, d in ipairs(figure and figure:GetDescendants() or {}) do
+	if d:IsA("BasePart") then
+		anchored = anchored and (d.Anchored == (d.Name == "HumanoidRootPart"))
 	end
-	anchored = anchored and not p:IsA("LuaSourceContainer")
+	if d:IsA("Motor6D") and d.Part1 then
+		held[d.Part1] = d.Part0
+	end
+	anchored = anchored and not d:IsA("LuaSourceContainer")
 end
-check(anchored and figure.PrimaryPart ~= nil and figure.UpperTorso.Color == roblox.Color3.fromRGB(40, 140, 80),
-	"a clerk is the players' rig, anchored, without scripts, in the shop's shirt")
+local joined = figure ~= nil
+for _, p in ipairs(figure and figure:GetChildren() or {}) do
+	if p:IsA("BasePart") and BODY[p.Name] and p.Name ~= "HumanoidRootPart" then
+		-- Up the chain of joints to the root.
+		local at, steps = p, 0
+		while at and at.Name ~= "HumanoidRootPart" and steps < 10 do
+			at, steps = held[at], steps + 1
+		end
+		joined = joined and at ~= nil and at.Name == "HumanoidRootPart"
+	end
+end
+check(anchored and figure.PrimaryPart ~= nil and figure.PrimaryPart.Name == "HumanoidRootPart"
+	and figure.UpperTorso.Color == roblox.Color3.fromRGB(40, 140, 80),
+	"a clerk is the players' rig, anchored at the root, without scripts, in the shop's shirt")
+check(joined and figure:HasTag("Staff"), "every body part hangs off the root by its joints, so it can be posed; tagged Staff")
 local hasApron = false
 for _, p in ipairs(pieces(figure)) do
 	hasApron = hasApron or p.Name == "Apron"

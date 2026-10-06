@@ -475,6 +475,67 @@ do
 	World.advance(0.5)
 end
 
+-- 48. The interaction prompts (PromptUI): a robbery mid-hold, a shop counter, a quest giver.
+-- They are billboards over parts in the world, which the snapshot does not draw, so each one's
+-- drawing is lifted onto a plain screen for the shot.
+if not only or only["48_prompts"] then
+	World.run(sps:FindFirstChild("PromptUI"))
+	World.advance(0.2)
+	local pps = World.service("ProximityPromptService")
+	local board = R.new("ScreenGui")
+	board.Name = "PromptBoard"
+	board.DisplayOrder = 100
+	board.Parent = World.playerGui
+	local backdrop = R.new("Frame")
+	backdrop.Size = roblox.UDim2.fromScale(1, 1)
+	backdrop.BackgroundColor3 = roblox.Color3.fromRGB(120, 132, 140)
+	backdrop.Parent = board
+	local root = World.character:FindFirstChild("HumanoidRootPart")
+	local prompts = {}
+	for i, spec in ipairs({
+		{ "Rob Register", "ZEE GUNS", 4, "StickupPrompt" }, { "Open Shop", "Guns & Builds", 0, "Prompt" },
+		{ "Talk", "Rico", 0, "Prompt" }, { "Rob ATM", "24/7", 6, "StickupPrompt" },
+	}) do
+		local part = R.new("Part")
+		part.Anchored = true
+		part.Size = Vector3.new(1, 1, 1)
+		part.CFrame = World.CFrame.new(root.Position + Vector3.new(i * 3, 0, -6))
+		part.Parent = World.workspace
+		local prompt = R.new("ProximityPrompt")
+		prompt.Name = spec[4]
+		prompt.ActionText = spec[1]
+		prompt.ObjectText = spec[2]
+		prompt.HoldDuration = spec[3]
+		prompt.KeyboardKeyCode = Enum.KeyCode.E
+		prompt.Parent = part
+		R.fire(pps, "PromptShown", prompt)
+		prompts[i] = prompt
+	end
+	World.advance(0.5)
+	local holders = {}
+	for i, prompt in ipairs(prompts) do
+		local bb = prompt.Parent:FindFirstChild("PromptUI")
+		local holder = bb and bb:FindFirstChild("Holder")
+		holders[i] = holder
+		if holder then
+			local slot = R.new("Frame")
+			slot.BackgroundTransparency = 1
+			slot.Size = roblox.UDim2.fromOffset(bb.Size.X.Offset, bb.Size.Y.Offset)
+			slot.Position = roblox.UDim2.new(0.5, -140, 0, 215 + (i - 1) * 78)
+			slot.Parent = board
+			holder.Parent = slot
+		end
+	end
+	-- The robbery, half held: the key and the bar half full, the edges lit.
+	local held = holders[1]
+	if held then
+		held:FindFirstChild("Fill", true).Size = roblox.UDim2.fromScale(1, 0.5)
+		held:FindFirstChild("Bar", true).Size = roblox.UDim2.new(0.5, 0, 0, 3)
+	end
+	shot("48_prompts", 0.1)
+	board:Destroy()
+end
+
 -- 9. The death card. The character really dies first, as it would.
 do
 	local humanoid = World.character:FindFirstChildOfClass("Humanoid")

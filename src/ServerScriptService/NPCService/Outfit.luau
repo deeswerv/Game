@@ -773,7 +773,12 @@ function Outfit.Garments(): { string }
 end
 
 --- A dressed person who just stands there: `template` (the R15 rig) cloned without its
---- scripts or engine rigging, anchored, coloured and dressed. For clerks and quest givers.
+--- scripts or engine rigging, coloured and dressed. For clerks and quest givers.
+---
+--- Only the root is anchored: the rest hangs off it by the rig's own Motor6Ds, so the body
+--- stays put but every joint can still be posed -- each client gives these people a life
+--- (breathing, looking at you, a clerk's hands going up in a robbery: StaffLife.client finds
+--- them by the "Staff" tag). Streamed whole, so a client never gets half a person to pose.
 function Outfit.Figure(template: Model, cfg: any, seed: number?): Model
 	local figure = template:Clone()
 	for _, d in ipairs(figure:GetDescendants()) do
@@ -784,10 +789,14 @@ function Outfit.Figure(template: Model, cfg: any, seed: number?): Model
 	end
 	for _, p in ipairs(figure:GetDescendants()) do
 		if p:IsA("BasePart") then
-			p.Anchored = true
+			p.Anchored = p.Name == "HumanoidRootPart"
 			p.CanCollide = false
 		end
 	end
+	pcall(function()
+		figure.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+	end)
+	figure:AddTag("Staff")
 	Outfit.Dress(figure, cfg, seed)
 	local root = figure:FindFirstChild("HumanoidRootPart")
 	if root and root:IsA("BasePart") then

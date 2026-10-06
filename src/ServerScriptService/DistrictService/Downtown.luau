@@ -228,31 +228,92 @@ local function postLamp(b: Kit.Builder)
 	b:light("Point", Vector3.new(0, 9.5, 0), WARM, 1.1, 20)
 end
 
---- A faceted low-poly tree in a stone planter (none if `bare`, for a tree in a bed). `blossom`
---- makes it a pink one. Like every street prop, its origin is road level: it stands on 0.5.
+-- Each tree's canopy is one of three shapes, picked by its seed, so a row of them is a row of
+-- the same kind of tree rather than one tree copied: round (a full dome), tall (an upright
+-- oval) and wide (a spreading umbrella). Clumps as { offset, size, shade (1 dark .. 3 light) }.
+local CANOPIES: { { { any } } } = {
+	{
+		{ Vector3.new(0, 8.6, 0), 6.4, 1 }, { Vector3.new(2.4, 8, 1), 4.6, 1 }, { Vector3.new(-2.3, 8.2, -1.1), 4.8, 1 },
+		{ Vector3.new(-0.6, 8, 2.3), 4.2, 2 }, { Vector3.new(1, 10.6, -0.6), 4.8, 2 }, { Vector3.new(-1.3, 10.2, 0.9), 4, 2 },
+		{ Vector3.new(0.3, 12.2, 0.2), 3.4, 3 }, { Vector3.new(1.9, 10.2, 1.8), 2.6, 3 },
+	},
+	{
+		{ Vector3.new(0, 8.4, 0), 5.2, 1 }, { Vector3.new(1.4, 9.4, 0.6), 4.2, 1 }, { Vector3.new(-1.3, 9.8, -0.5), 4.2, 2 },
+		{ Vector3.new(0.2, 11.4, 0.4), 4.6, 2 }, { Vector3.new(-0.4, 13.2, -0.2), 3.6, 3 }, { Vector3.new(0.8, 12.6, 1.1), 2.6, 3 },
+		{ Vector3.new(0.1, 14.6, 0.1), 2.4, 3 },
+	},
+	{
+		{ Vector3.new(0, 8.8, 0), 5.6, 1 }, { Vector3.new(3.2, 8.4, 0.8), 4.4, 1 }, { Vector3.new(-3.1, 8.6, -0.6), 4.4, 1 },
+		{ Vector3.new(0.6, 8.5, 3), 4, 2 }, { Vector3.new(-0.8, 8.7, -3), 4, 2 }, { Vector3.new(1.6, 10.4, -1.2), 3.8, 2 },
+		{ Vector3.new(-1.4, 10.2, 1.4), 3.6, 3 }, { Vector3.new(0.2, 11, 0.1), 3.2, 3 },
+	},
+}
+
+--- A low-poly tree in a stone planter (none if `bare`, for a tree in a bed). `blossom` makes it
+--- a pink one. In a planter, low shrubs and a tuft of grass round its foot. Like every street
+--- prop, its origin is road level: it stands on 0.5.
 local function tree(b: Kit.Builder, seed: number, blossom: boolean?, bare: boolean?)
+	local rng = Random.new(seed)
 	if not bare then
 		b:part("Planter", Vector3.new(4.4, 0.9, 4.4), Vector3.new(0, 0.95, 0), CURB)
 		b:decor("Soil", Vector3.new(3.8, 0.1, 3.8), Vector3.new(0, 1.42, 0), SOIL, M.Ground)
+		for k = 0, 2 do
+			local a = k * 2.1 + seed
+			b:decor("Shrub", Vector3.new(1.3, 0.9, 1.3), Vector3.new(math.cos(a) * 1.25, 1.75, math.sin(a) * 1.25), HEDGE,
+				nil, { shape = "Ball" })
+		end
 	end
-	b:part("Trunk", Vector3.new(7, 1, 1), vertical(Vector3.new(0, 4.9, 0)), BARK, M.Wood, { shape = "Cylinder" })
-	b:decor("Branch", Vector3.new(2.6, 0.5, 0.5), CFrame.new(0.9, 7.6, 0) * CFrame.Angles(0, 0, math.rad(40)), BARK, M.Wood,
-		{ shape = "Cylinder" })
-	local rng = Random.new(seed)
+	local canopy = CANOPIES[seed % #CANOPIES + 1]
+	local tall = canopy == CANOPIES[2]
+	b:part("Trunk", Vector3.new(if tall then 8 else 7, 1, 1), vertical(Vector3.new(0, if tall then 5.4 else 4.9, 0)), BARK,
+		M.Wood, { shape = "Cylinder" })
+	b:decor("TrunkFoot", Vector3.new(0.8, 1.5, 1.5), vertical(Vector3.new(0, 1.85, 0)), BARK, M.Wood, { shape = "Cylinder" })
+	for _, side in ipairs({ 1, -1 }) do
+		b:decor("Branch", Vector3.new(2.6, 0.45, 0.45),
+			CFrame.new(side * 0.9, 7.4 + side * 0.4, side * 0.3) * CFrame.Angles(0, side * 0.6, side * math.rad(40)), BARK, M.Wood,
+			{ shape = "Cylinder" })
+	end
 	-- A cartoon canopy: round clumps of leaves in three greens, stacked -- the big dark ones
 	-- low and wide, lighter ones on top where the sun catches them.
 	local shades = { Color3.fromRGB(60, 150, 64), Color3.fromRGB(92, 182, 72), Color3.fromRGB(140, 210, 90) }
 	if blossom then
 		shades = { Color3.fromRGB(232, 132, 170), BLOSSOM, BLOSSOM_LIGHT }
 	end
-	for _, blob in ipairs({
-		{ Vector3.new(0, 8.6, 0), 6.4, 1 }, { Vector3.new(2.4, 8, 1), 4.6, 1 }, { Vector3.new(-2.3, 8.2, -1.1), 4.8, 1 },
-		{ Vector3.new(-0.6, 8, 2.3), 4.2, 2 }, { Vector3.new(1, 10.6, -0.6), 4.8, 2 }, { Vector3.new(-1.3, 10.2, 0.9), 4, 2 },
-		{ Vector3.new(0.3, 12.2, 0.2), 3.4, 3 }, { Vector3.new(1.9, 10.2, 1.8), 2.6, 3 },
-	} :: { { any } }) do
-		local s = blob[2] * rng:NextNumber(0.88, 1.12)
+	for _, blob in ipairs(canopy) do
+		local size = blob[2] * rng:NextNumber(0.88, 1.12)
 		local at = blob[1] + Vector3.new(rng:NextNumber(-0.3, 0.3), rng:NextNumber(-0.2, 0.2), rng:NextNumber(-0.3, 0.3))
-		b:decor("Leaves", Vector3.new(s, s * 0.9, s), at, shades[blob[3]], M.SmoothPlastic, { shape = "Ball", shadow = true })
+		b:decor("Leaves", Vector3.new(size, size * 0.9, size), at, shades[blob[3]], M.SmoothPlastic, { shape = "Ball", shadow = true })
+	end
+end
+
+--- A slim cypress: a tall column of dark green, pointed at the top, on a short trunk. For
+--- pairs at an entrance and the edges of a lawn. Origin on the ground.
+local function cypress(b: Kit.Builder, seed: number)
+	local rng = Random.new(seed)
+	local h = rng:NextNumber(9, 12)
+	b:part("Trunk", Vector3.new(2.2, 0.7, 0.7), vertical(Vector3.new(0, 1.1, 0)), BARK, M.Wood, { shape = "Cylinder" })
+	local shades = { Color3.fromRGB(44, 112, 62), Color3.fromRGB(58, 132, 70), Color3.fromRGB(80, 156, 80) }
+	local n = 5
+	for k = 0, n - 1 do
+		local t = k / (n - 1)
+		local w = 2.9 * (1 - t * 0.72)
+		b:decor("Leaves", Vector3.new(w, h / n * 1.7, w), Vector3.new(rng:NextNumber(-0.15, 0.15), 2.2 + t * (h - 2.6), 0),
+			shades[math.min(3, 1 + math.floor(t * 3))], nil, { shape = "Ball", shadow = true })
+	end
+end
+
+--- A round flowering shrub, a few blooms on it. Origin on the ground.
+local function shrub(b: Kit.Builder, seed: number, size: number?)
+	local rng = Random.new(seed)
+	local s = size or 2.2
+	b:decor("Shrub", Vector3.new(s, s * 0.85, s), Vector3.new(0, s * 0.38, 0), HEDGE, nil, { shape = "Ball", shadow = true })
+	b:decor("Shrub", Vector3.new(s * 0.7, s * 0.6, s * 0.7), Vector3.new(s * 0.35, s * 0.3, s * 0.2),
+		Color3.fromRGB(96, 160, 80), nil, { shape = "Ball" })
+	local bloom = FLOWERS[rng:NextInteger(1, #FLOWERS)]
+	for _ = 1, 3 do
+		local a = rng:NextNumber(0, 6.28)
+		b:decor("Bloom", Vector3.new(0.45, 0.45, 0.45), Vector3.new(math.cos(a) * s * 0.4, s * 0.62, math.sin(a) * s * 0.4),
+			bloom, nil, { shape = "Ball" })
 	end
 end
 
@@ -322,29 +383,150 @@ local function hydrant(b: Kit.Builder)
 end
 
 --- A parked car, nose toward -Z.
-local function car(b: Kit.Builder, colour: Color3)
-	local trim = Color3.fromRGB(34, 34, 38)
-	b:part("Body", Vector3.new(4.6, 1.5, 10), Vector3.new(0, 1.55, 0), colour, nil, { reflectance = 0.05 })
-	b:part("Cabin", Vector3.new(4.1, 1.5, 5), Vector3.new(0, 3.05, 0.4), colour)
-	b:decor("Glass", Vector3.new(4.16, 1.1, 5.06), Vector3.new(0, 3.05, 0.4), Color3.fromRGB(56, 72, 90), M.Glass,
-		{ transparency = 0.1, reflectance = 0.2 })
-	b:decor("Roof", Vector3.new(4.12, 0.3, 4.2), Vector3.new(0, 3.85, 0.5), colour)
-	for _, z in ipairs({ -5.05, 5.05 }) do
-		b:decor("Bumper", Vector3.new(4.7, 0.6, 0.3), Vector3.new(0, 1.13, z), trim)
-	end
-	for _, x in ipairs({ -1.6, 1.6 }) do
-		b:decor("Headlight", Vector3.new(1, 0.4, 0.1), Vector3.new(x, 1.8, -5.02), Color3.fromRGB(246, 242, 226))
-		b:decor("Taillight", Vector3.new(1, 0.4, 0.1), Vector3.new(x, 1.8, 5.02), Color3.fromRGB(196, 44, 44))
-	end
-	for _, x in ipairs({ -2.05, 2.05 }) do
-		for _, z in ipairs({ -3.2, 3.2 }) do
-			b:decor("Wheel", Vector3.new(0.8, 2, 2), Vector3.new(x, 1, z), trim, M.Rubber, { shape = "Cylinder" })
-			b:decor("Hub", Vector3.new(0.84, 0.9, 0.9), Vector3.new(x, 1, z), Color3.fromRGB(196, 196, 200), M.Metal,
-				{ shape = "Cylinder" })
+-- The parts every car shares: glass, tyres, lamps.
+-- Tinted, and opaque: see-through glass shows an empty car.
+local CAR_GLASS = Color3.fromRGB(36, 46, 62)
+local CAR_TRIM = Color3.fromRGB(34, 34, 38)
+local CAR_CHROME = Color3.fromRGB(200, 202, 208)
+
+--- Four wheels at `axles` (z of each) with tyres, rims and a hub cap, set `track` out from the
+--- middle, `r` the tyre's radius.
+local function wheels(b: Kit.Builder, track: number, axles: { number }, r: number)
+	for _, x in ipairs({ -track, track }) do
+		for _, z in ipairs(axles) do
+			b:decor("Wheel", Vector3.new(0.8, r * 2, r * 2), Vector3.new(x, r, z), CAR_TRIM, M.Rubber, { shape = "Cylinder" })
+			b:decor("Rim", Vector3.new(0.84, r * 1.15, r * 1.15), Vector3.new(x, r, z), CAR_CHROME, M.Metal, { shape = "Cylinder" })
+			b:decor("HubCap", Vector3.new(0.9, r * 0.4, r * 0.4), Vector3.new(x, r, z), CAR_TRIM, nil, { shape = "Cylinder" })
 		end
-		b:decor("Mirror", Vector3.new(0.5, 0.3, 0.4), Vector3.new(x * 1.12, 2.7, -1.8), colour)
 	end
 end
+
+--- The front and back of a car `length` long and `width` wide: bumpers, the grille, headlamps,
+--- tail lamps, number plates, all at `y` (the bumper line).
+local function carEnds(b: Kit.Builder, width: number, length: number, y: number, lamp: number)
+	local half = length / 2
+	for _, s in ipairs({ -1, 1 }) do
+		b:decor("Bumper", Vector3.new(width + 0.1, 0.45, 0.4), Vector3.new(0, y, s * (half + 0.05)), CAR_TRIM)
+		b:decor("Plate", Vector3.new(1.2, 0.36, 0.06), Vector3.new(0, y, s * (half + 0.27)), Color3.fromRGB(246, 244, 236))
+		for _, x in ipairs({ -1, 1 }) do
+			b:decor(if s < 0 then "Headlight" else "Taillight", Vector3.new(0.9, 0.36, 0.1),
+				Vector3.new(x * (width / 2 - 0.6), lamp, s * (half + 0.03)),
+				if s < 0 then Color3.fromRGB(250, 246, 226) else Color3.fromRGB(200, 40, 40))
+		end
+	end
+	b:decor("Grille", Vector3.new(width * 0.5, 0.42, 0.08), Vector3.new(0, lamp - 0.05, -half - 0.03), CAR_TRIM)
+end
+
+--- A car parked at its origin (on the road), facing -Z. Five kinds, each its own shape so a
+--- row of them reads as different cars rather than one car in different paints:
+---
+---   sedan     long bonnet, a raked windscreen, a cabin with a pillar, a boot
+---   hatch     short and tall, the roof running back to a steep hatch
+---   suv       high and square, roof rails, a spare wheel on the back
+---   pickup    a cab, then an open bed with a tailgate
+---   taxi      a sedan in yellow with a checker band and a TAXI light on the roof
+---
+--- The lower body and the cabin are solid (you cannot walk through a car); the rest is trim.
+local function car(b: Kit.Builder, colour: Color3, kind: string?)
+	local style = kind or "sedan"
+	local W = 4.6
+	local trimColour = darker(colour, 0.35)
+	if style == "sedan" or style == "taxi" then
+		if style == "taxi" then
+			colour = Color3.fromRGB(250, 200, 44)
+			trimColour = darker(colour, 0.35)
+		end
+		local L = 10
+		b:part("Body", Vector3.new(W, 1.3, L), Vector3.new(0, 1.45, 0), colour, nil, { reflectance = 0.05 })
+		b:decor("Skirt", Vector3.new(W + 0.04, 0.32, 5.2), Vector3.new(0, 0.95, 0), CAR_TRIM)
+		-- The bonnet slopes down to the nose; the boot is flat.
+		b:decor("Bonnet", Vector3.new(W - 0.2, 0.34, 3.1), Vector3.new(0, 2.27, -3.35), colour, nil, { shape = "Wedge" })
+		b:decor("Boot", Vector3.new(W - 0.2, 0.28, 2.1), Vector3.new(0, 2.24, 3.9), colour)
+		-- The cabin: windscreen, roof, rear screen, the side glass and the pillar between.
+		b:decor("Windscreen", Vector3.new(W - 0.6, 1.25, 1.5), Vector3.new(0, 2.72, -1.25), CAR_GLASS, M.SmoothPlastic,
+			{ shape = "Wedge", reflectance = 0.25 })
+		b:part("Cabin", Vector3.new(W - 0.6, 1.1, 2.6), Vector3.new(0, 2.65, 0.8), CAR_GLASS, M.SmoothPlastic, { reflectance = 0.2 })
+		b:decor("Roof", Vector3.new(W - 0.5, 0.22, 2.7), Vector3.new(0, 3.31, 0.8), colour)
+		b:decor("RearScreen", Vector3.new(W - 0.6, 1.1, 1.1), CFrame.new(0, 2.65, 2.65) * CFrame.Angles(0, math.pi, 0),
+			CAR_GLASS, M.SmoothPlastic, { shape = "Wedge", reflectance = 0.25 })
+		b:decor("Pillar", Vector3.new(W - 0.56, 1.1, 0.22), Vector3.new(0, 2.65, 0.6), colour)
+		b:decor("DoorLine", Vector3.new(W + 0.03, 1.0, 0.06), Vector3.new(0, 1.5, 0.6), trimColour)
+		carEnds(b, W, L, 1.0, 1.8)
+		wheels(b, 2.0, { -3.2, 3.2 }, 1.05)
+		for _, x in ipairs({ -1, 1 }) do
+			b:decor("Mirror", Vector3.new(0.45, 0.3, 0.35), Vector3.new(x * 2.45, 2.55, -1.6), colour)
+		end
+		if style == "taxi" then
+			b:decor("Checker", Vector3.new(W + 0.05, 0.26, 5.6), Vector3.new(0, 1.85, 0.3), CAR_TRIM)
+			b:decor("TaxiLight", Vector3.new(1.6, 0.45, 0.6), Vector3.new(0, 3.65, 0.8), Color3.fromRGB(252, 240, 200))
+			painted(b, "TAXI", Kit.Look(Vector3.new(0, 3.65, 0.48), Vector3.new(0, 3.65, -5)), 1.4, 0.36, CAR_TRIM)
+		end
+	elseif style == "hatch" then
+		local L = 8.2
+		b:part("Body", Vector3.new(W - 0.2, 1.3, L), Vector3.new(0, 1.45, 0), colour, nil, { reflectance = 0.05 })
+		b:decor("Skirt", Vector3.new(W - 0.16, 0.32, 3.8), Vector3.new(0, 0.95, 0), CAR_TRIM)
+		b:decor("Bonnet", Vector3.new(W - 0.4, 0.3, 2.1), Vector3.new(0, 2.25, -3.0), colour, nil, { shape = "Wedge" })
+		b:decor("Windscreen", Vector3.new(W - 0.7, 1.35, 1.4), Vector3.new(0, 2.77, -1.25), CAR_GLASS, M.SmoothPlastic,
+			{ shape = "Wedge", reflectance = 0.25 })
+		b:part("Cabin", Vector3.new(W - 0.7, 1.2, 3.6), Vector3.new(0, 2.7, 1.25), CAR_GLASS, M.SmoothPlastic, { reflectance = 0.2 })
+		b:decor("Roof", Vector3.new(W - 0.6, 0.24, 3.7), Vector3.new(0, 3.42, 1.2), colour)
+		b:decor("Hatch", Vector3.new(W - 0.66, 1.2, 0.3), CFrame.new(0, 2.7, 3.1) * CFrame.Angles(math.rad(-8), 0, 0),
+			CAR_GLASS, M.SmoothPlastic, { reflectance = 0.25 })
+		b:decor("Pillar", Vector3.new(W - 0.66, 1.2, 0.24), Vector3.new(0, 2.7, 0.9), colour)
+		b:decor("DoorLine", Vector3.new(W - 0.17, 1.0, 0.06), Vector3.new(0, 1.5, 0.9), trimColour)
+		carEnds(b, W - 0.2, L, 1.0, 1.85)
+		wheels(b, 1.9, { -2.6, 2.6 }, 1.0)
+		for _, x in ipairs({ -1, 1 }) do
+			b:decor("Mirror", Vector3.new(0.45, 0.3, 0.35), Vector3.new(x * 2.3, 2.6, -1.5), colour)
+		end
+	elseif style == "suv" then
+		local L = 10.4
+		b:part("Body", Vector3.new(W + 0.2, 1.7, L), Vector3.new(0, 1.85, 0), colour, nil, { reflectance = 0.05 })
+		b:decor("Cladding", Vector3.new(W + 0.24, 0.5, L - 0.2), Vector3.new(0, 1.15, 0), CAR_TRIM)
+		b:decor("Bonnet", Vector3.new(W, 0.25, 2.6), Vector3.new(0, 2.82, -3.8), colour)
+		b:decor("Windscreen", Vector3.new(W - 0.4, 1.3, 0.9), Vector3.new(0, 3.35, -2.05), CAR_GLASS, M.SmoothPlastic,
+			{ shape = "Wedge", reflectance = 0.25 })
+		b:part("Cabin", Vector3.new(W - 0.4, 1.3, 6.2), Vector3.new(0, 3.35, 1.5), CAR_GLASS, M.SmoothPlastic, { reflectance = 0.2 })
+		b:decor("Roof", Vector3.new(W - 0.2, 0.26, 6.9), Vector3.new(0, 4.1, 1.15), colour)
+		for _, x in ipairs({ -1, 1 }) do
+			b:decor("RoofRail", Vector3.new(0.16, 0.16, 5.6), Vector3.new(x * 1.9, 4.32, 1.2), CAR_TRIM)
+			b:decor("Mirror", Vector3.new(0.5, 0.36, 0.4), Vector3.new(x * 2.6, 3.15, -1.8), colour)
+		end
+		for _, z in ipairs({ -0.4, 2.2 }) do
+			b:decor("Pillar", Vector3.new(W - 0.36, 1.3, 0.26), Vector3.new(0, 3.35, z), colour)
+		end
+		b:decor("DoorLine", Vector3.new(W + 0.23, 1.2, 0.06), Vector3.new(0, 2.0, 0.9), trimColour)
+		carEnds(b, W + 0.2, L, 1.2, 2.3)
+		wheels(b, 2.1, { -3.4, 3.4 }, 1.2)
+		b:decor("Spare", Vector3.new(0.6, 2, 2), CFrame.new(0, 2.4, L / 2 + 0.35) * CFrame.Angles(0, math.rad(90), 0),
+			CAR_TRIM, M.Rubber, { shape = "Cylinder" })
+		b:decor("SpareCover", Vector3.new(0.64, 1.4, 1.4), CFrame.new(0, 2.4, L / 2 + 0.38) * CFrame.Angles(0, math.rad(90), 0),
+			colour, nil, { shape = "Cylinder" })
+	else -- pickup
+		local L = 11
+		b:part("Body", Vector3.new(W + 0.2, 1.5, L), Vector3.new(0, 1.65, 0), colour, nil, { reflectance = 0.05 })
+		b:decor("Skirt", Vector3.new(W + 0.24, 0.34, L - 4.6), Vector3.new(0, 1.0, 0), CAR_TRIM)
+		b:decor("Bonnet", Vector3.new(W, 0.3, 2.8), Vector3.new(0, 2.55, -3.9), colour)
+		b:decor("Windscreen", Vector3.new(W - 0.4, 1.3, 1.1), Vector3.new(0, 3.05, -2.0), CAR_GLASS, M.SmoothPlastic,
+			{ shape = "Wedge", reflectance = 0.25 })
+		b:part("Cabin", Vector3.new(W - 0.4, 1.3, 2.4), Vector3.new(0, 3.05, -0.3), CAR_GLASS, M.SmoothPlastic, { reflectance = 0.2 })
+		b:decor("Roof", Vector3.new(W - 0.2, 0.26, 3.0), Vector3.new(0, 3.8, -0.6), colour)
+		b:decor("CabBack", Vector3.new(W, 1.4, 0.3), Vector3.new(0, 3.05, 1.0), colour)
+		-- The bed: a floor, two sides and the tailgate, a crate in it.
+		b:decor("BedFloor", Vector3.new(W - 0.2, 0.1, 4.2), Vector3.new(0, 2.45, 3.25), CAR_TRIM)
+		for _, x in ipairs({ -1, 1 }) do
+			b:decor("BedSide", Vector3.new(0.2, 0.8, 4.4), Vector3.new(x * (W / 2), 2.8, 3.2), colour)
+			b:decor("Mirror", Vector3.new(0.5, 0.36, 0.4), Vector3.new(x * 2.6, 2.95, -1.4), colour)
+		end
+		b:decor("Tailgate", Vector3.new(W + 0.2, 0.8, 0.2), Vector3.new(0, 2.8, L / 2 - 0.1), colour)
+		b:decor("Crate", Vector3.new(1.6, 1.0, 1.4), CFrame.new(-0.8, 3.0, 3.4) * CFrame.Angles(0, math.rad(12), 0), WOOD, M.WoodPlanks)
+		carEnds(b, W + 0.2, L, 1.05, 2.1)
+		wheels(b, 2.1, { -3.6, 3.4 }, 1.15)
+	end
+end
+
+-- Which kind each parked car is, in turn: mostly saloons and hatches, a few of the rest.
+local CAR_KINDS = { "sedan", "hatch", "suv", "sedan", "pickup", "hatch", "taxi", "sedan", "suv" }
 
 --- A raised bed of flowers in rows, one colour a row. Origin at the bed's centre on the ground;
 --- the rows run along X.
@@ -364,6 +546,97 @@ local function flowerBed(b: Kit.Builder, w: number, d: number, seed: number)
 end
 
 -- -------------------------------------------------------------- buildings --
+
+-- What each kind of shop puts out front, so a street of them reads as a bakery, a barber and
+-- a record shop rather than one shop with different names: its icon on a sign hung out over
+-- the pavement, and by the door a chalkboard, a menu stand, a barber's pole, a rack of stock
+-- or buckets of flowers.
+local SHOP_KIT: { [string]: { icon: string, out: string } } = {
+	["ZEE BEATS"] = { icon = "🎧", out = "rack" }, PIZZA = { icon = "🍕", out = "menu" },
+	BURGERS = { icon = "🍔", out = "menu" }, DONUTS = { icon = "🍩", out = "chalk" }, COMICS = { icon = "💥", out = "rack" },
+	ARCADE = { icon = "🕹", out = "chalk" }, BARBER = { icon = "💈", out = "pole" }, BOBA = { icon = "🧋", out = "chalk" },
+	RECORDS = { icon = "💿", out = "rack" }, TACOS = { icon = "🌮", out = "menu" }, GYM = { icon = "💪", out = "chalk" },
+	BAKERY = { icon = "🥐", out = "chalk" }, SNEAKERS = { icon = "👟", out = "rack" }, DINER = { icon = "☕", out = "menu" },
+	FLOWERS = { icon = "🌷", out = "buckets" }, GAMES = { icon = "🎮", out = "rack" }, ["ICE CREAM"] = { icon = "🍦", out = "chalk" },
+	RAMEN = { icon = "🍜", out = "menu" }, BOOKS = { icon = "📚", out = "rack" }, CAFE = { icon = "☕", out = "chalk" },
+}
+
+--- A shop's front: a glazed door in the middle of the window, the blade sign with its icon at
+--- one end, and its own thing on the pavement at the other. `on(y, out, along)` is a point on
+--- the face; `normal` points out of it; `axis` is the face's ("x" or "z"); `span` its width.
+local function shopDressing(b: Kit.Builder, name: string, colour: Color3, on: (number, number, number) -> Vector3,
+	normal: Vector3, axis: string, span: number)
+	local kit = SHOP_KIT[name] or { icon = "★", out = "chalk" }
+	local across = if axis == "x" then Vector3.new(0, 0, 1) else Vector3.new(1, 0, 0)
+	-- A frame standing on the pavement `along` the face and `out` from it; its -Z is out.
+	local function at(along: number, out: number): CFrame
+		local p = on(0.5, out, along)
+		return Kit.Look(p, p + normal)
+	end
+	-- The door.
+	local door = at(0, 0.56)
+	b:decor("ShopDoor", Vector3.new(3, 5.2, 0.12), door * CFrame.new(0, 2.6, 0), darker(colour, 0.45))
+	b:decor("ShopDoorGlass", Vector3.new(2.2, 4.2, 0.12), door * CFrame.new(0, 2.9, -0.05), Color3.fromRGB(150, 196, 222),
+		nil, { reflectance = 0.2 })
+	b:decor("ShopDoorHandle", Vector3.new(0.14, 0.9, 0.14), door * CFrame.new(0.8, 2.6, -0.14), CAR_CHROME, M.Metal)
+	-- The blade sign: an iron arm out of the wall at the end of the window, the sign hung under
+	-- it edge-on to the street, the icon on both sides.
+	local edge = span * 0.44
+	local arm = at(edge, 0)
+	b:decor("BladeArm", Vector3.new(0.18, 0.18, 2.6), arm * CFrame.new(0, 9.7, -1.3), IRON)
+	b:decor("BladeSign", Vector3.new(0.22, 2, 2), arm * CFrame.new(0, 8.4, -1.5), colour)
+	b:decor("BladeTrim", Vector3.new(0.26, 2.2, 0.16), arm * CFrame.new(0, 8.4, -2.55), TRIM)
+	for _, s in ipairs({ -1, 1 }) do
+		local face = on(8.4, 1.5, edge + s * 0.13)
+		b:sign(kit.icon, Kit.Look(face, face + across * s), 1.6, 1.6, TRIM, { lit = true, glow = false,
+			font = Enum.Font.GothamBlack, textColour = TRIM, brightness = 1 })
+	end
+	-- What stands by the door, at the window's other end.
+	local spot = at(-edge + 1, 1.1)
+	if kit.out == "chalk" then
+		-- A chalkboard A-frame, OPEN on the street side.
+		for _, s in ipairs({ -1, 1 }) do
+			b:decor("ChalkBoard", Vector3.new(1.5, 2.4, 0.12),
+				spot * CFrame.new(0, 1.15, s * 0.3) * CFrame.Angles(s * math.rad(-12), 0, 0), Color3.fromRGB(44, 52, 48))
+		end
+		painted(b, "OPEN", spot * CFrame.new(0, 1.3, -0.48) * CFrame.Angles(math.rad(-12), 0, 0), 1.2, 0.5,
+			Color3.fromRGB(246, 240, 220), Enum.Font.Cartoon)
+	elseif kit.out == "menu" then
+		-- A menu on a post.
+		b:decor("MenuPost", Vector3.new(0.18, 3.6, 0.18), spot * CFrame.new(0, 1.8, 0), IRON)
+		b:decor("MenuBoard", Vector3.new(1.8, 2.2, 0.14), spot * CFrame.new(0, 3.2, -0.12), colour)
+		painted(b, "MENU", spot * CFrame.new(0, 3.75, -0.21), 1.4, 0.5, TRIM)
+		for k = 0, 2 do
+			b:decor("MenuLine", Vector3.new(1.3, 0.12, 0.04), spot * CFrame.new(0, 3.2 - k * 0.35, -0.2), TRIM)
+		end
+	elseif kit.out == "pole" then
+		-- The barber's pole on the wall: white, banded red and blue, a ball on top.
+		local pole = at(-edge + 1, 0.55)
+		b:decor("BarberPole", Vector3.new(3, 0.6, 0.6), pole * CFrame.new(0, 4.4, 0) * CFrame.Angles(0, 0, math.rad(90)),
+			Color3.fromRGB(246, 246, 246), nil, { shape = "Cylinder" })
+		for k, c in ipairs({ RED, Color3.fromRGB(54, 96, 200), RED }) do
+			b:decor("PoleBand", Vector3.new(0.3, 0.64, 0.64),
+				pole * CFrame.new(0, 3.3 + k * 0.6, 0) * CFrame.Angles(0, 0, math.rad(90)), c, nil, { shape = "Cylinder" })
+		end
+		b:decor("PoleCap", Vector3.new(0.7, 0.7, 0.7), pole * CFrame.new(0, 6.1, 0), CAR_CHROME, M.Metal, { shape = "Ball" })
+	elseif kit.out == "rack" then
+		-- A low rack of stock under the window.
+		b:decor("Rack", Vector3.new(2.4, 1.6, 0.9), spot * CFrame.new(0, 0.8, 0), darker(colour, 0.3))
+		for k = 0, 2 do
+			b:decor("Stock", Vector3.new(0.6, 0.6, 0.5), spot * CFrame.new(-0.75 + k * 0.75, 1.9, 0),
+				AWNINGS[(k + #name) % #AWNINGS + 1])
+		end
+	else
+		-- Buckets of flowers.
+		for k = 0, 2 do
+			local bucket = spot * CFrame.new(-0.8 + k * 0.8, 0, 0)
+			b:decor("FlowerBucket", Vector3.new(0.9, 0.7, 0.7), bucket * CFrame.new(0, 0.45, 0) * CFrame.Angles(0, 0, math.rad(90)),
+				Color3.fromRGB(70, 90, 110), M.Metal, { shape = "Cylinder" })
+			b:decor("Bunch", Vector3.new(0.9, 0.8, 0.9), bucket * CFrame.new(0, 1.15, 0), FLOWERS[(k + 1) % #FLOWERS + 1], nil,
+				{ shape = "Ball" })
+		end
+	end
+end
 
 --- A block building from the ground to `top`, drawn like the reference street: a saturated
 --- colour with white trim, a ground floor of shopfronts (a painted shop sign and a striped
@@ -448,6 +721,7 @@ local function building(b: Kit.Builder, x0: number, x1: number, z0: number, z1: 
 				local name = SHOPS[rng:NextInteger(1, #SHOPS)]
 				local signAt = on(8.5, 0.62, 0)
 				board(b, name, Kit.Look(signAt, signAt + normal), math.min(span * 0.6, 16), 1.8, shopColour, TRIM)
+				shopDressing(b, name, shopColour, on, normal, axis, span)
 				if rng:NextNumber() < 0.8 then
 					local run = span * 0.78
 					local stripes = math.max(4, math.floor(run / 2.4))
@@ -885,21 +1159,98 @@ local function stickup(part: BasePart, where: string, kind: string)
 	part:SetAttribute("StickupKind", kind)
 end
 
---- A cash machine set into a wall, facing -X, origin on the floor at the wall: a steel housing
---- under a navy ATM header, the screen in its bezel, a keypad on a shelf, the card and cash
---- slots. The housing is what gets robbed.
+--- A cash machine set into a wall, facing -X, origin on the floor at the wall: a brushed-steel
+--- body in a navy surround, the lit ATM header, a screen that says WELCOME sunk between two
+--- privacy fins, the card slot with its little green light, a keypad on a sloped shelf, and the
+--- cash slot under a steel lip; a cool light over the keypad. Its own model ("CashMachine"),
+--- so a robbery can find its screen and its slot (Stickups.client). The body is what gets
+--- robbed.
 local function atm(b: Kit.Builder, where: string)
-	local housing = b:part("ATM", Vector3.new(0.9, 3.4, 1.4), Vector3.new(-0.45, 1.7, 0), STEEL, M.Metal)
+	local model = Instance.new("Model")
+	model.Name = "CashMachine"
+	model.Parent = b.parent
+	local m = Kit.new(model, b.frame)
+	local dark = Color3.fromRGB(26, 28, 34)
+	m:decor("ATMSurround", Vector3.new(0.16, 4.3, 2.3), Vector3.new(-0.08, 2.15, 0), NAVY)
+	local housing = m:part("ATM", Vector3.new(0.9, 3.4, 1.4), Vector3.new(-0.45, 1.7, 0), STEEL, M.Metal)
 	stickup(housing, where, "atm")
-	b:decor("ATMHeader", Vector3.new(0.96, 0.55, 1.44), Vector3.new(-0.48, 3.12, 0), NAVY)
-	painted(b, "ATM", Kit.Look(Vector3.new(-0.98, 3.12, 0), Vector3.new(-10, 3.12, 0)), 1.1, 0.4, CREAM)
-	b:decor("ATMBezel", Vector3.new(0.06, 0.86, 1.1), Vector3.new(-0.9, 2.4, 0), Color3.fromRGB(30, 32, 38))
-	b:decor("ATMScreen", Vector3.new(0.06, 0.72, 0.95), Vector3.new(-0.93, 2.4, 0), Color3.fromRGB(46, 110, 140))
-	b:decor("ATMShelf", Vector3.new(0.5, 0.12, 1.2), Vector3.new(-1.12, 1.72, 0), STEEL, M.Metal)
-	b:decor("ATMKeypad", Vector3.new(0.34, 0.06, 0.6), CFrame.new(-1.12, 1.8, 0.15) * CFrame.Angles(0, 0, math.rad(-15)),
-		Color3.fromRGB(40, 42, 48))
-	b:decor("ATMCardSlot", Vector3.new(0.06, 0.08, 0.36), Vector3.new(-0.93, 2.0, -0.38), Color3.fromRGB(20, 20, 24))
-	b:decor("ATMCashSlot", Vector3.new(0.06, 0.12, 0.7), Vector3.new(-0.93, 1.3, 0), Color3.fromRGB(20, 20, 24))
+	model.PrimaryPart = housing
+	m:decor("ATMHeader", Vector3.new(0.96, 0.55, 1.44), Vector3.new(-0.48, 3.12, 0), NAVY)
+	painted(m, "ATM", Kit.Look(Vector3.new(-0.98, 3.12, 0), Vector3.new(-10, 3.12, 0)), 1.1, 0.4, CREAM)
+	m:decor("ATMLightBar", Vector3.new(0.06, 0.06, 1.3), Vector3.new(-0.97, 2.8, 0), Color3.fromRGB(150, 214, 255))
+	-- The screen.
+	m:decor("ATMBezel", Vector3.new(0.06, 0.8, 1.1), Vector3.new(-0.9, 2.33, 0), dark)
+	m:decor("ATMScreen", Vector3.new(0.06, 0.64, 0.94), Vector3.new(-0.93, 2.33, 0), Color3.fromRGB(46, 120, 156))
+	painted(m, "WELCOME", Kit.Look(Vector3.new(-0.97, 2.38, 0), Vector3.new(-10, 2.38, 0)), 0.8, 0.2, CREAM,
+		Enum.Font.GothamBold)
+	for _, s in ipairs({ -1, 1 }) do
+		m:decor("ATMFin", Vector3.new(0.3, 0.84, 0.05), Vector3.new(-1.04, 2.33, s * 0.58), dark)
+	end
+	-- The card slot and its light.
+	m:decor("ATMCardSlot", Vector3.new(0.06, 0.08, 0.36), Vector3.new(-0.93, 1.84, -0.3), Color3.fromRGB(16, 16, 20))
+	m:decor("ATMCardLight", Vector3.new(0.05, 0.06, 0.08), Vector3.new(-0.94, 1.84, -0.56), Color3.fromRGB(90, 230, 120))
+	-- The keypad on its shelf: the keys, and the green and red ones.
+	m:decor("ATMShelf", Vector3.new(0.5, 0.12, 1.2), Vector3.new(-1.12, 1.6, 0), STEEL, M.Metal)
+	local pad = CFrame.new(-1.12, 1.69, 0.12) * CFrame.Angles(0, 0, math.rad(-15))
+	m:decor("ATMKeypad", Vector3.new(0.34, 0.06, 0.6), pad, Color3.fromRGB(40, 42, 48))
+	m:decor("ATMKeys", Vector3.new(0.26, 0.03, 0.4), pad * CFrame.new(0, 0.04, -0.04), Color3.fromRGB(196, 200, 206))
+	m:decor("ATMEnter", Vector3.new(0.08, 0.03, 0.1), pad * CFrame.new(-0.07, 0.04, 0.22), Color3.fromRGB(70, 190, 100))
+	m:decor("ATMCancel", Vector3.new(0.08, 0.03, 0.1), pad * CFrame.new(0.07, 0.04, 0.22), Color3.fromRGB(220, 70, 60))
+	-- The cash slot, under its lip.
+	m:decor("ATMCashSlot", Vector3.new(0.06, 0.12, 0.7), Vector3.new(-0.93, 1.25, 0), Color3.fromRGB(16, 16, 20))
+	m:decor("ATMCashLip", Vector3.new(0.14, 0.04, 0.78), Vector3.new(-0.96, 1.17, 0), Color3.fromRGB(150, 154, 162), M.Metal)
+	m:decor("ATMKick", Vector3.new(0.05, 0.4, 1.36), Vector3.new(-0.92, 0.25, 0), dark)
+	m:light("Spot", CFrame.lookAt(Vector3.new(-1.05, 2.9, 0), Vector3.new(-1.6, 0.6, 0)), Color3.fromRGB(214, 236, 255),
+		0.9, 7, { Angle = 100 })
+end
+
+--- A shop till on a counter top, facing -X (the customer's side), origin on the counter at its
+--- middle: a squat body over a cash drawer, a sloped keypad, the receipt printer, and the
+--- customer display on a stalk. The drawer ("RegisterDrawer", with its notes and coins) sits
+--- shut inside the body; a robbery slides it out (Stickups.client). Its own model ("Till").
+--- The body is what gets robbed.
+local function till(b: Kit.Builder, where: string)
+	local model = Instance.new("Model")
+	model.Name = "Till"
+	model.Parent = b.parent
+	local t = Kit.new(model, b.frame)
+	local body = Color3.fromRGB(44, 46, 52)
+	local register = t:decor("Register", Vector3.new(1.5, 0.46, 1.8), Vector3.new(0.05, 0.23, 0), body)
+	stickup(register, where, "register")
+	model.PrimaryPart = register
+	t:decor("RegisterBody", Vector3.new(1, 0.42, 1.6), Vector3.new(0.3, 0.67, 0), Color3.fromRGB(56, 58, 66))
+	-- The keypad slopes down toward the customer.
+	local pad = CFrame.new(-0.36, 0.56, 0) * CFrame.Angles(0, 0, math.rad(20))
+	t:decor("RegisterKeys", Vector3.new(0.62, 0.1, 1.5), pad, Color3.fromRGB(72, 74, 82))
+	for i, dx in ipairs({ -0.17, 0, 0.17 }) do
+		t:decor("Key", Vector3.new(0.11, 0.05, 0.9), pad * CFrame.new(dx, 0.06, -0.2),
+			if i == 1 then Color3.fromRGB(240, 236, 226) else Color3.fromRGB(214, 212, 204))
+	end
+	t:decor("Key", Vector3.new(0.4, 0.05, 0.22), pad * CFrame.new(0, 0.06, 0.48), Color3.fromRGB(80, 190, 110))
+	-- The receipt printer at the back, a curl of paper out of it.
+	t:decor("Printer", Vector3.new(0.42, 0.3, 0.5), Vector3.new(0.5, 1.03, -0.52), Color3.fromRGB(34, 36, 40))
+	t:decor("Receipt", Vector3.new(0.03, 0.32, 0.3), CFrame.new(0.3, 1.26, -0.52) * CFrame.Angles(0, 0, math.rad(-14)),
+		Color3.fromRGB(246, 244, 238))
+	-- The customer display.
+	t:decor("ScreenStalk", Vector3.new(0.12, 0.5, 0.12), Vector3.new(0.55, 1.12, 0.42), Color3.fromRGB(34, 36, 40))
+	t:decor("ScreenBack", Vector3.new(0.12, 0.46, 0.82), Vector3.new(0.5, 1.52, 0.42), Color3.fromRGB(34, 36, 40))
+	t:decor("RegisterScreen", Vector3.new(0.04, 0.36, 0.7), Vector3.new(0.43, 1.52, 0.42), Color3.fromRGB(80, 200, 130))
+	painted(t, "$0.00", Kit.Look(Vector3.new(0.4, 1.52, 0.42), Vector3.new(-10, 1.52, 0.42)), 0.62, 0.26,
+		Color3.fromRGB(18, 60, 34), Enum.Font.GothamBold)
+	-- The drawer, shut: its front just proud of the body, the tray and the money inside.
+	local drawerModel = Instance.new("Model")
+	drawerModel.Name = "RegisterDrawer"
+	drawerModel.Parent = model
+	local d = Kit.new(drawerModel, b.frame)
+	local tray = d:decor("DrawerTray", Vector3.new(1.3, 0.05, 1.62), Vector3.new(0, 0.07, 0), Color3.fromRGB(30, 30, 34))
+	drawerModel.PrimaryPart = tray
+	d:decor("DrawerFront", Vector3.new(0.08, 0.36, 1.72), Vector3.new(-0.71, 0.22, 0), Color3.fromRGB(150, 154, 162), M.Metal)
+	d:decor("DrawerHandle", Vector3.new(0.06, 0.06, 0.6), Vector3.new(-0.77, 0.3, 0), Color3.fromRGB(30, 30, 34))
+	for i, z in ipairs({ -0.6, -0.2, 0.2, 0.6 }) do
+		d:decor("DrawerCash", Vector3.new(0.85, 0.08, 0.34), Vector3.new(0.12, 0.14, z),
+			if i % 2 == 0 then Color3.fromRGB(84, 150, 84) else Color3.fromRGB(110, 176, 100))
+	end
+	d:decor("DrawerCoins", Vector3.new(0.22, 0.05, 1.4), Vector3.new(-0.48, 0.12, 0), Color3.fromRGB(200, 184, 120), M.Metal)
 end
 
 --- A storefront facing -X (toward the avenue) that you can walk into: a painted signboard, a
@@ -909,6 +1260,12 @@ end
 --- the shop's panel. Origin at the front's centre on the pavement.
 local function storefront(b: Kit.Builder, name: string, sub: string, colour: Color3, wall: Color3, promptName: string,
 	prompt: string, depth: number, width: number, interior: string, clerk: { [string]: any })
+	-- Each shop in a folder of its own: its clerk, its counter and its till go together (one
+	-- clerk per folder -- with both shops loose in the district, only the first got one).
+	local shop = Instance.new("Folder")
+	shop.Name = name
+	shop.Parent = b.parent
+	b = Kit.new(shop, b.frame)
 	local h = 22
 	local ceil = 12.4
 	local trim = lighter(wall, 0.55)
@@ -1014,11 +1371,9 @@ local function storefront(b: Kit.Builder, name: string, sub: string, colour: Col
 			Vector3.new((cx - 1.2 + depth - 1) / 2, 1.8, s * 12.6), colour)
 	end
 	-- The till, to rob from the customer's side of the counter.
-	local register = b:decor("Register", Vector3.new(1.4, 1, 1.6), Vector3.new(cx + 0.2, 4.4, -6), Color3.fromRGB(40, 42, 48))
-	stickup(register, name, "register")
+	till(b:within(CFrame.new(cx + 0.1, 3.9, -6)), name)
 	-- A cash machine inside the door, on the side wall past the window display.
 	atm(b:within(CFrame.new(2.2, 0.2, -(width / 2 - 1.17)) * CFrame.Angles(0, math.rad(90), 0)), name)
-	b:decor("RegisterScreen", Vector3.new(0.1, 0.7, 1.2), Vector3.new(cx - 0.55, 5.1, -6), Color3.fromRGB(80, 200, 130))
 	b:decor("Bell", Vector3.new(0.5, 0.35, 0.5), Vector3.new(cx - 0.5, 4.08, 4), GOLD, M.Metal, { shape = "Ball" })
 	-- Where the clerk stands (DistrictService puts them there), and where you stand to be served.
 	local spot = b:decor("ClerkSpot", Vector3.new(1, 0.1, 1), Vector3.new(cx + 4, 0.25, 0), colour, nil,
@@ -1080,55 +1435,144 @@ local function jobBoard(b: Kit.Builder, kind: string)
 	-- Where you stand to read it: the prompt lives here.
 	local spot = b:decor(if bounty then "BountyBoard" else "ContractBoard", Vector3.new(6, 0.08, 3),
 		Vector3.new(0, 0.04, -2.2), Color3.fromRGB(60, 58, 56), M.Fabric)
-	spot:SetAttribute("PromptText", if bounty then "Bounties" else "Contracts")
+	spot:SetAttribute("PromptText", if bounty then "View Bounties" else "View Contracts")
 	spot:SetAttribute("PromptObject", if bounty then "Most Wanted" else "Daily jobs")
 end
 
---- ZEE GAS: canopy over two pump islands, the price pylon on the corner. Origin at the
---- forecourt's centre; the road is toward +X.
+--- One fuel pump on an island, its faces toward -Z and +Z: a plinth, a white body under a red
+--- head with a ZEE flash, a screen and the three grade buttons on each face, a nozzle racked
+--- at each end with its hose looping down to the base.
+local function pump(b: Kit.Builder)
+	local white = Color3.fromRGB(240, 238, 232)
+	local dark = Color3.fromRGB(30, 32, 36)
+	b:part("Pump", Vector3.new(2.2, 4.4, 1.5), Vector3.new(0, 3.5, 0), white)
+	b:decor("PumpPlinth", Vector3.new(2.5, 0.35, 1.8), Vector3.new(0, 1.28, 0), Color3.fromRGB(150, 152, 156), M.Concrete)
+	b:decor("PumpHead", Vector3.new(2.4, 1.1, 1.66), Vector3.new(0, 6.2, 0), RED)
+	b:decor("PumpCap", Vector3.new(2.5, 0.2, 1.76), Vector3.new(0, 6.85, 0), white)
+	b:decor("PumpKick", Vector3.new(2.24, 0.5, 1.54), Vector3.new(0, 1.7, 0), Color3.fromRGB(196, 198, 202), M.Metal)
+	for _, s in ipairs({ -1, 1 }) do
+		local face = s * 0.76
+		painted(b, "ZEE", Kit.Look(Vector3.new(0, 6.2, s * 0.85), Vector3.new(0, 6.2, s * 5)), 1.6, 0.6, CREAM)
+		b:decor("PumpBezel", Vector3.new(1.5, 1.0, 0.06), Vector3.new(0, 4.75, face), dark)
+		b:decor("PumpScreen", Vector3.new(1.3, 0.8, 0.06), Vector3.new(0, 4.75, face + s * 0.02), Color3.fromRGB(40, 70, 64))
+		painted(b, "$ 0.00", Kit.Look(Vector3.new(0, 4.78, face + s * 0.06), Vector3.new(0, 4.78, s * 5)), 1.1, 0.4,
+			Color3.fromRGB(130, 236, 150), Enum.Font.Code)
+		for i, colour in ipairs({ Color3.fromRGB(236, 192, 60), Color3.fromRGB(80, 180, 100), Color3.fromRGB(70, 130, 220) }) do
+			b:decor("Grade", Vector3.new(0.34, 0.26, 0.06), Vector3.new((i - 2) * 0.45, 3.9, face + s * 0.01), colour)
+		end
+		-- The nozzle in its holster at this end, and the hose looping down from it.
+		local x = s * 1.18
+		b:decor("Holster", Vector3.new(0.2, 0.7, 0.6), Vector3.new(x, 3.8, 0), dark)
+		b:decor("Nozzle", Vector3.new(0.26, 0.5, 0.22), CFrame.new(x + s * 0.12, 3.9, 0.25) * CFrame.Angles(0, 0, s * math.rad(20)), dark)
+		local points = { Vector3.new(x + s * 0.1, 3.5, 0), Vector3.new(x + s * 0.55, 2.2, 0.2), Vector3.new(x + s * 0.35, 1.5, 0.35),
+			Vector3.new(x - s * 0.05, 1.6, 0.4) }
+		for k = 1, #points - 1 do
+			local cf, len = Kit.Span(points[k], points[k + 1])
+			b:decor("Hose", Vector3.new(0.16, 0.16, len + 0.12), cf, Color3.fromRGB(26, 26, 28), M.Rubber)
+		end
+	end
+end
+
+--- ZEE GAS: a canopy over two pump islands, the price pylon on the corner by the road, and the
+--- life of a forecourt -- lane arrows, a car filling up, the bins and the squeegee buckets on
+--- the islands, the air machine, the gas-bottle cage. Origin at the forecourt's centre; the
+--- road is toward +X.
 local function gasStation(b: Kit.Builder)
 	local white = Color3.fromRGB(240, 238, 232)
 	b:decor("Forecourt", Vector3.new(44, 0.05, 36), Vector3.new(0, 0.525, 0), Color3.fromRGB(112, 114, 120), M.Concrete)
-	-- Canopy.
+	-- Lanes through the canopy, each with an arrow toward the road, and a few oil stains.
+	for _, z in ipairs({ 0, -10.5, 10.5 }) do
+		b:decor("LaneArrow", Vector3.new(3, 0.03, 0.5), Vector3.new(9.5, 0.56, z), WHITE_LINE)
+		b:decor("LaneArrowHead", Vector3.new(1.3, 0.03, 1.3), CFrame.new(11.2, 0.56, z) * CFrame.Angles(0, math.rad(45), 0),
+			WHITE_LINE)
+	end
+	for i, at in ipairs({ Vector3.new(-3, 0, -8.5), Vector3.new(4, 0, 1.5), Vector3.new(-6, 0, 9) }) do
+		b:decor("OilStain", Vector3.new(2.4 + i * 0.3, 0.02, 1.6), CFrame.new(at.X, 0.555, at.Z) * CFrame.Angles(0, i, 0),
+			Color3.fromRGB(92, 94, 100))
+	end
+	-- The canopy: white columns with red feet, a deep white roof with a red fascia, lights under.
 	for _, x in ipairs({ -12, 12 }) do
 		for _, z in ipairs({ -8, 8 }) do
 			b:part("Column", Vector3.new(1.4, 13, 1.4), Vector3.new(x, 7, z), white)
 			b:decor("ColumnBand", Vector3.new(1.5, 1.2, 1.5), Vector3.new(x, 2, z), RED)
+			b:decor("ColumnGuard", Vector3.new(1.7, 0.5, 1.7), Vector3.new(x, 0.8, z), GOLD)
 		end
 	end
 	b:part("Canopy", Vector3.new(36, 2, 26), Vector3.new(0, 14.5, 0), white)
+	b:decor("CanopySoffit", Vector3.new(35.6, 0.1, 25.6), Vector3.new(0, 13.45, 0), Color3.fromRGB(226, 226, 222))
 	for _, s in ipairs({ -1, 1 }) do
 		b:decor("Fascia", Vector3.new(36.2, 0.8, 0.2), Vector3.new(0, 14.3, s * 13.05), RED)
 		b:decor("Fascia", Vector3.new(0.2, 0.8, 26.2), Vector3.new(s * 18.05, 14.3, 0), RED)
+		b:decor("FasciaStripe", Vector3.new(36.24, 0.18, 0.24), Vector3.new(0, 15.05, s * 13.05), GOLD)
+		b:decor("FasciaStripe", Vector3.new(0.24, 0.18, 26.24), Vector3.new(s * 18.05, 15.05, 0), GOLD)
 	end
 	board(b, "ZEE GAS", Kit.Look(Vector3.new(18.6, 14.8, 0), Vector3.new(30, 14.8, 0)), 12, 1.5, RED, CREAM)
+	board(b, "ZEE GAS", Kit.Look(Vector3.new(0, 14.8, -13.6), Vector3.new(0, 14.8, -30)), 12, 1.5, RED, CREAM)
 	for x = -12, 12, 8 do
-		b:decor("Downlight", Vector3.new(3, 0.1, 3), Vector3.new(x, 13.45, 0), LAMP_GLASS)
+		for _, z in ipairs({ -6, 6 }) do
+			b:decor("Downlight", Vector3.new(3, 0.1, 3), Vector3.new(x, 13.38, z), LAMP_GLASS)
+		end
 	end
 	b:light("Spot", CFrame.new(0, 13.2, 0) * CFrame.Angles(-math.pi / 2, 0, 0), Color3.fromRGB(255, 248, 232), 1.4, 30,
 		{ Angle = 150 })
-	-- Pump islands.
+	-- The pump islands: a kerbed island with yellow ends, two pumps, and between them the bin,
+	-- the squeegee bucket and the paper towels.
 	for _, z in ipairs({ -5, 5 }) do
 		b:part("Island", Vector3.new(14, 0.6, 3), Vector3.new(0, 0.8, z), CURB)
-		for _, x in ipairs({ -3.5, 3.5 }) do
-			b:part("Pump", Vector3.new(2.2, 5, 1.6), Vector3.new(x, 3.6, z), RED)
-			b:decor("PumpScreen", Vector3.new(1.4, 1, 0.1), Vector3.new(x, 4.6, z - 0.82), Color3.fromRGB(40, 70, 64))
-			b:decor("PumpTop", Vector3.new(2.4, 0.5, 1.8), Vector3.new(x, 6.3, z), white)
-			b:decor("Hose", Vector3.new(0.2, 3, 0.2), Vector3.new(x + 1.2, 3.2, z), Color3.fromRGB(30, 30, 30), M.Rubber)
+		for _, x in ipairs({ -6.8, 6.8 }) do
+			b:decor("IslandNose", Vector3.new(0.5, 0.64, 3.04), Vector3.new(x, 0.8, z), GOLD)
 		end
-		-- Crash posts at the island's ends, standing on the forecourt.
-		b:part("Barrier", Vector3.new(0.5, 2, 0.5), Vector3.new(-7.4, 1.55, z), GOLD)
-		b:part("Barrier", Vector3.new(0.5, 2, 0.5), Vector3.new(7.4, 1.55, z), GOLD)
+		for _, x in ipairs({ -3.5, 3.5 }) do
+			pump(b:within(CFrame.new(x, 0, z)))
+		end
+		b:part("IslandBin", Vector3.new(0.9, 1.5, 0.9), Vector3.new(0, 1.85, z - 0.5), Color3.fromRGB(64, 70, 78))
+		b:decor("IslandBinLid", Vector3.new(1, 0.15, 1), Vector3.new(0, 2.65, z - 0.5), RED)
+		b:decor("Bucket", Vector3.new(0.8, 0.7, 0.7), vertical(Vector3.new(0, 1.45, z + 0.6)), Color3.fromRGB(70, 130, 220), nil,
+			{ shape = "Cylinder" })
+		b:decor("Squeegee", Vector3.new(0.1, 1.4, 0.1), CFrame.new(0.15, 2.1, z + 0.6) * CFrame.Angles(0, 0, math.rad(12)),
+			Color3.fromRGB(30, 30, 30))
+		b:decor("TowelPost", Vector3.new(0.14, 2.4, 0.14), Vector3.new(0.6, 2.3, z + 0.8), IRON)
+		b:decor("Towels", Vector3.new(0.6, 0.7, 0.4), Vector3.new(0.6, 3.6, z + 0.8), Color3.fromRGB(220, 220, 224))
+		-- Round crash posts at the island's ends, standing on the forecourt.
+		for _, x in ipairs({ -7.6, 7.6 }) do
+			b:part("Barrier", Vector3.new(2.2, 0.6, 0.6), vertical(Vector3.new(x, 1.65, z)), GOLD, nil, { shape = "Cylinder" })
+			b:decor("BarrierBand", Vector3.new(0.3, 0.64, 0.64), vertical(Vector3.new(x, 2.2, z)), Color3.fromRGB(30, 30, 34), nil,
+				{ shape = "Cylinder" })
+		end
+	end
+	-- Somebody filling up: a car at the outer pump, its tank side to the island.
+	car(b:within(CFrame.new(-1, 0.55, -9.6) * CFrame.Angles(0, math.rad(-90), 0)), Color3.fromRGB(64, 110, 180), "hatch")
+	-- The air and water machine by the store, and the gas bottles in their cage.
+	local air = b:within(CFrame.new(-19.5, 0, 14))
+	air:part("AirMachine", Vector3.new(1.6, 3.2, 1.2), Vector3.new(0, 2.1, 0), Color3.fromRGB(60, 130, 210))
+	air:decor("AirTop", Vector3.new(1.7, 0.6, 1.3), Vector3.new(0, 3.9, 0), white)
+	painted(air, "AIR", Kit.Look(Vector3.new(0, 3.9, -0.68), Vector3.new(0, 3.9, -5)), 1.2, 0.45, RED)
+	air:decor("AirDial", Vector3.new(0.1, 0.6, 0.6), CFrame.new(0, 2.9, -0.62) * CFrame.Angles(0, math.rad(90), 0),
+		Color3.fromRGB(246, 244, 238), nil, { shape = "Cylinder" })
+	air:decor("AirHose", Vector3.new(0.16, 1.4, 0.16), CFrame.new(0.9, 1.6, -0.2) * CFrame.Angles(0, 0, math.rad(15)),
+		Color3.fromRGB(26, 26, 28), M.Rubber)
+	local cage = b:within(CFrame.new(-19.5, 0, -14) * CFrame.Angles(0, math.pi, 0))
+	cage:part("BottleCage", Vector3.new(4, 3.2, 1.8), Vector3.new(0, 2.1, 0), Color3.fromRGB(190, 194, 200), M.DiamondPlate,
+		{ transparency = 0.55 })
+	cage:decor("CageTop", Vector3.new(4.2, 0.2, 2), Vector3.new(0, 3.8, 0), Color3.fromRGB(60, 120, 200))
+	painted(cage, "GAS BOTTLES", Kit.Look(Vector3.new(0, 4.25, -0.4), Vector3.new(0, 4.25, -5)), 3, 0.5, Color3.fromRGB(60, 120, 200))
+	for i = 0, 3 do
+		cage:decor("Bottle", Vector3.new(1.5, 0.8, 0.8), vertical(Vector3.new(-1.35 + i * 0.9, 1.3, 0)),
+			Color3.fromRGB(70, 130, 220), nil, { shape = "Cylinder" })
+		cage:decor("BottleTop", Vector3.new(0.3, 0.4, 0.4), vertical(Vector3.new(-1.35 + i * 0.9, 2.2, 0)),
+			Color3.fromRGB(200, 200, 204), M.Metal, { shape = "Cylinder" })
 	end
 	-- The price pylon on the corner by the road.
 	b:part("Pylon", Vector3.new(1.4, 22, 1.4), Vector3.new(20, 11.5, -16), IRON)
 	b:decor("PriceBoard", Vector3.new(1, 9, 7), Vector3.new(20, 19, -16), white)
 	b:decor("PriceHead", Vector3.new(1.16, 2.6, 7.16), Vector3.new(20, 22.25, -16), RED)
+	b:decor("PriceStripe", Vector3.new(1.2, 0.3, 7.2), Vector3.new(20, 20.85, -16), GOLD)
 	painted(b, "ZEE", Kit.Look(Vector3.new(20.6, 22.2, -16), Vector3.new(30, 22.2, -16)), 5, 2, CREAM)
 	for i, price in ipairs({ "REG  3.49", "PLUS 3.79", "PREM 4.09" }) do
 		painted(b, price, Kit.Look(Vector3.new(20.55, 20.2 - i * 1.7, -16), Vector3.new(30, 20.2 - i * 1.7, -16)), 6, 1.2,
 			Color3.fromRGB(40, 60, 54), Enum.Font.GothamBold)
 	end
+	b:decor("PylonFoot", Vector3.new(2.4, 1, 2.4), Vector3.new(20, 1, -16), CURB)
 end
 
 --- The 24/7 store with the contracts board outside. Origin at the shop front, facing +X.
@@ -1776,6 +2220,12 @@ local function tower(b: Kit.Builder)
 	-- The way up: the lobby doors take you to the top floor (TowerService).
 	-- A stone stoop out front, so the doors meet the avenue on a step rather than the road.
 	b:part("TowerStoop", Vector3.new(34, 0.5, 8), Vector3.new(0, -0.25, -4), STONE, M.Concrete)
+	-- A clipped cypress in a stone planter at each end of the stoop.
+	for _, x in ipairs({ -14.5, 14.5 }) do
+		b:part("TowerPlanter", Vector3.new(3.2, 1.2, 3.2), Vector3.new(x, 0.6, -5), STONE_LIGHT, M.Concrete)
+		b:decor("Soil", Vector3.new(2.7, 0.1, 2.7), Vector3.new(x, 1.21, -5), SOIL, M.Ground)
+		cypress(b:within(CFrame.new(x, 1.2, -5)), if x > 0 then 71 else 17)
+	end
 	local door = b:decor("TowerDoor", Vector3.new(8, 0.08, 4), Vector3.new(0, 0.04, -3.4), NAVY, M.Fabric)
 	door:SetAttribute("PromptText", "Take the elevator")
 	door:SetAttribute("PromptObject", "ZEE TOWER · The Penthouse")
@@ -1797,7 +2247,7 @@ local function carPark(b: Kit.Builder, x0: number, x1: number, z0: number, z1: n
 			if n % 3 == 1 and cars > 0 then
 				cars -= 1
 				car(b:within(CFrame.new(x, 0.5, z + 3) * CFrame.Angles(0, math.rad(r == 1 and 90 or -90), 0)),
-					CAR_COLOURS[(n * 5) % #CAR_COLOURS + 1])
+					CAR_COLOURS[(n * 5) % #CAR_COLOURS + 1], CAR_KINDS[(n * 2) % #CAR_KINDS + 1])
 			end
 		end
 	end
@@ -1835,6 +2285,16 @@ local function pocketPark(b: Kit.Builder)
 	for _, x in ipairs({ -8, 8 }) do
 		bench(b:within(CFrame.new(x, 0, 3.2)))
 		bench(b:within(CFrame.new(x, 0, -3.2) * CFrame.Angles(0, math.pi, 0)))
+		-- A flowering shrub at the end of each bench.
+		for _, z in ipairs({ -3.6, 3.6 }) do
+			shrub(b:within(CFrame.new(x + (if x > 0 then 4.4 else -4.4), 0.55, z)), math.floor(x * 7 + z * 3))
+		end
+	end
+	-- Cypresses either side of the long path where it comes in through the hedge.
+	for _, x in ipairs({ -W / 2 + 3.4, W / 2 - 3.4 }) do
+		for _, z in ipairs({ -3.4, 3.4 }) do
+			cypress(b:within(CFrame.new(x, 0.5, z)), math.floor(x + z * 5))
+		end
 	end
 	-- The statue: a figure on a plinth, arm raised with a torch.
 	b:part("Plinth", Vector3.new(4, 3, 4), Vector3.new(0, 2, 0), STONE, M.Granite)
@@ -2716,7 +3176,7 @@ function Downtown.Build(parent: Instance, centre: Vector3)
 			local colour = CAR_COLOURS[(carIndex * 3) % #CAR_COLOURS + 1]
 			local cf = alongZ and (CFrame.new(across, 0, d) * CFrame.Angles(0, math.rad(facing), 0))
 				or (CFrame.new(d, 0, across) * CFrame.Angles(0, math.rad(facing), 0))
-			car(root:within(cf), colour)
+			car(root:within(cf), colour, CAR_KINDS[(carIndex - 1) % #CAR_KINDS + 1])
 		end
 	end
 	parkRow(true, 14.5, 80, 180, 54, 180)
@@ -2811,9 +3271,9 @@ function Downtown.Build(parent: Instance, centre: Vector3)
 	-- South-east: ZEE GUNS and ZEE TACTICS on the avenue, a car park south of them, and a
 	-- street wall of offices behind.
 	storefront(root:within(CFrame.new(ROAD + WALK + 2, 0.5, -64)), "ZEE GUNS", "Guns & Builds", GREEN, BRICK, "GunCounter",
-		"Browse guns", 34, 40, "guns", { ClerkName = "Rico", ClerkTitle = "ZEE GUNS", ClerkShirt = GREEN })
+		"Open Shop", 34, 40, "guns", { ClerkName = "Rico", ClerkTitle = "ZEE GUNS", ClerkShirt = GREEN })
 	storefront(root:within(CFrame.new(ROAD + WALK + 2, 0.5, -110)), "ZEE TACTICS", "Heals · Armor · Bombs", ORANGE,
-		FACADE[8], "TacticsCounter", "Shop gear", 34, 40, "tactics",
+		FACADE[8], "TacticsCounter", "Open Shop", 34, 40, "tactics",
 		{ ClerkName = "Vic", ClerkTitle = "ZEE TACTICS", ClerkShirt = Color3.fromRGB(44, 52, 66) })
 	carPark(root, ROAD + WALK + 2, 64, -186, -136, 2)
 	for _, spec in ipairs({

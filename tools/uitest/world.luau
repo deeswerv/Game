@@ -630,6 +630,8 @@ local function makeCharacter()
 	local root = R.new("Part")
 	root.Name = "HumanoidRootPart"
 	root.Size = roblox.Vector3.new(2, 2, 1)
+	-- Standing still, as the engine reports a body that is not moving.
+	force(root, "AssemblyLinearVelocity", roblox.Vector3.new(0, 0, 0))
 	root.Parent = character
 	local head = R.new("Part")
 	head.Name = "Head"
