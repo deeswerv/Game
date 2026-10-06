@@ -110,6 +110,53 @@ for i = 1, 90 do
 end
 check(maxOff < 0.25, ("running, the feet stay on the floor (within %.2f)"):format(maxOff))
 check(leftAhead > 10 and rightAhead > 10, ("and take turns in front (%d / %d frames)"):format(leftAhead, rightAhead))
+
+-- A real stride, not a shuffle: the feet well apart, a heel kicked up behind, the body leaning
+-- into it -- for a run and harder for a sprint; a walk always keeps a foot down.
+local function gait(velocity, sprint, armed)
+	local st = Motion.NewState()
+	local spread, kick, lean, off = 0, 0, 0, 0
+	for i = 1, 120 do
+		local poses = Motion.Step(st, input({ velocity = velocity, sprint = sprint, armed = armed }))
+		if i > 40 then
+			local at = solve(poses)
+			spread = math.max(spread, math.abs(at.LeftFoot.Position.Z - at.RightFoot.Position.Z))
+			kick = math.max(kick, math.max(at.LeftFoot.Position.Y, at.RightFoot.Position.Y) - (floor + 0.35))
+			lean = math.max(lean, at.LowerTorso.Position.Z - at.Head.Position.Z)
+			off = math.max(off, math.abs(lowest(at) - floor))
+		end
+	end
+	return spread, kick, lean, off, st
+end
+local wSpread, _, _, wOff = gait(Vector3.new(0, 0, -8), false, false)
+local rSpread, rKick, rLean = gait(Vector3.new(0, 0, -16), false, false)
+local sSpread, sKick, sLean = gait(Vector3.new(0, 0, -26), true, false)
+check(wOff < 0.12, ("walking, a foot is always down (within %.2f)"):format(wOff))
+check(rSpread > 1.2 and sSpread > rSpread, ("a run strides out (%.2f studs foot to foot), a sprint further (%.2f)"):format(rSpread, sSpread))
+check(rKick > 0.6 and sKick > rKick, ("the heel kicks up behind (%.2f, sprinting %.2f)"):format(rKick, sKick))
+check(rLean > 0.25 and sLean > rLean, ("and the body leans into it (head %.2f ahead, sprinting %.2f)"):format(rLean, sLean))
+local back = Motion.NewState()
+local backOff, ahead = 0, { 0, 0 }
+for i = 1, 90 do
+	local at = solve(Motion.Step(back, input({ velocity = Vector3.new(0, 0, 10) })))
+	if i > 40 then
+		backOff = math.max(backOff, math.abs(lowest(at) - floor))
+		ahead[if at.LeftFoot.Position.Z < at.RightFoot.Position.Z then 1 else 2] += 1
+	end
+end
+check(backOff < 0.2 and ahead[1] > 10 and ahead[2] > 10, ("backing up steps foot over foot (off the floor by %.2f)"):format(backOff))
+
+-- A gun out: the hold keeps the chest square to the aim while the hips run under it; sprinting,
+-- the gun comes down and across into the carry.
+local _, _, _, _, armedRun = gait(Vector3.new(0, 0, -16), false, true)
+local pelvis = armedRun.poses.LowerTorso
+local square = (pelvis - pelvis.Position) * armedRun.chest
+local squareAngle = math.deg(math.acos(math.clamp((square.LookVector:Dot(Vector3.new(0, 0, -1))), -1, 1)))
+check(squareAngle < 3, ("running with a gun up, the chest stays square to the aim (%.1f degrees off)"):format(squareAngle))
+local _, _, _, _, armedSprint = gait(Vector3.new(0, 0, -26), true, true)
+local carry = ((armedSprint.poses.LowerTorso - armedSprint.poses.LowerTorso.Position) * armedSprint.chest).LookVector
+check(carry.X < -0.25 and carry.Y < -0.1, ("sprinting, it turns into the carry (chest facing %.2f, %.2f, %.2f)")
+	:format(carry.X, carry.Y, carry.Z))
 local strafe = Motion.NewState()
 local sideways, forwards = 0, 0
 for i = 1, 60 do
@@ -153,6 +200,11 @@ for _, spec in ipairs({ { "forward", Vector3.new(0, 0, -1) }, { "backward", Vect
 end
 check(Motion.RollDirection(Vector3.new()) == Vector3.new(0, 0, -1), "nothing held: a forward roll")
 check(Motion.RollSpeed(0) > Motion.RollSpeed(Motion.ROLL_TIME * 0.9), "the push is strongest at the start")
+local covered, step = 0, 1 / 120
+for t = 0, Motion.ROLL_TIME - step, step do
+	covered += Motion.RollSpeed(t) * step
+end
+check(covered > 15, ("a roll covers real ground (%.1f studs)"):format(covered))
 
 print("ShiftLock: crouch and roll")
 local rig = Rig.character(World, place)
@@ -194,12 +246,17 @@ check(not Motion.Local.crouch and humanoid.WalkSpeed == 16, "letting go stands y
 
 sent = {}
 World.force(humanoid, "MoveDirection", Vector3.new(0, 0, 0))
+World.force(root, "AssemblyMass", 14) -- the engine works this out; the stand-in rig has none
 World.pressKey(roblox.Enum.KeyCode.Q, 0.05)
 World.advance(0.1)
 local roll = Motion.Local.roll
 check(roll ~= nil and roll.dir == Vector3.new(0, 0, -1), "Q while standing still: a forward roll")
 local v = root.AssemblyLinearVelocity
 check(Vector3.new(v.X, 0, v.Z).Magnitude > 20, ("pushed along (%.0f studs/s)"):format(Vector3.new(v.X, 0, v.Z).Magnitude))
+local push = root:FindFirstChild("RollPush")
+check(push and push.ClassName == "LinearVelocity" and push.PlaneVelocity.Magnitude > 30
+	and push.VelocityConstraintMode == roblox.Enum.VelocityConstraintMode.Plane,
+	"held along the floor by a constraint the walk cannot pull back (up and down left to gravity)")
 check(#sent == 1 and sent[1][1] == "roll", "the server is told")
 World.advance(0.3)
 World.pressKey(roblox.Enum.KeyCode.Q, 0.05)
@@ -207,6 +264,7 @@ World.advance(0.1)
 check(#sent == 1, "a second Q mid-roll does nothing")
 World.advance(Motion.ROLL_TIME + Motion.ROLL_COOLDOWN)
 check(Motion.Local.roll == nil, "the roll ends on its own")
+check(root:FindFirstChild("RollPush") == nil, "and the push is taken off")
 World.force(humanoid, "MoveDirection", root.CFrame.RightVector)
 World.pressKey(roblox.Enum.KeyCode.Q, 0.05)
 World.advance(0.1)

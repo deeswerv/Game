@@ -75,7 +75,7 @@ local function copyAttachments(ctx, rawTool, copy, toolName)
 	end
 end
 
-function Hold.pose(ctx, toolName: string, stance: string?)
+function Hold.pose(ctx, toolName: string, stance: string?, waistLayer: CFrame?)
 	local World, rig = ctx.World, ctx.rig
 	rig:SetAttribute("Aiming", stance == "aim" or nil)
 
@@ -112,6 +112,20 @@ function Hold.pose(ctx, toolName: string, stance: string?)
 		LeftElbow = rig:GetAttribute("PoseLeftElbow"),
 		Waist = rig:GetAttribute("PoseWaist"),
 	}
+	-- An offset the gun hold folds in after the stance (PoseLayers): the gait's chest.
+	if waistLayer then
+		local base = override.Waist
+		if not base then
+			for _, j in ipairs(ctx.joints) do
+				if j.name == "Waist" then
+					base = j.c0
+				end
+			end
+		end
+		-- Expressed after the stance's own waist turn, exactly as MotionAnimator hands it over.
+		local turn = base.Rotation
+		override.Waist = base * (turn:Inverse() * waistLayer * turn)
+	end
 	local placed = { HumanoidRootPart = CFrame.new(0, 3, 0) }
 	local progress = true
 	while progress do

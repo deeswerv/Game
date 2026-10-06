@@ -103,6 +103,7 @@ local rollUntil = 0
 local rollReadyAt = 0
 local rollWorld = Vector3.zero
 local rollWasDown = false
+local rollPush: LinearVelocity? = nil
 
 -- Crouch and roll are told to the server (MovementService), which marks the character so
 -- everyone else sees them; this client poses its own body from Motion.Local straight away.
@@ -153,10 +154,14 @@ local function onCharacterAdded(char: Model)
 	fovBoost = 0
 	wasAirborne = false
 	player:SetAttribute("Sprinting", false)
-	-- A new body starts standing, with a roll ready.
+	-- A new body starts standing, with a roll ready (and no push left from the last one).
 	crouching = false
 	rollUntil = 0
 	rollReadyAt = 0
+	if rollPush then
+		rollPush:Destroy()
+		rollPush = nil
+	end
 	Motion.Local.crouch = false
 	Motion.Local.roll = nil
 	player:SetAttribute("Crouching", false)
@@ -310,15 +315,49 @@ end
 -- ---------------------------------------------------------------------- roll --
 
 -- Q: a quick roll the way you are moving (W forward, S back, A/D to the side; standing
--- still, forward). The push is driven straight onto the velocity for the roll's length and
--- bleeds off on its own, exactly like the slide, so nothing is ever left switched on. It
--- replaces the old dash on Q. Polled, like crouch, so nothing that claims the key first can
--- swallow it.
+-- still, forward). It replaces the old dash on Q. Polled, like crouch, so nothing that claims
+-- the key first can swallow it.
+--
+-- The push is a LinearVelocity on the ground plane for the roll's length. Writing the velocity
+-- each frame, as the slide does, is not enough for a roll: the humanoid's own controller pulls
+-- the body back toward walking pace every physics step, and most of the distance was lost. The
+-- constraint holds the speed across the floor and leaves up and down to gravity, and it is
+-- removed the moment the roll ends, so nothing is ever left switched on.
 local function rollKeyDown(): boolean
 	if UserInputService:GetFocusedTextBox() then
 		return false
 	end
 	return UserInputService:IsKeyDown(Enum.KeyCode.Q)
+end
+
+local function stopRollPush()
+	if rollPush then
+		rollPush:Destroy()
+		rollPush = nil
+	end
+end
+
+local function startRollPush(rootPart: BasePart)
+	stopRollPush()
+	local attachment = rootPart:FindFirstChild("RootAttachment")
+	if not attachment or not attachment:IsA("Attachment") then
+		local made = Instance.new("Attachment")
+		made.Name = "RollAttachment"
+		made.Parent = rootPart
+		attachment = made
+	end
+	local push = Instance.new("LinearVelocity")
+	push.Name = "RollPush"
+	push.Attachment0 = attachment :: Attachment
+	push.RelativeTo = Enum.ActuatorRelativeTo.World
+	push.VelocityConstraintMode = Enum.VelocityConstraintMode.Plane
+	push.PrimaryTangentAxis = Vector3.new(1, 0, 0)
+	push.SecondaryTangentAxis = Vector3.new(0, 0, 1)
+	-- Strong enough to hold its line against the walk controller, not to shove through walls.
+	push.MaxForce = rootPart.AssemblyMass * 900
+	push.PlaneVelocity = Vector2.new(rollWorld.X, rollWorld.Z) * Motion.RollSpeed(0)
+	push.Parent = rootPart
+	rollPush = push
 end
 
 local function beginRoll()
@@ -343,6 +382,7 @@ local function beginRoll()
 	rollUntil = now + Motion.ROLL_TIME
 	rollReadyAt = rollUntil + Motion.ROLL_COOLDOWN
 	Motion.Local.roll = { dir = dir, start = now }
+	startRollPush(rootPart)
 	tellServer("roll", dir)
 	ViewKick.Land(0.35)
 	CombatFX.LandDust(rootPart.Position - Vector3.new(0, 2.6, 0), 0.5, character)
@@ -501,11 +541,17 @@ RunService:BindToRenderStep("TacticalCamera", Enum.RenderPriority.Camera.Value +
 			-- Off a ledge or a jump mid-roll: the push stops, the body finishes its turn.
 			rollUntil = now
 			rolling = false
+			stopRollPush()
 		else
 			local speed = Motion.RollSpeed(Motion.ROLL_TIME - (rollUntil - now))
 			local velocity = rootPart.AssemblyLinearVelocity
 			rootPart.AssemblyLinearVelocity = Vector3.new(rollWorld.X * speed, velocity.Y, rollWorld.Z * speed)
+			if rollPush then
+				rollPush.PlaneVelocity = Vector2.new(rollWorld.X, rollWorld.Z) * speed
+			end
 		end
+	elseif rollPush then
+		stopRollPush()
 	end
 	local localRoll = Motion.Local.roll
 	if localRoll and now - localRoll.start >= Motion.ROLL_TIME then

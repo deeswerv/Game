@@ -16,8 +16,8 @@
 -- climbing or an emote take over without a snap.
 --
 -- Bound just before WeaponPoseHold (Last), HeadLook (Last + 1) and EmoteAnimator (Last + 2).
--- With a gun out the weapon hold owns the arms and the chest, so they are left to it; the
--- neck is always HeadLook's.
+-- With a gun out the weapon hold owns the arms and the chest, so they are left to it -- the
+-- gait only hands it a chest offset (PoseLayers); the neck is always HeadLook's.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -25,6 +25,7 @@ local RunService = game:GetService("RunService")
 local StarterPlayer = game:GetService("StarterPlayer")
 
 local Motion = require(ReplicatedStorage:WaitForChild("Motion"))
+local PoseLayers = require(ReplicatedStorage:WaitForChild("PoseLayers"))
 local EmotePlayer = require(ReplicatedStorage:WaitForChild("EmotePlayer"))
 local CombatFX = require(ReplicatedStorage:WaitForChild("CombatFX"))
 
@@ -47,6 +48,7 @@ type Entry = {
 	grounded: boolean,
 	fall: number,
 	rollAt: number?,
+	layered: boolean,          -- a chest offset is handed to the gun hold (PoseLayers)
 }
 
 local entries: { [Model]: Entry } = {}
@@ -95,12 +97,16 @@ local function entryFor(character: Model): Entry
 		return entry
 	end
 	local created: Entry = { state = Motion.NewState(), joints = jointsOf(character), grounded = true, fall = 0,
-		rollAt = character:GetAttribute("RollAt") :: number? }
+		rollAt = character:GetAttribute("RollAt") :: number?, layered = false }
 	entries[character] = created
 	return created
 end
 
-local function release(entry: Entry)
+local function release(entry: Entry, character: Model)
+	if entry.layered then
+		PoseLayers.Clear(character)
+		entry.layered = false
+	end
 	for _, joint in pairs(entry.joints) do
 		if joint.touched and joint.motor.Parent then
 			joint.motor.C0 = joint.rest
@@ -122,7 +128,7 @@ local function animate(character: Model, dt: number, eye: Vector3, isLocal: bool
 	local entry = entries[character]
 	if humanoid.Health <= 0 or (root.Position - eye).Magnitude > RANGE then
 		if entry then
-			release(entry)
+			release(entry, character)
 			entries[character] = nil
 		end
 		return
@@ -184,6 +190,21 @@ local function animate(character: Model, dt: number, eye: Vector3, isLocal: bool
 		active = not NOT_OURS[stateName] and not humanoid.Sit and not emoting(character),
 	})
 
+	-- With a gun out the hold owns the chest, so the gait's say in it goes through PoseLayers: the
+	-- pelvis's lean and twist taken back out (the gun stays on the aim while the legs run), and
+	-- sprinting, the carry. The hold folds the layer in after the stance's own waist turn, so
+	-- it is expressed in that frame.
+	if armed and cover > 1e-3 then
+		local stance = character:GetAttribute("PoseWaist")
+		local turn = if typeof(stance) == "CFrame" then stance.Rotation else CFrame.identity
+		local layer = turn:Inverse() * entry.state.chest * turn
+		PoseLayers.Set(character, nil, nil, CFrame.identity:Lerp(layer, cover))
+		entry.layered = true
+	elseif entry.layered then
+		PoseLayers.Clear(character)
+		entry.layered = false
+	end
+
 	for name, joint in pairs(entry.joints) do
 		local motor = joint.motor
 		local pose = poses[name]
@@ -213,7 +234,7 @@ local function step(dt: number)
 	-- Characters that are gone (a respawn, a leaver) are let go of.
 	for character, entry in pairs(entries) do
 		if not character.Parent then
-			release(entry)
+			release(entry, character)
 			entries[character] = nil
 		end
 	end

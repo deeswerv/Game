@@ -50,7 +50,7 @@ The live game always saves.
 | **V** | Go to (or leave) the gun range |
 | **Shift** or double-tap **W** | Sprint; **Ctrl** / **C** while sprinting slides |
 | Hold **C** (or **Ctrl**) | Crouch: half speed, the camera comes down, and the gun's spread tightens by a quarter; let go to stand |
-| **Q** | Roll the way you are moving -- **W** forward, **S** back, **A**/**D** to the side, forward if standing still -- about 10 studs, then a short cooldown |
+| **Q** | Roll the way you are moving -- **W** forward, **S** back, **A**/**D** to the side, forward if standing still -- about 18 studs, then a short cooldown |
 | Hold **F** | Aim the selected throwable (an arc shows where it lands); let go to throw |
 | **X** | Switch throwable: Frag (from level 3), Flashbang (level 7), Smoke |
 | **Z** | Heal: the equipped heal (the Field Medkit patches 50 health over a second) |
@@ -58,14 +58,20 @@ The live game always saves.
 | **U** (hold, let go) | Call in an airstrike you have earned: a red mark follows your crosshair, let go to call it |
 
 **How you move.** Every player's body is posed by the game itself rather than Roblox's stock
-animations (`ReplicatedStorage/Motion.luau`, drawn by `MotionAnimator`): a stylised walk and run
-that steps the way you are actually going (strafing and backpedalling included), knees up and
-arms pumping, a lean and a harder pump when sprinting, a crouch with the feet kept flat, knees
-tucked in the air, a dip on landing, and a tucked somersault for the roll that stays on the
-floor in every direction. Every change blends rather than snaps. Other players see all of it:
+animations (`ReplicatedStorage/Motion.luau`, drawn by `MotionAnimator`): keyframed walk, run and
+sprint cycles blended by speed -- heel strike and push-off, the heel kicked up behind and the
+knee driven through, a moment in the air, the feet kept planted on the floor -- leaning into the
+run (hard when sprinting), hips and chest turning against each other, stepping the way you are
+actually going (strafes bank, backpedalling plays the cycle in reverse). With a gun out the
+chest stays square to your aim while the legs run, and a sprint drops the gun into a carry
+across the body. Then a crouch with the feet kept flat, knees tucked in the air, a dip on
+landing, and a tucked somersault for the roll that stays on the floor in every direction and
+carries you about 18 studs. Every change blends rather than snaps. Other players see all of it:
 everyone's client poses everyone from what it can see, and the crouch and roll are marked on the
 character by `MovementService`. The old dash on Q is gone. `lune run tools/mapview/poses.luau --
-out.json run` (or `crouch`, `roll`, `rollside`, `air`...) renders the poses on the real rig;
+out.json run` (or `walk`, `sprint`, `crouch`, `roll`, `rollside`, `air`...; `POSE_YAW=90` for a side
+view) renders the poses on the real rig, and `tools/weapons/holdview.luau -- Carbine out.json sprint`
+the carry;
 `tools/uitest/movement.luau` checks them and the controls.
 
 You can also queue by standing on one of the **1V1 pads** in Downtown's DUEL HALL (the lobby's

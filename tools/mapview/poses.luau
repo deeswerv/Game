@@ -10,6 +10,7 @@
 -- givers' (ReplicatedStorage.StaffPose): handsup (a robbery, from the jolt to held), folded (a
 -- clerk at rest), talk, wave, bound (a captive). Each frame is the rig posed by
 -- forward kinematics through its real Motor6Ds, so what shows is what the joints would do.
+-- POSE_YAW=90 turns every rig side-on (facing along the row) for a camera looking from +Z.
 -- Also prints the lowest point of every frame (feet should stay near the floor; a roll should
 -- not sink into it).
 
@@ -214,8 +215,9 @@ floor.Parent = stage
 local _, restLow = posed({}, roblox.CFrame.new())
 local lows = {}
 for i, f in ipairs(frames) do
-	local at = roblox.CFrame.new((i - 1) * 5, -restLow, 0) * roblox.CFrame.Angles(0, math.rad(if sequence == "strafe" or sequence == "rollside" then 180
-		elseif STAFF[sequence] then 155 else 130), 0)
+	local yaw = tonumber(process.env.POSE_YAW) -- e.g. 90: every rig side-on to a camera on +Z
+		or if sequence == "strafe" or sequence == "rollside" then 180 elseif STAFF[sequence] then 155 else 130
+	local at = roblox.CFrame.new((i - 1) * 5, -restLow, 0) * roblox.CFrame.Angles(0, math.rad(yaw), 0)
 	local rig, low = posed(f, at)
 	rig.Parent = stage
 	table.insert(lows, ("%.2f"):format(low))
