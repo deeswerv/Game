@@ -8,7 +8,7 @@
 -- (backpedalling), crouch (standing, then crouched, then crouch-walking), roll (forward),
 -- rollside (to the right), air (a jump and the landing), idle; and the clerks' and quest
 -- givers' (ReplicatedStorage.StaffPose): handsup (a robbery, from the jolt to held), folded (a
--- clerk at rest), talk, wave. Each frame is the rig posed by
+-- clerk at rest), talk, wave, bound (a captive). Each frame is the rig posed by
 -- forward kinematics through its real Motor6Ds, so what shows is what the joints would do.
 -- Also prints the lowest point of every frame (feet should stay near the floor; a roll should
 -- not sink into it).
@@ -103,7 +103,7 @@ if sequence == "bake" then
 	process.exit(0)
 end
 
-local STAFF = { handsup = true, folded = true, talk = true, wave = true }
+local STAFF = { handsup = true, folded = true, talk = true, wave = true, bound = true }
 local frames = {}
 local function input(over)
 	local t = {
@@ -177,6 +177,10 @@ elseif sequence == "roll" or sequence == "rollside" or sequence == "rollback" th
 elseif sequence == "handsup" then
 	for _, since in ipairs({ 0, 0.08, 0.16, 0.26, 0.4, 0.8, 2.0 }) do
 		table.insert(frames, StaffPose.Blend(StaffPose.Idle(since, 0, "folded"), StaffPose.HandsUp(since, since), 1))
+	end
+elseif sequence == "bound" then
+	for _, t in ipairs({ 1.5, 2.5, 3.6, 5.2, 5.4, 5.6, 5.9 }) do
+		table.insert(frames, StaffPose.Bound(t, 0))
 	end
 elseif sequence == "folded" or sequence == "talk" or sequence == "wave" then
 	for i = 0, 6 do

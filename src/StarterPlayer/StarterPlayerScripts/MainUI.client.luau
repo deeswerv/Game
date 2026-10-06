@@ -40,6 +40,7 @@ local WorldEvents = require(Modules:WaitForChild("WorldEvents"))
 local Bounties = require(Modules:WaitForChild("Bounties"))
 local Streaks = require(Modules:WaitForChild("Streaks"))
 local Stickups = require(Modules:WaitForChild("Stickups"))
+local Hanami = require(Modules:WaitForChild("Hanami"))
 local Wayfinding = require(Modules:WaitForChild("Wayfinding"))
 local StreakConfig = require(ReplicatedStorage:WaitForChild("StreakConfig"))
 local LevelRoad = require(Modules:WaitForChild("LevelRoad"))
@@ -170,6 +171,15 @@ end)
 Remote.get("Remotes", "StickupEvent").OnClientEvent:Connect(function(kind: unknown, data: unknown)
 	if type(kind) == "string" then
 		stickups:Handle(kind, data)
+	end
+end)
+-- Hanami Valley: the farm raid bar, the clues, the bosses.
+local hanami = safe("Hanami", function()
+	return Hanami.new(screen, toast)
+end)
+Remote.get("Remotes", "HanamiEvent").OnClientEvent:Connect(function(kind: unknown, data: unknown)
+	if type(kind) == "string" then
+		hanami:Handle(kind, data)
 	end
 end)
 -- Killstreak rewards: the meter over the weapon dock, and the news when one lands. The
@@ -1008,7 +1018,7 @@ do
 				colour = TOWER_GOLD, sound = "Ring" })
 			if info.first then
 				toast:Banner({ title = "THE WORLD OPENS",
-					subtitle = "The Flats, Watchpoint and the Reach are on your Travel menu",
+					subtitle = "Hanami Valley, the Flats, Watchpoint and the Reach are on your Travel menu",
 					colour = Theme.Colour.Accent, sound = "Ring" })
 			end
 		elseif kind == "reset" then

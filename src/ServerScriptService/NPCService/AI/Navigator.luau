@@ -27,7 +27,9 @@ local FAIL_MEMORY = 5            -- seconds a failed destination is avoided
 
 -- Speeds as a share of the archetype's full pace. The client matches the walk and run
 -- animations to the speed that actually results, so these can be tuned freely.
-Navigator.Pace = { run = 1, walk = 0.45, creep = 0.32 }
+-- "charge" is a dash: as many times its run as its archetype's Charge.speed says (2.4 if it
+-- does not say), for the moment it lasts (StateMachine decides when).
+Navigator.Pace = { run = 1, walk = 0.45, creep = 0.32, charge = 2.4 }
 
 function Navigator.new(agent)
 	local self = setmetatable({}, Navigator)
@@ -88,6 +90,9 @@ end
 function Navigator:SetPace(pace: string)
 	local agent = self.agent
 	local share = Navigator.Pace[pace] or 1
+	if pace == "charge" and type(agent.cfg.Charge) == "table" and type(agent.cfg.Charge.speed) == "number" then
+		share = agent.cfg.Charge.speed
+	end
 	local speed = agent.cfg.WalkSpeed * share
 	if math.abs(agent.humanoid.WalkSpeed - speed) > 0.05 then
 		agent.humanoid.WalkSpeed = speed

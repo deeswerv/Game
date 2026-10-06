@@ -322,13 +322,34 @@ STATES.Alert = {
 	end,
 }
 
-local function engageMelee(agent, now: number, info)
+local function engageMelee(agent: any, now: number, info: any)
 	local cfg = agent.cfg
 	Body.SetStance(agent, false, false)
 	if agent.swing then
 		agent.nav:Stop()
 		Body.Face(agent, info.position)
 		return
+	end
+	-- A dash (Shinobi): from a middling distance, cover the gap in a burst, straight at them,
+	-- then swing on arrival. Everyone nearby sees the dust kick up and hears it go.
+	local charge = cfg.Charge
+	if type(charge) == "table" and info.visible then
+		if (agent.chargeUntil or 0) > now then
+			Body.Face(agent, info.position)
+			agent.nav:MoveTo(info.position, "charge")
+			if info.distance <= cfg.AttackRange + 0.5 then
+				agent.chargeUntil = 0
+			end
+			return
+		end
+		if info.distance >= (charge.min or 12) and info.distance <= (charge.range or 36) and now >= (agent.chargeReadyAt or 0) then
+			agent.chargeUntil = now + (charge.time or 0.5)
+			agent.chargeReadyAt = now + (charge.cooldown or 4)
+			Effects.Send(agent.root.Position, "Charge", agent.model, info.position)
+			Body.Face(agent, info.position)
+			agent.nav:MoveTo(info.position, "charge")
+			return
+		end
 	end
 	if info.visible and info.distance <= cfg.AttackRange + 0.5 then
 		agent.nav:Stop()
@@ -427,6 +448,20 @@ STATES.Engage = {
 				StateMachine.Set(agent, "Reposition", now)
 				return
 			end
+		end
+
+		-- Behind a shield: square on to the target, walking in to its range and holding there --
+		-- never sidestepping, which would show its flank. Without the shield, it fights like
+		-- anyone else.
+		if cfg.Behaviour == "Shield" and not agent.model:GetAttribute("ShieldBroken") then
+			local want = cfg.PreferredRange or 18
+			local toward = World.Flat(info.position - agent.root.Position)
+			if info.distance > want + 3 and toward.Magnitude > 0.5 then
+				agent.nav:MoveTo(info.position - toward.Unit * want, "walk")
+			else
+				agent.nav:Stop()
+			end
+			return
 		end
 
 		local slot = Squad.SlotFor(agent, info, now)
@@ -859,5 +894,8 @@ function StateMachine.Kill(agent, now: number)
 	Cover.Release(agent)
 	agent.nav:Destroy()
 end
+
+-- The states themselves, for the checks in tools/uitest to drive one directly.
+StateMachine.States = STATES
 
 return StateMachine

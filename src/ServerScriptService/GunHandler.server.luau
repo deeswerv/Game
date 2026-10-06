@@ -339,6 +339,36 @@ local function drawnMuzzle(character: Model, claimed: any): Vector3?
 	return claimed
 end
 
+--- Take `left` as what a shield has left after a hit; at zero it breaks: the slab and its trim
+--- come off the arm and tumble away, and the holder fights on without it (StateMachine reads
+--- ShieldBroken).
+local function breakShield(shield: BasePart, left: number, dir: Vector3)
+	if left > 0 then
+		shield:SetAttribute("ShieldHealth", left)
+		return
+	end
+	local model = shield.Parent
+	if model and model:IsA("Model") then
+		model:SetAttribute("ShieldBroken", true)
+		for _, d in ipairs(model:GetChildren()) do
+			if d:IsA("BasePart") and (d.Name == "Shield" or d.Name == "ShieldRim" or d.Name == "ShieldCrest" or d.Name == "ShieldSlit") then
+				local weld = d:FindFirstChildOfClass("WeldConstraint")
+				if weld then
+					weld:Destroy()
+				end
+				d:SetAttribute("ShieldHealth", nil)
+				d.CanQuery = false
+				d.CanCollide = true
+				d.Massless = false
+				d.Parent = workspace
+				d.AssemblyLinearVelocity = dir * 22 + Vector3.new(0, 14, 0)
+				d.AssemblyAngularVelocity = Vector3.new(math.random() * 8 - 4, math.random() * 8 - 4, math.random() * 8 - 4)
+				game:GetService("Debris"):AddItem(d, 5)
+			end
+		end
+	end
+end
+
 local function fire(player: Player, tool: Tool, cfg, aimPoint: Vector3, ads: boolean, claimedMuzzle: any)
 	local st = stateFor(tool, cfg)
 	if st.reloading then
@@ -425,6 +455,17 @@ local function fire(player: Player, tool: Tool, cfg, aimPoint: Vector3, ads: boo
 				break
 			end
 			local hitPos = result.Position
+			-- A Shieldbearer's shield (NPCService.Body): the round stops dead on it, and what it
+			-- would have done comes off the shield instead, until the shield breaks.
+			local shieldLeft = result.Instance:GetAttribute("ShieldHealth")
+			if type(shieldLeft) == "number" then
+				finalPos = hitPos
+				table.insert(wallHits, hitPos)
+				local damage = damageFor(cfg :: any, "Shield", (hitPos - origin).Magnitude)
+				breakShield(result.Instance :: BasePart, shieldLeft - damage * kept, dir)
+				GunEffect:FireClient(player, "Hitmarker", false, false, false)
+				break
+			end
 			local model = result.Instance:FindFirstAncestorOfClass("Model")
 			local victim = model and model:FindFirstChildOfClass("Humanoid")
 			if victim then

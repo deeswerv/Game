@@ -98,6 +98,11 @@ function QuestService.WaypointFor(objective: any): (Vector3?, string?)
 	if objective.kind == "TowerWin" then
 		return DOWNTOWN + Vector3.new(0, 3.5, 156), "ZEE TOWER"
 	end
+	-- Anything else that says where it happens (Hanami Valley's jobs: the camp, the
+	-- Ironworks, the farm, the Keep) is marked there.
+	if typeof(objective.position) == "Vector3" then
+		return objective.position, objective.where or objective.label
+	end
 	return nil, nil
 end
 
@@ -414,6 +419,7 @@ function QuestService.Accept(player: Player, questId: string)
 
 	replica:SetValue("CurrentQuest", questId)
 	replica:SetValue("QuestProgress", 0)
+	replica:SetValue("QuestSeen", {})
 	push(player)
 	return { ok = true, reason = "Accepted: " .. quest.title }
 end
@@ -425,6 +431,7 @@ function QuestService.Abandon(player: Player)
 	end
 	replica:SetValue("CurrentQuest", "")
 	replica:SetValue("QuestProgress", 0)
+	replica:SetValue("QuestSeen", {})
 	push(player)
 	return { ok = true, reason = "Abandoned" }
 end
@@ -441,6 +448,7 @@ local function complete(player: Player, replica, quest)
 	end
 	replica:SetValue("CurrentQuest", "")
 	replica:SetValue("QuestProgress", 0)
+	replica:SetValue("QuestSeen", {})
 
 	local stats = player:FindFirstChild("leaderstats")
 	local coins = stats and stats:FindFirstChild("Coins")
@@ -475,7 +483,7 @@ end
 --- Pulled out of RegisterKill so it can be tested on its own: the rest of RegisterKill
 --- needs a loaded profile with an active quest, which makes the matching rules -- the part
 --- that actually has edge cases -- the hardest bit to exercise.
-function QuestService.ObjectiveMatches(obj, victimArchetype: string?, ctx): boolean
+function QuestService.ObjectiveMatches(obj: any, victimArchetype: string?, ctx: any): boolean
 	if obj.kind == "Kill" then
 		if not victimArchetype then
 			return false -- an NPC objective is not advanced by killing players
@@ -486,7 +494,15 @@ function QuestService.ObjectiveMatches(obj, victimArchetype: string?, ctx): bool
 	elseif obj.kind == "KillElite" then
 		return victimArchetype ~= nil and ctx ~= nil and ctx.elite == true
 	elseif obj.kind == "KillInZone" then
-		if not victimArchetype or not ctx or ctx.zone ~= obj.zone then
+		if not victimArchetype or not ctx then
+			return false
+		end
+		-- `zonePrefix` takes a whole region of zones ("Hanami_": anywhere in the valley).
+		if obj.zonePrefix then
+			if type(ctx.zone) ~= "string" or ctx.zone:sub(1, #obj.zonePrefix) ~= obj.zonePrefix then
+				return false
+			end
+		elseif ctx.zone ~= obj.zone then
 			return false
 		end
 		return obj.archetype == nil or obj.archetype == "Any" or obj.archetype == victimArchetype
@@ -567,11 +583,17 @@ end)
 -- ------------------------------------------------------------------- events --
 --
 -- Things other services tell the quest tracker about, that are not kills: a turf war won
--- (TurfWarService, with which patch and at what threat).
+-- (TurfWarService, with which patch and at what threat), the Don beaten (TowerService), and
+-- Hanami Valley's jobs (HanamiService).
+
+-- Which objective kind each Hanami event advances.
+QuestService.EVENT_OBJECTIVES = {
+	rescue = "Rescue", inspect = "Inspect", collect = "Collect", survive = "Survive", boss = "Boss",
+}
 
 --- Does this event count toward this objective? Pulled out, like ObjectiveMatches, so the
 --- rules can be tested without a profile.
-function QuestService.EventMatches(obj, kind: string, detail): boolean
+function QuestService.EventMatches(obj: any, kind: string, detail: any): boolean
 	if kind == "turf" and obj.kind == "TurfWin" then
 		detail = detail or {}
 		if obj.zone and detail.zone ~= obj.zone then
@@ -580,6 +602,22 @@ function QuestService.EventMatches(obj, kind: string, detail): boolean
 		return (tonumber(detail.threat) or 1) >= (obj.minThreat or 1)
 	end
 	if kind == "tower" and obj.kind == "TowerWin" then
+		return true
+	end
+	-- Hanami Valley's jobs (HanamiService): a captive freed, a clue read, a seal taken, the
+	-- farm held, a boss beaten. `boss`, `site` and `prefix` narrow which one counts.
+	local wants = QuestService.EVENT_OBJECTIVES[kind]
+	if wants and obj.kind == wants then
+		detail = detail or {}
+		if obj.boss and detail.boss ~= obj.boss then
+			return false
+		end
+		if obj.site and detail.site ~= obj.site then
+			return false
+		end
+		if obj.prefix and (type(detail.id) ~= "string" or detail.id:sub(1, #obj.prefix) ~= obj.prefix) then
+			return false
+		end
 		return true
 	end
 	return false
@@ -597,7 +635,7 @@ local PATCHES = {
 --- What to tell a player whose event did not count toward their job, as a title and a line,
 --- or nil when there is nothing useful to say. Only turf wars have one: the right fight in
 --- the wrong place, or at too low a threat.
-function QuestService.MissHint(obj, kind: string, detail): (string?, string?)
+function QuestService.MissHint(obj, kind: string, detail: any): (string?, string?)
 	if kind ~= "turf" or not obj or obj.kind ~= "TurfWin" then
 		return nil, nil
 	end
@@ -616,7 +654,7 @@ function QuestService.MissHint(obj, kind: string, detail): (string?, string?)
 	return nil, nil
 end
 
-function QuestService.RegisterEvent(player: Player, kind: string, detail)
+function QuestService.RegisterEvent(player: Player, kind: string, detail: any)
 	local replica = profileOf(player)
 	if not replica then
 		return
@@ -635,6 +673,20 @@ function QuestService.RegisterEvent(player: Player, kind: string, detail)
 			QuestUpdated:FireClient(player, QuestService.GetState(player), { hintTitle = title, hint = hint })
 		end
 		return
+	end
+	-- "Find four different clues": the same clue read twice counts once. What this job has
+	-- already counted is kept on the profile (QuestSeen), and cleared when the job changes.
+	if quest.objective.unique then
+		local id = type(detail) == "table" and detail.id
+		if type(id) ~= "string" then
+			return
+		end
+		local seen = table.clone(data.QuestSeen or {})
+		if table.find(seen, id) then
+			return
+		end
+		table.insert(seen, id)
+		replica:SetValue("QuestSeen", seen)
 	end
 	local progress = (data.QuestProgress or 0) + 1
 	if progress >= quest.objective.count then
@@ -807,6 +859,28 @@ local GIVER_LOOKS: { [string]: { [string]: any } } = {
 			{ "Jacket", inner = Color3.fromRGB(214, 204, 176) },
 			{ "Belt" }, { "Cargo" },
 			{ "Boots", colour = Color3.fromRGB(74, 54, 40) },
+		} :: { any },
+	},
+	-- Hanami Valley: the village elder under the Great Sakura, and the captain of what is left
+	-- of its guard, at the bridge.
+	Elder = {
+		Skin = Color3.fromRGB(226, 186, 150), Shirt = Color3.fromRGB(82, 70, 110), Pants = Color3.fromRGB(64, 56, 84),
+		Sleeves = true, LongSleeves = true,
+		Outfit = {
+			{ "Hair", style = "grey", colour = Color3.fromRGB(214, 214, 218) },
+			{ "Beard", style = "full", colour = Color3.fromRGB(226, 226, 230) },
+			{ "Obi", colour = Color3.fromRGB(236, 150, 180) },
+			{ "Loafers" },
+		} :: { any },
+	},
+	Captain = {
+		Skin = Color3.fromRGB(196, 150, 112), Shirt = Color3.fromRGB(150, 40, 48), Pants = Color3.fromRGB(40, 40, 46),
+		Sleeves = true, LongSleeves = true,
+		Outfit = {
+			{ "Hair", style = "slick", colour = Color3.fromRGB(26, 22, 22) },
+			{ "Hachimaki", colour = Color3.fromRGB(246, 240, 230) },
+			{ "Obi", colour = Color3.fromRGB(30, 30, 34) },
+			{ "Boots", colour = Color3.fromRGB(40, 32, 28) },
 		} :: { any },
 	},
 	Fixer = {

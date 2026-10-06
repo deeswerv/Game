@@ -14,6 +14,8 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
+local HanamiConfig = require(ReplicatedStorage:WaitForChild("HanamiConfig"))
+
 local TravelService = {}
 
 TravelService.COOLDOWN = 6
@@ -35,9 +37,10 @@ export type Place = {
 -- each with a little room around it.
 --
 -- In the order a new player meets them: the Crossing where they spawn, Downtown straight
--- after it (the first real stop -- the Quartermaster's first job sends them there), the mine
--- on the home island. Everything else is "the next world": shut until the player has beaten
--- the Don at the top of ZEE TOWER (`requires = "Tower"`, TowerService).
+-- after it (the first real stop -- the Quartermaster's first job sends them there), then Hanami
+-- Valley (the next chapter, HanamiService) and the mine on the home island. Everything past
+-- Downtown is "the next world": shut until the player has beaten the Don at the top of ZEE
+-- TOWER (`requires = "Tower"`, TowerService).
 TravelService.Places = {
 	{ id = "Hub", label = "The Crossing", blurb = "Where you wash up: spawn, the Quartermaster and the harbour.", icon = "⚓",
 		levels = "LV 1", colour = Color3.fromRGB(88, 176, 232),
@@ -45,6 +48,9 @@ TravelService.Places = {
 	{ id = "Downtown", label = "Downtown", blurb = "Your first stop: shops, the Fixer's jobs, turf wars -- and ZEE TOWER.",
 		icon = "🏙", levels = "LV 1-10", colour = Color3.fromRGB(236, 120, 150),
 		position = Vector3.new(-155, 1000.5, 1330), facing = Vector3.new(0, 0, 1) },
+	{ id = "Hanami", label = "Hanami Valley", blurb = "The next chapter: the village under the Great Sakura, and the Iron Shogun's keep.",
+		icon = "🌸", levels = "LV 10-16", colour = Color3.fromRGB(246, 150, 186), requires = "Tower",
+		position = HanamiConfig.Site("Arrival") + Vector3.new(0, 0.5, 0), facing = Vector3.new(0, 0, 1) },
 	{ id = "Mine", label = "Crystal Mine", blurb = "Behind the falls: crystal seams to mine.", icon = "💎",
 		levels = "LV 1-3", colour = Color3.fromRGB(150, 110, 240),
 		position = Vector3.new(-101, 4, 61), facing = Vector3.new(0, 0, -1) },
@@ -192,8 +198,10 @@ local function listFor(player: Player)
 		table.insert(list, {
 			id = place.id, label = place.label, blurb = place.blurb, icon = place.icon, levels = place.levels,
 			colour = place.colour, position = place.position, locked = TravelService.Locked(player, place.id),
-			-- Until the tower falls, Downtown is where the story is.
-			tag = if place.id == "Downtown" and not cleared then "START HERE" else nil,
+			-- Until the tower falls, Downtown is where the story is; after it, the valley.
+			tag = if place.id == "Downtown" and not cleared then "START HERE"
+				elseif place.id == "Hanami" and cleared and player:GetAttribute("HanamiCleared") ~= true then "NEW"
+				else nil,
 		})
 	end
 	return { places = list, blocked = TravelService.Blocked(player) }

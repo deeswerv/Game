@@ -263,12 +263,13 @@ for _, p in ipairs(Travel.Places) do
 		shut += 1
 	end
 end
-check(shut == 3 and Travel.Locked(player, "Flats"):find("ZEE TOWER", 1, true) ~= nil,
+check(shut == 4 and Travel.Locked(player, "Flats"):find("ZEE TOWER", 1, true) ~= nil,
 	("the rest (%d) wait on ZEE TOWER"):format(shut))
 local ok, why = Travel.Go(player, "Reach")
 check(not ok and why and why:find("ZEE TOWER", 1, true) ~= nil, "and the server will not send you: " .. tostring(why))
 player:SetAttribute("TowerCleared", true)
-check(Travel.Locked(player, "Flats") == nil and Travel.Locked(player, "Reach") == nil, "the tower beaten, they open")
+check(Travel.Locked(player, "Flats") == nil and Travel.Locked(player, "Reach") == nil
+	and Travel.Locked(player, "Hanami") == nil, "the tower beaten, they open -- Hanami Valley with them")
 player:SetAttribute("TowerCleared", nil)
 
 local QuestConfig = World.require(rs.QuestConfig)

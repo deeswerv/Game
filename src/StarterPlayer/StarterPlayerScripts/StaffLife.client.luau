@@ -6,6 +6,8 @@
 --   * they look at you when you come close, and give you a wave the first time;
 --   * talk to one (their prompt, or a shop's counter) and they turn to you and talk with
 --     their hands for a few seconds;
+--   * a captive (HanamiService's bamboo camp, "Captive" set on them) kneels with their hands
+--     tied behind them, now and then fighting the rope; cut loose ("Freed"), they get up and wave;
 --   * a robbery: the clerk of the shop being robbed (StickupService sets HandsUpAt,
 --     HandsUpFor and RobberId on them) jolts, a "!" pops over their head, they turn to face
 --     the robber and throw both hands up, and hold them there, shaking, until the time is up.
@@ -43,6 +45,7 @@ type Person = {
 	headPitch: number,
 	handsUp: number,          -- 0..1, eased
 	handsUpAt: number?,       -- the robbery being reacted to (server time)
+	bound: number,            -- 0..1, eased: a captive (HanamiService sets "Captive")
 	talkUntil: number,
 	waveAt: number?,
 	greetedAt: number,
@@ -83,7 +86,7 @@ local function personFor(model: Model): Person?
 	end
 	local made: Person = {
 		model = model, joints = joints, seed = (seed % 97) / 13, clerk = model.Name == "Clerk",
-		bodyYaw = 0, headYaw = 0, headPitch = 0, handsUp = 0, handsUpAt = nil,
+		bodyYaw = 0, headYaw = 0, headPitch = 0, handsUp = 0, handsUpAt = nil, bound = 0,
 		talkUntil = 0, waveAt = nil, greetedAt = -math.huge, posed = false,
 	}
 	people[model] = made
@@ -182,6 +185,13 @@ local function animate(person: Person, dt: number, now: number, serverNow: numbe
 		end
 	end
 	person.handsUp = approach(person.handsUp, if robbed then 1 else 0, if robbed then 14 else 2.5, dt)
+	-- A captive kneels, tied; cut loose, they get up -- and wave.
+	local captive = model:GetAttribute("Captive") == true
+	if not captive and person.bound > 0.5 and model:GetAttribute("Freed") == true then
+		person.waveAt = now
+		person.talkUntil = now + 1.5
+	end
+	person.bound = approach(person.bound, if captive then 1 else 0, if captive then 20 else 5, dt)
 
 	-- Who to look at: the robber, then whoever they are talking to, then whoever is nearest.
 	local look: Vector3? = nil
@@ -210,7 +220,7 @@ local function animate(person: Person, dt: number, now: number, serverNow: numbe
 		end
 	end
 	-- The first time you come close, a wave.
-	if mine and not robbed then
+	if mine and not robbed and not captive then
 		local d = (mine - frame.Position).Magnitude
 		if d < GREET and now - person.greetedAt > GREET_AGAIN then
 			person.greetedAt = now
@@ -221,7 +231,7 @@ local function animate(person: Person, dt: number, now: number, serverNow: numbe
 	-- The body turns to face whoever it must (the robber, you mid-conversation); the head does
 	-- the rest of the looking.
 	local wantYaw = 0
-	if face then
+	if face and not captive then
 		local dir = frame:PointToObjectSpace(face)
 		wantYaw = math.clamp(math.atan2(-dir.X, -dir.Z), math.rad(-110), math.rad(110))
 	end
@@ -247,6 +257,9 @@ local function animate(person: Person, dt: number, now: number, serverNow: numbe
 		else
 			person.waveAt = nil
 		end
+	end
+	if person.bound > 1e-3 then
+		poses = StaffPose.Blend(poses, StaffPose.Bound(now, person.seed), person.bound)
 	end
 	if person.handsUp > 1e-3 then
 		local since = if person.handsUpAt then serverNow - person.handsUpAt else 10

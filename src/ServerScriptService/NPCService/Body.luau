@@ -142,6 +142,10 @@ function Body.Build(cfg): (Model?, Humanoid?, BasePart?)
 	-- Warlord 14.85 instead of its 11 until the first time it moved.
 	humanoid.WalkSpeed = cfg.WalkSpeed
 
+	if type(cfg.Shield) == "table" then
+		Body.AttachShield(model, cfg.Shield)
+	end
+
 	-- The whole body streams in and out together. A half-streamed rig on a client has
 	-- joints with nothing on one end, which is how animation scripts end up erroring.
 	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
@@ -165,6 +169,54 @@ function Body.Build(cfg): (Model?, Humanoid?, BasePart?)
 	align.Parent = root
 
 	return model, humanoid, root
+end
+
+--- A Shieldbearer's shield: an iron slab held square in front of the body, from the neck to
+--- the shins -- the head stays out, for anyone who can make the shot. The slab itself is what
+--- stops rounds (GunHandler stops at anything with a ShieldHealth, takes the damage off it,
+--- and breaks it at zero); its trim cannot be hit. Welded to the chest so it stays square
+--- whatever the arms are doing.
+function Body.AttachShield(model: Model, spec: { [string]: any })
+	local torso = model:FindFirstChild("UpperTorso")
+	if not torso or not torso:IsA("BasePart") then
+		return
+	end
+	local scale = torso.Size.Y / 1.6
+	local function piece(name: string, size: Vector3, offset: CFrame, colour: Color3, hittable: boolean, material: Enum.Material?): BasePart
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = size * scale
+		p.CFrame = torso.CFrame * CFrame.new(offset.Position * scale) * offset.Rotation
+		p.Color = colour
+		p.Material = material or Enum.Material.Metal
+		p.Anchored = false
+		p.Massless = true
+		p.CanCollide = false
+		p.CanTouch = false
+		p.CanQuery = hittable
+		p.CastShadow = true
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.Parent = model
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = torso
+		weld.Part1 = p
+		weld.Parent = p
+		return p
+	end
+	local front = CFrame.new(-0.25, -1.55, -1.35)
+	local shield = piece("Shield", Vector3.new(3, 4.9, 0.35), front, Color3.fromRGB(40, 40, 48), true, Enum.Material.DiamondPlate)
+	shield:SetAttribute("ShieldHealth", tonumber(spec.health) or 400)
+	shield:SetAttribute("ShieldMax", tonumber(spec.health) or 400)
+	for _, y in ipairs({ 2.35, -2.35 }) do
+		piece("ShieldRim", Vector3.new(3.1, 0.25, 0.45), front * CFrame.new(0, y, 0), Color3.fromRGB(160, 36, 44), false)
+	end
+	for _, x in ipairs({ 1.5, -1.5 }) do
+		piece("ShieldRim", Vector3.new(0.25, 4.9, 0.45), front * CFrame.new(x, 0, 0), Color3.fromRGB(160, 36, 44), false)
+	end
+	piece("ShieldCrest", Vector3.new(1.2, 1.2, 0.1), front * CFrame.new(0, 0.6, -0.22) * CFrame.Angles(0, 0, math.rad(45)),
+		Color3.fromRGB(236, 190, 80), false)
+	piece("ShieldSlit", Vector3.new(1.6, 0.18, 0.1), front * CFrame.new(0, 1.7, -0.22), Color3.fromRGB(14, 14, 18), false)
 end
 
 --- Record the rest pose of every joint the death animation moves, AFTER scaling.

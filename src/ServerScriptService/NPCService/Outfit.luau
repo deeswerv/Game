@@ -347,6 +347,79 @@ G.Earring = function(ctx, g)
 		paint(g.colour, ctx.look, GOLD), { shine = 0.3 })
 end
 
+-- The Kurogane clan, in HANAMI VALLEY: a straw kasa, an oni mask, a horned kabuto, a
+-- hachimaki band round the brow, and an obi sash. Hats are layered discs and blocks, so they
+-- stay low-poly like everything else.
+
+G.Kasa = function(ctx, g)
+	local h = ctx.size("Head")
+	local c = paint(g.colour, ctx.look, Color3.fromRGB(214, 188, 126))
+	local top = h.Y / 2
+	-- A wide, shallow cone: a broad brim, then two smaller tiers, a knob on top.
+	ctx.add("Head", "KasaBrim", Vector3.new(0.12, h.X * 2.3, h.X * 2.3), at(0, top + 0.02, 0) * CFrame.Angles(0, 0, math.rad(90)), c,
+		{ shape = Enum.PartType.Cylinder })
+	ctx.add("Head", "Kasa", Vector3.new(0.18, h.X * 1.55, h.X * 1.55), at(0, top + 0.14, 0) * CFrame.Angles(0, 0, math.rad(90)),
+		darker(c, 0.05), { shape = Enum.PartType.Cylinder })
+	ctx.add("Head", "Kasa", Vector3.new(0.2, h.X * 0.85, h.X * 0.85), at(0, top + 0.3, 0) * CFrame.Angles(0, 0, math.rad(90)),
+		darker(c, 0.1), { shape = Enum.PartType.Cylinder })
+	ctx.add("Head", "KasaKnob", Vector3.new(0.22, 0.22, 0.22), at(0, top + 0.44, 0), darker(c, 0.2), { shape = Enum.PartType.Ball })
+	ctx.add("Head", "KasaTie", Vector3.new(0.05, h.Y * 0.7, 0.05), at(0, -0.05, -(h.Z / 2 + 0.03)), BLACK)
+end
+
+G.OniMask = function(ctx, g)
+	local h = ctx.size("Head")
+	local c = paint(g.colour, ctx.look, Color3.fromRGB(196, 40, 44))
+	local front = -(h.Z / 2 + 0.04)
+	ctx.add("Head", "OniMask", Vector3.new(h.X * 0.94, h.Y * 0.86, 0.1), at(0, -0.02, front), c)
+	ctx.add("Head", "OniBrow", Vector3.new(h.X * 0.8, 0.14, 0.14), at(0, h.Y * 0.18, front - 0.06), darker(c, 0.3))
+	for _, s in ipairs(SIDES) do
+		ctx.add("Head", "OniEye", Vector3.new(0.26, 0.1, 0.06), tilt(s.x * 0.24, h.Y * 0.06, front - 0.06, s.x * -12),
+			paint(g.eyes, ctx.look, GOLD))
+		ctx.add("Head", "OniHorn", Vector3.new(0.14, 0.42, 0.14), tilt(s.x * 0.34, h.Y / 2 + 0.16, -0.1, s.x * -18),
+			paint(g.horns, ctx.look, Color3.fromRGB(236, 226, 200)))
+	end
+	ctx.add("Head", "OniTeeth", Vector3.new(h.X * 0.5, 0.1, 0.06), at(0, -h.Y * 0.26, front - 0.06), WHITE)
+end
+
+G.Kabuto = function(ctx, g)
+	local h = ctx.size("Head")
+	local c = paint(g.colour, ctx.look, BLACK)
+	local top = h.Y / 2
+	ctx.add("Head", "Kabuto", Vector3.new(h.X + 0.22, 0.5, h.Z + 0.22), at(0, top + 0.02, 0.02), c, { shine = 0.1 })
+	ctx.add("Head", "Kabuto", Vector3.new(h.X * 0.7, 0.14, h.Z * 0.7), at(0, top + 0.32, 0.02), c, { shine = 0.1 })
+	-- The neck guard flaring out at the back and sides.
+	ctx.add("Head", "Shikoro", Vector3.new(h.X + 0.5, 0.36, 0.14), tilt(0, -0.05, h.Z / 2 + 0.16, 0) * CFrame.Angles(math.rad(-20), 0, 0),
+		darker(c, 0.1))
+	for _, s in ipairs(SIDES) do
+		ctx.add("Head", "Fukigaeshi", Vector3.new(0.12, 0.4, 0.36), tilt(s.x * (h.X / 2 + 0.2), top - 0.12, -0.2, s.x * 25),
+			paint(g.trim, ctx.look, Color3.fromRGB(160, 36, 44)))
+		-- The crest: two gold horns curving up from the brow.
+		ctx.add("Head", "Kuwagata", Vector3.new(0.08, 0.7, 0.12), tilt(s.x * 0.22, top + 0.5, -(h.Z / 2 + 0.06), s.x * -24),
+			paint(g.crest, ctx.look, GOLD), { shine = 0.3 })
+	end
+	ctx.add("Head", "KabutoBadge", Vector3.new(0.26, 0.26, 0.06), at(0, top + 0.1, -(h.Z / 2 + 0.13)) * CFrame.Angles(0, 0, math.rad(45)),
+		paint(g.crest, ctx.look, GOLD), { shine = 0.3 })
+end
+
+G.Hachimaki = function(ctx, g)
+	local h = ctx.size("Head")
+	local c = paint(g.colour, ctx.look, WHITE)
+	ctx.add("Head", "Hachimaki", Vector3.new(h.X + 0.06, 0.2, h.Z + 0.06), at(0, h.Y * 0.28, 0), c)
+	ctx.add("Head", "HachimakiSun", Vector3.new(0.22, 0.22, 0.04), at(0, h.Y * 0.28, -(h.Z / 2 + 0.04)),
+		paint(g.mark, ctx.look, Color3.fromRGB(200, 40, 44)))
+	for _, s in ipairs(SIDES) do
+		ctx.add("Head", "HachimakiTail", Vector3.new(0.12, 0.42, 0.05), tilt(s.x * 0.1, h.Y * 0.12, h.Z / 2 + 0.06, s.x * 20), c)
+	end
+end
+
+G.Obi = function(ctx, g)
+	local l = ctx.size("LowerTorso")
+	local c = paint(g.colour, ctx.look, Color3.fromRGB(160, 36, 44))
+	ctx.add("LowerTorso", "Obi", Vector3.new(l.X + 0.08, 0.42, l.Z + 0.08), at(0, l.Y / 2 - 0.16, 0), c)
+	ctx.add("LowerTorso", "ObiKnot", Vector3.new(0.34, 0.3, 0.16), at(0.3, l.Y / 2 - 0.16, -(l.Z / 2 + 0.08)), darker(c, 0.2))
+	ctx.add("LowerTorso", "ObiTail", Vector3.new(0.14, 0.5, 0.06), tilt(0.38, l.Y / 2 - 0.5, -(l.Z / 2 + 0.07), 12), darker(c, 0.2))
+end
+
 -- Torsos ------------------------------------------------------------------------------
 
 G.Hoodie = function(ctx, g)

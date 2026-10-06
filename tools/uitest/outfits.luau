@@ -53,7 +53,8 @@ local BUDGET = 34
 local function pieces(model)
 	local list = {}
 	for _, p in ipairs(model:GetChildren()) do
-		if p:IsA("BasePart") and not BODY[p.Name] then
+		-- A Shieldbearer's shield is not clothing: it is meant to be hit (shields.luau).
+		if p:IsA("BasePart") and not BODY[p.Name] and p.Name:sub(1, 6) ~= "Shield" then
 			table.insert(list, p)
 		end
 	end

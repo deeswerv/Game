@@ -12,6 +12,9 @@ local SaveStructure = {
 	Inventory = {"Basic Combat"},
 	CurrentQuest = "",
 	QuestProgress = 0,
+	-- What the current job has already counted, for jobs that want different things ("four
+	-- different clues", HanamiService): ids, cleared whenever the job changes.
+	QuestSeen = {},
 
 	-- Shop tools the player owns. One-time purchases: re-granted free on every spawn.
 	OwnedItems = {},
@@ -74,6 +77,11 @@ local SaveStructure = {
 	-- work there. How many times, for the profile and a smaller repeat reward.
 	TowerCleared = false,
 	TowerClears = 0,
+
+	-- HANAMI VALLEY: whether this player has beaten the Iron Shogun (HanamiService), and how
+	-- many times. The first clear gives the "Shogun Slayer" title and the big reward.
+	HanamiCleared = false,
+	HanamiClears = 0,
 
 	-- Achievements (AchievementService / AchievementConfig): running counts per kind
 	-- ("kill" = 412, "streak" = best run), which are unlocked, which have been claimed, and

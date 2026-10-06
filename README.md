@@ -272,7 +272,8 @@ scales with the room). At 70% the family comes up the elevator and money bombs l
 stand (red ring, then the blast); at 40% his helicopter lifts off and circles the roof, strafing
 a line across it (a red strip first). Beat him and everyone up there is paid ($8,000, 4,000 XP,
 25 crystals, 25 Street Cred the first time; less after) and **the world opens**. An empty roof
-resets the fight; beaten, the Don is back after a minute. `tools/uitest/tower.luau`.
+resets the fight; beaten, the Don is back after a minute. `tools/uitest/tower.luau`. The
+world past it starts with **Hanami Valley**, below.
 
 **Street Cred** is your standing with Downtown: +8 for every war you help win (+4 more as MVP),
 the Fixer's jobs, +20 for the Kingpin, -3 when a crew holds a patch you fought for. A known name
@@ -291,6 +292,47 @@ supply drops) -- one rate in `GameConfig.Leveling.XP_RATE`, and every reward sho
 
 A plan for growing Downtown into a much larger RPG district is written up as a ready-to-use
 prompt in `docs/prompts/downtown-expansion.md`.
+
+## Hanami Valley (chapter 2)
+
+Beat the Don and **Hanami Valley** opens on the Travel menu (🌸, LV 10-16): a low-poly valley
+of cherry blossom, red gates and iron, built by `HanamiService` (`HanamiService/Valley.luau`;
+everything's position lives in `ReplicatedStorage/HanamiConfig.luau`). Five areas, each with its
+own name card as you walk in and its own enemy levels:
+
+- **Hanamura**, the village you arrive in (safe): the Great Sakura, the shrine (ring its bell
+  to heal -- not mid-fight), a pagoda, the teahouse (stairs to its roof), the trader's counter
+  (opens the shop) and villagers to talk to;
+- **Lantern Row**, the dangerous streets across the red bridge: lantern-strung shophouses,
+  lanes, roof terraces with riflemen on them;
+- **the Ironworks**, foundry and docks: rail, containers, a crane you can climb, the furnace
+  yard where **Foreman Tetsu** works;
+- **the outskirts**: **Bamboo Hollow** (the bandit camp, the waterfall and the nook behind it)
+  and **the Paddies** (the farm);
+- **Kurogane Keep** on its plateau, up **the Thousand Gates** stair: walls, towers, and the
+  Shogun's court.
+
+**The Kurogane clan.** Ronin (blades, rush you), Riflemen (keep their distance from high
+ground), **Shieldbearers** (an iron shield stops your rounds dead until it breaks -- shoot it
+apart, go over the top for the head, or flank), **Shinobi** (dash at you from range in a puff
+of dust -- step aside), **Juggernauts** (big, armoured, slow), Oni (the Shogun's guard:
+grenades and good rifles), with elites among them. The valley only fills while someone is in
+it, refills a fallen post after a while, and empties a minute after the last player leaves.
+
+**Elder Hoshi's story** (under the Great Sakura), one job of each kind: reach the Lantern Row
+gate; clear Lantern Row; **free three captives** tied up at the bamboo camp (hold E); read
+**four clues** in the Ironworks; beat **Foreman Tetsu** (mini-boss: at 60% his crew joins and
+molten splashes land under you, at 30% overtime); **hold the farm** through three raid waves
+(raiders at the door wear the farmhouse down); find **five iron seals** hidden on roofs, the
+crane, behind the waterfall and on a hill; climb **the Thousand Gates**; and end **THE IRON
+SHOGUN** in his court (level 12+): blade waves across the court, then BLOSSOM STORM (66%:
+Shinobi and riflemen, petal storms under everyone) and IRON FURY (33%: three blades at a time,
+faster). The first clear pays $15,000, 8,000 XP and 40 crystals, saves the valley as freed and
+gives the **Shogun Slayer** title. **Captain Rei** (at the red bridge) pays bounties on
+Shieldbearers, Shinobi, Juggernauts and Oni, then a repeatable Valley Patrol contract.
+
+`lune run tools/uitest/hanami.luau` plays all of it through the real services;
+`tools/uitest/shields.luau` checks the shield against the real gun code and the Shinobi's dash.
 
 ## Contracts and supply drops
 

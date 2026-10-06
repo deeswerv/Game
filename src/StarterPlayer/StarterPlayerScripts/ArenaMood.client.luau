@@ -88,11 +88,13 @@ end
 
 local function zones(): { Zone }
 	local list = { RANGE }
-	-- Downtown publishes a look of its own (a colour grade and big clouds, never the clock).
-	local downtown = workspace:FindFirstChild("Downtown")
-	local district = downtown and readZone(downtown)
-	if district then
-		table.insert(list, district)
+	-- Downtown and Hanami Valley publish looks of their own (a colour grade, clouds, a haze).
+	for _, name in ipairs({ "Downtown", "Hanami" }) do
+		local folder = workspace:FindFirstChild(name)
+		local district = folder and readZone(folder)
+		if district then
+			table.insert(list, district)
+		end
 	end
 	local arenas = workspace:FindFirstChild("Arenas")
 	if arenas then

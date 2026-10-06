@@ -11,6 +11,13 @@
 
 local DialogueConfig = {}
 
+-- A tree: where it starts, and its nodes by id. A node is what the giver says (the first
+-- line whose conditions are met) and what you can say back.
+export type Line = { requires: { [string]: any }?, text: string }
+export type Choice = { id: string, text: string, requires: { [string]: any }?, action: { kind: string, node: string? } }
+export type Node = { body: { Line }, choices: { Choice } }
+export type Tree = { entry: string, nodes: { [string]: Node } }
+
 -- Conditions understood by the resolver. Anything not listed is treated as unmet rather
 -- than ignored, so a typo hides the line instead of silently always showing it.
 DialogueConfig.Conditions = {
@@ -28,7 +35,7 @@ DialogueConfig.Conditions = {
 	towerLocked = true,
 }
 
-DialogueConfig.Trees = {
+DialogueConfig.Trees = ({
 	Quartermaster = {
 		entry = "root",
 		nodes = {
@@ -152,10 +159,10 @@ DialogueConfig.Trees = {
 			},
 		},
 	},
-}
+} :: { [string]: Tree })
 
 -- Downtown's fixer. Standing here is Street Cred: the "Downtown" faction.
-DialogueConfig.Trees.Fixer = {
+DialogueConfig.Trees.Fixer = ({
 	entry = "root",
 	nodes = {
 		root = {
@@ -241,7 +248,131 @@ DialogueConfig.Trees.Fixer = {
 			},
 		},
 	},
-}
+} :: Tree)
+
+-- Hanami Valley's elder, under the Great Sakura: the valley's story, one step at a time.
+DialogueConfig.Trees.Elder = ({
+	entry = "root",
+	nodes = {
+		root = {
+			body = {
+				{ requires = { hasActive = true },
+				  text = "{quest} -- {progress} of {goal}. The valley is patient, but the clan is not. Go on." },
+				{ requires = { hasOffer = true, completedAtLeast = 20 }, text = "You return, and the blossoms with you. @offer" },
+				{ requires = { hasOffer = true }, text = "@offer" },
+				{ requires = { minLevel = 14 },
+				  text = "It is done, or it is waiting for you to grow. Either way: sit, rest, ring the bell at the shrine. The valley owes you its spring." },
+				{ text = "Not yet, child. The clan would eat you. Come back with a few more levels behind you." },
+			},
+			choices = {
+				{ id = "accept",   text = "I'll do it.",                  requires = { hasOffer = true }, action = { kind = "AcceptQuest" } },
+				{ id = "progress", text = "How far have I come?",         requires = { hasActive = true }, action = { kind = "Goto", node = "progress" } },
+				{ id = "abandon",  text = "I must set this aside.",       requires = { hasActive = true }, action = { kind = "Goto", node = "confirmAbandon" } },
+				{ id = "valley",   text = "What happened to this valley?", action = { kind = "Goto", node = "valley" } },
+				{ id = "shogun",   text = "Who is the Shogun?",           action = { kind = "Goto", node = "shogun" } },
+				{ id = "leave",    text = "Farewell.",                    action = { kind = "Close" } },
+			},
+		},
+		progress = {
+			body = {
+				{ requires = { hasActive = true },
+				  text = "{quest}. {objective} -- {progress} of {goal}. Pays {coins} coins and {xp} experience." },
+				{ text = "You carry no task of mine." },
+			},
+			choices = {
+				{ id = "back",  text = "Right.", action = { kind = "Goto", node = "root" } },
+				{ id = "leave", text = "Farewell.", action = { kind = "Close" } },
+			},
+		},
+
+		confirmAbandon = {
+			body = {
+				{ requires = { hasActive = true }, text = "Set {quest} aside? What you have done of it will be lost." },
+				{ text = "There is nothing to set aside." },
+			},
+			choices = {
+				{ id = "confirm", text = "Set it aside.", requires = { hasActive = true }, action = { kind = "AbandonQuest" } },
+				{ id = "back",    text = "No -- I'll see it through.", action = { kind = "Goto", node = "root" } },
+			},
+		},
+
+		valley = {
+			body = {
+				{ text = "Hanamura was a village of tea and rice and festivals. Then the Don's crates came up the river -- iron, powder, guns -- and the Kurogane clan came to collect them. Lantern Row is theirs now, the Ironworks run day and night, and the Keep on the hill takes everything we grow." },
+			},
+			choices = {
+				{ id = "back",  text = "Back.",  action = { kind = "Goto", node = "root" } },
+				{ id = "leave", text = "Farewell.", action = { kind = "Close" } },
+			},
+		},
+
+		shogun = {
+			body = {
+				{ requires = { minLevel = 12 },
+				  text = "He was the valley's guardian, sworn at this very shrine. The Don's iron made him strong and then made him iron. He waits in his court at the top of the Thousand Gates. When he is hurt, blossoms fall like blades -- and at the very end, he does not slow down." },
+				{ text = "A name you are not ready to carry. Grow first." },
+			},
+			choices = {
+				{ id = "back",  text = "Back.",  action = { kind = "Goto", node = "root" } },
+				{ id = "leave", text = "Farewell.", action = { kind = "Close" } },
+			},
+		},
+	},
+} :: Tree)
+
+-- Captain Rei, at the red bridge: the valley guard's bounties on the clan's specialists.
+DialogueConfig.Trees.Captain = ({
+	entry = "root",
+	nodes = {
+		root = {
+			body = {
+				{ requires = { hasActive = true },
+				  text = "Still on {quest}: {progress} of {goal}. Get it done." },
+				{ requires = { hasOffer = true }, text = "@offer" },
+				{ text = "Nothing for you right now. The clan will give me something soon enough -- come back stronger." },
+			},
+			choices = {
+				{ id = "accept",   text = "Consider it done.",            requires = { hasOffer = true }, action = { kind = "AcceptQuest" } },
+				{ id = "progress", text = "Status?",                      requires = { hasActive = true }, action = { kind = "Goto", node = "progress" } },
+				{ id = "abandon",  text = "I'm dropping this one.",       requires = { hasActive = true }, action = { kind = "Goto", node = "confirmAbandon" } },
+				{ id = "clan",     text = "What should I know about the clan?", action = { kind = "Goto", node = "clan" } },
+				{ id = "leave",    text = "Later.",                       action = { kind = "Close" } },
+			},
+		},
+		progress = {
+			body = {
+				{ requires = { hasActive = true },
+				  text = "{quest}. {objective} -- {progress} of {goal}. Pays {coins} coins and {xp} experience." },
+				{ text = "You carry no task of mine." },
+			},
+			choices = {
+				{ id = "back",  text = "Right.", action = { kind = "Goto", node = "root" } },
+				{ id = "leave", text = "Farewell.", action = { kind = "Close" } },
+			},
+		},
+
+		confirmAbandon = {
+			body = {
+				{ requires = { hasActive = true }, text = "Set {quest} aside? What you have done of it will be lost." },
+				{ text = "There is nothing to set aside." },
+			},
+			choices = {
+				{ id = "confirm", text = "Set it aside.", requires = { hasActive = true }, action = { kind = "AbandonQuest" } },
+				{ id = "back",    text = "No -- I'll see it through.", action = { kind = "Goto", node = "root" } },
+			},
+		},
+
+		clan = {
+			body = {
+				{ text = "Ronin are swords for hire -- they run at you. Riflemen sit on roofs. Shieldbearers walk behind iron: break the shield or flank it. Shinobi dash at you from a distance -- step aside. Juggernauts are slow and armoured and never stop. And the Oni are the Shogun's own: grenades, good rifles, no mercy." },
+			},
+			choices = {
+				{ id = "back",  text = "Back.",  action = { kind = "Goto", node = "root" } },
+				{ id = "leave", text = "Later.", action = { kind = "Close" } },
+			},
+		},
+	},
+} :: Tree)
 
 function DialogueConfig.Tree(giverId: string)
 	return DialogueConfig.Trees[giverId]

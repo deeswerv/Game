@@ -149,7 +149,9 @@ for _, id in ipairs(chain) do
 end
 check(levelsRise, "each asks a higher level than the last, and each pays Street Cred")
 local known = { Kill = true, KillPlayer = true, KillElite = true, KillInZone = true, Reach = true, KillCrew = true, TurfWin = true,
-	TowerWin = true }
+	TowerWin = true,
+	-- Hanami Valley's, advanced by HanamiService's events (played through in hanami.luau).
+	Rescue = true, Inspect = true, Collect = true, Survive = true, Boss = true }
 local allKnown = true
 for _, q in ipairs(QuestConfig.Quests) do
 	allKnown = allKnown and known[q.objective.kind] == true

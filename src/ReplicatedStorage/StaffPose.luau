@@ -15,6 +15,7 @@
 --             shaking, leaning away.
 --   Talk      telling you something: one hand making the point, the other following.
 --   Wave      a hello.
+--   Bound     a captive: on their knees, hands tied behind them, now and then fighting the rope.
 
 local StaffPose = {}
 
@@ -27,6 +28,8 @@ StaffPose.FLINCH = 0.45
 StaffPose.RAISE = 0.32
 -- A wave, start to finish.
 StaffPose.WAVE = 1.6
+-- How far the hips drop to kneel (the shin and the foot, lying flat behind).
+StaffPose.KNEEL_DROP = 0.3
 
 local function smoothstep(x: number): number
 	x = math.clamp(x, 0, 1)
@@ -123,6 +126,37 @@ function StaffPose.Wave(t: number): Poses
 		RightHand = CFrame.Angles(rad(-10) * w, 0, rad(8) * wag),
 		UpperTorso = CFrame.Angles(0, 0, rad(-3) * w),
 	}
+end
+
+--- Tied up (a captive in the bamboo camp): kneeling, wrists bound behind the back, head
+--- down -- and every few seconds a struggle against the rope, and a look up. `t` is the
+--- running clock, `seed` keeps the captives out of step.
+function StaffPose.Bound(t: number, seed: number): Poses
+	local breath = sin(t * 2.1 + seed)
+	-- A struggle: a short, sharp twist every five seconds or so.
+	local phase = (t + seed * 1.7) % 5.2
+	local strain = if phase < 0.9 then sin(math.pi * phase / 0.9) else 0
+	local tug = sin(t * 19) * strain
+	local poses: Poses = {
+		-- On the knees: the hips come down by the shin's length (the shins lie flat behind).
+		LowerTorso = CFrame.new(0, -StaffPose.KNEEL_DROP, 0.1) * CFrame.Angles(rad(-4), rad(5) * tug, 0),
+		UpperTorso = CFrame.Angles(rad(9) + rad(1.6) * breath - rad(6) * strain, rad(6) * tug, 0),
+	}
+	for _, side in ipairs({ "Left", "Right" }) do
+		local out = if side == "Right" then 1 else -1
+		poses[side .. "UpperLeg"] = CFrame.Angles(rad(4), 0, out * rad(3))
+		poses[side .. "LowerLeg"] = CFrame.Angles(rad(-88), 0, 0)
+		poses[side .. "Foot"] = CFrame.Angles(rad(-20), 0, 0)
+		-- Upper arms hanging a little back and turned in on themselves, elbows bent: the
+		-- forearms cross behind and the wrists meet at the small of the back.
+		-- (The twist turns the arm about the shoulder joint, which also carries it forward a
+		-- little; the swing back is enough to keep the elbows behind the body anyway.)
+		poses[side .. "UpperArm"] = CFrame.Angles(rad(-38) - rad(5) * strain, 0, out * rad(6 + 4 * strain))
+			* CFrame.Angles(0, out * rad(92), 0)
+		poses[side .. "LowerArm"] = CFrame.Angles(rad(88 - 8 * strain), 0, 0)
+		poses[side .. "Hand"] = CFrame.identity
+	end
+	return poses
 end
 
 --- `a` toward `b` by `w` (0..1), joint by joint; a joint only one side has is blended with

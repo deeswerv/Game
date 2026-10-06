@@ -62,6 +62,40 @@ for key, value in pairs(roblox) do
 end
 setmetatable(env, { __index = _G })
 
+-- Lune 0.10's CFrame.lookAt (and CFrame.new(position, lookAt)) turns the look direction's Z
+-- round, so anything a builder aims with it would face the wrong way here and not in the
+-- engine. The builders get the engine's version (the same fix tools/uitest/world.luau makes).
+do
+	local NativeCFrame = roblox.CFrame
+	local Vector3 = roblox.Vector3
+	local function lookAt(at, target, up)
+		local look = target - at
+		if look.Magnitude < 1e-9 then
+			return NativeCFrame.new(at)
+		end
+		look = look.Unit
+		local right = look:Cross(up or Vector3.new(0, 1, 0))
+		if right.Magnitude < 1e-6 then
+			right = look:Cross(Vector3.new(0, 0, -1))
+		end
+		if right.Magnitude < 1e-6 then
+			right = look:Cross(Vector3.new(1, 0, 0))
+		end
+		right = right.Unit
+		return NativeCFrame.fromMatrix(at, right, right:Cross(look), -look)
+	end
+	env.CFrame = setmetatable({
+		lookAt = lookAt,
+		new = function(...)
+			local a, b = ...
+			if select("#", ...) == 2 and typeof(a) == "Vector3" and typeof(b) == "Vector3" then
+				return lookAt(a, b)
+			end
+			return NativeCFrame.new(...)
+		end,
+	}, { __index = NativeCFrame })
+end
+
 local loaded = {}
 local function load(path: string)
 	if loaded[path] then

@@ -827,6 +827,40 @@ local function sound(id: string, at: Vector3, volume: number, speed: number, ran
 	end)
 end
 
+-- A Shinobi's dash: dust where it pushes off, a dark streak behind it while it flies, and the
+-- whoosh.
+handlers.Charge = function(model: Model?, _target)
+	local found = model and model:FindFirstChild("HumanoidRootPart")
+	if not found or not found:IsA("BasePart") or not inRange(found.Position, CALLOUT_RANGE) then
+		return
+	end
+	local root: BasePart = found
+	CombatFX.LandDust(root.Position - Vector3.new(0, 2.6, 0), 0.7, model)
+	sound("rbxassetid://8653395088", root.Position, 0.7, 1.25, 90)
+	local top = Instance.new("Attachment")
+	top.Position = Vector3.new(0, 1.2, 0)
+	top.Parent = root
+	local bottom = Instance.new("Attachment")
+	bottom.Position = Vector3.new(0, -1.6, 0)
+	bottom.Parent = root
+	local trail = Instance.new("Trail")
+	trail.Attachment0 = top
+	trail.Attachment1 = bottom
+	trail.Lifetime = 0.25
+	trail.Color = ColorSequence.new(Color3.fromRGB(30, 30, 40), Color3.fromRGB(150, 30, 40))
+	trail.Transparency = NumberSequence.new(0.35, 1)
+	trail.LightEmission = 0.2
+	trail.Parent = root
+	task.delay(0.7, function()
+		trail.Enabled = false
+		task.delay(0.3, function()
+			trail:Destroy()
+			top:Destroy()
+			bottom:Destroy()
+		end)
+	end)
+end
+
 -- The "GRENADE" warning while one is lying near you.
 local alert = Instance.new("TextLabel")
 alert.Name = "GrenadeAlert"

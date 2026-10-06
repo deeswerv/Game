@@ -45,6 +45,7 @@ World.serverRemotes({
 		MeleeAction = "RemoteEvent", MeleeEffect = "RemoteEvent", AimUpdate = "RemoteEvent",
 		EmotePlay = "RemoteEvent", UtilityAction = "RemoteEvent", UtilityEvent = "RemoteEvent",
 		StreakEvent = "RemoteEvent", StreakAction = "RemoteEvent", StickupEvent = "RemoteEvent",
+		HanamiEvent = "RemoteEvent",
 	},
 })
 require("./fixtures")(World)
@@ -154,6 +155,20 @@ toggle(Enum.KeyCode.N)
 
 toggle(Enum.KeyCode.O)
 shot("11_journal")
+do
+	-- The second chapter: Hanami Valley.
+	local tab = World.find(World.playerGui, "Hanami", "TextButton")
+	if tab then
+		World.click(tab)
+		World.advance(0.5)
+	end
+	shot("55_journal_hanami")
+	local first = World.find(World.playerGui, "Downtown", "TextButton")
+	if first then
+		World.click(first)
+		World.advance(0.3)
+	end
+end
 toggle(Enum.KeyCode.O)
 toggle(Enum.KeyCode.F1)
 shot("12_settings")
@@ -306,6 +321,23 @@ World.advance(4)
 World.serverFire("Remotes", "TowerEvent", "cleared", { first = true, coins = 8000, xp = 6000, crystals = 25, cred = 25 })
 shot("39_tower_cleared", 0.5)
 World.advance(9)
+
+-- Hanami Valley: the farm raid's bar, a clue being read, the Shogun's second phase.
+World.serverFire("Remotes", "HanamiEvent", "raid", { wave = 1, waves = 3, left = 3, integrity = 100, started = true })
+World.advance(0.3)
+World.serverFire("Remotes", "HanamiEvent", "raidTick", { wave = 2, waves = 3, left = 3, integrity = 64 })
+shot("52_hanami_raid", 0.5)
+World.advance(4)
+World.serverFire("Remotes", "HanamiEvent", "raidWon", { coins = 1200, xp = 900, crystals = 4 })
+World.advance(5)
+World.serverFire("Remotes", "HanamiEvent", "clue", { id = "Orders", title = "Sealed orders",
+	text = "\"Raise the levy on Hanamura. -- S.\"", total = 4 })
+shot("53_hanami_clue", 0.5)
+World.advance(7)
+World.serverFire("Remotes", "HanamiEvent", "bossPhase", { name = "BLOSSOM STORM",
+	line = "\"The blossoms fall for me. So will you.\"", boss = "THE IRON SHOGUN" })
+shot("54_hanami_boss", 0.5)
+World.advance(5)
 
 -- Contract news and a supply drop on the way.
 World.serverFire("Remotes", "ContractUpdate", "progress", {

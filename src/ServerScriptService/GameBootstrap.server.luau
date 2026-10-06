@@ -62,6 +62,7 @@ local systems = {
 	"TurfWarService",      -- four Downtown patches: step on one and its crew comes out to fight
 	"MostWantedService",   -- the bounty board's named crime boss, out somewhere in Downtown
 	"TowerService",        -- ZEE TOWER: the elevator to the penthouse, the Don, and the world it unlocks
+	"HanamiService",       -- HANAMI VALLEY: the world past the tower, its people, jobs, and the Iron Shogun
 }
 
 -- Which build this is (tools/build.luau stamps it), first thing in the output.

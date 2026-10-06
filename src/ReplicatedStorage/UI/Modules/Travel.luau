@@ -30,7 +30,7 @@ function Travel.new(parent: Instance, remotes, overlayParent: Instance)
 		title = "Travel",
 		subtitle = "Go anywhere -- as long as nobody is shooting at you",
 		icon = "🗺",
-		size = UDim2.fromOffset(920, 468),
+		size = UDim2.fromOffset(920, 646),
 	})
 	self._menu = menu
 

@@ -2,9 +2,9 @@
 -- The quest journal: the story told as chapters, where you stand in each, and what the next
 -- job pays.
 --
--- Three tabs across the top -- DOWNTOWN (the Fixer's chain, and the first step there),
--- BEYOND (the Quartermaster's work past ZEE TOWER) and CONTRACTS (the paid, repeatable end of
--- the board). Left, the chapter: a banner with how far through it you are, then the jobs as a
+-- Four tabs across the top -- DOWNTOWN (the Fixer's chain, and the first step there),
+-- HANAMI (Elder Hoshi's story and Captain Rei's bounties, past ZEE TOWER), BEYOND (the
+-- Quartermaster's work past ZEE TOWER) and CONTRACTS (the paid, repeatable end of the board). Left, the chapter: a banner with how far through it you are, then the jobs as a
 -- timeline -- a line down the side, a node per job: ticked when done, glowing gold while it
 -- is the one you are on, blue when it is yours to take, grey and padlocked while a level (or
 -- the tower) stands in the way. Right, the job you picked: who gives it and where to find
@@ -44,7 +44,10 @@ local CHAPTERS = {
 	{ id = "Downtown", label = "Downtown", icon = "🏙", kicker = "CHAPTER 1", title = "DOWNTOWN",
 	  blurb = "MAKE A NAME, THEN TAKE ZEE TOWER",
 	  colour = Color3.fromRGB(214, 84, 150) },
-	{ id = "Beyond", label = "Beyond", icon = "🗺", kicker = "CHAPTER 2", title = "BEYOND THE CITY",
+	{ id = "Hanami", label = "Hanami", icon = "🌸", kicker = "CHAPTER 2", title = "HANAMI VALLEY",
+	  blurb = "END THE IRON SHOGUN",
+	  colour = Color3.fromRGB(226, 110, 150) },
+	{ id = "Beyond", label = "Beyond", icon = "🗺", kicker = "SIDE ROADS", title = "BEYOND THE CITY",
 	  blurb = "OPENS ONCE THE DON IS BEATEN",
 	  colour = Color3.fromRGB(40, 160, 150) },
 	{ id = "Contracts", label = "Contracts", icon = "📋", kicker = "ANY TIME", title = "CONTRACTS",
@@ -52,11 +55,11 @@ local CHAPTERS = {
 	  colour = Color3.fromRGB(190, 120, 40) },
 }
 
-local GIVER_FACE = { Quartermaster = "⚓", Fixer = "🕶" }
+local GIVER_FACE = { Quartermaster = "⚓", Fixer = "🕶", Elder = "🌸", Captain = "⚔" }
 
 local OBJECTIVE_ICON = {
 	Kill = "🎯", KillPlayer = "⚔", KillElite = "💀", KillInZone = "🎯", Reach = "📍", KillCrew = "👊",
-	TurfWin = "🏴", TowerWin = "🏙",
+	TurfWin = "🏴", TowerWin = "🏙", Rescue = "🙏", Inspect = "🔍", Collect = "🔱", Survive = "🛡", Boss = "👹",
 }
 
 local LOCKS = { Tower = "Beat the Don at the top of ZEE TOWER" }
@@ -130,6 +133,9 @@ local function chapterOf(quest): string
 	end
 	if quest.giver == "Fixer" or quest.id == "WelcomeDowntown" then
 		return "Downtown"
+	end
+	if quest.giver == "Elder" or quest.giver == "Captain" then
+		return "Hanami"
 	end
 	return "Beyond"
 end
