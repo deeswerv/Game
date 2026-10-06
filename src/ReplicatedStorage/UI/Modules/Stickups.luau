@@ -25,10 +25,9 @@ local GOLD = Color3.fromRGB(255, 196, 40)
 local RED = Color3.fromRGB(226, 52, 52)
 local GREEN = Color3.fromRGB(76, 214, 110)
 local CAPTION = Color3.fromRGB(255, 236, 200)
--- Under the banners that call the job, on the line the WANTED badge uses -- and a step below
--- it when you are wanted as well.
-local BAR_Y = 224
-local BAR_Y_WANTED = 266
+-- Bottom-left, over your name and health (where the WANTED badge goes, which steps up above
+-- it): out of the middle of the screen, where the fighting is.
+local BAR_Y = -172
 
 local function commas(n: number): string
 	local s = tostring(math.floor(n))
@@ -51,8 +50,8 @@ function Stickups.new(screen: GuiObject, playerGui: Instance, toast: any)
 	-- The robber's own bar.
 	local bar = Instance.new("Frame")
 	bar.Name = "HeatBar"
-	bar.AnchorPoint = Vector2.new(0.5, 0)
-	bar.Position = UDim2.new(0.5, 0, 0, BAR_Y)
+	bar.AnchorPoint = Vector2.new(0, 1)
+	bar.Position = UDim2.new(0, 24, 1, BAR_Y)
 	bar.Size = UDim2.fromOffset(440, 50)
 	bar.BackgroundColor3 = Color3.fromRGB(38, 22, 16)
 	bar.BackgroundTransparency = 0.1
@@ -211,8 +210,6 @@ function Stickups:_update()
 	if not on then
 		return
 	end
-	local wanted = (tonumber(me:GetAttribute("Bounty")) or 0) > 0
-	self._bar.Position = UDim2.new(0.5, 0, 0, if wanted then BAR_Y_WANTED else BAR_Y)
 	self._detail.Text = ("$%s  ·  %s  ·  THEY ARE COMING"):format(commas(amount),
 		string.upper(tostring(me:GetAttribute("HeatPlace") or "")))
 	self._timer.Text = clock(left)

@@ -336,6 +336,8 @@ for _, l in ipairs(bar:GetDescendants()) do
 	end
 end
 check(bar.Visible and timer == "0:45", "your bar counts the heat down: " .. tostring(timer))
+check(bar.AnchorPoint.X == 0 and bar.Position.X.Scale == 0 and bar.Position.Y.Scale == 1,
+	"and it sits bottom-left over your name, not in the middle of the screen")
 check(toasts[#toasts].kind == "banner" and toasts[#toasts].title == "STICK-UP", "and the job is called on your screen")
 hud:Handle("alarm", { robberId = 777, robber = "Rival", amount = 900, seconds = 75, place = "the ATM at ZEE GUNS" })
 check(toasts[#toasts].kind == "push" and toasts[#toasts].title:match("ROBBERY"), "someone else's: a card with where and how much")

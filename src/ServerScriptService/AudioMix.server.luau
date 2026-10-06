@@ -30,7 +30,7 @@ local ui = group("UI", master)
 
 -- Which bus a sound belongs on, by the names this project actually uses.
 local WEAPON_SOUNDS = {
-	Fire = true, Reload = true, Empty = true, Charge = true,
+	Fire = true, FireBody = true, Pump = true, Reload = true, Empty = true, Charge = true,
 	MagIn = true, MagOut = true, Swing = true, Hit = true,
 	-- Handling sounds. Currently silent placeholders in WeaponAudio, but they must be on the
 	-- weapons bus from the start: a sound routed to World once keeps that group for the life

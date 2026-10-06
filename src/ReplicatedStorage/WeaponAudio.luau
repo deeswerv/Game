@@ -15,11 +15,13 @@ local WeaponAudio = {}
 -- SoundId that fails to resolve is silent with no error, which is miserable to debug.
 local SFX = {
 	RifleShort = "rbxassetid://113450029049580", -- 0.43s, tight enough for automatic fire
-	Shotgun = "rbxassetid://108048485337530", -- 1.19s
 	Pistol = "rbxassetid://92967624763578", -- 0.88s
 	Reload = "rbxassetid://117963160131194", -- 1.00s
 	Swing = "rbxassetid://5789211405", -- 0.30s
 }
+-- (The old shotgun sample, 108048485337530, is gone: players found it off-putting. The
+-- shotgun and the sniper are now built from the samples above -- a report, a boom under it,
+-- shaped with an equaliser -- and the pump gun racks after every shot.)
 
 -- REQUIRED ASSET -- NOT PROVIDED.
 --
@@ -39,14 +41,27 @@ local PENDING = {
 
 -- Pitch does the heavy lifting. The same crack at 0.9 reads as a heavier weapon and at
 -- 1.25 as a lighter, faster one, which is far more convincing than volume alone.
-type Profile = { fire: string, pitch: number, volume: number, reloadPitch: number }
+-- A layer is a second sound played with the shot (the boom under a shotgun's crack); `eq` is
+-- an equaliser on the shot itself (low, mid, high gain in dB); `rack` is the pump worked
+-- after every shot (the reload sample, fast and short), `rackDelay` seconds after it.
+type Layer = { name: string, sound: string, pitch: number, volume: number, reverb: number? }
+type Profile = {
+	fire: string, pitch: number, volume: number, reloadPitch: number,
+	eq: { number }?, layers: { Layer }?, rack: number?, rackDelay: number?,
+}
 
 local PROFILES: { [string]: Profile } = {
 	Rifle = { fire = SFX.RifleShort, pitch = 1.00, volume = 0.5, reloadPitch = 1.0 },
 	SMG = { fire = SFX.RifleShort, pitch = 1.22, volume = 0.4, reloadPitch = 1.15 },
-	Shotgun = { fire = SFX.Shotgun, pitch = 0.95, volume = 0.65, reloadPitch = 0.85 },
+	-- The pump gun: a deep, full report with the harsh top cut off, a heavy boom under it, and
+	-- the pump racked straight after (ka-CHUNK).
+	Shotgun = { fire = SFX.RifleShort, pitch = 0.74, volume = 0.62, reloadPitch = 0.85, eq = { 7, 1, -7 },
+		layers = { { name = "FireBody", sound = SFX.Pistol, pitch = 0.52, volume = 0.5, reverb = 0.7 } },
+		rack = 1.7, rackDelay = 0.32 },
 	Pistol = { fire = SFX.Pistol, pitch = 1.05, volume = 0.5, reloadPitch = 1.1 },
-	Sniper = { fire = SFX.Shotgun, pitch = 0.8, volume = 0.7, reloadPitch = 0.9 },
+	-- The bolt-action: a hard crack and a long rolling tail.
+	Sniper = { fire = SFX.RifleShort, pitch = 0.82, volume = 0.66, reloadPitch = 0.9, eq = { 4, 2, -3 },
+		layers = { { name = "FireBody", sound = SFX.Pistol, pitch = 0.44, volume = 0.42, reverb = 1.6 } } },
 }
 
 local MELEE: Profile = { fire = SFX.Swing, pitch = 1.0, volume = 0.45, reloadPitch = 1.0 }
@@ -93,6 +108,61 @@ function WeaponAudio.Apply(tool: Tool, cfg)
 	fire.RollOffMode = Enum.RollOffMode.InverseTapered
 	fire.RollOffMinDistance = 12
 	fire.RollOffMaxDistance = 260
+	-- The shot's shape: an equaliser on it where the profile has one (and none otherwise).
+	local eq = fire:FindFirstChildOfClass("EqualizerSoundEffect")
+	local gains = p.eq
+	if gains then
+		local e: EqualizerSoundEffect = (eq :: any) or Instance.new("EqualizerSoundEffect")
+		e.Parent = fire
+		e.LowGain, e.MidGain, e.HighGain = gains[1], gains[2], gains[3]
+	elseif eq then
+		eq:Destroy()
+	end
+	-- Layers played with the shot; any left over from another profile go.
+	local wanted: { [string]: boolean } = {}
+	for _, layer in ipairs(p.layers or {}) do
+		wanted[layer.name] = true
+		local s = ensureSound(handle, layer.name)
+		s.SoundId = layer.sound
+		s.Volume = layer.volume
+		s.PlaybackSpeed = layer.pitch
+		s.RollOffMode = Enum.RollOffMode.InverseTapered
+		s.RollOffMinDistance = 14
+		s.RollOffMaxDistance = 320
+		local verb = s:FindFirstChildOfClass("ReverbSoundEffect")
+		local decay = layer.reverb
+		if decay then
+			local r: ReverbSoundEffect = (verb :: any) or Instance.new("ReverbSoundEffect")
+			r.Parent = s
+			r.DecayTime = decay
+			r.Density = 0.8
+			r.Diffusion = 0.9
+			r.DryLevel = 0
+			r.WetLevel = -8
+		elseif verb then
+			verb:Destroy()
+		end
+	end
+	for _, name in ipairs({ "FireBody" }) do
+		local old = handle:FindFirstChild(name)
+		if old and not wanted[name] then
+			old:Destroy()
+		end
+	end
+	-- The pump, worked after every shot.
+	local rack = handle:FindFirstChild("Pump")
+	if p.rack then
+		local s = ensureSound(handle, "Pump")
+		s.SoundId = SFX.Reload
+		s.Volume = 0.42
+		s.PlaybackSpeed = p.rack
+		s.RollOffMode = Enum.RollOffMode.InverseTapered
+		s.RollOffMinDistance = 8
+		s.RollOffMaxDistance = 90
+		s:SetAttribute("Delay", p.rackDelay or 0.3)
+	elseif rack then
+		rack:Destroy()
+	end
 
 	local reload = ensureSound(handle, "Reload")
 	reload.SoundId = SFX.Reload
@@ -128,6 +198,40 @@ function WeaponAudio.Play(tool: Tool?, name: string): boolean
 		return true
 	end
 	return false
+end
+
+--- Fire a weapon's shot sound: the report, every layer with it, and the pump after (where
+--- the weapon has one), each nudged in pitch so held fire never loops one sample. Used by
+--- the shooter's own client and by every client hearing someone else's shot.
+function WeaponAudio.PlayFire(tool: Tool?): boolean
+	local handle = tool and tool:FindFirstChild("Handle")
+	local fire = handle and handle:FindFirstChild("Fire")
+	if not (fire and fire:IsA("Sound")) then
+		return false
+	end
+	WeaponAudio.Vary(fire)
+	fire:Play()
+	local body = (handle :: Instance):FindFirstChild("FireBody")
+	if body and body:IsA("Sound") and body.SoundId ~= "" then
+		WeaponAudio.Vary(body)
+		body:Play()
+	end
+	local pump = (handle :: Instance):FindFirstChild("Pump")
+	if pump and pump:IsA("Sound") and pump.SoundId ~= "" then
+		local delay = tonumber(pump:GetAttribute("Delay")) or 0.3
+		task.delay(delay, function()
+			if pump.Parent then
+				-- Just the first, sharp part of the reload sample: the slide going back and
+				-- forward, not the whole reload.
+				pump.TimePosition = 0
+				pump:Play()
+				task.delay(0.32, function()
+					pump:Stop()
+				end)
+			end
+		end)
+	end
+	return true
 end
 
 --- A small random pitch shift per shot.

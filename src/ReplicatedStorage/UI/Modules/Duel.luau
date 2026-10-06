@@ -28,6 +28,11 @@ local UISound = require(script.Parent.UISound)
 local Duel = {}
 Duel.__index = Duel
 
+-- The big DUEL button on the left of the screen is off: duels are queued from the pads in
+-- the DUEL HALL, or with J. (The "searching" card, the VS screen, the scoreboard and the
+-- results are unchanged.) The ALT tip stays, on its own, bottom-left.
+Duel.SHOW_BUTTON = false
+
 local WHITE = Color3.new(1, 1, 1)
 local RED = Color3.fromRGB(236, 44, 52)
 local BLUE = Color3.fromRGB(40, 110, 255)
@@ -234,10 +239,15 @@ local function buildPlay(self, parent: GuiObject)
 	tip.BackgroundTransparency = 0.15
 	tip.AnchorPoint = Vector2.new(0, 0.5)
 	tip.Position = UDim2.new(1, 16, 0.5, 3)
+	if not Duel.SHOW_BUTTON then
+		-- Without the button, the tip stands alone in its place, bottom-left over your name.
+		tip.AnchorPoint = Vector2.new(0, 1)
+		tip.Position = UDim2.new(0, 24, 1, -128)
+	end
 	tip.Size = UDim2.fromOffset(0, 34)
 	tip.AutomaticSize = Enum.AutomaticSize.X
 	tip.Visible = keyboard
-	tip.Parent = holder
+	tip.Parent = if Duel.SHOW_BUTTON then holder else parent
 	Components.Corner(tip, 8)
 	Components.Stroke(tip, Theme.Colour.Outline, 2)
 	Components.Padding(tip, nil, 8, 0)
@@ -262,7 +272,7 @@ local function buildPlay(self, parent: GuiObject)
 		end
 	end)
 
-	-- The reference's speech bubble over the button.
+	-- The reference's speech bubble over the button (gone with the button).
 	local bubble = Instance.new("Frame")
 	bubble.Name = "Hint"
 	bubble.BackgroundColor3 = WHITE
@@ -328,6 +338,11 @@ local function buildPlay(self, parent: GuiObject)
 		self:Toggle()
 	end)
 
+	if not Duel.SHOW_BUTTON then
+		bob:Cancel()
+		bubble:Destroy()
+		bubble = nil :: any
+	end
 	self._play, self._playPlate, self._playLabel, self._playGlow, self._hint = holder, plate, label, glow, bubble
 	self._playLip, self._playBadge, self._playIcon, self._playSub = lip, badge, swords, sub
 	task.delay(150, function()
@@ -1015,7 +1030,7 @@ end
 function Duel:_apply()
 	local mode = self._mode
 	local hidden = self._hidden
-	local playVisible = not hidden and not self._playBlocked and (mode == "idle" or mode == "queue")
+	local playVisible = Duel.SHOW_BUTTON and not hidden and not self._playBlocked and (mode == "idle" or mode == "queue")
 	self._play.Visible = playVisible
 	self._queueCard.Visible = not hidden and mode == "queue"
 	local boardVisible = not hidden and (mode == "live" or (mode == "countdown" and (self._round or 1) > 1))

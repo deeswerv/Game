@@ -470,14 +470,8 @@ end
 local function fireFeedback(tool: Tool, wcfg)
 	CombatFX.MuzzleFlash(tool, wcfg.MuzzleFlashColor)
 	CombatFX.EjectShell(tool)
-	local handle = tool:FindFirstChild("Handle")
-	local sound = handle and handle:FindFirstChild("Fire")
-	if sound and sound:IsA("Sound") then
-		-- Nudge the pitch each shot. Without this, holding the trigger replays one identical
-		-- sample and the weapon sounds like a looping effect rather than a gun.
-		WeaponAudio.Vary(sound)
-		sound:Play()
-	end
+	-- The bang: the report and its layers, each nudged in pitch (WeaponAudio.PlayFire).
+	WeaponAudio.PlayFire(tool)
 end
 
 -- When each body last showed a hit burst (Dark Matter and anything like it).

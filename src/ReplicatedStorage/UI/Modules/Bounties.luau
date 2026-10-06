@@ -27,6 +27,10 @@ local function commas(n: number): string
 	return (out:gsub("^,", ""))
 end
 
+-- Where the badge sits: this far up from the bottom of the screen (the left-hand stack).
+Bounties.BADGE_Y = -172
+Bounties.BADGE_Y_HEAT = -232
+
 function Bounties.new(screen: GuiObject, playerGui: Instance, toast: any)
 	local self = setmetatable({}, Bounties)
 	self._toast = toast
@@ -35,11 +39,12 @@ function Bounties.new(screen: GuiObject, playerGui: Instance, toast: any)
 	self._tags = {} :: { [Player]: { gui: BillboardGui, amount: TextLabel, shown: number } }
 	self._marks = {} :: { [Model]: { gui: BillboardGui, distance: TextLabel } }
 
-	-- Your own price, under the cash bar while you are WANTED.
+	-- Your own price while you are WANTED: bottom-left, over your name and health, out of the
+	-- middle of the screen (a heat bar from a stick-up stacks under it).
 	local badge = Instance.new("Frame")
 	badge.Name = "WantedBadge"
-	badge.AnchorPoint = Vector2.new(0.5, 0)
-	badge.Position = UDim2.new(0.5, 0, 0, 224)
+	badge.AnchorPoint = Vector2.new(0, 1)
+	badge.Position = UDim2.new(0, 24, 1, Bounties.BADGE_Y)
 	badge.Size = UDim2.fromOffset(250, 34)
 	badge.BackgroundColor3 = RED
 	badge.BorderSizePixel = 0
@@ -227,6 +232,9 @@ function Bounties:_refresh()
 
 	local mine = tonumber(me:GetAttribute("Bounty")) or 0
 	self._badge.Visible = mine > 0 and not self._hidden and me:GetAttribute("DuelState") ~= "duel"
+	-- Step up out of the way of a stick-up's heat bar.
+	local hot = (tonumber(me:GetAttribute("Bag")) or 0) > 0
+	self._badge.Position = UDim2.new(0, 24, 1, if hot then Bounties.BADGE_Y_HEAT else Bounties.BADGE_Y)
 	if mine > 0 then
 		self._badgeLabel.Text = "🎯 WANTED  $" .. commas(mine)
 	end

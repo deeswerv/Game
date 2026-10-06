@@ -458,12 +458,14 @@ World.player:SetAttribute("AirstrikeCharges", 0)
 World.player:SetAttribute("Bag", 620)
 World.player:SetAttribute("Heat", World.workspace:GetServerTimeNow() + 52)
 World.player:SetAttribute("HeatPlace", "ZEE GUNS")
+World.player:SetAttribute("Bounty", 900) -- wanted too: the badge steps up over the heat bar
 World.serverFire("Remotes", "StickupEvent", "alarm", { robberId = World.player.UserId, robber = World.player.DisplayName,
 	amount = 620, seconds = 60, place = "ZEE GUNS", kind = "register", at = Vector3.new(0, 0, -20) })
 shot("46_stickup", 0.6)
 World.advance(5)
 World.player:SetAttribute("Bag", nil)
 World.player:SetAttribute("Heat", nil)
+World.player:SetAttribute("Bounty", nil)
 World.player:SetAttribute("HeatPlace", nil)
 
 -- 47. Finding your way: facing north up the street -- landmarks on the compass, a turf war off

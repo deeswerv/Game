@@ -21,6 +21,14 @@ local AmbienceConfig = require(ReplicatedStorage:WaitForChild("AmbienceConfig"))
 local LAMPS: { [string]: boolean } = {
 	LanternGlass = true, SoffitLamp = true, TunnelLamp = true, WalkLamp = true, LightPanel = true,
 	CeilingLight = true, StashLamp = true, Downlight = true, LampHead = true,
+	-- Hanami City's paper lanterns, and the lit signs and screens of a Japanese street at
+	-- night: these glow in their own colours (OWN_COLOUR), not lamp-white.
+	Chochin = true, Screen = true, ScreenGlow = true, TallSign = true, SignBand = true, Tenant = true,
+	Billboard = true, NameBand = true, FurnaceMouth = true,
+}
+local OWN_COLOUR: { [string]: boolean } = {
+	Chochin = true, Screen = true, ScreenGlow = true, TallSign = true, SignBand = true, Tenant = true,
+	Billboard = true, NameBand = true, FurnaceMouth = true,
 }
 -- Facade windows (the opaque ones on the floors above the street; shop glass with a lit room
 -- behind it is left alone).
@@ -68,7 +76,8 @@ local function track(inst: Instance)
 	elseif inst:IsA("Light") and not lights[inst] then
 		-- Only the lights of lamps and the like -- the ones the builders placed with the lamps.
 		local parent = inst.Parent
-		if parent and (LAMPS[parent.Name] or parent.Name == "Base" or parent.Name == "Lamp" or inst:FindFirstAncestor("Downtown")) then
+		if parent and (LAMPS[parent.Name] or parent.Name == "Base" or parent.Name == "Lamp" or inst:FindFirstAncestor("Downtown")
+			or inst:FindFirstAncestor("Hanami")) then
 			lights[inst] = (inst :: any).Brightness
 		end
 	end
@@ -101,7 +110,8 @@ local function apply(e: Entry, on: boolean)
 		p.Transparency = e.transparency
 	elseif e.lamp then
 		p.Material = Enum.Material.Neon
-		p.Color = LAMP_GLOW
+		-- A coloured sign or lantern keeps its colour, a touch brighter; a lamp glows warm white.
+		p.Color = if OWN_COLOUR[p.Name] then e.colour:Lerp(Color3.new(1, 1, 1), 0.12) else LAMP_GLOW
 	else
 		p.Material = Enum.Material.Neon
 		p.Color = if e.a < LIT_SHARE * 0.08 then WINDOW_TV else WINDOW_WARM[math.floor(e.b * #WINDOW_WARM) + 1]

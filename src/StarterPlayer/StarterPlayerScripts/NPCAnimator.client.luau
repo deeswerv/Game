@@ -525,12 +525,7 @@ handlers.Shot = function(model, origin, endPoint)
 	if tool and wcfg then
 		CombatFX.MuzzleFlash(tool, wcfg.MuzzleFlashColor)
 		CombatFX.EjectShell(tool)
-		local handle = tool:FindFirstChild("Handle")
-		local sound = handle and handle:FindFirstChild("Fire")
-		if sound and sound:IsA("Sound") then
-			WeaponAudio.Vary(sound)
-			sound:Play()
-		end
+		WeaponAudio.PlayFire(tool)
 		local record = recordOf(model)
 		if record then
 			record.recoil = {

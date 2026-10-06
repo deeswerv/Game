@@ -2356,6 +2356,68 @@ local function tower(b: Kit.Builder)
 	-- The name, high up, facing down the avenue.
 	board(b, "ZEE", Kit.Look(Vector3.new(0, H - 14, -1.4), Vector3.new(0, H - 14, -10)), 26, 11, TEAL, CREAM)
 	b:light("Point", Vector3.new(0, 14, -4), WARM, 1.2, 36)
+
+	-- The spine: the middle bay up the front in deeper glass between gold-edged piers, from the
+	-- lobby to the name, so the shaft has a centre line to it.
+	local gold = Color3.fromRGB(236, 184, 64)
+	local spineTop = H - 22
+	b:decor("Spine", Vector3.new(14.4, spineTop - 17, 0.3), Vector3.new(0, (spineTop + 17) / 2, -0.15), Color3.fromRGB(40, 110, 130),
+		M.Glass, { reflectance = 0.25 })
+	for _, x in ipairs({ -7.5, 7.5 }) do
+		b:decor("SpineEdge", Vector3.new(0.5, spineTop - 17, 1.4), Vector3.new(x, (spineTop + 17) / 2, -1.2), gold, M.Metal)
+	end
+	-- Lit strips up the spine's edges (they glow at night with the rest of the city).
+	for _, x in ipairs({ -7.9, 7.9 }) do
+		b:decor("LightPanel", Vector3.new(0.2, spineTop - 20, 0.2), Vector3.new(x, (spineTop + 20) / 2, -1.95), LAMP_GLASS)
+	end
+	-- Gold fins on all four corners, the full height of the shaft.
+	for _, x in ipairs({ -W / 2 - 0.7, W / 2 + 0.7 }) do
+		for _, z in ipairs({ -0.7, D + 0.7 }) do
+			b:decor("CornerFin", Vector3.new(1.4, H - 18, 1.4), Vector3.new(x, (H + 18) / 2, z), gold, M.Metal)
+		end
+	end
+	-- Two setbacks: a deep ledge all round with a gold lip, a row of clipped shrubs on it, and
+	-- a lit band under it.
+	for _, y in ipairs({ 64, 106 }) do
+		b:decor("Ledge", Vector3.new(W + 4, 1.4, D + 4), Vector3.new(0, y, D / 2), stone)
+		b:decor("LedgeLip", Vector3.new(W + 4.3, 0.4, D + 4.3), Vector3.new(0, y + 0.8, D / 2), gold, M.Metal)
+		b:decor("LightPanel", Vector3.new(W + 3.6, 0.2, 0.2), Vector3.new(0, y - 0.9, -2.05), LAMP_GLASS)
+		for x = -W / 2, W / 2, 6 do
+			if math.abs(x) > 9 then
+				b:decor("LedgeShrub", Vector3.new(2, 2, 2), Vector3.new(x, y + 1.9, -1.2), HEDGE, nil, { shape = "Ball" })
+			end
+		end
+	end
+	-- Balconies on the side faces every few floors: glass fronts on gold rails.
+	for _, side in ipairs({ -1, 1 }) do
+		for y = 36, H - 30, 21 do
+			b:decor("Balcony", Vector3.new(3, 0.5, D - 10), Vector3.new(side * (W / 2 + 1.5), y, D / 2), stone)
+			b:decor("BalconyGlass", Vector3.new(0.2, 2.4, D - 10), Vector3.new(side * (W / 2 + 2.9), y + 1.4, D / 2), Color3.fromRGB(200, 226, 236),
+				M.Glass, { transparency = 0.4 })
+			b:decor("BalconyRail", Vector3.new(0.3, 0.3, D - 10), Vector3.new(side * (W / 2 + 2.9), y + 2.7, D / 2), gold, M.Metal)
+		end
+	end
+	-- At street level: a revolving door in the lobby, gold lettering, flags on three poles,
+	-- and lamps either side of the steps.
+	b:decor("RevolvingDoor", Vector3.new(9, 6, 6), CFrame.new(0, 4.5, -1.6) * CFrame.Angles(0, 0, math.rad(90)),
+		Color3.fromRGB(200, 226, 236), M.Glass, { shape = "Cylinder", transparency = 0.45 })
+	b:decor("RevolvingCap", Vector3.new(0.6, 6.4, 6.4), CFrame.new(0, 9.2, -1.6) * CFrame.Angles(0, 0, math.rad(90)), gold, M.Metal,
+		{ shape = "Cylinder" })
+	b:decor("RevolvingWing", Vector3.new(5.8, 8.6, 0.2), CFrame.new(0, 4.5, -1.6) * CFrame.Angles(0, math.rad(45), 0), gold, M.Metal)
+	b:decor("RevolvingWing", Vector3.new(5.8, 8.6, 0.2), CFrame.new(0, 4.5, -1.6) * CFrame.Angles(0, math.rad(-45), 0), gold, M.Metal)
+	for i, fx in ipairs({ -27, -21.5, 21.5, 27 }) do
+		b:part("FlagPole", Vector3.new(0.4, 30, 0.4), Vector3.new(fx, 15, -8), Color3.fromRGB(220, 222, 226), M.Metal)
+		b:decor("PoleTop", Vector3.new(0.8, 0.8, 0.8), Vector3.new(fx, 30.3, -8), gold, M.Metal, { shape = "Ball" })
+		local flag = b:decor("Flag", Vector3.new(0.12, 4, 6.4), Vector3.new(fx, 27.6, -11.3), if i % 2 == 0 then NAVY else TEAL, M.Fabric)
+		flag.CastShadow = true
+		painted(b, "ZEE", Kit.Look(Vector3.new(fx - 0.1, 27.6, -11.3), Vector3.new(fx - 10, 27.6, -11.3)), 4, 2, GOLD)
+	end
+	for _, x in ipairs({ -17, 17 }) do
+		b:part("TowerLamp", Vector3.new(0.6, 8, 0.6), Vector3.new(x, 4, -7.4), IRON)
+		b:decor("LanternGlass", Vector3.new(1.4, 1.8, 1.4), Vector3.new(x, 8.8, -7.4), LAMP_GLASS)
+		b:decor("LampCap", Vector3.new(1.8, 0.4, 1.8), Vector3.new(x, 9.9, -7.4), gold, M.Metal)
+	end
+	painted(b, "EST. ZEE", Kit.Look(Vector3.new(0, 16.6, -1.6), Vector3.new(0, 16.6, -10)), 10, 1, GOLD, Enum.Font.GothamBold)
 end
 
 --- A car park: painted bays in two rows, a few cars in them, a light at each end.
@@ -3479,6 +3541,40 @@ function Downtown.Build(parent: Instance, centre: Vector3)
 				building(root, -HW - 30, -HW + 10, a - 19, a + 19, h, colour, { "+x" }, i)
 			end
 			if box then
+				-- Up the inward face above the shops: piers in a lighter tone, so a tall face reads
+				-- as floors and bays instead of one flat wall; a name band near the top of some, a
+				-- billboard on a frame on the roof of others.
+				local inward = if side == "n" then Vector3.new(0, 0, -1) elseif side == "s" then Vector3.new(0, 0, 1)
+					elseif side == "e" then Vector3.new(-1, 0, 0) else Vector3.new(1, 0, 0)
+				local bx, bz = (box[1] + box[2]) / 2, (box[3] + box[4]) / 2
+				local halfDepth = if inward.X ~= 0 then (box[2] - box[1]) / 2 else (box[4] - box[3]) / 2
+				local span = if inward.X ~= 0 then box[4] - box[3] else box[2] - box[1]
+				local faceAt = Vector3.new(bx, 0, bz) + inward * (halfDepth + 0.35)
+				local across = Vector3.new(inward.Z, 0, -inward.X)
+				local fin = lighter(colour, 0.32)
+				for k = -2, 2 do
+					local at = faceAt + across * (k * span / 5.2)
+					root:decor("TowerFin", if inward.X ~= 0 then Vector3.new(0.7, h - 40, 1.2) else Vector3.new(1.2, h - 40, 0.7),
+						at + Vector3.new(0, (h + 40) / 2 - 2, 0), fin)
+				end
+				local brands = { "ZEE BANK", "NOVA", "PIXEL", "METRO", "BLOX", "SKYLINE", "CRUNCH", "ORBIT" }
+				if i % 3 == 1 then
+					local bandAt = faceAt + inward * 0.4 + Vector3.new(0, h - 8, 0)
+					local bc = ({ TEAL, RED, NAVY, GOLD, ORANGE })[(i % 5) + 1]
+					root:decor("NameBand", if inward.X ~= 0 then Vector3.new(0.6, 5, span * 0.7) else Vector3.new(span * 0.7, 5, 0.6), bandAt, bc)
+					painted(root, brands[(i % #brands) + 1], Kit.Look(bandAt + inward * 0.4, bandAt + inward * 10), span * 0.62, 3.6,
+						if bc == GOLD then NAVY else CREAM)
+				elseif i % 3 == 2 then
+					local bb = Vector3.new(bx, h + 1, bz) + inward * (halfDepth - 4)
+					for _, k in ipairs({ -1, 1 }) do
+						root:decor("BillboardLeg", Vector3.new(0.6, 10, 0.6), bb + across * (k * span * 0.3) + Vector3.new(0, 4, 0) - inward * 1.5, IRON)
+					end
+					local bc = ({ ORANGE, BLUE, RED, GREEN })[(i % 4) + 1]
+					root:decor("Billboard", if inward.X ~= 0 then Vector3.new(0.6, 8, span * 0.7) else Vector3.new(span * 0.7, 8, 0.6),
+						bb + Vector3.new(0, 9, 0), bc)
+					painted(root, brands[((i + 3) % #brands) + 1], Kit.Look(bb + Vector3.new(0, 9, 0) + inward * 0.4,
+						bb + Vector3.new(0, 9, 0) + inward * 10), span * 0.6, 5, CREAM)
+				end
 				-- A crown on every tower: a set-back top storey in a lighter tone with a trim cap,
 				-- and on every third a mast with a red beacon, so the skyline has a silhouette.
 				local cx, cz = (box[1] + box[2]) / 2, (box[3] + box[4]) / 2

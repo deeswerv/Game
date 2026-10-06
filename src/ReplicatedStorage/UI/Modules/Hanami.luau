@@ -24,7 +24,7 @@ local GREEN = Color3.fromRGB(96, 214, 120)
 local PAPER = Color3.fromRGB(242, 230, 204)
 local INK = Color3.fromRGB(44, 34, 30)
 -- The raid bar sits on the line the stick-up heat bar uses: you are never doing both.
-local BAR_Y = 224
+local BAR_Y = -172
 
 local function commas(n: any): string
 	local s = tostring(math.floor(tonumber(n) or 0))
@@ -47,8 +47,9 @@ function Hanami.new(screen: GuiObject, toast: any)
 	-- The raid bar.
 	local bar = Instance.new("Frame")
 	bar.Name = "RaidBar"
-	bar.AnchorPoint = Vector2.new(0.5, 0)
-	bar.Position = UDim2.new(0.5, 0, 0, BAR_Y)
+	-- Bottom-left, over your name and health: out of the middle of the screen.
+	bar.AnchorPoint = Vector2.new(0, 1)
+	bar.Position = UDim2.new(0, 24, 1, BAR_Y)
 	bar.Size = UDim2.fromOffset(440, 50)
 	bar.BackgroundColor3 = Color3.fromRGB(30, 20, 22)
 	bar.BackgroundTransparency = 0.1
