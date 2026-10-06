@@ -71,6 +71,34 @@ function Rig.starter(World, place)
 	return starter
 end
 
+--- An NPC on the locked rig, the way NPCService builds one: a copy of StarterCharacter in
+--- `parent` (workspace.NPCs), scaled by `scale` -- its joints that much further apart.
+function Rig.npc(World, place, parent, scale: number?)
+	local R = World.R
+	local source = place:GetService("StarterPlayer"):FindFirstChild("StarterCharacter")
+	local rig = R.mirror(source, parent)
+	rig.Name = "TestNPC"
+	wire(World, source, rig, nil)
+	scale = scale or 1
+	if scale ~= 1 then
+		for _, d in ipairs(rig:GetDescendants()) do
+			if d:IsA("Motor6D") then
+				d.C0 = d.C0.Rotation + d.C0.Position * scale
+				d.C1 = d.C1.Rotation + d.C1.Position * scale
+			end
+		end
+		rig:ScaleTo(scale)
+	end
+	local humanoid = rig:FindFirstChildOfClass("Humanoid")
+	humanoid.MaxHealth = 100
+	humanoid.Health = 100
+	local root = rig:FindFirstChild("HumanoidRootPart")
+	rig.PrimaryPart = root
+	root.CFrame = roblox.CFrame.new(20, 3, 0)
+	World.force(root, "AssemblyLinearVelocity", roblox.Vector3.new(0, 0, 0))
+	return rig
+end
+
 --- The Motor6D that moves `partName`.
 function Rig.motor(rig, partName: string)
 	for _, d in ipairs(rig:GetDescendants()) do

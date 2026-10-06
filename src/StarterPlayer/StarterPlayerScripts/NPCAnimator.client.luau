@@ -6,13 +6,17 @@
 --
 -- Two layers, the same split the player character uses:
 --
---   LOCOMOTION -- the real R15 idle, walk, run, jump and fall animations, the exact ones in
---   StarterCharacter.Animate, blended by how fast the NPC is actually moving and played at a
---   rate that matches it, so feet do not skate. Played locally on each client: no
---   replication traffic, and an NPC nobody is near costs nothing.
+--   LOCOMOTION -- near you, the players' own gait (ReplicatedStorage.Motion, which
+--   MotionAnimator poses NPCs with too): the same run, strafe, jump and landing on the same
+--   Roblox Boy body. Further out, or whenever MotionAnimator is not posing one, the stock R15
+--   idle, walk, run, jump and fall animations from StarterCharacter.Animate, blended by how
+--   fast the NPC is actually moving and played at a rate that matches it. Played locally on
+--   each client: no replication traffic, and an NPC nobody is near costs nothing.
 --
 --   PROCEDURAL -- short joint offsets on top: a head that looks around and follows its aim,
---   recoil, hit reactions, melee swings, and the death. Written for nearby NPCs only.
+--   recoil, hit reactions, melee swings, and the death. Written for nearby NPCs only. While
+--   MotionAnimator poses an NPC these go to it as offsets (Motion.Offsets) and it folds them
+--   in under the gait; only the neck is written here.
 --
 -- Arms and waist on anyone holding a gun belong to WeaponPoseHold (the one writer of those
 -- joints). This script hands its waist movement to PoseLayers for WeaponPoseHold to fold
@@ -25,6 +29,7 @@ local StarterPlayer = game:GetService("StarterPlayer")
 local TweenService = game:GetService("TweenService")
 
 local NPCAnimation = require(ReplicatedStorage:WaitForChild("NPCAnimation"))
+local Motion = require(ReplicatedStorage:WaitForChild("Motion"))
 local PoseLayers = require(ReplicatedStorage:WaitForChild("PoseLayers"))
 local ReloadAnimator = require(ReplicatedStorage:WaitForChild("ReloadAnimator"))
 local CombatFX = require(ReplicatedStorage:WaitForChild("CombatFX"))
@@ -159,11 +164,19 @@ local function attach(model: Model)
 	-- Holding a melee weapon: the arm stays up and forward while the legs walk.
 	load("tool", LOCOMOTION.tool, Enum.AnimationPriority.Action, true)
 
+	-- Rest is the joint as the server built it -- unless the gait is already posing this
+	-- NPC, in which case it is the locked rig's, scaled to this body.
 	local joints = {}
+	local scale = model:GetScale()
 	for jointName, partName in pairs(NPCAnimation.JointPart) do
 		local motor = findMotor(model:FindFirstChild(partName), jointName)
 		if motor then
-			joints[jointName] = { motor = motor, rest = motor.C0, dirty = false }
+			local rest = motor.C0
+			local template = starterCharacter and findMotor(starterCharacter:FindFirstChild(partName), jointName)
+			if Motion.Posing[model] and template then
+				rest = template.C0.Rotation + template.C0.Position * scale
+			end
+			joints[jointName] = { motor = motor, rest = rest, dirty = false }
 		end
 	end
 
@@ -402,6 +415,30 @@ end
 
 local function writeJoints(record, offsets: { [string]: CFrame })
 	local model = record.model
+	if Motion.Posing[model] and not record.dead then
+		-- The gait has every joint but the neck: hand it the rest as offsets.
+		local handed = {}
+		for name, joint in pairs(record.joints) do
+			local offset = offsets[name]
+			if name == "Neck" then
+				if offset then
+					joint.motor.C0 = joint.rest * offset
+					joint.dirty = true
+				elseif joint.dirty then
+					joint.motor.C0 = joint.rest
+					joint.dirty = false
+				end
+			else
+				if offset then
+					handed[NPCAnimation.JointPart[name]] = offset
+				end
+				joint.dirty = false
+			end
+		end
+		Motion.Offsets[model] = handed
+		return
+	end
+	Motion.Offsets[model] = nil
 	-- A gun holder's arms and waist are WeaponPoseHold's. Hand the waist over; leave the arms.
 	local posed = model:GetAttribute("PoseRightC0") ~= nil
 	if posed then
@@ -451,6 +488,7 @@ RunService:BindToRenderStep("NPCAnimator", Enum.RenderPriority.Character.Value +
 		if not model.Parent or not record.root.Parent then
 			records[model] = nil
 			PoseLayers.Clear(model)
+			Motion.Offsets[model] = nil
 			continue
 		end
 		local distance = (record.root.Position - eye).Magnitude
@@ -472,16 +510,25 @@ RunService:BindToRenderStep("NPCAnimator", Enum.RenderPriority.Character.Value +
 			continue
 		end
 
+		-- Posed by the gait: the stock movement tracks would only be divided back out.
+		local gait = Motion.Posing[model] == true
+		if gait and record.playing then
+			stopTracks(record, 0.2)
+		end
+
 		if distance > POSE_RANGE then
 			-- Far: locomotion only, and not every frame.
-			if now >= record.nextFar then
+			Motion.Offsets[model] = nil
+			if not gait and now >= record.nextFar then
 				record.nextFar = now + FAR_UPDATE
 				updateLocomotion(record, now)
 			end
 			continue
 		end
 
-		updateLocomotion(record, now)
+		if not gait then
+			updateLocomotion(record, now)
+		end
 		local offsets: { [string]: CFrame } = {}
 		updateLook(record, now, dt, offsets)
 		updateLayers(record, now, offsets)

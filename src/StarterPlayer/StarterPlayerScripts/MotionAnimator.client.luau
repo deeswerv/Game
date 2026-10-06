@@ -1,7 +1,7 @@
 --!strict
--- Every player's body, posed from how it is moving: the game's own walk, run, sprint, crouch,
--- jump, landing and roll (ReplicatedStorage.Motion) in place of Roblox's default movement
--- animations.
+-- Every player's body -- and every NPC's, on the same Roblox Boy rig -- posed from how it is
+-- moving: the game's own walk, run, sprint, crouch, jump, landing and roll
+-- (ReplicatedStorage.Motion) in place of Roblox's default movement animations.
 --
 -- Nothing is replicated per frame, and nothing needs to be: every client already sees every
 -- character's velocity and footing, and poses each one locally from them. The two things it
@@ -17,7 +17,13 @@
 --
 -- Bound just before WeaponPoseHold (Last), HeadLook (Last + 1) and EmoteAnimator (Last + 2).
 -- With a gun out the weapon hold owns the arms and the chest, so they are left to it -- the
--- gait only hands it a chest offset (PoseLayers); the neck is always HeadLook's.
+-- gait only hands it a chest offset (PoseLayers); the neck is always HeadLook's (an NPC's,
+-- NPCAnimator's).
+--
+-- NPCs (workspace.NPCs) are posed the same way, nearer in, scaled to their size. NPCAnimator
+-- still owns how they look around, flinch, recoil and swing: while we pose an NPC
+-- (Motion.Posing) it publishes those as joint offsets (Motion.Offsets) and they go in under
+-- the gait -- C0 = rest * offset * gait -- rather than one of us overwriting the other.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -33,6 +39,7 @@ local player = Players.LocalPlayer
 
 -- Past this nobody can make out a gait, and each body is a dozen joint writes a frame.
 local RANGE = 260
+local NPC_RANGE = 150
 
 -- Humanoid states in which the body is not on its feet or in a jump: the default animation
 -- (a seat, a ladder, swimming, a ragdoll) is left to play.
@@ -44,6 +51,7 @@ local NOT_OURS: { [string]: boolean } = {
 type Joint = { motor: Motor6D, rest: CFrame, touched: boolean }
 type Entry = {
 	state: Motion.State,
+	scale: number,
 	joints: { [string]: Joint },
 	grounded: boolean,
 	fall: number,
@@ -73,14 +81,19 @@ local function restC0s(): { [string]: CFrame }
 	return out
 end
 
--- By class: this rig also carries AnimationConstraints with the Motor6Ds' names.
-local function jointsOf(character: Model): { [string]: Joint }
+-- By class: this rig also carries AnimationConstraints with the Motor6Ds' names. A scaled
+-- body (a big NPC) has its joints that much further apart.
+local function jointsOf(character: Model, scale: number): { [string]: Joint }
 	local rests = restC0s()
 	local joints = {}
 	for _, d in ipairs(character:GetDescendants()) do
 		if d:IsA("Motor6D") and d.Part1 and d.Part1.Parent == character and d.Part1.Name ~= "Head" then
 			local name = d.Part1.Name
-			joints[name] = { motor = d, rest = rests[name] or d.C0, touched = false }
+			local rest = rests[name]
+			if rest and scale ~= 1 then
+				rest = rest.Rotation + rest.Position * scale
+			end
+			joints[name] = { motor = d, rest = rest or d.C0, touched = false }
 		end
 	end
 	return joints
@@ -92,17 +105,19 @@ local function entryFor(character: Model): Entry
 		-- A respawn or a rebuilt rig leaves joints that are no longer in the character.
 		local _, any = next(entry.joints)
 		if not any or any.motor.Parent == nil or not any.motor:IsDescendantOf(character) then
-			entry.joints = jointsOf(character)
+			entry.joints = jointsOf(character, entry.scale)
 		end
 		return entry
 	end
-	local created: Entry = { state = Motion.NewState(), joints = jointsOf(character), grounded = true, fall = 0,
-		rollAt = character:GetAttribute("RollAt") :: number?, layered = false }
+	local scale = character:GetScale()
+	local created: Entry = { state = Motion.NewState(), scale = scale, joints = jointsOf(character, scale),
+		grounded = true, fall = 0, rollAt = character:GetAttribute("RollAt") :: number?, layered = false }
 	entries[character] = created
 	return created
 end
 
 local function release(entry: Entry, character: Model)
+	Motion.Posing[character] = nil
 	if entry.layered then
 		PoseLayers.Clear(character)
 		entry.layered = false
@@ -120,14 +135,15 @@ local function emoting(character: Model): boolean
 	return EmotePlayer.Posing[character] == true or character:GetAttribute("Emote") ~= nil
 end
 
-local function animate(character: Model, dt: number, eye: Vector3, isLocal: boolean)
+local function animate(character: Model, dt: number, eye: Vector3, isLocal: boolean, range: number)
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	local root = character:FindFirstChild("HumanoidRootPart")
 	if not humanoid or not root or not root:IsA("BasePart") then
 		return
 	end
 	local entry = entries[character]
-	if humanoid.Health <= 0 or (root.Position - eye).Magnitude > RANGE then
+	-- (An NPC's death is NPCAnimator's to play.)
+	if humanoid.Health <= 0 or character:GetAttribute("DeathStyle") ~= nil or (root.Position - eye).Magnitude > range then
 		if entry then
 			release(entry, character)
 			entries[character] = nil
@@ -137,6 +153,7 @@ local function animate(character: Model, dt: number, eye: Vector3, isLocal: bool
 	entry = entryFor(character)
 
 	local velocity = root.AssemblyLinearVelocity
+	local scale = entry.scale
 	local grounded = humanoid.FloorMaterial ~= Enum.Material.Air
 	-- The landing, scaled by how fast it was coming down.
 	local landed: number? = nil
@@ -181,7 +198,8 @@ local function animate(character: Model, dt: number, eye: Vector3, isLocal: bool
 	local sprint = if isLocal then player:GetAttribute("Sprinting") == true else velocity.Magnitude > 21
 	local poses, cover = Motion.Step(entry.state, {
 		dt = dt,
-		velocity = root.CFrame:VectorToObjectSpace(velocity),
+		-- A bigger body takes the same steps at a proportionally higher speed.
+		velocity = root.CFrame:VectorToObjectSpace(velocity) / scale,
 		grounded = grounded,
 		crouch = crouch,
 		sprint = sprint,
@@ -195,11 +213,13 @@ local function animate(character: Model, dt: number, eye: Vector3, isLocal: bool
 	-- pelvis's lean and twist taken back out (the gun stays on the aim while the legs run), and
 	-- sprinting, the carry. The hold folds the layer in after the stance's own waist turn, so
 	-- it is expressed in that frame.
+	local offsets = Motion.Offsets[character]
 	if armed and cover > 1e-3 then
 		local stance = character:GetAttribute("PoseWaist")
 		local turn = if typeof(stance) == "CFrame" then stance.Rotation else CFrame.identity
 		local layer = turn:Inverse() * entry.state.chest * turn
-		PoseLayers.Set(character, nil, nil, CFrame.identity:Lerp(layer, cover))
+		local waist = offsets and offsets.UpperTorso or CFrame.identity
+		PoseLayers.Set(character, nil, nil, CFrame.identity:Lerp(layer, cover) * waist)
 		entry.layered = true
 	elseif entry.layered then
 		PoseLayers.Clear(character)
@@ -215,7 +235,12 @@ local function animate(character: Model, dt: number, eye: Vector3, isLocal: bool
 			Motion.Waist[motor] = nil
 		elseif pose and cover > 1e-3 then
 			local transform = motor.Transform
-			motor.C0 = joint.rest * transform:Lerp(pose, cover) * transform:Inverse()
+			if scale ~= 1 then
+				pose = pose.Rotation + pose.Position * scale
+			end
+			local extra = offsets and offsets[name]
+			local rest = if extra then joint.rest * extra else joint.rest
+			motor.C0 = rest * transform:Lerp(pose, cover) * transform:Inverse()
 			joint.touched = true
 			if name == "UpperTorso" then
 				-- HeadLook turns the chest on top of this, after us.
@@ -227,6 +252,7 @@ local function animate(character: Model, dt: number, eye: Vector3, isLocal: bool
 			Motion.Waist[motor] = nil
 		end
 	end
+	Motion.Posing[character] = cover > 1e-3
 end
 
 local function step(dt: number)
@@ -235,7 +261,15 @@ local function step(dt: number)
 	for _, p in ipairs(Players:GetPlayers()) do
 		local character = p.Character
 		if character then
-			animate(character, dt, eye, p == player)
+			animate(character, dt, eye, p == player, RANGE)
+		end
+	end
+	local npcs = workspace:FindFirstChild("NPCs")
+	if npcs then
+		for _, model in ipairs(npcs:GetChildren()) do
+			if model:IsA("Model") then
+				animate(model, dt, eye, false, NPC_RANGE)
+			end
 		end
 	end
 	-- Characters that are gone (a respawn, a leaver) are let go of.

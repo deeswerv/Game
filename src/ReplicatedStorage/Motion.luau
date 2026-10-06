@@ -55,6 +55,12 @@ Motion.Local = { crouch = false, roll = nil } :: LocalMotion
 -- The waist C0 MotionAnimator wrote this frame, by joint (client only), so HeadLook can turn
 -- the chest toward the camera on top of the gait's own chest pose instead of replacing it.
 Motion.Waist = (setmetatable({}, { __mode = "k" }) :: any) :: { [Motor6D]: CFrame }
+-- Characters MotionAnimator posed last frame (client only). Another script with movement of
+-- its own for one of them -- NPCAnimator's flinches, recoil and swings -- publishes it in
+-- Motion.Offsets instead of writing the joints, and MotionAnimator folds it in under the gait.
+Motion.Posing = (setmetatable({}, { __mode = "k" }) :: any) :: { [Model]: boolean }
+-- Joint offsets by character, then by the part each joint moves.
+Motion.Offsets = (setmetatable({}, { __mode = "k" }) :: any) :: { [Model]: { [string]: CFrame } }
 
 -- Leg segments of the locked rig (hip to knee, knee to ankle), for keeping the feet down.
 local THIGH, SHIN = 0.98, 0.69

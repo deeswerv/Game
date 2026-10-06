@@ -298,6 +298,49 @@ check(GunHandling.Spread(cfg, 0, false, 0, false, 0, true) < GunHandling.Spread(
 check(GunHandling.Spread(cfg, 0, false, 0, true, 0, true) == GunHandling.Spread(cfg, 0, false, 0, true, 0, false),
 	"but not in the air")
 
+-- NPCs run on the same gait, on the same body, scaled to their size, with NPCAnimator's
+-- flinches folded in under it rather than fighting it.
+print("NPCs: the players' gait")
+local npcs = R.new("Folder")
+npcs.Name = "NPCs"
+npcs.Parent = World.workspace
+local npc = Rig.npc(World, place, npcs, 1.3)
+local npcRoot = npc:FindFirstChild("HumanoidRootPart")
+World.force(npcRoot, "AssemblyLinearVelocity", Vector3.new(0, 0, -13))
+local hip = Rig.motor(npc, "LeftUpperLeg")
+local starterHip = Rig.motor(World.service("StarterPlayer"):FindFirstChild("StarterCharacter"), "LeftUpperLeg")
+local swingSeen, lo, hi = 0, math.huge, -math.huge
+for _ = 1, 30 do
+	World.advance(1 / 30)
+	-- (A thigh swung forward by a: its up vector leans back by sin a.)
+	local up = hip.C0.UpVector
+	lo, hi = math.min(lo, up.Z), math.max(hi, up.Z)
+end
+swingSeen = math.deg(math.asin(math.clamp(hi, -1, 1)) - math.asin(math.clamp(lo, -1, 1)))
+check(Motion.Posing[npc] == true, "an NPC near you is posed by the gait")
+check(swingSeen > 40, ("its legs run (the thigh swings through %.0f degrees)"):format(swingSeen))
+local expected = starterHip.C0.Position.Magnitude * 1.3
+check(math.abs(hip.C0.Position.Magnitude - expected) < 0.05,
+	("a big NPC's joints stay where its size puts them (%.2f, want %.2f)"):format(hip.C0.Position.Magnitude, expected))
+-- Standing still, a flinch handed over as an offset lands on top of the pose.
+World.force(npcRoot, "AssemblyLinearVelocity", Vector3.new())
+World.advance(1)
+local waist = Rig.motor(npc, "LowerTorso")
+local before = waist.C0.Position.Y
+Motion.Offsets[npc] = { LowerTorso = CFrame.new(0, -0.5, 0) }
+World.advance(1 / 30)
+local dip = before - waist.C0.Position.Y
+check(dip > 0.4 and dip < 0.6, ("NPCAnimator's movement goes in under the gait (a %.2f dip)"):format(dip))
+Motion.Offsets[npc] = nil
+-- Dying, it is let go of: the death is NPCAnimator's to play.
+npc:SetAttribute("DeathStyle", "Backward")
+World.advance(1 / 30)
+local atRest = (hip.C0.Position - starterHip.C0.Position * 1.3).Magnitude < 1e-3
+	and (hip.C0.LookVector - starterHip.C0.LookVector).Magnitude < 1e-3
+	and (hip.C0.UpVector - starterHip.C0.UpVector).Magnitude < 1e-3
+check(not Motion.Posing[npc] and atRest, "a dying NPC is handed back, joints at rest")
+npcs:Destroy()
+
 local bad = {}
 for _, e in ipairs(R.errors or {}) do
 	local text = tostring(e)

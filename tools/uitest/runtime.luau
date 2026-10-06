@@ -1008,6 +1008,8 @@ ClassMethods.PVInstance = {
 	end,
 }
 
+-- Model:ScaleTo only records the scale (the parts are left alone); GetScale reads it back.
+local modelScales = setmetatable({}, { __mode = "k" })
 ClassMethods.Model = {
 	GetBoundingBox = function(self)
 		return self:GetPivot(), roblox.Vector3.new(4, 5, 2)
@@ -1023,9 +1025,11 @@ ClassMethods.Model = {
 	GetPrimaryPartCFrame = function(self)
 		return self.PrimaryPart and self.PrimaryPart.CFrame or roblox.CFrame.new()
 	end,
-	ScaleTo = function() end,
-	GetScale = function()
-		return 1
+	ScaleTo = function(self, scale)
+		modelScales[self] = scale
+	end,
+	GetScale = function(self)
+		return modelScales[self] or 1
 	end,
 }
 
