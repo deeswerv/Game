@@ -3255,6 +3255,74 @@ local function iceCreamVan(b: Kit.Builder)
 		{ shape = "Ball" })
 end
 
+--- The ZEE BANK armoured truck, parked: a cab and a riveted strongbox on three axles, the bank's
+--- gold band and name down both sides, a light bar on the cab, and the double doors at the
+--- back with the vault lock between them -- a stick-up target (StickupService "truck": a long
+--- hold, a big bag, and a bigger squad). Its own Model, so the robbery can swing its doors
+--- open. Faces -Z; origin on the road.
+local function armouredTruck(b: Kit.Builder)
+	local model = Instance.new("Model")
+	model.Name = "ArmouredTruck"
+	model.Parent = b.parent
+	local m = Kit.new(model, b.frame)
+	local armour = Color3.fromRGB(70, 82, 96)
+	local panel = darker(armour, 0.18)
+	local dark = Color3.fromRGB(26, 28, 32)
+	m:part("TruckBox", Vector3.new(6.6, 7.2, 10.5), Vector3.new(0, 5.0, 2.25), armour, M.DiamondPlate)
+	m:part("TruckCab", Vector3.new(6.2, 5.2, 4.5), Vector3.new(0, 4.0, -5.25), armour, M.Metal)
+	m:decor("Chassis", Vector3.new(5.8, 1, 15), Vector3.new(0, 1.3, 0), dark)
+	m:decor("CabRoof", Vector3.new(6.3, 0.3, 4.6), Vector3.new(0, 6.75, -5.25), panel)
+	-- The cab: a barred windscreen, side windows, the grille, the bumper and the lamps.
+	m:decor("Windscreen", Vector3.new(5.6, 2.2, 0.12), Vector3.new(0, 5.1, -7.52), CAR_GLASS, M.Glass, { reflectance = 0.25 })
+	for _, x in ipairs({ -1.4, 0, 1.4 }) do
+		m:decor("ScreenBar", Vector3.new(0.14, 2.2, 0.1), Vector3.new(x, 5.1, -7.6), dark)
+	end
+	for _, x in ipairs({ -1, 1 }) do
+		m:decor("CabWindow", Vector3.new(0.08, 1.6, 2.2), Vector3.new(x * 3.12, 5.2, -5.4), CAR_GLASS, M.Glass)
+		m:decor("Mirror", Vector3.new(0.3, 0.9, 0.5), Vector3.new(x * 3.45, 5.0, -7.0), dark)
+		m:decor("Headlight", Vector3.new(1, 0.6, 0.08), Vector3.new(x * 2.3, 3.1, -7.56), Color3.fromRGB(250, 246, 226), M.Glass)
+		m:decor("Taillight", Vector3.new(0.6, 1, 0.08), Vector3.new(x * 2.9, 2.6, 7.54), Color3.fromRGB(200, 40, 40), M.Glass)
+	end
+	m:decor("Grille", Vector3.new(4.4, 1.6, 0.1), Vector3.new(0, 2.6, -7.55), dark)
+	m:decor("Bumper", Vector3.new(6.6, 0.8, 0.5), Vector3.new(0, 1.5, -7.75), dark)
+	m:decor("RearBumper", Vector3.new(6.6, 0.6, 0.5), Vector3.new(0, 1.4, 7.75), dark)
+	m:decor("Step", Vector3.new(4.6, 0.3, 0.8), Vector3.new(0, 1.9, 8.0), STEEL, M.DiamondPlate)
+	-- The light bar on the cab.
+	m:decor("LightBar", Vector3.new(3, 0.4, 0.7), Vector3.new(0, 7.1, -5.6), dark)
+	for _, x in ipairs({ -1, 1 }) do
+		m:decor("Beacon", Vector3.new(0.7, 0.45, 0.6), Vector3.new(x * 1.1, 7.35, -5.6), Color3.fromRGB(255, 170, 40), M.Glass)
+	end
+	-- The strongbox: riveted ribs, the gold band, the name on both sides, a roof hatch.
+	for _, x in ipairs({ -1, 1 }) do
+		for _, z in ipairs({ -1.6, 1.4, 4.4 }) do
+			m:decor("Rib", Vector3.new(0.14, 4.6, 0.32), Vector3.new(x * 3.37, 6.15, z), panel)
+		end
+		local at = Vector3.new(x * 3.42, 6.6, 2.25)
+		painted(m, "ZEE BANK", Kit.Look(at, at + Vector3.new(x * 10, 0, 0)), 7, 1.3, GOLD, Enum.Font.GothamBlack)
+		local sub = Vector3.new(x * 3.42, 4.4, 2.25)
+		painted(m, "SECURE TRANSPORT", Kit.Look(sub, sub + Vector3.new(x * 10, 0, 0)), 6, 0.5, CREAM, Enum.Font.GothamBold)
+	end
+	m:decor("Band", Vector3.new(6.74, 0.9, 10.6), Vector3.new(0, 3.3, 2.25), GOLD, M.Metal)
+	m:decor("RoofHatch", Vector3.new(2.4, 0.3, 2.4), Vector3.new(0, 8.75, 3.5), panel)
+	-- The back: a dark frame, two heavy doors, their hinges and handles, and the vault lock.
+	m:decor("DoorFrame", Vector3.new(6.4, 6.8, 0.15), Vector3.new(0, 5.0, 7.55), dark)
+	for _, x in ipairs({ -1, 1 }) do
+		m:decor(if x < 0 then "TruckDoorL" else "TruckDoorR", Vector3.new(3.0, 6.4, 0.22), Vector3.new(x * 1.55, 5.0, 7.7),
+			lighter(armour, 0.08), M.DiamondPlate)
+		for _, y in ipairs({ 3, 7 }) do
+			m:decor("Hinge", Vector3.new(0.3, 0.6, 0.3), Vector3.new(x * 3.1, y, 7.75), dark)
+		end
+		m:decor("DoorHandle", Vector3.new(0.2, 1.2, 0.2), Vector3.new(x * 0.6, 5.0, 7.88), CAR_CHROME, M.Metal)
+	end
+	local lock = m:part("TruckVault", Vector3.new(1.1, 1.1, 0.4), Vector3.new(0, 6.2, 7.95), GOLD, M.Metal)
+	stickup(lock, "the ZEE BANK truck", "truck")
+	m:decor("LockWheel", Vector3.new(0.12, 0.9, 0.9), CFrame.new(0, 6.2, 8.2) * CFrame.Angles(0, math.rad(90), 0), STEEL, M.Metal,
+		{ shape = "Cylinder" })
+	model.PrimaryPart = lock
+	wheels(m, 3.0, { -5.0, 1.2, 4.6 }, 1.4)
+	return model
+end
+
 local function manhole(b: Kit.Builder)
 	b:decor("Manhole", Vector3.new(0.05, 2.6, 2.6), vertical(Vector3.new(0, 0.035, 0)), Color3.fromRGB(58, 58, 64), M.DiamondPlate,
 		{ shape = "Cylinder" })
@@ -3511,6 +3579,8 @@ function Downtown.Build(parent: Instance, centre: Vector3)
 	-- A taco truck at the kerb on the east arm, an ice-cream van outside Rainbow Park.
 	foodTruck(root:within(CFrame.new(60, 0, -13.5)), Color3.fromRGB(250, 200, 48), "TACOS ZEE", Color3.fromRGB(220, 60, 50))
 	iceCreamVan(root:within(CFrame.new(-110, 0, 13.5) * CFrame.Angles(0, math.pi, 0)))
+	-- The ZEE BANK truck at the kerb up the west arm, its back doors toward the plaza.
+	armouredTruck(root:within(CFrame.new(-150, 0, 13.8) * CFrame.Angles(0, math.rad(90), 0)))
 
 	-- Billboards on the roofs, facing the streets.
 	for _, spec in ipairs({
@@ -3832,6 +3902,7 @@ function Downtown.Build(parent: Instance, centre: Vector3)
 	waypoint("JOB BOARDS", "📋", Vector3.new(-(ROAD + WALK + 58), 3, -37))
 	waypoint("THE FIXER", "💼", Vector3.new(48, 3, 43))
 	waypoint("RAINBOW PARK", "🌈", Vector3.new(-125, 3, 77))
+	waypoint("ZEE BANK TRUCK", "🚚", Vector3.new(-150, 3, 13.8))
 
 	area("DOWNTOWN", "ZEE CITY", Vector3.new(0, 60, 0), Vector3.new(HW * 2 + 80, 170, HW * 2 + 80))
 	area("ZEE PLAZA", "THE HEART OF DOWNTOWN", Vector3.new(0, 12, 0), Vector3.new(PLAZA * 2, 30, PLAZA * 2))

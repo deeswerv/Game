@@ -190,6 +190,12 @@ counts it down) and it is yours, with 300 XP. Go down first and it is gone, or i
 whichever player put you down. A robbed target stays empty for five minutes; one bag at a time.
 The squad counts toward your streak. `tools/uitest/stickups.luau`.
 
+**The ZEE BANK truck.** An armoured truck sits at the kerb up the west arm of the cross street
+(on the compass as 🚚). Hold **E** at its vault lock for 8 seconds: both back doors swing open
+and the money bursts out at you -- a $1,600-2,400 bag, 90 seconds of heat, two more of the crew
+(a Shooter and an Enforcer) on top of the usual squad, and half as much XP again on a clean
+getaway. It takes ten minutes to be worth hitting again. Stars stack on it like any other job.
+
 **Notoriety.** Pull another job within ten minutes of the last and you go up a star (up to ★★★):
 each star past the first puts 30% more in the bag and 50% more XP on the getaway, and adds 15
 seconds to the heat. The squad gets bigger too: five at ★★ (a Thug and a Shooter more), eight at

@@ -174,19 +174,24 @@ print("what there is to rob")
 check(Stickups.Wire(folder) == 0, "wiring the same district again adds nothing")
 local wired = #Stickups.Targets()
 local tills, atms = {}, {}
+local truck = nil
 for _, t in ipairs(Stickups.Targets()) do
 	if t.kind == "atm" then
 		atms[t.name] = t
+	elseif t.kind == "truck" then
+		truck = t
 	else
 		tills[t.name] = t
 	end
 end
-check(wired == 6, ("six targets (%d)"):format(wired))
+check(wired == 7, ("seven targets (%d)"):format(wired))
+check(truck ~= nil and truck.name == "the ZEE BANK truck", "and the ZEE BANK armoured truck")
 check(tills["ZEE GUNS"] and tills["ZEE TACTICS"] and tills["the 24/7"], "the tills at ZEE GUNS, ZEE TACTICS and the 24/7")
 check(atms["ZEE GUNS"] and atms["ZEE TACTICS"] and atms["the 24/7"], "cash machines inside both, and outside the 24/7")
 for _, t in ipairs(Stickups.Targets()) do
 	local prompt = t.part:FindFirstChild("StickupPrompt")
-	check(prompt and prompt.HoldDuration == Stickups.Kinds[t.kind].hold and prompt.ActionText:match("^Rob"),
+	check(prompt and prompt.HoldDuration == Stickups.Kinds[t.kind].hold
+		and (prompt.ActionText:match("^Rob") or (t.kind == "truck" and prompt.ActionText == "Crack Truck")),
 		("%s %s: a hold-E prompt (%s, %.0fs)"):format(t.name, t.kind, prompt and prompt.ActionText or "none",
 			prompt and prompt.HoldDuration or 0))
 	if t.kind == "atm" then
@@ -318,6 +323,35 @@ print("restocked")
 now += Stickups.COOLDOWN + 1
 Stickups.Refresh()
 check(Stickups.Rob ~= nil and till.prompt.ActionText == "Rob Register", "the till fills up again: " .. till.prompt.ActionText)
+
+print("the armoured truck")
+table.clear(sent)
+table.clear(NPCService.spawned)
+humanoid.Health = 100
+now += St.window + 1
+root.CFrame = CFrame.new(truck.part.Position + truck.part.CFrame.LookVector * -2.5)
+coinsBefore = coins.Value
+local tk = Stickups.Kinds.truck
+check(tk.hold > Stickups.Kinds.atm.hold and tk.loot[1] > Stickups.Kinds.atm.loot[2] and tk.heat > Stickups.Kinds.atm.heat,
+	"the big job: a longer hold, a bigger bag than any till or machine, longer heat")
+check(Stickups.Rob(player, truck.part) == true, "cracking the truck")
+local truckBag = player:GetAttribute("Bag")
+check(truckBag == math.floor((tk.loot[1] + tk.loot[2]) / 2), ("the bag: $%s"):format(tostring(truckBag)))
+check(#NPCService.spawned == #Stickups.SQUAD + #tk.extra, ("two more of the crew come for it (%d)"):format(#NPCService.spawned))
+local truckAlarm = events("alarm")[1]
+check(truckAlarm and truckAlarm.args[2].kind == "truck" and truckAlarm.args[2].seconds == tk.heat, "the alarm: the truck, and the longer heat")
+check(truck.prompt.ActionText == "Emptied", "the truck reads empty")
+now += tk.heat + 1
+World.advance(0.2)
+local truckAway = events("getaway")[1]
+check(coins.Value == coinsBefore + truckBag and truckAway and truckAway.args[2].xp == math.floor(Stickups.XP * tk.xp + 0.5),
+	("held it: +$%d and half as much XP again (%s)"):format(coins.Value - coinsBefore, tostring(truckAway and truckAway.args[2].xp)))
+now += Stickups.COOLDOWN + 1
+Stickups.Refresh()
+check(truck.prompt.ActionText == "Emptied", "five minutes on, still empty: the truck takes ten to restock")
+now += tk.cooldown
+Stickups.Refresh()
+check(truck.prompt.ActionText == "Crack Truck", "then it is back")
 
 -- ----------------------------------------------------------------------- HUD --
 

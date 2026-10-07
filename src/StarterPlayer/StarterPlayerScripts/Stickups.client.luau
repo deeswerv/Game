@@ -389,6 +389,44 @@ local function robMachine(machine: Model, body: BasePart, amount: number, robber
 	amountPop(body.Position + Vector3.new(0, 2.2, 0) + out * 0.6, amount)
 end
 
+local TRUCK_OPEN = 9        -- seconds the truck's doors hang open
+
+--- The ZEE BANK truck: the vault lock clunks, both back doors swing wide, and the money
+--- bursts out of the strongbox at the robber.
+local function robTruck(truck: Model, lock: BasePart, amount: number, robberId: number)
+	-- The truck faces -Z in its own frame, so out of the back doors is the lock's -LookVector.
+	local out = -lock.CFrame.LookVector
+	local floor = lock.Position.Y - 4.6
+	sound(CLUNK, lock.Position, 0.7, 0.7)
+	sound(CLUNK, lock.Position, 0.5, 0.55, 0.35)
+	sound(WHOOSH, lock.Position, 0.35, 1.2, 0.5)
+	for _, name in ipairs({ "TruckDoorL", "TruckDoorR" }) do
+		local door = truck:FindFirstChild(name)
+		if door and door:IsA("BasePart") then
+			local side = if name == "TruckDoorL" then -1 else 1
+			local shut = door.CFrame
+			-- Swing about the outer edge (the hinge side), out and round, nearly flat to the box.
+			local hinge = shut * CFrame.new(side * door.Size.X / 2, 0, 0)
+			local open = hinge * CFrame.Angles(0, side * math.rad(100), 0) * CFrame.new(-side * door.Size.X / 2, 0, 0)
+			TweenService:Create(door, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { CFrame = open }):Play()
+			task.delay(TRUCK_OPEN, function()
+				if door.Parent then
+					TweenService:Create(door, TweenInfo.new(0.8, Enum.EasingStyle.Quad), { CFrame = shut }):Play()
+				end
+			end)
+		end
+	end
+	-- Two bursts of notes out of the strongbox.
+	local mouth = lock.Position + out * 0.6 + Vector3.new(0, -1, 0)
+	task.delay(0.35, function()
+		throwMoney(mouth, out * 9 + Vector3.new(0, 7, 0), lock.CFrame.RightVector, 3, 16, 0.03, floor, robberId)
+	end)
+	task.delay(0.9, function()
+		throwMoney(mouth, out * 7 + Vector3.new(0, 9, 0), lock.CFrame.RightVector, 3.4, 12, 0.04, floor, robberId)
+	end)
+	amountPop(lock.Position + Vector3.new(0, 2.4, 0) + out * 1.2, amount)
+end
+
 local function showRobbery(part: Instance, kind: string, amount: number, robberId: number)
 	if not part:IsA("BasePart") then
 		return
@@ -403,6 +441,8 @@ local function showRobbery(part: Instance, kind: string, amount: number, robberI
 	end
 	if kind == "atm" then
 		robMachine(model, part, amount, robberId)
+	elseif kind == "truck" and part:IsA("BasePart") then
+		robTruck(model, part, amount, robberId)
 	else
 		robTill(model, part, amount, robberId)
 	end

@@ -2,8 +2,11 @@
 -- STICK-UPS: rob a till or a cash machine in Downtown, then survive long enough to keep it.
 --
 --   * Hold E at a marked target -- the tills behind the counters at ZEE GUNS and ZEE TACTICS,
---     the cash machines outside them and at the 24/7 (Downtown marks them `Stickup` = where,
---     `StickupKind` = "register" or "atm"; DistrictService hands them to Wire).
+--     the cash machines outside them and at the 24/7, and the ZEE BANK armoured truck parked up
+--     the west arm (Downtown marks them `Stickup` = where, `StickupKind` = "register", "atm" or
+--     "truck"; DistrictService hands them to Wire). The truck is the big one: a long hold at
+--     its vault lock, a much bigger bag, longer heat, two more of the crew after you, half as
+--     much XP again on a clean getaway, and ten minutes before it is worth hitting again.
 --   * The clerk behind the counter puts their hands up and the till's drawer slides out, the
 --     money flying out of it into your hands (or the cash machine spits it at you) -- all
 --     presentation, on every client (StaffLife.client, Stickups.client).
@@ -36,6 +39,8 @@ local StickupService = {}
 StickupService.Kinds = {
 	register = { hold = 4, loot = { 450, 750 }, heat = 60, what = "the till" },
 	atm = { hold = 6, loot = { 700, 1100 }, heat = 75, what = "the cash machine" },
+	truck = { hold = 8, loot = { 1600, 2400 }, heat = 90, what = "the armoured truck", cooldown = 600, xp = 1.5,
+		extra = { "Shooter", "Enforcer" }, action = "Crack Truck" },
 }
 StickupService.COOLDOWN = 300       -- seconds a target stays empty
 StickupService.XP = 300             -- on a clean getaway
@@ -144,7 +149,8 @@ end
 local function refreshPrompt(target: Target)
 	local empty = StickupService.Clock() < target.readyAt
 	local kind = StickupService.Kinds[target.kind]
-	target.prompt.ActionText = if empty then "Emptied" else (if target.kind == "atm" then "Rob ATM" else "Rob Register")
+	target.prompt.ActionText = if empty then "Emptied"
+		else (kind.action or (if target.kind == "atm" then "Rob ATM" else "Rob Register"))
 	target.prompt.HoldDuration = if empty then 0 else kind.hold
 end
 
@@ -206,7 +212,8 @@ local function getaway(job: Job)
 		return
 	end
 	payCoins(job.player, job.loot)
-	local xp = math.floor(StickupService.XP * (1 + StickupService.STARS.xp * (job.stars - 1)) + 0.5)
+	local kindXp = StickupService.Kinds[job.target.kind] and StickupService.Kinds[job.target.kind].xp or 1
+	local xp = math.floor(StickupService.XP * kindXp * (1 + StickupService.STARS.xp * (job.stars - 1)) + 0.5)
 	task.spawn(LevelSystem.AwardXP, job.player, xp)
 	stickupEvent:FireAllClients("getaway", {
 		robber = job.player.DisplayName, robberId = job.player.UserId, amount = job.loot, xp = xp,
@@ -289,7 +296,7 @@ function StickupService.Rob(player: Player, part: BasePart): (boolean, string?)
 	notoriety[player] = { stars = stars, at = now }
 	local loot = math.floor(StickupService.Random(kind.loot[1], kind.loot[2]) * (1 + St.loot * (stars - 1)) + 0.5)
 	local heat = kind.heat + St.heat * (stars - 1)
-	target.readyAt = now + StickupService.COOLDOWN
+	target.readyAt = now + (kind.cooldown or StickupService.COOLDOWN)
 	refreshPrompt(target)
 
 	local serverEndsAt = workspace:GetServerTimeNow() + heat
@@ -311,6 +318,9 @@ function StickupService.Rob(player: Player, part: BasePart): (boolean, string?)
 	if NPCService and NPCService.Spawn then
 		-- The squad, and more of them for every star.
 		local roster = table.clone(StickupService.SQUAD)
+		for _, archetype in ipairs(kind.extra or {}) do
+			table.insert(roster, archetype)
+		end
 		for s = 2, stars do
 			for _, archetype in ipairs(St.extra[s - 1] or {}) do
 				table.insert(roster, archetype)
