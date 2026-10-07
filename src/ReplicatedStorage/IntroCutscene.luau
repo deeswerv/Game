@@ -1,10 +1,10 @@
 --!strict
 -- The cutscene you get when you join, before the title screen: a short film of the world.
 --
--- PROJECT ZEE PRESENTS on black, then the camera flies HANAMI CITY -- down over the station
--- square to the Great Sakura, round the Scramble under its giant screens, along Lantern Row's
--- lanterns, up the Thousand Gates to the black keep -- then up ZEE TOWER in Downtown, into a
--- duel arena, and last of all down out of the sky onto you, where the logo lands.
+-- PROJECT ZEE PRESENTS on black, then the camera flies DOWNTOWN -- in under the sign at the
+-- forecourt, up the avenue and up ZEE TOWER -- whips round the fountain in ZEE PLAZA, flashes
+-- to HANAMI CITY (the next chapter) and last of all comes down out of the sky onto you, where
+-- the logo lands. About twenty seconds, start to finish.
 --
 -- Every shot is a camera on rails: keyframes of where the camera is and what it looks at,
 -- strung on Catmull-Rom splines so the moves curve rather than zig-zag, eased in and out, with
@@ -38,8 +38,8 @@ local DOWNTOWN = Vector3.new(-155, 1000, 1500)    -- DistrictService.CENTRE
 local ZEE_TOWER = DOWNTOWN + Vector3.new(0, 0.5, 158)
 
 Intro.SKIP_HOLD = 0.7          -- seconds to hold to skip
-Intro.OPENER = 2.4             -- the black card before the first shot
-Intro.LOGO = 3.6               -- the logo's hold at the end
+Intro.OPENER = 1.2             -- the black card before the first shot
+Intro.LOGO = 2.4               -- the logo's hold at the end
 
 export type Key = { pos: Vector3, look: Vector3, fov: number?, roll: number? }
 export type Shot = {
@@ -75,55 +75,32 @@ local WARM = { tint = Color3.fromRGB(255, 240, 236), saturation = 0.12, contrast
 local COOL = { tint = Color3.fromRGB(232, 240, 255), saturation = 0.04, contrast = 0.12 }
 local GOLDEN = { tint = Color3.fromRGB(255, 236, 214), saturation = 0.1, contrast = 0.1 }
 
---- The film, for this player right now (a shot whose place is not there is left out).
+--- The film, for this player right now (a shot whose place is not there is left out). Short on
+--- purpose: Downtown -- where you are about to play -- then the next chapter, then you.
 function Intro.Shots(): { Shot }
 	local list: { Shot } = {}
+	if workspace:FindFirstChild("Downtown") then
+		-- In under the sign at the forecourt, up the avenue, and up ZEE TOWER.
+		table.insert(list, { id = "Downtown", title = "DOWNTOWN", sub = "ZEE TOWER  ·  THE DON'S CITY", length = 5.2, enter = "dip",
+			shake = 0.5, grade = WARM, focus = DOWNTOWN, keys = {
+				{ pos = DOWNTOWN + Vector3.new(7, 5, -186), look = DOWNTOWN + Vector3.new(0, 9, -100), fov = 64, roll = 2 },
+				{ pos = DOWNTOWN + Vector3.new(4, 7, -128), look = DOWNTOWN + Vector3.new(0, 14, -20), fov = 66, roll = 1 },
+				{ pos = DOWNTOWN + Vector3.new(2, 24, -60), look = ZEE_TOWER + Vector3.new(0, 60, 0), fov = 68, roll = 0 },
+				{ pos = DOWNTOWN + Vector3.new(0, 54, 14), look = ZEE_TOWER + Vector3.new(0, 150, 0), fov = 74, roll = -1 },
+			} })
+		-- Round the fountain in ZEE PLAZA, the heart of it.
+		table.insert(list, { id = "Plaza", title = "THE STREETS", sub = "TURF WARS  ·  STICK-UPS  ·  MOST WANTED", length = 3.6,
+			enter = "whip", shake = 0.8, grade = COOL, focus = DOWNTOWN,
+			keys = orbit(DOWNTOWN, 24, 230, 310, 7, 11, DOWNTOWN + Vector3.new(0, 7, 0), 5, 74) })
+	end
 	if workspace:FindFirstChild("Hanami") then
-		table.insert(list, { id = "Hanami", title = "HANAMI CITY", sub = "花見市  ·  THE NEXT CHAPTER", length = 6.5, enter = "dip", shake = 0.5,
-			grade = WARM, focus = H(0, 0, -400), keys = {
-				{ pos = H(-40, 170, -70), look = H(0, 0, -380), fov = 56, roll = -5 },
-				{ pos = H(-14, 110, -220), look = H(0, 8, -410), fov = 60, roll = -3 },
-				{ pos = H(-4, 58, -322), look = H(0, 24, -440), fov = 64, roll = -1 },
+		-- The next chapter: down Hanami's boulevard toward the station.
+		table.insert(list, { id = "Hanami", title = "HANAMI CITY", sub = "花見市  ·  THE NEXT CHAPTER", length = 4, enter = "flash",
+			shake = 0.5, grade = WARM, focus = H(0, 0, -400), keys = {
+				{ pos = H(-30, 140, -150), look = H(0, 0, -400), fov = 58, roll = -4 },
+				{ pos = H(-8, 70, -300), look = H(0, 20, -440), fov = 64, roll = -1 },
 				{ pos = H(-10, 28, -362), look = H(0, 30, -446), fov = 68, roll = 0 },
 			} })
-		table.insert(list, { id = "Scramble", title = "THE SCRAMBLE", sub = "ハナミ交差点  ·  UNDER THE SCREENS", length = 5.5, enter = "whip",
-			shake = 0.8, grade = COOL, focus = H(0, 0, 0), keys = orbit(H(0, 0, 0), 26, 215, 300, 9, 16, H(0, 30, 0), 5, 76) })
-		table.insert(list, { id = "LanternRow", title = "LANTERN ROW", sub = "ちょうちん横丁  ·  THE OLD DRINKING ALLEYS", length = 5, enter = "whip",
-			shake = 0.6, grade = GOLDEN, focus = H(-300, 0, 0), keys = {
-				{ pos = H(-188, 9, -5), look = H(-260, 15, 3), fov = 60 },
-				{ pos = H(-250, 8, 2), look = H(-330, 14, 0), fov = 62 },
-				{ pos = H(-318, 10, -3), look = H(-372, 17, 30), fov = 66, roll = 2 },
-			} })
-		table.insert(list, { id = "Castle", title = "THE THOUSAND GATES", sub = "黒金城  ·  THE IRON SHOGUN WAITS", length = 6, enter = "dip",
-			shake = 0.4, grade = WARM, focus = H(0, 40, 420), keys = {
-				{ pos = H(0, 8, 244), look = H(0, 16, 300), fov = 58 },
-				{ pos = H(0, 20, 300), look = H(0, 34, 360), fov = 62 },
-				{ pos = H(0, 40, 354), look = H(0, 66, 470), fov = 66 },
-				{ pos = H(0, 54, 384), look = H(0, 92, 572), fov = 70 },
-			} })
-	end
-	if workspace:FindFirstChild("Downtown") then
-		table.insert(list, { id = "Downtown", title = "DOWNTOWN", sub = "ZEE TOWER  ·  THE DON'S CITY", length = 5.5, enter = "flash", shake = 0.6,
-			grade = COOL, focus = ZEE_TOWER, keys = {
-				{ pos = DOWNTOWN + Vector3.new(64, 8, 30), look = ZEE_TOWER + Vector3.new(0, 30, 0), fov = 62, roll = 3 },
-				{ pos = DOWNTOWN + Vector3.new(44, 26, 74), look = ZEE_TOWER + Vector3.new(0, 100, 0), fov = 66, roll = 1 },
-				{ pos = DOWNTOWN + Vector3.new(26, 64, 104), look = ZEE_TOWER + Vector3.new(0, 190, 0), fov = 72, roll = -1 },
-			} })
-	end
-	local arenas = workspace:FindFirstChild("Arenas")
-	if arenas then
-		for _, map in ipairs(arenas:GetChildren()) do
-			local c = map:GetAttribute("ZoneCentre")
-			if typeof(c) == "Vector3" then
-				table.insert(list, { id = "Duels", title = "1V1 DUELS", sub = "ROUNDS  ·  RANKED  ·  NO SECOND CHANCES", length = 4.5, enter = "whip",
-					shake = 1, grade = COOL, focus = c, keys = {
-						{ pos = c + Vector3.new(62, 34, -62), look = c, fov = 48, roll = -4 },
-						{ pos = c + Vector3.new(34, 14, -38), look = c + Vector3.new(0, 2, 0), fov = 62, roll = -2 },
-						{ pos = c + Vector3.new(14, 6, -18), look = c + Vector3.new(0, 3, 6), fov = 82, roll = 0 },
-					} })
-				break
-			end
-		end
 	end
 	-- Last: you. Down out of the sky behind you, round, and to your face.
 	local character = Players.LocalPlayer and Players.LocalPlayer.Character
@@ -134,7 +111,7 @@ function Intro.Shots(): { Shot }
 		look = if look.Magnitude > 0.01 then look.Unit else Vector3.new(0, 0, -1)
 		local right = look:Cross(Vector3.new(0, 1, 0))
 		local head = p + Vector3.new(0, 1.8, 0)
-		table.insert(list, { id = "You", length = 5, enter = "dip", shake = 0.3, grade = GOLDEN, focus = p, final = true, keys = {
+		table.insert(list, { id = "You", length = 3.6, enter = "dip", shake = 0.3, grade = GOLDEN, focus = p, final = true, keys = {
 			{ pos = p - look * 70 + right * 40 + Vector3.new(0, 60, 0), look = head, fov = 60, roll = 6 },
 			{ pos = p - look * 18 + right * 26 + Vector3.new(0, 16, 0), look = head, fov = 56, roll = 2 },
 			{ pos = p + look * 5 + right * 12 + Vector3.new(0, 4, 0), look = head, fov = 50, roll = 0 },

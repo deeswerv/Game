@@ -470,19 +470,24 @@ and `tools/mapview/shoot.mjs` render the city from its own cameras (`City.Previe
 
 ## The intro film and the title screen
 
-Joining first plays a short film (`ReplicatedStorage/IntroCutscene.luau`, about 40 seconds).
-It opens on PROJECT ZEE PRESENTS, then flies Hanami City: down over the station square to the
-Great Sakura, round the Scramble under its screens, along Lantern Row, and up the Thousand
-Gates to the keep. Then it climbs ZEE TOWER in Downtown, pushes into a duel arena, and comes
-down out of the sky onto your own character, where the logo lands. Every shot is a camera on
-rails: Catmull-Rom splines through keyframes, eased, with a breathing lens, a little roll and
-hand-held drift. Whip pans, flashes and dips to black link the shots. Letterbox bars frame
-it, with a colour grade and a depth of field that keeps the subject sharp, a title card per
-place that types itself in, and a progress line. **Hold SPACE** (or tap SKIP) to skip. A place
-that is missing just drops its shot, and everything is put back when it ends.
-`lune run tools/uitest/intro.luau` plays it through in the emulator. With `INTRO_CAMS=file` it
-also writes frames along Hanami's shots for `tools/mapview` (`CAMFILE=file`) to render over the
-city.
+**The loading screen** (`ReplicatedFirst/LoadingScreen.client.luau`) opens onto Downtown itself:
+as soon as the district has streamed in, the dark screen thins away and a camera drifts up the
+avenue toward ZEE TOWER behind the PROJECT ZEE title, a NOW ENTERING · DOWNTOWN pill, a thin
+glowing progress bar, a spinner and the tips, in letterbox. It never traps you (every wait is
+time-bounded) and hands the camera back when it comes down. `tools/uitest/loading.luau`.
+
+Joining then plays a short film (`ReplicatedStorage/IntroCutscene.luau`, about 20 seconds). It
+opens on PROJECT ZEE PRESENTS, flies into DOWNTOWN under the sign at the forecourt, up the avenue
+and up ZEE TOWER, whips round the fountain in ZEE PLAZA (THE STREETS), flashes to HANAMI CITY (the
+next chapter), and comes down out of the sky onto your own character, where the logo lands.
+Every shot is a camera on rails: Catmull-Rom splines through keyframes, eased, with a breathing
+lens, a little roll and hand-held drift. Whip pans, flashes and dips to black link the shots.
+Letterbox bars frame it, with a colour grade and a depth of field that keeps the subject sharp,
+a title card per place that types itself in, and a progress line. **Hold SPACE** (or tap SKIP)
+to skip. A place that is missing just drops its shot, and everything is put back when it ends.
+`lune run tools/uitest/intro.luau` plays it through in the emulator. With `INTRO_CAMS=file` /
+`DOWNTOWN_CAMS=file` it also writes frames along Hanami's / Downtown's shots for
+`tools/mapview` (`CAMFILE=file`) to render over the real map.
 
 Then the title screen, once per session: the camera flies over Downtown, the Flats,
 a duel map and the harbour behind the PROJECT ZEE logo, with your card (level, title, money)

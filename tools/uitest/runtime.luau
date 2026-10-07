@@ -1110,6 +1110,11 @@ ClassMethods.Player = {
 	end,
 }
 
+ClassMethods.ReplicatedFirst = {
+	RemoveDefaultLoadingScreen = function() end,
+	SetDefaultLoadingGuiEnabled = function() end,
+}
+
 ClassMethods.Tween = {
 	Play = function(self)
 		local e = extra(self)

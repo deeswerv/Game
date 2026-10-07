@@ -1,8 +1,8 @@
 --!nocheck
 -- The intro film (ReplicatedStorage.IntroCutscene), played through in the client emulator:
 --
---   * the film is made from what is there: Hanami City's four shots, ZEE TOWER, a duel arena,
---     and you last; a place that is missing drops its shot;
+--   * the film is made from what is there: Downtown (the avenue and ZEE TOWER, then the plaza),
+--     Hanami City, and you last; a place that is missing drops its shot; it is short;
 --   * the camera rails pass through their keyframes (Catmull-Rom), ends included;
 --   * played through without skipping, it letterboxes, types each place's name in, lands the
 --     logo on you, then ends on black and puts the camera, the lens and the lighting back;
@@ -64,13 +64,14 @@ local ids = {}
 for _, s in ipairs(shots) do
 	table.insert(ids, s.id)
 end
-check(table.concat(ids, ",") == "Hanami,Scramble,LanternRow,Castle,Downtown,Duels,You",
-	"Hanami's four shots, ZEE TOWER, a duel arena, and you last (" .. table.concat(ids, ",") .. ")")
+check(table.concat(ids, ",") == "Downtown,Plaza,Hanami,You",
+	"Downtown first (the avenue, the plaza), Hanami City, and you last (" .. table.concat(ids, ",") .. ")")
 local total = 0
 for _, s in ipairs(shots) do
 	total += s.length
 end
-check(total > 30 and total < 45, ("about half a minute of film (%.1fs)"):format(total))
+local film = total + Intro.OPENER + Intro.LOGO
+check(film > 14 and film < 24, ("about twenty seconds of film, start to finish (%.1fs)"):format(film))
 local titled = 0
 for _, s in ipairs(shots) do
 	if s.title then
@@ -110,7 +111,7 @@ if process.env.INTRO_CAMS then
 	local centre = Vector3.new(1100, 1000, 1500)
 	local cams = {}
 	for _, s in ipairs(shots) do
-		if s.id == "Hanami" or s.id == "Scramble" or s.id == "LanternRow" or s.id == "Castle" then
+		if s.id == "Hanami" then
 			for _, u in ipairs({ 0.05, 0.5, 0.95 }) do
 				local cf, fov = Intro.Frame(s, u, 0)
 				local p = cf.Position - centre
@@ -121,6 +122,24 @@ if process.env.INTRO_CAMS then
 	end
 	fs.writeFile(process.env.INTRO_CAMS, serde.encode("json", cams))
 	print("  (wrote " .. #cams .. " frames to " .. process.env.INTRO_CAMS .. ")")
+end
+
+-- And along Downtown's (DOWNTOWN_CAMS=path, in the district's frame).
+if process.env.DOWNTOWN_CAMS then
+	local centre = Vector3.new(-155, 1000, 1500)
+	local cams = {}
+	for _, s in ipairs(shots) do
+		if s.id == "Downtown" or s.id == "Plaza" then
+			for _, u in ipairs({ 0.05, 0.35, 0.65, 0.95 }) do
+				local cf, fov = Intro.Frame(s, u, 0)
+				local p = cf.Position - centre
+				local l = p + cf.LookVector * 100
+				table.insert(cams, { pos = { p.X, p.Y, p.Z }, look = { l.X, l.Y, l.Z }, fov = fov })
+			end
+		end
+	end
+	fs.writeFile(process.env.DOWNTOWN_CAMS, serde.encode("json", cams))
+	print("  (wrote " .. #cams .. " frames to " .. process.env.DOWNTOWN_CAMS .. ")")
 end
 
 print("played through")
@@ -139,13 +158,13 @@ check(lighting:FindFirstChild("IntroGrade") and lighting:FindFirstChild("IntroFo
 World.advance(2.8)
 local card = gui and gui:FindFirstChild("Card")
 local title = card and card:FindFirstChild("Title")
-check(card and card.Visible and title and title.Text == "HANAMI CITY", "the first card: HANAMI CITY")
+check(card and card.Visible and title and title.Text == "DOWNTOWN", "the first card: DOWNTOWN")
 local top = gui and gui:FindFirstChild("BarTop")
 check(top and top.Size.Y.Scale > 0.1, "letterboxed")
 check(camera.CameraType == roblox.Enum.CameraType.Scriptable, "the film has the camera")
 local seen = {}
 local logoSeen = false
-for _ = 1, 650 do
+for _ = 1, 320 do
 	World.advance(0.1)
 	if title and title.Text ~= "" then
 		seen[title.Text] = true
