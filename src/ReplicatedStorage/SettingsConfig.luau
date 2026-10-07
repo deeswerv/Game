@@ -40,7 +40,7 @@ SettingsConfig.Schema = {
 
 -- The graphics levels, by index (GraphicsQuality.client applies them):
 --   PERFORMANCE  no depth of field, sun rays or bloom; the far skyline and small trim (brackets,
---                spokes, window units...) are not drawn
+--                spokes, window units, sills, shutters, leaf buds...) are not drawn
 --   BALANCED     no depth of field or sun rays; everything drawn
 --   ULTRA        everything
 SettingsConfig.GraphicsLevels = { "PERFORMANCE", "BALANCED", "ULTRA" }

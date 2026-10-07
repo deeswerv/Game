@@ -307,7 +307,7 @@ local function tree(b: Kit.Builder, seed: number, blossom: boolean?, bare: boole
 		local out = Vector3.new(at.X, 0, at.Z)
 		local dir = if out.Magnitude > 0.5 then out.Unit else Vector3.new(math.cos(a), 0, math.sin(a))
 		local bud = size * rng:NextNumber(0.42, 0.55)
-		b:decor("Leaves", Vector3.new(bud, bud * 0.9, bud), at + dir * size * 0.42 + Vector3.new(0, size * 0.12, 0),
+		b:decor("LeafBud", Vector3.new(bud, bud * 0.9, bud), at + dir * size * 0.42 + Vector3.new(0, size * 0.12, 0),
 			shades[math.min(3, blob[3] + 1)], M.LeafyGrass, { shape = "Ball" })
 	end
 end

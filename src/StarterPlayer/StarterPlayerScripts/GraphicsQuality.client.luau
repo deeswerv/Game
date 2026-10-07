@@ -21,23 +21,34 @@ local TRIM: { [string]: boolean } = {
 	Bracket = true, Spoke = true, WindowUnit = true, UnitGrille = true, WindowBox = true, WindowBlooms = true,
 	Handle = true, BeltLine = true, LampSurround = true, Exhaust = true, Aerial = true, AerialBar = true,
 	Chimney = true, ChimneyCap = true, WheelWell = true, Mullion = true, CrownLip = true, BalconyBlooms = true,
+	Shutter = true, Keystone = true, Lintel = true, Sill = true, BrickCourse = true, LeafBud = true,
 }
 local CITIES = { "Downtown", "Hanami" }
 
 local level = 3
 local anyHidden = false     -- whether anything was ever hidden (so ULTRA from the start costs nothing)
 
+-- Trim is small by definition: a big part that happens to share a name (Hanami's steelworks
+-- chimney) is a landmark, and stays.
+local TRIM_SIZE = 14
+
+local function isTrim(part: BasePart): boolean
+	return TRIM[part.Name] == true and part.Size.Magnitude < TRIM_SIZE
+end
+
 local function hidden(part: BasePart): boolean
 	if level > 1 then
 		return false
 	end
-	return TRIM[part.Name] == true or part:FindFirstAncestor("Skyline") ~= nil
+	return isTrim(part) or part:FindFirstAncestor("Skyline") ~= nil
 end
 
 local function apply(d: Instance)
 	if level > 1 and not anyHidden then
 		return
 	end
+	-- Anything that could ever be hidden is put right either way (a part named like trim but
+	-- too big to be trim is shown).
 	if d:IsA("BasePart") and (TRIM[d.Name] or d:FindFirstAncestor("Skyline")) then
 		d.LocalTransparencyModifier = if hidden(d) then 1 else 0
 	end

@@ -93,7 +93,8 @@ pads at the Crossing are retired).
 
 - **GRAPHICS setting** (F1, Settings): ULTRA (default), BALANCED (no depth of field or sun
   rays) or PERFORMANCE (no bloom either, and the cities' far skylines and small trim -- cornice
-  brackets, wheel spokes, window units, chimneys -- are not drawn). Local to your client only
+  brackets, wheel spokes, window units, sills, shutters, chimney pots, leaf buds -- are not
+  drawn; anything big enough to be a landmark stays). Local to your client only
   (`GraphicsQuality.client.luau`, `tools/uitest/graphics.luau`).
 - **Lighting.** The game renders with Future lighting. Lamps, lanterns, furnace mouths and signs
   really light the streets around them at night, and Roblox scales it down on devices that

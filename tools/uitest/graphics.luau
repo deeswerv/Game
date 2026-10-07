@@ -13,6 +13,7 @@
 local process = require("@lune/process")
 local task = require("@lune/task")
 local World = require("./world")
+local Vector3 = require("@lune/roblox").Vector3
 local R = World.R
 
 task.delay(60, function()
@@ -38,6 +39,7 @@ local rs = World.service("ReplicatedStorage")
 local function part(name, parent)
 	local p = R.new("Part")
 	p.Name = name
+	p.Size = Vector3.new(1, 1, 1)
 	p.Parent = parent
 	return p
 end
@@ -77,6 +79,15 @@ check(not d and not r and not b, "no depth of field, sun rays or bloom")
 check(far.LocalTransparencyModifier == 1, "the far skyline is not drawn")
 check(bracket.LocalTransparencyModifier == 1, "nor the small trim")
 check(ltm(wall) == 0, "but the buildings you play among are")
+local landmark = R.new("Part")
+landmark.Name = "Chimney"
+landmark.Size = Vector3.new(130, 9, 9)
+landmark.Parent = city
+World.player:SetAttribute("GraphicsQuality", 3)
+World.advance(0.2)
+World.player:SetAttribute("GraphicsQuality", 1)
+World.advance(0.2)
+check(ltm(landmark) == 0, "a landmark that shares a trim's name (Hanami's chimney) stays")
 local late = part("Spoke", city)
 World.advance(0.2)
 check(late.LocalTransparencyModifier == 1, "trim that streams in later is caught too")
