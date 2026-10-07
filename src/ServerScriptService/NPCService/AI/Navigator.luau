@@ -28,8 +28,9 @@ local FAIL_MEMORY = 5            -- seconds a failed destination is avoided
 -- Speeds as a share of the archetype's full pace. The client matches the walk and run
 -- animations to the speed that actually results, so these can be tuned freely.
 -- "charge" is a dash: as many times its run as its archetype's Charge.speed says (2.4 if it
--- does not say), for the moment it lasts (StateMachine decides when).
-Navigator.Pace = { run = 1, walk = 0.45, creep = 0.32, charge = 2.4 }
+-- does not say), for the moment it lasts (StateMachine decides when). "flee" is a flat-out
+-- sprint away from a live grenade.
+Navigator.Pace = { run = 1, walk = 0.45, creep = 0.32, charge = 2.4, flee = 1.35 }
 
 function Navigator.new(agent)
 	local self = setmetatable({}, Navigator)

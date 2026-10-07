@@ -6,7 +6,12 @@
 --   * the blast hurts, falls off with distance, and a wall in between takes most of it;
 --   * patching up only happens hurt and unseen, and gives the health back;
 --   * rounds cracking past suppress; a strafe step goes sideways to the target;
---   * the callouts go out on the effects remote.
+--   * the callouts go out on the effects remote;
+--   * a live grenade it has seen land sends it running out of the blast (not before its
+--     reaction time, not one it cannot see or hear, not its own side's); close, it dives
+--     into a roll pushed along the floor;
+--   * behind low cover it crouches, and comes up over the top to shoot; crouched, its
+--     hips really are lower.
 --
 -- The world is a flat floor at y = 0 plus, where a check needs one, a single wall: this
 -- stands in for workspace:Raycast, which the harness does not simulate.
@@ -17,6 +22,7 @@ local roblox = require("@lune/roblox")
 local World = require("./world")
 local R = World.R
 local Vector3 = roblox.Vector3
+local CFrame = roblox.CFrame
 
 local failures = 0
 local function check(ok: boolean, what: string)
@@ -58,7 +64,15 @@ R.ClassMethods.Workspace.Raycast = function(_self, origin, direction)
 	if not best then
 		return nil
 	end
-	return { Position = origin + direction * bestT, Normal = normal, Instance = { Name = best }, Distance = bestT }
+	-- (Not anyone's body: the wall and the floor belong to no model.)
+	local inst = { Name = best }
+	function inst.FindFirstAncestorOfClass()
+		return nil
+	end
+	function inst.IsDescendantOf()
+		return false
+	end
+	return { Position = origin + direction * bestT, Normal = normal, Instance = inst, Distance = bestT }
 end
 R.ClassMethods.Workspace.GetPartBoundsInBox = function()
 	return {}
@@ -256,6 +270,114 @@ else
 	check(false, "strafes when holding its ground")
 end
 check(Tactics.StrafePoint(soldier, infoFor(false, 1, now), now + 5) == nil, "no strafing at someone it cannot see")
+
+-- --------------------------------------------------------- getting clear --
+
+print("getting clear of a grenade")
+local Motion = World.require(rs.Motion)
+local runner = makeAgent("Soldier", Vector3.new(4, 3, 0))
+World.force(runner.root, "AssemblyMass", 12)
+runner.root.CFrame = CFrame.new(4, 3, 0)
+local centre = Vector3.new(0, 0.5, 0)
+local t0 = 5000
+Tactics.Danger(centre, 16, t0 + 0.5, t0 + 2.1, nil)
+check(Tactics.DangerFor(runner, t0 + 0.6) == nil, "not before it has had its reaction time")
+local danger = Tactics.DangerFor(runner, t0 + 1.2)
+check(danger ~= nil, "once it has seen it land, it knows it is in the blast")
+runner.root.Position = Vector3.new(40, 3, 0)
+check(Tactics.DangerFor(runner, t0 + 1.2) == nil, "out of the blast, it carries on")
+runner.root.Position = Vector3.new(12, 3, 0)
+wall = { min = Vector3.new(9, -1, -6), max = Vector3.new(10, 8, 6) }
+check(Tactics.DangerFor(runner, t0 + 1.2) == nil, "one behind a wall, too far off to hear, it never knew about")
+wall = nil
+check(Tactics.DangerFor(runner, t0 + 1.2) ~= nil, "the same one in plain sight, it did")
+check(Tactics.DangerFor(runner, t0 + 2.2) == nil, "and once it has gone off, that is that")
+Tactics.Danger(centre, 14, t0 + 10.5, t0 + 12, "Hostile")
+check(Tactics.DangerFor(runner, t0 + 11.2) == nil, "its own side's grenade, which spares it, does not send it running")
+
+runner.root.Position = Vector3.new(4, 3, 0)
+local escape = danger and Tactics.EscapePoint(runner, danger)
+local out = escape and Vector3.new(escape.X - centre.X, 0, escape.Z - centre.Z)
+check(out ~= nil and out.Magnitude > 16, ("it runs somewhere out of the blast (%.1f studs out)"):format(out and out.Magnitude or -1))
+check(out ~= nil and out.Unit:Dot(Vector3.new(1, 0, 0)) > 0.5, "away from it, not past it")
+
+check(Tactics.Dive(runner, Vector3.new(1, 0, 0), t0 + 1.5), "close, with the fuse nearly done, it dives")
+local rollDir = runner.model:GetAttribute("RollDir")
+check(typeof(runner.model:GetAttribute("RollAt")) == "number" and typeof(rollDir) == "Vector3" and rollDir.X > 0.9,
+	"a roll everyone sees, the way they see a player's (RollAt / RollDir)")
+local push = runner.root:FindFirstChild("DivePush")
+check(push ~= nil and push.PlaneVelocity.X > 40, ("pushed along the floor, away from it (%.0f studs/s)"):format(push and push.PlaneVelocity.X or 0))
+check(not Tactics.Dive(runner, Vector3.new(1, 0, 0), t0 + 1.6), "one dive at a time")
+check(Tactics.UpdateDive(runner, t0 + 1.8) and push.PlaneVelocity.X < Motion.RollSpeed(0), "easing off as the roll goes on")
+check(not Tactics.UpdateDive(runner, t0 + 1.5 + Motion.ROLL_TIME + 0.01) and runner.root:FindFirstChild("DivePush") == nil,
+	"and done when the roll is")
+check(table.find(Tactics.Lines.Soldier.Danger, "Grenade!") ~= nil and Tactics.Lines.Brute.Danger ~= nil,
+	"every voice has something to shout about it")
+
+-- Start to finish, through the state machine.
+local StateMachine = World.require(sss.NPCService.AI.StateMachine)
+local moves = {}
+local evader = makeAgent("Soldier", Vector3.new(6, 3, 0))
+World.force(evader.root, "AssemblyMass", 12)
+evader.root.CFrame = CFrame.new(6, 3, 0)
+evader.nav = {
+	RecentlyFailed = function()
+		return false
+	end,
+	MoveTo = function(_, point, pace)
+		table.insert(moves, { point = point, pace = pace })
+	end,
+	Stop = function() end,
+	Update = function() end,
+}
+evader.memory, evader.threat = {}, {}
+local t1 = 7000
+Tactics.Danger(centre, 16, t1, t1 + 2.1, nil)
+StateMachine.Set(evader, "Evade", t1 + 1)
+StateMachine.States.Evade.update(evader, t1 + 1, nil)
+local last = moves[#moves]
+check(last ~= nil and last.pace == "flee" and Vector3.new(last.point.X, 0, last.point.Z).Magnitude > 16,
+	"in the state machine: it runs for it, flat out, to somewhere clear")
+evader.root.Position = Vector3.new(4, 3, 0)
+StateMachine.States.Evade.update(evader, t1 + 1.5, nil)
+check(evader.diveUntil ~= nil and evader.root:FindFirstChild("DivePush") ~= nil, "still close as the fuse runs out, it dives")
+StateMachine.States.Evade.update(evader, t1 + 2.4, nil)
+check(evader.state ~= "Evade" and evader.root:FindFirstChild("DivePush") == nil, ("after the bang, back to work (%s)"):format(tostring(evader.state)))
+
+-- ------------------------------------------------------------ low cover --
+
+print("low cover")
+local Cover = World.require(sss.NPCService.AI.Cover)
+local Body = World.require(sss.NPCService.Body)
+local ducker = makeAgent("Soldier", Vector3.new(0, 3, -20))
+ducker.root.Position = Vector3.new(0, 3, -20)
+-- A waist-high wall across the line between it and the player: hides the chest, not the eyes
+-- of anyone standing up behind it.
+wall = { min = Vector3.new(-15, -1, -18.5), max = Vector3.new(15, 3.6, -17.5) }
+local spot, peek = Cover.Find(ducker, root.Position, 6000)
+check(spot ~= nil and peek == nil and ducker.coverPop == true,
+	"behind low cover it can only come up over the top to shoot -- and it knows")
+Cover.Release(ducker)
+wall = { min = Vector3.new(-15, -1, -18.5), max = Vector3.new(15, 12, -17.5) }
+local _, _ = Cover.Find(ducker, root.Position, 6100)
+check(ducker.coverPop ~= true, "behind a full-height wall, there is no over the top")
+Cover.Release(ducker)
+wall = nil
+
+local Rig = require("./rig")
+local npcs = R.new("Folder")
+npcs.Name = "NPCs"
+npcs.Parent = World.workspace
+local body = Rig.npc(World, place, npcs, 1)
+local crouchAgent = { model = body, scale = 1 }
+local hips = Rig.motor(body, "LowerTorso")
+local standing = hips.C0
+Body.SetCrouch(crouchAgent, true)
+check(body:GetAttribute("Crouching") == true, "crouched, everyone sees it crouch (the Crouching attribute)")
+check(standing.Position.Y - hips.C0.Position.Y > 0.7, ("and its hips really come down (%.2f studs)"):format(standing.Position.Y - hips.C0.Position.Y))
+Body.SetCrouch(crouchAgent, false)
+check(body:GetAttribute("Crouching") == false and hips.C0 == standing, "standing again, all the way back up")
+npcs:Destroy()
 
 -- -------------------------------------------------------------- callouts --
 

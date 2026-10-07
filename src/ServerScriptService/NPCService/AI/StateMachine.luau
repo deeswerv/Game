@@ -12,6 +12,7 @@
 --            TakeCover / Reload / Retreat / Reposition
 --            Throw (a grenade at someone hiding or camping)
 --            PatchUp (bandaging, out of sight, until hit again)
+--            Evade (a live grenade landed by it: run clear, dive if it is close)
 --   either:  Stunned (a heavy hit) and Dead
 --
 -- The rules that apply whatever state it is in -- a stun, the leash, noticing a target,
@@ -31,10 +32,10 @@ local StateMachine = {}
 local CALM = { Idle = true, Patrol = true, Investigate = true, Search = true, Returning = true }
 local COMBAT = {
 	Alert = true, Engage = true, Chase = true, TakeCover = true, Reload = true,
-	Retreat = true, Reposition = true, Stunned = true, Throw = true, PatchUp = true,
+	Retreat = true, Reposition = true, Stunned = true, Throw = true, PatchUp = true, Evade = true,
 }
 -- Combat states that carry on to the end once started, even if the target slips out of view.
-local COMMITTED = { Throw = true, PatchUp = true }
+local COMMITTED = { Throw = true, PatchUp = true, Evade = true }
 StateMachine.Combat = COMBAT
 
 local NEVER = -math.huge
@@ -541,6 +542,7 @@ STATES.TakeCover = {
 	exit = function(agent, now)
 		agent.coverLeftAt = now
 		agent.peeking = false
+		Body.SetCrouch(agent, false)
 		Cover.Release(agent)
 	end,
 	update = function(agent, now, info)
@@ -584,6 +586,7 @@ STATES.TakeCover = {
 
 		if agent.reloadUntil then
 			Body.SetStance(agent, false, false)
+			Body.SetCrouch(agent, true)
 			moveIfAway(agent, point, "walk")
 			return
 		end
@@ -602,6 +605,8 @@ STATES.TakeCover = {
 
 		local peek = agent.coverPeek
 		if peek then
+			-- Tucked in crouched; up and a step out to shoot.
+			Body.SetCrouch(agent, agent.peeking ~= true)
 			if agent.peeking then
 				moveIfAway(agent, point + peek, "walk", 0.8)
 				Body.SetStance(agent, true, false)
@@ -622,8 +627,34 @@ STATES.TakeCover = {
 					agent.acquiredAt = now
 				end
 			end
+		elseif agent.coverPop then
+			-- Low cover: ducked down behind it, then up over the top to shoot, and back down
+			-- before it can be lined up on.
+			moveIfAway(agent, point, "walk", 0.8)
+			if agent.peeking then
+				Body.SetCrouch(agent, false)
+				Body.SetStance(agent, true, false)
+				Body.AimAt(agent, info.root.Position + Vector3.new(0, 1, 0))
+				Combat.Fire(agent, now, info.model, info.visible and now >= agent.coverPhaseAt + 0.3)
+				if now - agent.coverPhaseAt > (agent.peekLength or 1.3) then
+					agent.peeking = false
+					agent.coverPhaseAt = now
+					agent.duckFor = 0.8 + math.random() * 0.9
+					Combat.Fire(agent, now, nil, false)
+				end
+			else
+				Body.SetCrouch(agent, true)
+				Body.SetStance(agent, false, false)
+				if now - agent.coverPhaseAt > (agent.duckFor or 0.9) and weapon and (not weapon.ranged or weapon.ammo > 0) then
+					agent.peeking = true
+					agent.peekLength = 1.0 + math.random() * 0.8
+					agent.coverPhaseAt = now
+					agent.acquiredAt = now
+				end
+			end
 		else
 			-- Half cover: fight from where it stands, if there is anything to shoot at.
+			Body.SetCrouch(agent, false)
 			Body.SetStance(agent, true, false)
 			Body.AimAt(agent, info.root.Position + Vector3.new(0, 1, 0))
 			Combat.Fire(agent, now, info.model, info.visible)
@@ -763,10 +794,12 @@ STATES.PatchUp = {
 		agent.nav:Stop()
 		Combat.Fire(agent, now, nil, false)
 		Body.SetStance(agent, false, false)
+		Body.SetCrouch(agent, true)
 		Body.Face(agent, nil)
 		Tactics.StartHeal(agent, now)
 	end,
 	exit = function(agent)
+		Body.SetCrouch(agent, false)
 		if agent.healDoneAt then
 			Tactics.CancelHeal(agent)
 		end
@@ -784,6 +817,62 @@ STATES.PatchUp = {
 			agent.healDoneAt = nil
 			StateMachine.Set(agent, info and (agent.coverPoint and "TakeCover" or "Engage")
 				or (agent.lastKnown and "Search" or "Returning"), now)
+		end
+	end,
+}
+
+-- A live grenade landed by it. Shout, run out of the blast, and if it is close with the
+-- fuse nearly done, dive. Then back to the fight (or the search) once it has gone off.
+STATES.Evade = {
+	enter = function(agent: any, now: number)
+		Combat.CancelSwing(agent)
+		Combat.Fire(agent, now, nil, false)
+		Cover.Release(agent)
+		Body.SetCrouch(agent, false)
+		Body.SetStance(agent, false, true)
+		Body.Face(agent, nil)
+		agent.evadeTo = nil
+		Tactics.Say(agent, now, "Danger", true)
+	end,
+	exit = function(agent: any)
+		agent.evadeFrom, agent.evadeTo = nil, nil
+		local push = agent.divePush
+		if push then
+			push:Destroy()
+			agent.divePush, agent.diveUntil = nil, nil
+		end
+	end,
+	update = function(agent: any, now: number, info: any)
+		agent.evadeFrom = Tactics.DangerFor(agent, now) or agent.evadeFrom
+		local danger = agent.evadeFrom
+		if not danger or now > danger.goesOffAt + 0.15 then
+			StateMachine.Set(agent, if info then "Engage" elseif agent.lastKnown then "Search" else "Idle", now)
+			return
+		end
+		if Tactics.UpdateDive(agent, now) then
+			return
+		end
+		local here = agent.root.Position
+		local away = World.Flat(here - danger.centre)
+		local distance = away.Magnitude
+		if distance > danger.radius + 1 then
+			-- Clear of it: wait for the bang, watching for whoever threw it.
+			agent.nav:Stop()
+			Body.Face(agent, info and info.position or nil)
+			return
+		end
+		-- Close, and nearly out of time: dive away from it.
+		if danger.goesOffAt - now < 0.8 and distance < danger.radius * 0.75
+			and now - (agent.lastDiveAt or NEVER) > 3 then
+			agent.nav:Stop()
+			if Tactics.Dive(agent, if distance > 0.5 then away else agent.root.CFrame.LookVector, now) then
+				agent.lastDiveAt = now
+				return
+			end
+		end
+		agent.evadeTo = agent.evadeTo or Tactics.EscapePoint(agent, danger)
+		if agent.evadeTo then
+			agent.nav:MoveTo(agent.evadeTo, "flee")
 		end
 	end,
 }
@@ -829,6 +918,11 @@ function StateMachine.Think(agent, now: number, agents)
 	if fromHome > (cfg.LeashRange or 120) and agent.state ~= "Returning" then
 		StateMachine.Disengage(agent)
 		StateMachine.Set(agent, "Returning", now)
+	end
+
+	-- A live grenade at its feet comes before anything else.
+	if agent.state ~= "Evade" and agent.state ~= "Dead" and Tactics.DangerFor(agent, now) then
+		StateMachine.Set(agent, "Evade", now)
 	end
 
 	local info = Perception.TargetInfo(agent)

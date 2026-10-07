@@ -214,6 +214,13 @@ function NPCService.Noise(position: Vector3, radius: number, source: Model?)
 	end
 end
 
+--- A player's frag: it comes to rest at `centre` in `landsIn` seconds and goes off in
+--- `goesOffIn`. Enemies that see it land get clear of it (StateMachine's Evade).
+function NPCService.IncomingGrenade(centre: Vector3, radius: number, landsIn: number, goesOffIn: number)
+	local now = os.clock()
+	Tactics.Danger(centre, radius, now + landsIn, now + goesOffIn, nil)
+end
+
 --- A player's volley: `origin` to each of `endPoints`. Any enemy those rounds cracked past
 --- without hitting is suppressed -- its aim goes, it says so, and it looks for cover.
 function NPCService.NearMiss(origin: Vector3, endPoints: { Vector3 }, source: Model?)

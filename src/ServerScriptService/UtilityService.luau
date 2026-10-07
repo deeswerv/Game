@@ -436,6 +436,15 @@ function UtilityService.Throw(player: Player, kind: unknown, origin: unknown, di
 			goesOffAt = math.max(bomb.stats.fuse, 0.2)
 		end
 	end
+	-- Enemies that see a frag land get clear of it (NPCService), if they are quick enough.
+	if kind == "Frag" then
+		local NPCService = lazy("NPCService")
+		if NPCService and NPCService.IncomingGrenade then
+			local restAt = math.min(path.restAt, goesOffAt)
+			local radius = if bomb and type(bomb.stats.radius) == "number" then bomb.stats.radius else cfg.radius
+			pcall(NPCService.IncomingGrenade, UtilityConfig.PositionAt(path, restAt), radius, restAt, goesOffAt)
+		end
+	end
 	nextId += 1
 	UtilityEvent:FireAllClients("thrown", {
 		id = nextId,

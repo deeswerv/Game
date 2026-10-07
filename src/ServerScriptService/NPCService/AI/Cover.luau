@@ -11,7 +11,9 @@
 --     with no setup at all.
 --
 -- A spot that also has a clear line to the threat from a step to one side is preferred:
--- that is cover you can fight from, rather than cover you can only hide behind.
+-- that is cover you can fight from, rather than cover you can only hide behind. So is low
+-- cover with a clear line over the top from standing height: it ducks down behind it and
+-- comes up over it to shoot.
 --
 -- Searches are rationed per NPC and capped in rays, and a spot one NPC has claimed is not
 -- offered to another.
@@ -30,6 +32,7 @@ local RING_SAMPLES = 10
 local MAX_RAYS = 64
 local PEEK_STEP = 2.4
 local CHEST = 2.6
+local STANDING_EYE = 4.4
 local CLAIM_RADIUS = 4
 local BODY = Vector3.new(2.2, 4.6, 2.2)
 
@@ -48,6 +51,7 @@ function Cover.Release(agent)
 	claims[agent] = nil
 	agent.coverPoint = nil
 	agent.coverPeek = nil
+	agent.coverPop = nil
 end
 
 --- The best nearby cover from `threat`, and the sideways step that lets it shoot from
@@ -56,6 +60,7 @@ function Cover.Find(agent, threat: Vector3, now: number): (Vector3?, Vector3?)
 	if now - (agent.coverSearchAt or -math.huge) < SEARCH_COOLDOWN then
 		return agent.coverPoint, agent.coverPeek
 	end
+	local bestPop = false
 	agent.coverSearchAt = now
 
 	local origin = agent.root.Position
@@ -120,15 +125,23 @@ function Cover.Find(agent, threat: Vector3, now: number): (Vector3?, Vector3?)
 							break
 						end
 					end
-					local score = -(stand - origin).Magnitude + (peek and 12 or 0)
+					-- No way round it: is there a way over it?
+					local pop = false
+					if not peek then
+						local over = stand + Vector3.new(0, STANDING_EYE * (agent.scale or 1), 0)
+						local open = workspace:Raycast(over, eye - over, sight)
+						rays += 1
+						pop = not open or World.CharacterOf(open.Instance) ~= nil
+					end
+					local score = -(stand - origin).Magnitude + ((peek or pop) and 12 or 0)
 					-- A careful NPC does not run TOWARDS the threat to reach cover.
 					if towardThreat.Magnitude < myDistance - 6 and (agent.cfg.Aggression or 0.5) < 0.7 then
 						score -= 15
 					end
 					if score > bestScore then
-						best, bestPeek, bestScore = stand, peek, score
+						best, bestPeek, bestScore, bestPop = stand, peek, score, pop
 					end
-					if peek and score > -12 then
+					if (peek or pop) and score > -12 then
 						break                 -- close, and fightable: good enough
 					end
 				end
@@ -136,7 +149,7 @@ function Cover.Find(agent, threat: Vector3, now: number): (Vector3?, Vector3?)
 		end
 	end
 
-	agent.coverPoint, agent.coverPeek = best, bestPeek
+	agent.coverPoint, agent.coverPeek, agent.coverPop = best, bestPeek, bestPop
 	if best then
 		claims[agent] = best
 	else

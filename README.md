@@ -35,8 +35,8 @@ The live game always saves.
 
 | Key | Does |
 | --- | --- |
-| Hold **Alt** | Free the mouse to click buttons (DUEL, the side menu) without leaving shift lock |
-| **J** | Queue for a duel, or cancel the queue (same as clicking DUEL) |
+| Hold **Alt** | Free the mouse to click buttons (the side menu) without leaving shift lock |
+| **J** | Queue for a duel, or cancel the queue (the 1V1 pads in the DUEL HALL queue you too) |
 | Hold **Tab** | Player board: levels, ranks, kills, deaths, who is dueling |
 | **B / M / K / P / N** | Items, Shop, Armory, Profile, Daily reward |
 | **O** | Quest journal |
@@ -57,25 +57,52 @@ The live game always saves.
 | **G** (hold) | Emote wheel: scroll or click the tabs for five pages of emotes, 1-8 to pick |
 | **U** (hold, let go) | Call in an airstrike you have earned: a red mark follows your crosshair, let go to call it |
 
-**How you move.** Every player's body is posed by the game itself rather than Roblox's stock
-animations (`ReplicatedStorage/Motion.luau`, drawn by `MotionAnimator`): keyframed walk, run and
-sprint cycles blended by speed -- heel strike and push-off, the heel kicked up behind and the
-knee driven through, a moment in the air, the feet kept planted on the floor -- leaning into the
-run (hard when sprinting), hips and chest turning against each other, stepping the way you are
-actually going (strafes bank, backpedalling plays the cycle in reverse). With a gun out the
-chest stays square to your aim while the legs run, and a sprint drops the gun into a carry
-across the body. Then a crouch with the feet kept flat, knees tucked in the air, a dip on
-landing, and a tucked somersault for the roll that stays on the floor in every direction and
-carries you about 18 studs. Every change blends rather than snaps. Other players see all of it:
-everyone's client poses everyone from what it can see, and the crouch and roll are marked on the
-character by `MovementService`. The old dash on Q is gone. `lune run tools/mapview/poses.luau --
-out.json run` (or `walk`, `sprint`, `crouch`, `roll`, `rollside`, `air`...; `POSE_YAW=90` for a side
-view) renders the poses on the real rig, and `tools/weapons/holdview.luau -- Carbine out.json sprint`
-the carry;
-`tools/uitest/movement.luau` checks them and the controls.
+**How you move.** Every body -- yours, other players', and the enemies' -- is the locked Roblox
+Boy rig, posed by the game itself rather than Roblox's stock animations
+(`ReplicatedStorage/Motion.luau`, drawn by `MotionAnimator`). Keyframed walk, run and sprint
+cycles are blended by speed. A run lands ahead, soaks the weight, drives off the toes, kicks the
+heel up behind, drives the knee through and spends a moment in the air. The stride stretches to
+fit the speed, so planted feet stay planted, at about two strides a second rather than a
+shuffle. The body leans into the run (hard when sprinting), and the arms pump from the shoulder
+with the elbows bent, swinging true to the world even with the lean. Strafing turns the hips
+and legs into the step while the chest stays to the front, and backpedalling plays the cycle in
+reverse. With a gun out the chest stays square to your aim while the legs run, and a sprint
+drops the gun into a carry across the body. The rest:
+- a crouch with the feet kept flat;
+- knees tucked and arms up and out for balance in a jump;
+- a dip on landing;
+- a tucked somersault for the roll, which stays on the floor in every direction and carries you
+  about 18 studs.
+
+Every change blends rather than snaps. Other players see all of it: everyone's client poses
+everyone from what it can see, and `MovementService` marks the crouch and roll on the character.
+
+To check the movement without Studio:
+- `lune run tools/mapview/motionclip.luau -- clip.json tour chase` plays the gait over time on
+  the real rig. Timelines: `tour`, `run`, `sprint`, `walk`, `crouch`, `jump`, `idle`. Cameras:
+  `chase`, `side`, `front`.
+- `node tools/mapview/clip.mjs clip.json out/` renders it frame by frame, and to an mp4 with
+  `FFMPEG` set.
+- `tools/mapview/poses.luau` renders single poses.
+- `tools/uitest/movement.luau` checks the gait, the controls, and NPCs on the same gait.
 
 You can also queue by standing on one of the **1V1 pads** in Downtown's DUEL HALL (the lobby's
 pads at the Crossing are retired).
+
+## Look, HUD and sound
+
+- **Lighting.** The game renders with Future lighting. Lamps, lanterns, furnace mouths and signs
+  really light the streets around them at night, and Roblox scales it down on devices that
+  cannot afford it. Shade takes its colour from the sky, glass and metal catch it, and the day
+  is crisper and brighter with less haze, so far buildings keep their colour. The settings
+  live in `tools/patches/090_graphics.luau`.
+- **The middle of the screen is yours.** The WANTED and heat badges, the stick-up bag's
+  countdown and Hanami's raid bar sit bottom-left, over your name. The duel panel on the left
+  is gone: press **J** or stand on a 1V1 pad.
+- **The shotgun sounds like one.** The Blackwood's shot is a deep, equalised report with a
+  boom and a tail layered under it, and the pump is racked a moment after every shot. The old
+  sample is gone from every gun (`ReplicatedStorage/WeaponAudio.luau`,
+  `tools/uitest/audio.luau`).
 
 ## Utility and armour
 
@@ -120,8 +147,8 @@ count.
 
 Dying ends the streak and loses an unused airstrike. `tools/uitest/streaks.luau`.
 
-**Stick-ups.** Downtown's tills (behind the counters at ZEE GUNS and ZEE TACTICS) and its cash
-machines (inside both shops, and outside the 24/7) can be robbed: hold **E** at one (4s for a
+**Stick-ups.** Downtown's tills (behind the counters at ZEE GUNS, ZEE TACTICS and the 24/7 at the
+gas station) and its cash machines (inside both shops, and outside the 24/7) can be robbed: hold **E** at one (4s for a
 till, 6s for an ATM). You take a bag ($450-750 from a till, $700-1,100 from an ATM) and the
 heat: the store's alarm goes off, the whole server is told where and how much, a gold tag with
 the amount floats over you through walls, and three of the crew that runs the block come up the
@@ -187,7 +214,11 @@ colour while you are there. The places:
 - **ZEE GAS** and the **24/7** with the **CONTRACTS** and **BOUNTIES** boards on its wall: four
   branded pumps with their screens, grade buttons, racked nozzles and hoses, bins and squeegee
   buckets on the islands, lane arrows and oil stains on the forecourt, a car filling up, the air
-  machine and a cage of gas bottles under a canopy with a lit soffit and a gold-striped fascia;
+  machine, a cage of gas bottles and a price pylon on the corner, under a canopy with a lit soffit
+  and a gold-striped fascia. The 24/7 is a store you walk into through its glass front: rows of
+  shelves, the drinks fridges along the back, a coffee machine and hot case, magazines in the
+  window, and Mae behind the counter by the door, whose till you can rob like the shops' (her
+  hands go up);
 - **THE FIXER's corner** on the paving south of the courts: a purple JOBS canopy over a card
   table;
 - the **DUEL HALL**, a sports hall with its own 1v1 pads, its name painted down its sides;
@@ -279,7 +310,7 @@ stand (red ring, then the blast); at 40% his helicopter lifts off and circles th
 a line across it (a red strip first). Beat him and everyone up there is paid ($8,000, 4,000 XP,
 25 crystals, 25 Street Cred the first time; less after) and **the world opens**. An empty roof
 resets the fight; beaten, the Don is back after a minute. `tools/uitest/tower.luau`. The
-world past it starts with **Hanami Valley**, below.
+world past it starts with **Hanami City**, below.
 
 **Street Cred** is your standing with Downtown: +8 for every war you help win (+4 more as MVP),
 the Fixer's jobs, +20 for the Kingpin, -3 when a crew holds a patch you fought for. A known name
@@ -299,46 +330,64 @@ supply drops) -- one rate in `GameConfig.Leveling.XP_RATE`, and every reward sho
 A plan for growing Downtown into a much larger RPG district is written up as a ready-to-use
 prompt in `docs/prompts/downtown-expansion.md`.
 
-## Hanami Valley (chapter 2)
+## Hanami City (chapter 2)
 
-Beat the Don and **Hanami Valley** opens on the Travel menu (🌸, LV 10-16): a low-poly valley
-of cherry blossom, red gates and iron, built by `HanamiService` (`HanamiService/Valley.luau`;
-everything's position lives in `ReplicatedStorage/HanamiConfig.luau`). Five areas, each with its
-own name card as you walk in and its own enemy levels:
+Beat the Don and **Hanami City** opens on the Travel menu (🌸, LV 10-16): a dense Japanese city
+of tiled houses and mixed-use blocks, vertical signs and lantern strings, shrines, canals and
+a castle on its hill, built by `HanamiService` (`HanamiService/City.luau` from the props and
+building kit in `HanamiService/CityKit.luau`). Everything's position lives in
+`ReplicatedStorage/HanamiConfig.luau`. Seven districts, each with its own name card as you walk
+in and its own enemy levels:
 
-- **Hanamura**, the village you arrive in (safe): the Great Sakura, the shrine (ring its bell
-  to heal -- not mid-fight), a pagoda, the teahouse (stairs to its roof), the trader's counter
-  (opens the shop) and villagers to talk to;
-- **Lantern Row**, the dangerous streets across the red bridge: lantern-strung shophouses,
-  lanes, roof terraces with riflemen on them;
-- **the Ironworks**, foundry and docks: rail, containers, a crane you can climb, the furnace
-  yard where **Foreman Tetsu** works;
-- **the outskirts**: **Bamboo Hollow** (the bandit camp, the waterfall and the nook behind it)
-  and **the Paddies** (the farm);
-- **Kurogane Keep** on its plateau, up **the Thousand Gates** stair: walls, towers, and the
-  Shogun's court.
+- **Hanami Station** (safe), where you arrive. The station square has the Great Sakura, the
+  shrine through its torii, the department store, the covered shopping arcade, taxis and
+  bikes, and Elder Hoshi under the tree.
+- **The Rail Yard**: sidings, signal box, the old engine shed where the gang holds the
+  captives.
+- **The Fish Market**, the dawn auction floor by the canal.
+- **Lantern Row**, the old drinking alleys: izakaya fronts, lantern strings and roof terraces
+  with riflemen on them.
+- **The Scramble**, Hanami Crossing: the big crossing under the billboards.
+- **The Steelworks**: the foundry and docks, the crane you can climb, and the furnace yard where
+  **Foreman Tetsu** works.
+- **Kurogane Castle** on its hill, up **the Thousand Gates** stair: walls, towers, the palace,
+  the tea pond and the Shogun's court.
+
+The streets are lined end to end: poles and wires, vending machines, curve mirrors,
+crosswalks and painted road text, bikes in racks, kei cars and taxis, cherry trees and pines.
+At night the lanterns and signs light the streets.
 
 **The Kurogane clan.** Ronin (blades, rush you), Riflemen (keep their distance from high
 ground), **Shieldbearers** (an iron shield stops your rounds dead until it breaks -- shoot it
 apart, go over the top for the head, or flank), **Shinobi** (dash at you from range in a puff
 of dust -- step aside), **Juggernauts** (big, armoured, slow), Oni (the Shogun's guard:
-grenades and good rifles), with elites among them. The valley only fills while someone is in
-it, refills a fallen post after a while, and empties a minute after the last player leaves.
+grenades and good rifles), with elites among them. The city only fills while someone is in it,
+refills a fallen post after a while, and empties a minute after the last player leaves.
 
-**Elder Hoshi's story** (under the Great Sakura), one job of each kind: reach the Lantern Row
-gate; clear Lantern Row; **free three captives** tied up at the bamboo camp (hold E); read
-**four clues** in the Ironworks; beat **Foreman Tetsu** (mini-boss: at 60% his crew joins and
-molten splashes land under you, at 30% overtime); **hold the farm** through three raid waves
-(raiders at the door wear the farmhouse down); find **five iron seals** hidden on roofs, the
-crane, behind the waterfall and on a hill; climb **the Thousand Gates**; and end **THE IRON
-SHOGUN** in his court (level 12+): blade waves across the court, then BLOSSOM STORM (66%:
-Shinobi and riflemen, petal storms under everyone) and IRON FURY (33%: three blades at a time,
-faster). The first clear pays $15,000, 8,000 XP and 40 crystals, saves the valley as freed and
-gives the **Shogun Slayer** title. **Captain Rei** (at the red bridge) pays bounties on
-Shieldbearers, Shinobi, Juggernauts and Oni, then a repeatable Valley Patrol contract.
+**Elder Hoshi's story** (under the Great Sakura), one job of each kind:
+1. Reach the Lantern Row gate (*Petals and Iron*).
+2. Clear eight of the clan out of Lantern Row.
+3. **Free three townsfolk** tied up in the rail yard's engine shed (hold E).
+4. Read **four clues** in the Steelworks.
+5. Beat **Foreman Tetsu**. He's a mini-boss: at 60% his crew joins and molten splashes land
+   under you, and at 30% he goes into overtime.
+6. **Hold the fish market** through three raid waves. The raiders go for the catch on the
+   floor.
+7. Find **five iron seals**: on the ramen shop's roof by the canal, up a Lantern Row terrace, on
+   the dock crane, behind the waterfall, and on a hill.
+8. Climb **the Thousand Gates**.
+9. End **THE IRON SHOGUN** in his court (level 12+). He sends blade waves across the court. At
+   66% comes BLOSSOM STORM (Shinobi and riflemen, petal storms under everyone), and at 33% IRON
+   FURY (three blades at a time, faster).
+
+The first clear pays $15,000, 8,000 XP and 40 crystals, saves the city as freed and gives the
+**Shogun Slayer** title. **Captain Rei** pays bounties on Shieldbearers, Shinobi, Juggernauts
+and Oni, then a repeatable patrol contract.
 
 `lune run tools/uitest/hanami.luau` plays all of it through the real services;
-`tools/uitest/shields.luau` checks the shield against the real gun code and the Shinobi's dash.
+`tools/uitest/shields.luau` checks the shield against the real gun code and the Shinobi's dash;
+`lune run tools/mapview/arenas.luau -- src/ServerScriptService/HanamiService/City.luau out.json`
+and `tools/mapview/shoot.mjs` render the city.
 
 ## Contracts and supply drops
 
@@ -425,6 +474,18 @@ Enemies fight like a squad, not a row of turrets:
   bandage itself (a green bar over its head). Hit it again and the bandage is cancelled:
   that is your moment to push.
 - **Strafing.** Holding its ground in a gunfight, an enemy sidesteps between bursts.
+- **They get clear of grenades.** Throw a frag at a group, or let the other side lob one, and
+  every enemy that saw it land shouts (*Grenade!*, *Get clear!*) and sprints out of the blast
+  once it has had its reaction time. One that is still close as the fuse runs out dives into
+  the same roll players do. Ones that never saw it, behind a wall too far off to hear it, get
+  caught.
+- **They use cover properly.** Behind cover an enemy crouches: tucked in while it reloads or
+  bandages, then up and a step out to shoot, then back. Behind low cover (a crate, a wall at
+  the waist) it ducks down and comes up over the top to fire, then drops back before you can
+  line it up. Crouched, it really is lower, so rounds aimed where its head was go over.
+- **They move like you.** Within 150 studs every enemy runs on the players' own gait, on the
+  same Roblox Boy body: the same run, strafe turn, jump, landing, crouch and roll. Big ones are
+  scaled to their size, and their flinches, recoil and melee swings are layered on top.
 - **Fewer, slower respawns.** Camps refill after 50 seconds to 3 minutes rather than 12, never
   within 45 studs of a player, and at most 24 enemies are alive on a server.
 

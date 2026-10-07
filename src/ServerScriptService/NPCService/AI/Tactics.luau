@@ -16,6 +16,10 @@
 --                window to push, because being hit again cancels it.
 --   STRAFING     Holding its ground in a gunfight, it sidesteps between bursts instead of
 --                standing still to be shot.
+--   GETTING CLEAR A live grenade lands near it -- yours, or the other side's: once it has
+--                seen it land (or heard it clatter close by) and had its reaction time, it
+--                shouts, and runs out of the blast; close and with the fuse nearly done, it
+--                dives into the same roll players do.
 --
 -- Decisions only. The states that use these live in StateMachine; everything the players
 -- see goes out through Effects, and every point of damage through Combat.Hurt.
@@ -23,6 +27,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local NPCConfig = require(ReplicatedStorage.NPCConfig)
+local Motion = require(ReplicatedStorage.Motion)
 local World = require(script.Parent.Parent.World)
 local Effects = require(script.Parent.Parent.Effects)
 local Combat = require(script.Parent.Parent.Combat)
@@ -52,6 +57,7 @@ local LINES: { [string]: { [string]: { string } } } = {
 		Heal = { "Patching up!", "Need a second!" },
 		Suppressed = { "Taking fire!", "I'm pinned!", "Suppressed!" },
 		Kill = { "Target down.", "Got 'em.", "Tango down." },
+		Danger = { "Grenade!", "Grenade -- move!", "Get clear!" },
 	},
 	Bandit = {
 		Spot = { "There they are!", "Get 'em!", "Fresh meat!", "Over there!" },
@@ -65,6 +71,7 @@ local LINES: { [string]: { [string]: { string } } } = {
 		Heal = { "Hold up, I'm bleeding!" },
 		Suppressed = { "Close one!", "Whoa!" },
 		Kill = { "Too easy!", "Got 'em!" },
+		Danger = { "Oh no-- RUN!", "Grenade!", "Move, move!" },
 	},
 	Guard = {
 		Spot = { "Halt!", "Hostiles!", "Bandits on the line!" },
@@ -78,12 +85,14 @@ local LINES: { [string]: { [string]: { string } } } = {
 		Heal = { "Patching up!" },
 		Suppressed = { "Under fire!" },
 		Kill = { "Hostile down.", "Area clear." },
+		Danger = { "Grenade!", "Take cover!" },
 	},
 	Brute = {
 		Spot = { "RAAAH!", "SMASH!", "FOUND YOU!" },
 		ManDown = { "GRRR...", "YOU'LL PAY!" },
 		Kill = { "HAH!", "WEAK!" },
 		Suppressed = { "HAH! MISSED!" },
+		Danger = { "HUH?!", "BOOM?!" },
 	},
 }
 Tactics.Lines = LINES
@@ -117,7 +126,7 @@ function Tactics.Say(agent, now: number, event: string, always: boolean?)
 	end
 	agent.lastCalloutAt = now
 	table.insert(recentCallouts, { at = now, position = agent.root.Position })
-	local urgent = event == "Grenade" or event == "Spot"
+	local urgent = event == "Grenade" or event == "Spot" or event == "Danger"
 	Effects.Send(agent.root.Position, "Callout", agent.model, lines[math.random(#lines)], urgent)
 end
 
@@ -229,6 +238,8 @@ function Tactics.Release(agent, now: number)
 
 	local cfg = agent.cfg
 	local radius = cfg.GrenadeRadius or 14
+	-- The other side sees it land and gets clear, if it is quick about it.
+	Tactics.Danger(plan.to, radius, now + flight, now + flight + FUSE, cfg.Faction)
 	local damage = cfg.GrenadeDamage or 45
 	task.delay(flight + FUSE, function()
 		local centre = plan.to + Vector3.new(0, 1.2, 0)
@@ -269,6 +280,126 @@ function Tactics.Release(agent, now: number)
 			Combat.OnNoise(centre, 140, agent.model)
 		end
 	end)
+end
+
+-- --------------------------------------------------------------- dangers --
+
+type Danger = { centre: Vector3, radius: number, landsAt: number, goesOffAt: number, spares: string? }
+local dangers: { Danger } = {}
+
+--- A live grenade: it comes to rest at `centre` at `landsAt` and goes off at `goesOffAt`
+--- (os.clock). `spares` is the faction its blast leaves alone (an NPC's own side), nil for
+--- a player's, which hurts everyone.
+function Tactics.Danger(centre: Vector3, radius: number, landsAt: number, goesOffAt: number, spares: string?)
+	table.insert(dangers, { centre = centre, radius = radius, landsAt = landsAt, goesOffAt = goesOffAt, spares = spares })
+end
+
+--- The live grenade `agent` is inside the blast of and knows about, if any: it has seen it
+--- land, or it is close enough to have heard it, and had its reaction time since. The one
+--- going off soonest.
+function Tactics.DangerFor(agent: any, now: number): Danger?
+	local here = agent.root.Position
+	local best: Danger? = nil
+	for i = #dangers, 1, -1 do
+		local d = dangers[i]
+		if now > d.goesOffAt + 0.5 then
+			table.remove(dangers, i)
+		elseif now < d.goesOffAt - 0.1 and (not d.spares or NPCConfig.IsHostileTo(d.spares, agent.cfg.Faction)) then
+			local distance = World.Flat(here - d.centre).Magnitude
+			local noticeAt = d.landsAt + (agent.cfg.ReactionTime or 0.45) * (agent.dangerSlowness or 1)
+			if distance < d.radius + 3 and now >= noticeAt then
+				local eye = here + Vector3.new(0, 1.5 * (agent.scale or 1), 0)
+				local look = d.centre + Vector3.new(0, 0.4, 0)
+				local hit = distance >= 8 and workspace:Raycast(eye, look - eye, World.SightParams()) or nil
+				if (not hit or (hit.Position - look).Magnitude < 1.5) and (not best or d.goesOffAt < best.goesOffAt) then
+					best = d
+				end
+			end
+		end
+	end
+	return best
+end
+
+--- Somewhere out of `danger`'s blast to run to: straight away from it if there is floor
+--- there, else as near that as there is.
+function Tactics.EscapePoint(agent: any, danger: Danger): Vector3?
+	local here = agent.root.Position
+	local away = World.Flat(here - danger.centre)
+	local bearing = if away.Magnitude > 0.5 then math.atan2(away.Z, away.X) else math.random() * math.pi * 2
+	local reach = danger.radius + 4
+	for _, degrees in ipairs({ 0, 35, -35, 70, -70, 110, -110 }) do
+		local angle = bearing + math.rad(degrees)
+		local candidate = Vector3.new(danger.centre.X + math.cos(angle) * reach, here.Y,
+			danger.centre.Z + math.sin(angle) * reach)
+		local floor = World.GroundAt(candidate, 8, 14)
+		if floor and not agent.nav:RecentlyFailed(floor.Position) and World.IsClear(floor.Position, BODY) then
+			return floor.Position
+		end
+	end
+	return nil
+end
+
+--- Dive into a roll toward world direction `dir`: the roll players do (Motion), the body
+--- pushed along the floor for its length. Clients see it from RollAt / RollDir, the same way
+--- they see another player's.
+function Tactics.Dive(agent: any, dir: Vector3, now: number): boolean
+	local flat = World.Flat(dir)
+	if flat.Magnitude < 0.1 or (agent.diveUntil and now < agent.diveUntil) then
+		return false
+	end
+	flat = flat.Unit
+	local root = agent.root
+	local scale = agent.scale or 1
+	agent.diveAt, agent.diveUntil, agent.diveDir = now, now + Motion.ROLL_TIME, flat
+	local body = World.Flat(root.CFrame:VectorToObjectSpace(flat))
+	agent.model:SetAttribute("RollDir", if body.Magnitude > 0.1 then body.Unit else Vector3.new(0, 0, -1))
+	agent.model:SetAttribute("RollAt", workspace:GetServerTimeNow())
+
+	local attachment = root:FindFirstChild("RootAttachment")
+	if not attachment or not attachment:IsA("Attachment") then
+		attachment = root:FindFirstChild("DiveAttachment")
+		if not attachment then
+			local made = Instance.new("Attachment")
+			made.Name = "DiveAttachment"
+			made.Parent = root
+			attachment = made
+		end
+	end
+	local push = Instance.new("LinearVelocity")
+	push.Name = "DivePush"
+	push.Attachment0 = attachment :: Attachment
+	push.RelativeTo = Enum.ActuatorRelativeTo.World
+	push.VelocityConstraintMode = Enum.VelocityConstraintMode.Plane
+	push.PrimaryTangentAxis = Vector3.new(1, 0, 0)
+	push.SecondaryTangentAxis = Vector3.new(0, 0, 1)
+	push.MaxForce = root.AssemblyMass * 900
+	push.PlaneVelocity = Vector2.new(flat.X, flat.Z) * Motion.RollSpeed(0) * scale
+	push.Parent = root
+	if agent.divePush then
+		agent.divePush:Destroy()
+	end
+	agent.divePush = push
+	return true
+end
+
+--- Keep a dive going (the push eases off as the roll ends). True while it is diving.
+function Tactics.UpdateDive(agent: any, now: number): boolean
+	if not agent.diveUntil then
+		return false
+	end
+	local push = agent.divePush
+	if now >= agent.diveUntil or not agent.alive then
+		if push then
+			push:Destroy()
+		end
+		agent.divePush, agent.diveUntil = nil, nil
+		return false
+	end
+	if push then
+		local flat = agent.diveDir
+		push.PlaneVelocity = Vector2.new(flat.X, flat.Z) * Motion.RollSpeed(now - agent.diveAt) * (agent.scale or 1)
+	end
+	return true
 end
 
 -- ------------------------------------------------------------- suppression --

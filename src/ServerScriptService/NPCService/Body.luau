@@ -20,6 +20,7 @@ local StarterPlayer = game:GetService("StarterPlayer")
 
 local WeaponConfig = require(ReplicatedStorage.WeaponConfig)
 local NPCAnimation = require(ReplicatedStorage.NPCAnimation)
+local Motion = require(ReplicatedStorage.Motion)
 local WeaponPose = require(ServerScriptService.WeaponPose)
 local Outfit = require(script.Parent.Outfit)
 
@@ -375,6 +376,24 @@ function Body.AimAt(agent, point: Vector3?)
 end
 
 --- Face a point, or hand facing back to the humanoid's own walk direction with nil.
+--- Crouch down (behind cover, bandaging) or stand back up. Everyone sees it the way they see
+--- a player's crouch (the Crouching attribute; MotionAnimator bends the legs), and here the
+--- hips really come down too, so a crouched NPC behind low cover is hidden from bullets as
+--- well as from sight -- the server's hit boxes are the server's joints.
+function Body.SetCrouch(agent: any, on: boolean)
+	if (agent.crouching or false) == on then
+		return
+	end
+	agent.crouching = on
+	agent.model:SetAttribute("Crouching", on)
+	local joint = Body.FindMotor(agent.model:FindFirstChild("LowerTorso"), "Root")
+	if joint then
+		agent.rootRest = agent.rootRest or joint.C0
+		joint.C0 = if on then agent.rootRest * CFrame.new(0, -Motion.CROUCH_DROP * (agent.scale or 1), 0)
+			else agent.rootRest
+	end
+end
+
 function Body.Face(agent, point: Vector3?)
 	local root = agent.root
 	local align = root:FindFirstChild("NPCFacing")
