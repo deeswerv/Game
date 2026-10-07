@@ -392,6 +392,94 @@ check(most - before > 15,
 	("open the shop and the clerk talks with their hands (shoulder %.0f° -> up to %.0f°)"):format(before, most))
 
 print("")
+-- ------------------------------------------------------------------ the street --
+
+print("people on the street")
+local DowntownMap = World.require(sss.DistrictService.Downtown)
+local centre = Vector3.new(-155, 1000, 1500)
+local people = downtown and downtown:FindFirstChild("Pedestrians")
+local walkers = people and people:GetChildren() or {}
+check(#walkers == #DowntownMap.Walkers and #walkers >= 10, ("someone on every stretch of sidewalk (%d)"):format(#walkers))
+local untouchable, tagged, placed = true, true, true
+for _, w in ipairs(walkers) do
+	tagged = tagged and w:HasTag("Pedestrian") and not w:HasTag("Staff")
+	for _, p in ipairs(w:GetDescendants()) do
+		if p:IsA("BasePart") then
+			untouchable = untouchable and not p.CanCollide and not p.CanQuery and not p.CanTouch
+		end
+	end
+	local root = w:FindFirstChild("HumanoidRootPart")
+	local from = w:GetAttribute("WalkFrom")
+	placed = placed and root and typeof(from) == "Vector3" and (root.Position - from).Magnitude < 0.05
+end
+check(tagged, "tagged Pedestrian, not Staff (nobody poses them but their walk)")
+check(untouchable, "nothing can hit, touch or stand on them")
+check(placed, "each standing at the start of its stretch")
+check(walkers[1] and walkers[1]:FindFirstChild("UpperTorso") and #walkers[1]:GetChildren() > 20, "dressed")
+
+-- Every stretch is clear: nothing solid in the way, waist to head height, with room either side.
+local solids = {}
+for _, d in ipairs(downtown:GetDescendants()) do
+	if d:IsA("BasePart") and d.Transparency < 1 and not d:FindFirstAncestor("Pedestrians") and d.Size.Magnitude < 400 then
+		local top = d.Position.Y + d.Size.Y / 2
+		local bottom = d.Position.Y - d.Size.Y / 2
+		if top > centre.Y + 1.3 and bottom < centre.Y + 4.5 then
+			table.insert(solids, d)
+		end
+	end
+end
+local blockedBy = nil
+for _, walk in ipairs(DowntownMap.Walkers) do
+	local a, b = centre + walk[1], centre + walk[2]
+	local steps = math.floor((b - a).Magnitude)
+	for k = 0, steps do
+		local p = a:Lerp(b, k / math.max(steps, 1))
+		for _, y in ipairs({ 1.5, 3, 4.5 }) do
+			local q = Vector3.new(p.X, centre.Y + y, p.Z)
+			for _, part in ipairs(solids) do
+				local loc = part.CFrame:PointToObjectSpace(q)
+				local half = part.Size / 2 + Vector3.new(0.8, 0, 0.8)
+				if math.abs(loc.X) <= half.X and math.abs(loc.Y) <= half.Y and math.abs(loc.Z) <= half.Z then
+					blockedBy = blockedBy or (part.Name .. " at " .. tostring(part.Position - centre))
+				end
+			end
+		end
+	end
+end
+check(blockedBy == nil, "every stretch is clear of lamps, trees and benches (" .. tostring(blockedBy) .. ")")
+
+print("walking")
+World.run(sps:FindFirstChild("Pedestrians"))
+local first = walkers[1]
+local froot = first and first:FindFirstChild("HumanoidRootPart")
+local from, to = first and first:GetAttribute("WalkFrom"), first and first:GetAttribute("WalkTo")
+World.force(World.workspace.CurrentCamera, "CFrame", CFrame.new(from + Vector3.new(0, 6, -10), from))
+local seen = {}
+local onPath, facingOk, moved, bent = true, true, false, false
+for _ = 1, 30 do
+	World.advance(0.2)
+	local p = froot.Position
+	local along = (p - from):Dot((to - from).Unit)
+	local off = ((p - from) - (to - from).Unit * along)
+	onPath = onPath and along > -0.1 and along < (to - from).Magnitude + 0.1 and Vector3.new(off.X, 0, off.Z).Magnitude < 0.1
+	if (p - from).Magnitude > 1 then
+		moved = true
+	end
+	table.insert(seen, p)
+	local hip = nil
+	for _, d in ipairs(first:GetDescendants()) do
+		if d:IsA("Motor6D") and d.Name == "LeftHip" then
+			hip = d
+		end
+	end
+	if hip and math.abs(select(1, hip.Transform:ToEulerAnglesXYZ())) > 0.1 then
+		bent = true
+	end
+end
+check(moved, "they walk")
+check(onPath, "along their stretch and nowhere else")
+check(bent, "legs swinging as they go")
+
 local errors = R.errors or {}
 for _, e in ipairs(errors) do
 	print("    error: " .. tostring(e):sub(1, 300))

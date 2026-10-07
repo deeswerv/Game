@@ -58,6 +58,24 @@ Downtown.Preview = {
 	{ pos = { 24, 5, -24 }, look = { 60, 16, -60 }, fov = 70 },
 }
 
+-- People out on the street (DistrictService dresses them; Pedestrians.client walks them):
+-- each walks a stretch of sidewalk up and back, between the lamps and the trees -- every
+-- stretch checked clear of them. { from, to, look (DistrictService.CIVILIANS), speed }.
+Downtown.Walkers = {
+	{ Vector3.new(-24, 0.54, 46), Vector3.new(-24, 0.54, 130), 1, 5 },
+	{ Vector3.new(-26, 0.54, 128), Vector3.new(-26, 0.54, 48), 2, 4.6 },
+	{ Vector3.new(24, 0.54, 47), Vector3.new(24, 0.54, 69), 3, 4.8 },
+	{ Vector3.new(24, 0.54, 111), Vector3.new(24, 0.54, 129), 4, 4.4 },
+	{ Vector3.new(22, 0.54, -129), Vector3.new(22, 0.54, -81), 5, 5.2 },
+	{ Vector3.new(-24, 0.54, -179), Vector3.new(-24, 0.54, -141), 6, 4.6 },
+	{ Vector3.new(20.5, 0.54, -141), Vector3.new(20.5, 0.54, -179), 1, 5 },
+	{ Vector3.new(110, 0.54, 24), Vector3.new(130, 0.54, 24), 2, 4.4 },
+	{ Vector3.new(-130, 0.54, -24), Vector3.new(-110, 0.54, -24), 3, 4.8 },
+	{ Vector3.new(-100, 0.54, -24), Vector3.new(-80, 0.54, -24), 4, 4.6 },
+	{ Vector3.new(-160, 0.54, 22), Vector3.new(-140, 0.54, 22), 5, 5 },
+	{ Vector3.new(80, 0.54, 22), Vector3.new(100, 0.54, 22), 6, 4.4 },
+} :: { { any } }
+
 -- The district's grade and sky while you are in it (the time of day is left to the world).
 Downtown.Look = {
 	Grade = { Saturation = 0.22, Contrast = 0.06 },

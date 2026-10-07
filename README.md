@@ -190,6 +190,15 @@ counts it down) and it is yours, with 300 XP. Go down first and it is gone, or i
 whichever player put you down. A robbed target stays empty for five minutes; one bag at a time.
 The squad counts toward your streak. `tools/uitest/stickups.luau`.
 
+**People on the street.** A dozen townsfolk walk Downtown's sidewalks -- students with bags,
+office workers in suits, joggers, an old gent in a fedora, tourists in shades -- each up and
+down a stretch of pavement between the lamps and trees, pausing and turning at the ends, legs
+and arms swinging as they go. They are the players' own rig dressed in street clothes
+(`DistrictService.CIVILIANS`, routes in `Downtown.Walkers`), walked on every client
+(`Pedestrians.client.luau`) off the server clock so everyone sees them in the same place, and
+they are not part of any fight: nothing can hit, touch or stand on them.
+`tools/uitest/staff.luau` checks they spawn, that every route is clear, and that they walk.
+
 **The ZEE BANK truck.** An armoured truck sits at the kerb up the west arm of the cross street
 (on the compass as 🚚). Hold **E** at its vault lock for 8 seconds: both back doors swing open
 and the money bursts out at you -- a $1,600-2,400 bag, 90 seconds of heat, two more of the crew
