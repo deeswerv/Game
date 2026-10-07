@@ -946,8 +946,10 @@ end
 --
 -- Mastery Weapons. A variant is a WHOLE weapon rather than paint over a shared model --
 -- which is the difference between this and the camo system it replaces. It names a `base`
--- weapon and inherits that weapon's stats, so a variant is cosmetic by default and cannot
--- quietly become pay-to-win; give it its own stat block only on purpose.
+-- weapon and inherits that weapon's handling exactly. What it adds is `damage`: a multiplier
+-- on the base gun's damage per round, so mastering a gun (or buying its variant) is a real
+-- step up -- the reward for the kills it took -- while it still handles like the gun you
+-- learned it on. Nothing else about its numbers may differ.
 --
 -- `robux` sells it through Roblox's own prompt. `earn` says how it is won instead. A
 -- variant may have both, one, or neither -- neither means it is not obtainable yet, which
@@ -975,6 +977,8 @@ WeaponConfig.Variants = {
 		-- Earned as well as sold. Silver is 100 kills with the Carbine -- a few hours, not a
 		-- grind, which is what "earned early" asks for. One word to move it up a tier.
 		earn = { mastery = "Silver", weapon = "Carbine" },
+		-- A quarter more damage per round than the Carbine.
+		damage = 1.25,
 		-- Its own imported model, not a repaint of the Carbine's.
 		--
 		-- I first built this as a recolour of the base gun plus box-approximated crystals,
@@ -1011,6 +1015,8 @@ WeaponConfig.Variants = {
 		product = 0,
 		-- Gold is 250 kills with the Warden: a step past the carbine's Silver, as the bigger gun.
 		earn = { mastery = "Gold", weapon = "Warden" },
+		-- The harder one to earn hits harder: a third more per round than the Warden.
+		damage = 1.33,
 		-- Rebuilt part by part from ARCarbineHD_DarkMatter.glb at build time
 		-- (tools/weapons/convert_glb.py -> tools/patches/070_mastery_weapons.luau): the
 		-- receivers, grip, curved magazine and stock sliced to their authored profiles, the
@@ -1058,14 +1064,17 @@ end
 
 -- Every variant gets a real Weapons entry, CLONED from its base at load and then overlaid
 -- with whatever it changes. Cloning rather than hand-writing the stats is the guard: a
--- variant cannot drift from the gun it is a variant of, so buying one can never buy an
--- advantage. Only the keys under `visual` differ, and those are all cosmetic.
+-- variant cannot drift from the gun it is a variant of. Only its damage (`damage`, a
+-- multiplier) and the cosmetic keys under `visual` differ.
 for _, variant in ipairs(WeaponConfig.Variants) do
 	local base = WeaponConfig.Weapons[variant.base]
 	if base then
 		local entry = table.clone(base)
 		entry.DisplayName = variant.name
 		entry.Rarity = variant.rarity or base.Rarity
+		if type(variant.damage) == "number" and type(base.Damage) == "number" then
+			entry.Damage = math.floor(base.Damage * variant.damage + 0.5)
+		end
 		for key, value in pairs(variant.visual or {}) do
 			entry[key] = value
 		end
@@ -1079,6 +1088,16 @@ end
 local variantById = {}
 for _, variant in ipairs(WeaponConfig.Variants) do
 	variantById[variant.id] = variant
+end
+
+--- How much harder a variant hits than its base gun, in words for its card ("+25% DAMAGE"), or
+--- nil if it does not.
+function WeaponConfig.DamageText(variant): string?
+	local mult = variant and variant.damage
+	if type(mult) ~= "number" or mult <= 1 then
+		return nil
+	end
+	return string.format("+%d%% DAMAGE", math.floor((mult - 1) * 100 + 0.5))
 end
 
 --- The variant a weapon name refers to, or nil for an ordinary weapon.

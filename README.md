@@ -492,12 +492,13 @@ Enemies fight like a squad, not a row of turrets:
 ## Mastery Weapons
 
 Whole Dark Matter versions of a gun, earned by mastering it (or, once a Developer Product id is
-set on the variant in `WeaponConfig.Variants`, bought with Robux). Each keeps its base gun's
-numbers exactly -- a look, never an advantage -- with its own shots (the gem-charge hit effect,
-purple tracers and flash).
+set on the variant in `WeaponConfig.Variants`, bought with Robux). Each handles exactly like its
+base gun but hits harder -- the reward for the kills it took -- with its own shots (the
+gem-charge hit effect, purple tracers and flash). The market card shows by how much.
 
-- **Carbine - Dark Matter** -- Silver mastery with the Carbine (100 kills). The imported model.
-- **Warden - Dark Matter** -- Gold mastery with the Warden (250 kills). The HD rifle
+- **Carbine - Dark Matter** (+25% damage) -- Silver mastery with the Carbine (100 kills). The
+  imported model.
+- **Warden - Dark Matter** (+33% damage) -- Gold mastery with the Warden (250 kills). The HD rifle
   (`ARCarbineHD_DarkMatter.glb`): obsidian receivers, a curved magazine, skeletonised stock, a
   red dot on its own riser and 180 crystals, rebuilt part for part (670 parts) and wearing the
   carbine's authored muzzle flash.

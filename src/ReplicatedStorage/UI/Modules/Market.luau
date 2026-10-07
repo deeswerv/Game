@@ -157,11 +157,13 @@ local function masteryCatalog()
 			-- card says how to earn it instead of showing a price that cannot be paid.
 			local product = tonumber(variant.product) or 0
 			local earn = WeaponConfig.EarnText(variant)
+			local power = WeaponConfig.DamageText(variant)
 			table.insert(entries, {
 				id = product > 0 and product or variant.id,
 				name = variant.name,
-				-- The card's text box holds about two lines: how to earn it is what matters there.
-				desc = earn or variant.desc,
+				-- The card's text box holds about two lines: what it does over its base gun, and
+				-- how to earn it.
+				desc = if power and earn then power .. " · " .. earn else earn or variant.desc,
 				rarity = variant.rarity,
 				robux = product > 0 and variant.robux or nil,
 				levelRequired = variant.levelRequired or 1,

@@ -164,13 +164,17 @@ local cfg = WeaponConfig.Get("Warden_DarkMatter")
 local warden = WeaponConfig.Get("Warden")
 check(cfg ~= nil and WeaponConfig.VariantOf("Warden_DarkMatter") ~= nil, "a Mastery Weapon")
 local same = true
-for _, key in ipairs({ "Damage", "FireRate", "MagazineSize", "ReloadTime", "Range", "SpreadMin", "Class", "Hold" }) do
+for _, key in ipairs({ "FireRate", "MagazineSize", "ReloadTime", "Range", "SpreadMin", "Class", "Hold" }) do
 	if cfg[key] ~= warden[key] then
 		same = false
 		print("    differs: " .. key)
 	end
 end
-check(same, "with the Warden's numbers: a look, not an advantage")
+check(same, "it handles exactly like the Warden")
+check(cfg.Damage >= warden.Damage * 1.3, ("and hits a third harder (%d a round, the Warden %d)"):format(cfg.Damage, warden.Damage))
+local carbineDM, carbine = WeaponConfig.Get("Carbine_DarkMatter"), WeaponConfig.Get("Carbine")
+check(carbineDM and carbineDM.Damage > carbine.Damage, ("the Carbine's too (%d over %d)"):format(carbineDM and carbineDM.Damage or 0, carbine.Damage))
+check(WeaponConfig.DamageText(WeaponConfig.VariantOf("Warden_DarkMatter")) == "+33% DAMAGE", "and the card says by how much")
 check(cfg.Rarity == "Mythic" and cfg.DisplayName == "Warden - Dark Matter", "Mythic, and named for what it is")
 check(cfg.HeadshotVFX == "gemstoneCharge" and cfg.TracerColor ~= warden.TracerColor, "its own Dark Matter shots")
 check(WeaponConfig.HasModel == nil or WeaponConfig.HasModel("Warden_DarkMatter"), "the armory and inventory can show it")
