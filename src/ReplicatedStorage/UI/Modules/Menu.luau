@@ -13,6 +13,7 @@
 -- shared UIOpen flag is correct (ShiftLock reads that to decide whether the player is in a
 -- menu), and it releases the mouse while open and restores it on close.
 
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -234,6 +235,7 @@ function Menu.new(parent: Instance, options: Options)
 	self._categoryHandlers = {}
 	self._categoryButtons = {}
 	self._closeHandlers = {}
+	self._edgeLoop = nil :: RBXScriptConnection?
 
 	local root = Instance.new("Frame")
 	root.Name = options.id
@@ -257,6 +259,54 @@ function Menu.new(parent: Instance, options: Options)
 	local windowScale = Instance.new("UIScale")
 	windowScale.Parent = panel
 	self._windowScale = windowScale
+
+	-- A living edge: a light that runs round the window's rim while it is open.
+	local edge = Instance.new("Frame")
+	edge.Name = "Edge"
+	edge.BackgroundTransparency = 1
+	edge.Size = UDim2.fromScale(1, 1)
+	edge.ZIndex = 6
+	edge.Parent = panel
+	Components.Corner(edge, Theme.Radius.Panel)
+	local edgeStroke = Components.Stroke(edge, WHITE, 2.5)
+	local edgeLight = Instance.new("UIGradient")
+	edgeLight.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 214, 255)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 120, 200)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 210, 80)),
+	})
+	edgeLight.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.92), NumberSequenceKeypoint.new(0.38, 0.85), NumberSequenceKeypoint.new(0.5, 0.05),
+		NumberSequenceKeypoint.new(0.62, 0.85), NumberSequenceKeypoint.new(1, 0.92),
+	})
+	edgeLight.Parent = edgeStroke
+	self._edgeLight = edgeLight
+	-- A sweep of light across the window as it opens.
+	local sheen = Instance.new("Frame")
+	sheen.Name = "Sheen"
+	sheen.BackgroundColor3 = WHITE
+	sheen.BorderSizePixel = 0
+	sheen.Size = UDim2.fromScale(1, 1)
+	sheen.ZIndex = 7
+	sheen.Visible = false
+	sheen.Parent = panel
+	Components.Corner(sheen, Theme.Radius.Panel)
+	local sheenBand = Instance.new("UIGradient")
+	sheenBand.Rotation = 24
+	sheenBand.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.44, 1), NumberSequenceKeypoint.new(0.5, 0.82),
+		NumberSequenceKeypoint.new(0.56, 1), NumberSequenceKeypoint.new(1, 1),
+	})
+	sheenBand.Offset = Vector2.new(-1, 0)
+	sheenBand.Parent = sheen
+	self._sheen, self._sheenBand = sheen, sheenBand
+	-- How to leave, under the window.
+	local hint = Components.Label(panel, { text = "ESC  TO CLOSE", font = Theme.Font.Bold, size = Theme.Text.Small,
+		colour = Theme.Colour.TextMuted, align = Enum.TextXAlignment.Right })
+	hint.Name = "CloseHint"
+	hint.AnchorPoint = Vector2.new(1, 0)
+	hint.Position = UDim2.new(1, -6, 1, 8)
+	hint.Size = UDim2.fromOffset(200, 18)
 
 	-- ------------------------------------------------------------- header --
 
@@ -298,6 +348,22 @@ function Menu.new(parent: Instance, options: Options)
 	sub.Position = UDim2.fromOffset(textLeft, 42)
 	sub.Visible = not options.bare
 	self.subtitle = sub
+	-- An accent line drawn under the title as the window opens.
+	local accent = Instance.new("Frame")
+	accent.Name = "Accent"
+	accent.BackgroundColor3 = WHITE
+	accent.BorderSizePixel = 0
+	accent.Position = UDim2.fromOffset(textLeft, 63)
+	accent.Size = UDim2.fromOffset(0, 3)
+	accent.Visible = not options.bare
+	accent.Parent = header
+	Components.Corner(accent, 2)
+	local accentShade = Instance.new("UIGradient")
+	accentShade.Color = ColorSequence.new(Color3.fromRGB(80, 214, 255), Color3.fromRGB(255, 120, 200))
+	accentShade.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.75, 0.2),
+		NumberSequenceKeypoint.new(1, 1) })
+	accentShade.Parent = accent
+	self._accent = accent
 
 	-- The close button hangs off the window's corner.
 	local close = Components.CloseButton(panel, function()
@@ -426,6 +492,24 @@ function Menu:Open()
 	TweenService:Create(self._root, Theme.Tween.Value, { BackgroundTransparency = 0.45 }):Play()
 	TweenService:Create(self._panel, Theme.Tween.Open, { Position = UDim2.fromScale(0.5, 0.5) }):Play()
 	TweenService:Create(self._windowScale, Theme.Tween.Open, { Scale = 1 }):Play()
+	-- The accent draws in, a light sweeps across, and the rim's light starts going round.
+	self._accent.Size = UDim2.fromOffset(0, 3)
+	TweenService:Create(self._accent, TweenInfo.new(0.5, Enum.EasingStyle.Quint), { Size = UDim2.fromOffset(150, 3) }):Play()
+	self._sheen.Visible = true
+	self._sheenBand.Offset = Vector2.new(-1, 0)
+	local sweep = TweenService:Create(self._sheenBand, TweenInfo.new(0.75, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
+		{ Offset = Vector2.new(1, 0) })
+	sweep.Completed:Once(function()
+		self._sheen.Visible = false
+	end)
+	sweep:Play()
+	if self._edgeLoop then
+		self._edgeLoop:Disconnect()
+	end
+	local edgeLight = self._edgeLight :: UIGradient
+	self._edgeLoop = RunService.RenderStepped:Connect(function(dt: number)
+		edgeLight.Rotation = (edgeLight.Rotation + dt * 70) % 360
+	end)
 
 	if self._firstCategory and not self._category then
 		self:SelectCategory(self._firstCategory)
@@ -441,6 +525,10 @@ function Menu:Close()
 	end
 	self._open = false
 	UIState.SetOpen(self._id, false)
+	if self._edgeLoop then
+		self._edgeLoop:Disconnect()
+		self._edgeLoop = nil
+	end
 
 	-- Only hand the mouse back and clear the blur if nothing else still wants them.
 	if not UIState.IsAnyOpen() then
@@ -490,6 +578,9 @@ function Menu:Destroy()
 	end
 	if self._escape then
 		self._escape:Disconnect()
+	end
+	if self._edgeLoop then
+		self._edgeLoop:Disconnect()
 	end
 	self._close:Destroy()
 	for _, button in pairs(self._categoryButtons) do

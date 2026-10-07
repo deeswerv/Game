@@ -285,6 +285,18 @@ local function positionOf(m: Marker): Vector3?
 	return nil
 end
 
+--- Every marker that is up, where it is now (the radar draws these too).
+function Wayfinding:Markers(): { { key: string, kind: string, icon: string, colour: Color3, position: Vector3 } }
+	local out = {}
+	for key, m in pairs(self._markers) do
+		local at = positionOf(m)
+		if at then
+			table.insert(out, { key = key, kind = m.kind, icon = m.icon, colour = m.colour, position = at })
+		end
+	end
+	return out
+end
+
 function Wayfinding:_view(m: Marker)
 	local view = self._views[m.key]
 	if view then

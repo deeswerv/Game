@@ -99,6 +99,20 @@ pads at the Crossing are retired).
 - **The middle of the screen is yours.** The WANTED and heat badges, the stick-up bag's
   countdown and Hanami's raid bar sit bottom-left, over your name. The duel panel on the left
   is gone: press **J** or stand on a 1V1 pad.
+- **Radar, top right.** A round dial turned the way you face, with a sweep going round, N on
+  the rim and you in the middle. Other players are white dots; the crews are red when they are
+  close (any distance while your RADAR killstreak is up); bosses and the MOST WANTED are gold
+  with a crown. Your job, turf wars, supply drops and the like sit on it as their compass icons,
+  pinned to the rim when they are further than it reaches. A blip well above or below you is
+  drawn fainter. The name of the place you are in sits under it. It hides in menus, while
+  scoped, when you are dead and in a duel (`UI/Modules/Radar.luau`).
+- **Downtown's card**, beside the radar while you are in the district: the THREAT (▮▮▮▯▯), each
+  patch's state -- HELD (green), TURF WAR and RAID (beating), CREW (red), QUIET -- how many the
+  street holds, and the MOST WANTED's name (`UI/Modules/District.luau`).
+- **Menus** have a light running round the window's rim while they are open, a sheen across
+  the glass as they open, an accent line under the title that draws itself in, and ESC TO
+  CLOSE under the window. The nav's hints ("UNLOCK NEW GUNS!") are dark pills with a gold
+  edge, a pulsing dot and an arrow at the button. The health bar has tick marks every 10%.
 - **The shotgun sounds like one.** The Blackwood's shot is a deep, equalised report with a
   boom and a tail layered under it, and the pump is racked a moment after every shot. The old
   sample is gone from every gun (`ReplicatedStorage/WeaponAudio.luau`,
@@ -171,6 +185,12 @@ avenue after you. Hold the bag for the heat (60s for a till, 75s for an ATM; a b
 counts it down) and it is yours, with 300 XP. Go down first and it is gone, or it goes to
 whichever player put you down. A robbed target stays empty for five minutes; one bag at a time.
 The squad counts toward your streak. `tools/uitest/stickups.luau`.
+
+**Notoriety.** Pull another job within ten minutes of the last and you go up a star (up to ★★★):
+each star past the first puts 30% more in the bag and 50% more XP on the getaway, and adds 15
+seconds to the heat. The squad gets bigger too: five at ★★ (a Thug and a Shooter more), eight at
+★★★ (an Enforcer, a Gangster and another Shooter). The bag's card shows your stars and the alarm
+banner reads "STICK-UP ★★ · THEY KNOW YOUR FACE". Going down wipes the slate: back to one star.
 
 It plays out in front of you: the clerk jolts, a red "!" pops over their head, and they turn to
 face you with both hands up, shaking, until the job is long done. The till is a real register --
@@ -290,13 +310,24 @@ ring of dashes with a sign over it: red and "STEP IN TO START A TURF WAR" when o
 the count and clock while its war is on, grey with a countdown while it cools down. Walk onto an
 open patch and its crew comes out round the edge; clear them and everyone who fought for it is
 paid -- anyone who landed a hit, finished one of the crew off, or stood on the patch through the
-fight -- with half as much again for the MVP (the most damage). Then that patch goes quiet for three minutes (the
-other three stay open, and wars on different patches run side by side). A crew wins if the
+fight -- with half as much again for the MVP (the most damage). Then the street **holds** that
+patch (the other three stay open, and wars on different patches run side by side; a patch the
+crew wins goes quiet for three minutes). A crew wins if the
 clock runs out or everybody walks away from it for 45 seconds. Downtown remembers: every crew
 driven out raises the **THREAT** (I to V) -- the next crew is bigger (5 up to 10: more Gangsters
 and Shooters, a second Enforcer at V), the clock longer and the payout 25% higher per level; a crew
 that holds its patch lowers it. The HUD chip follows the nearest war; wars near you get a
 banner, ones across town a notice.
+
+**Holding the street.** A patch you win stays yours: its ring and sign go green ("HELD BY THE
+STREET · $70 TRIBUTE") and every 90 seconds it pays the ones who won it tribute while they are in
+Downtown -- $50, plus $10 a threat level, half as much again while the street holds all four
+(always less than fighting pays). The crew wants it back: four to six minutes later they
+**RAID** it, a war on the held patch at the threat by then that pays a quarter more to beat. Beat
+the raid and the patch stays held (and its timers start again); lose it, or have nobody in
+Downtown to meet them, and it is the crew's again. Taking the fourth patch brings out **the
+Kingpin**, as threat V does. Banners say TURF TAKEN / RAID BEATEN with "THE STREET HOLDS 2/4",
+and a toast says when tribute comes in. `tools/uitest/turf.luau`.
 
 **The Downtown chapter** (RPG). **The Fixer** stands under the purple canopy south of ZEE COURTS
 (press E). They run their own job chain, separate from the Quartermaster's (one job at a time,
@@ -304,7 +335,7 @@ from either): *Rooftop Run* (get onto the apartment roof), *The Car Park*, *Alle
 in the alley), *Park Life*, *Full Court Press*, *The Top Floor* (beat the Don), *Turn Up the Heat*
 (two wars at threat III+) and *The Kingpin* -- then a repeatable paid job, *Street Sweep* (win
 two wars). Each pays cash, XP, crystals and **Street Cred**. Finishing one puts up a **JOB
-COMPLETE** banner (it queues behind a turf war's TURF DEFENDED rather than hiding under it) and
+COMPLETE** banner (it queues behind a turf war's TURF TAKEN rather than hiding under it) and
 the objective card shows the job done before it slides away. A turf war won on a different patch
 than the job names says so -- "THE PARK doesn't count / Wants THE CAR PARK, behind ZEE GUNS" --
 instead of saying nothing. THE PARK's patch is the lawn in front of the star stage.
@@ -332,8 +363,8 @@ the Fixer's jobs, +20 for the Kingpin, -3 when a crew holds a patch you fought f
 is paid more -- **Friendly (30+) takes 10% more from every turf war, Honoured (75+) 25% more** --
 and the Fixer talks to you differently. The payout toast shows the Cred and the bonus.
 
-**The Kingpin.** Win a turf war at threat V and the one who runs the crews steps out onto that
-patch: a white-suited gunfighter boss with a health bar, who calls in backup at two thirds and
+**The Kingpin.** Win a turf war at threat V, or take the fourth patch, and the one who runs the
+crews steps out onto that patch: a white-suited gunfighter boss with a health bar, who calls in backup at two thirds and
 one third health. You have five minutes. Everyone who hurt them shares a $5,000 / 3,000 XP /
 12-crystal bounty (half again for the MVP) and Street Cred; the crews scatter (threat back to
 III). Left alone, the Kingpin walks away. They rest ten minutes between appearances.

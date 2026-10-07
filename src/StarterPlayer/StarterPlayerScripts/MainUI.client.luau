@@ -42,6 +42,8 @@ local Streaks = require(Modules:WaitForChild("Streaks"))
 local Stickups = require(Modules:WaitForChild("Stickups"))
 local Hanami = require(Modules:WaitForChild("Hanami"))
 local Wayfinding = require(Modules:WaitForChild("Wayfinding"))
+local Radar = require(Modules:WaitForChild("Radar"))
+local District = require(Modules:WaitForChild("District"))
 local StreakConfig = require(ReplicatedStorage:WaitForChild("StreakConfig"))
 local LevelRoad = require(Modules:WaitForChild("LevelRoad"))
 local Travel = require(Modules:WaitForChild("Travel"))
@@ -138,6 +140,14 @@ end)
 -- Finding your way: the compass, the name of the place you walk into, the marker on your job.
 local wayfinding = safe("Wayfinding", function()
 	return Wayfinding.new(screen, playerGui)
+end)
+-- The radar, top left: what is around you, turned the way you look.
+local radar = safe("Radar", function()
+	return Radar.new(screen, wayfinding)
+end)
+-- Under it while you are in Downtown: how the streets stand (threat, patches, MOST WANTED).
+local district = safe("District", function()
+	return District.new(screen)
 end)
 -- Supply drops: the banner, the marker over the crate, and who looted it.
 local worldEvents = safe("WorldEvents", function()
@@ -293,7 +303,7 @@ task.spawn(function()
 		end
 		if note.completed then
 			-- A banner, not a line of text: it queues behind whatever banner is up (a turf
-			-- win's TURF DEFENDED arrives at the same moment) instead of hiding under it.
+			-- win's TURF TAKEN arrives at the same moment) instead of hiding under it.
 			local got = {}
 			if tonumber(note.coins) then
 				table.insert(got, "+$" .. tostring(note.coins))
@@ -1286,6 +1296,8 @@ function refreshMenuState()
 	-- The compass is for the open world; a duel is one room. Dead, the death card has the top
 	-- of the screen, and a banner comes down under it.
 	wayfinding:SetVisible(clear and not scoped and not dead and player:GetAttribute("DuelState") ~= "duel")
+	radar:SetVisible(clear and not scoped and not dead and player:GetAttribute("DuelState") ~= "duel")
+	district:SetVisible(clear and not scoped and not dead and player:GetAttribute("DuelState") ~= "duel")
 	toast:SetDeathMode(dead)
 	-- Streaks do not count in a duel, so the meter has nothing to say there.
 	streaks:SetHidden(not clear or scoped or player:GetAttribute("DuelState") == "duel")

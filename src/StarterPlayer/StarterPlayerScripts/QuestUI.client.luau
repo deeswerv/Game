@@ -294,7 +294,7 @@ QuestUpdated.OnClientEvent:Connect(function(newState, completion)
 	renderTracker()
 
 	-- The main interface announces a finished job with a JOB COMPLETE banner now (MainUI),
-	-- which queues behind a turf war's TURF DEFENDED instead of sitting under it the way this
+	-- which queues behind a turf war's TURF TAKEN instead of sitting under it the way this
 	-- line of text did. This one stays silent unless that interface failed to build.
 	local mainUi = player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("MainUI")
 	if completion and completion.completed and not mainUi then

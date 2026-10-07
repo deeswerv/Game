@@ -267,7 +267,20 @@ function WorldEvents:HandleTurf(kind: string, data: any)
 			total = tonumber(data.total) or 0,
 			threat = tonumber(data.threat) or 1,
 		}
-		if near then
+		if data.raid then
+			-- The crew back for a patch the street holds.
+			if near then
+				self._toast:Banner({
+					title = "RAID",
+					subtitle = string.format("A CREW OF %d IS TAKING BACK %s  ·  HOLD IT", tonumber(data.total) or 0, zone),
+					colour = red,
+					sound = "Slam",
+				})
+			else
+				self._toast:Push({ title = "Raid on " .. zone, text = "The crew want it back  ·  a crew of "
+					.. tostring(tonumber(data.total) or 0), icon = "🚨", colour = red })
+			end
+		elseif near then
 			self._toast:Banner({
 				title = "TURF WAR",
 				subtitle = string.format("THREAT %s  ·  A CREW OF %d HOLDS %s  ·  DRIVE THEM OUT", numeral(data.threat),
@@ -290,11 +303,13 @@ function WorldEvents:HandleTurf(kind: string, data: any)
 		end
 	elseif kind == "won" then
 		self._wars[id] = nil
+		local hold = if tonumber(data.control) then string.format("  ·  THE STREET HOLDS %d/%d", data.control,
+			tonumber(data.total) or 4) else ""
 		if near then
 			self._toast:Banner({
-				title = "TURF DEFENDED",
+				title = if data.raid then "RAID BEATEN" else "TURF TAKEN",
 				subtitle = (data.mvp and ("MVP  ·  " .. string.upper(tostring(data.mvp))) or (zone .. " IS YOURS"))
-					.. "  ·  THREAT RISES TO " .. numeral(data.threat),
+					.. hold .. "  ·  THREAT " .. numeral(data.threat),
 				colour = Color3.fromRGB(255, 196, 40),
 				sound = "Ring",
 			})
@@ -304,8 +319,14 @@ function WorldEvents:HandleTurf(kind: string, data: any)
 		end
 	elseif kind == "lost" then
 		self._wars[id] = nil
-		self._toast:Push({ title = "The crew held " .. zone,
+		self._toast:Push({ title = if data.raid then ("The crew took back " .. zone) else ("The crew held " .. zone),
 			text = "Turf war over  ·  threat falls to " .. numeral(data.threat), icon = "⚔", colour = red })
+	elseif kind == "retaken" then
+		self._toast:Push({ title = "The crew took back " .. zone, text = "Nobody was there to hold it", icon = "⚔", colour = red })
+	elseif kind == "tribute" then
+		self._toast:Push({ title = "Tribute from " .. zone, text = string.format("+$%s  ·  the street holds %d/%d",
+			commas(tonumber(data.coins) or 0), tonumber(data.control) or 0, tonumber(data.total) or 4), icon = "💵",
+			colour = Color3.fromRGB(70, 214, 120), duration = 4 })
 	elseif kind == "reward" then
 		local money = string.format("+$%s   +%s XP   +%s 💎", commas(tonumber(data.coins) or 0),
 			commas(tonumber(data.xp) or 0), commas(tonumber(data.crystals) or 0))

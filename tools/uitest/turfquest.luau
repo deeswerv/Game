@@ -245,7 +245,7 @@ for _, model in ipairs(crew) do
 end
 Turf.Step()
 World.advance(0.3)
-check(Turf.Status("Park") == "cooldown", "the crew down: THE PARK is won")
+check(Turf.Status("Park") == "held", "the crew down: THE PARK is won (and held)")
 check(profile.CurrentQuest == "" and table.find(profile.CompletedQuests, "ParkLife") ~= nil,
 	"and Park Life is complete")
 local notes = questNotes()

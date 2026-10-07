@@ -210,8 +210,9 @@ function Stickups:_update()
 	if not on then
 		return
 	end
-	self._detail.Text = ("$%s  ·  %s  ·  THEY ARE COMING"):format(commas(amount),
-		string.upper(tostring(me:GetAttribute("HeatPlace") or "")))
+	local stars = math.clamp(tonumber(me:GetAttribute("Stars")) or 1, 1, 3)
+	self._detail.Text = ("%s  $%s  ·  %s  ·  THEY ARE COMING"):format(string.rep("★", stars) .. string.rep("☆", 3 - stars),
+		commas(amount), string.upper(tostring(me:GetAttribute("HeatPlace") or "")))
 	self._timer.Text = clock(left)
 	self._fill.Size = UDim2.fromScale(math.clamp(left / self._heatLength, 0, 1), 1)
 	-- The last ten seconds, the bar beats.
@@ -233,8 +234,10 @@ function Stickups:Handle(kind: string, data: any)
 			self._heatLength = tonumber(data.seconds) or 60
 			self._barScale.Scale = 1.25
 			TweenService:Create(self._barScale, Theme.Tween.Pop, { Scale = 1 }):Play()
-			self._toast:Banner({ title = "STICK-UP", subtitle = ("%s IN THE BAG  ·  HOLD IT FOR %ds"):format(amount,
-				tonumber(data.seconds) or 60), colour = GOLD, sound = "Slam" })
+			local stars = math.clamp(tonumber(data.stars) or 1, 1, 3)
+			self._toast:Banner({ title = if stars > 1 then ("STICK-UP  " .. string.rep("★", stars)) else "STICK-UP",
+				subtitle = ("%s IN THE BAG  ·  HOLD IT FOR %ds%s"):format(amount, tonumber(data.seconds) or 60,
+					if stars > 1 then "  ·  THEY KNOW YOUR FACE" else ""), colour = GOLD, sound = "Slam" })
 		else
 			self._toast:Push({ title = "ROBBERY · " .. place, text = ("%s has %s in a bag. Take it off them."):format(
 				tostring(data.robber), amount), icon = "🚨", colour = GOLD, duration = 6 })

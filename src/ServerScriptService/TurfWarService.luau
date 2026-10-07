@@ -31,8 +31,17 @@
 -- takes a tenth more from every war, Honoured (75+) a quarter more. Published on the
 -- player as the StreetCred attribute.
 --
--- THE KINGPIN. Win a war at threat V and the one who runs the crews steps out onto that
--- patch -- a boss with a health bar, two phases that call in backup, and five minutes before
+-- DISTRICT CONTROL. A patch won is held by the street, not just quiet: its sign and ring go
+-- green, and every minute and a half it pays the ones who won it tribute (protection money)
+-- for as long as they are in Downtown -- half as much again while the street holds all four.
+-- Its crew does not forget: a few minutes on they come back to take it (a RAID: a war on the
+-- held patch, bigger at the threat by then, that pays a quarter more to beat). Beat it and
+-- the patch stays yours; lose it, or have nobody there to meet them, and it is theirs again.
+-- How many patches the street holds is published for the HUD (TurfControl), and each patch's
+-- state (Turf_<id>: crew, war, held, raid or quiet).
+--
+-- THE KINGPIN. Win a war at threat V -- or take the fourth patch -- and the one who runs the
+-- crews steps out onto that patch -- a boss with a health bar, two phases that call in backup, and five minutes before
 -- they walk away. Everyone who hurt them shares a big payout (MVP bonus) and Street Cred;
 -- the crews scatter and the threat drops back to III. Then it is ten minutes before they
 -- will come out again.
@@ -87,6 +96,15 @@ TurfWarService.KINGPIN_PHASES = {
 }
 -- Where the threat goes once the Kingpin falls (the crews scatter), or walks away.
 TurfWarService.THREAT_AFTER_KINGPIN = 3
+-- District control (see above).
+TurfWarService.HOLD = {
+	raidAfter = { 240, 360 },        -- seconds from taking (or keeping) a patch to its next raid
+	tributeEvery = 90,
+	tribute = { base = 50, perThreat = 10 },  -- a bonus for holding, never more than fighting pays
+	allHeld = 1.5,                   -- tribute while the street holds every patch
+	raidBonus = 0.25,                -- beating a raid pays this much more than a war
+	district = 280,                  -- how far from the district's middle counts as "in Downtown"
+}
 
 -- The clock everything is timed on. A test swaps it for one it can wind forward.
 TurfWarService.Clock = os.clock
@@ -166,13 +184,17 @@ type War = {
 	left: number,
 	lastSeen: number,
 	over: boolean,
+	retake: boolean,         -- a raid on a patch the street holds
 }
 
 type Turf = {
 	zone: Zone,
 	centre: Vector3,
-	status: string,          -- "idle" | "active" | "cooldown"
+	status: string,          -- "idle" | "active" | "cooldown" | "held"
 	readyAt: number,
+	holders: { [Player]: boolean },  -- held: who won it (and is paid its tribute)
+	nextRaidAt: number,
+	nextTribute: number,
 	war: War?,
 	marker: Model?,
 	dashes: { BasePart },
@@ -188,6 +210,9 @@ for _, zone in ipairs(TurfWarService.Zones) do
 		centre = CENTRE + zone.offset,
 		status = "idle",
 		readyAt = 0,
+		holders = {},
+		nextRaidAt = 0,
+		nextTribute = 0,
 		war = nil,
 		marker = nil,
 		dashes = {},
@@ -316,6 +341,7 @@ end
 local IDLE_RED = Color3.fromRGB(226, 52, 48)
 local WAR_ORANGE = Color3.fromRGB(255, 142, 36)
 local COOL_GREY = Color3.fromRGB(150, 150, 156)
+local HELD_GREEN = Color3.fromRGB(70, 214, 120)
 local DASHES = 28
 
 local function markerFolder(): Folder
@@ -451,7 +477,10 @@ local function refreshMarker(turf: Turf, now: number)
 	local war = turf.war
 	if turf.status == "active" and war then
 		colour = WAR_ORANGE
-		text = string.format("TURF WAR · %d LEFT · %s", war.left, clock(war.endsAt - now))
+		text = string.format("%s · %d LEFT · %s", if war.retake then "RAID" else "TURF WAR", war.left, clock(war.endsAt - now))
+	elseif turf.status == "held" then
+		colour = HELD_GREEN
+		text = string.format("HELD BY THE STREET · $%d TRIBUTE", TurfWarService.TributeFor(threat, TurfWarService.Control() == #turfs))
 	elseif turf.status == "cooldown" then
 		colour = COOL_GREY
 		text = "QUIET FOR " .. clock(turf.readyAt - now)
@@ -469,6 +498,64 @@ local function refreshMarker(turf: Turf, now: number)
 	end
 end
 
+-- -------------------------------------------------------- district control --
+
+--- How many patches the street holds.
+function TurfWarService.Control(): number
+	local n = 0
+	for _, turf in ipairs(turfs) do
+		if turf.status == "held" or (turf.status == "active" and turf.war and turf.war.retake) then
+			n += 1
+		end
+	end
+	return n
+end
+
+--- Publish each patch's state and the street's hold, for every client's HUD.
+local function publish()
+	for _, turf in ipairs(turfs) do
+		local war = turf.war
+		local state = if turf.status == "active" and war and war.retake then "raid"
+			elseif turf.status == "active" then "war"
+			elseif turf.status == "held" then "held"
+			elseif turf.status == "cooldown" then "quiet"
+			else "crew"
+		ReplicatedStorage:SetAttribute("Turf_" .. turf.zone.id, state)
+	end
+	ReplicatedStorage:SetAttribute("TurfControl", TurfWarService.Control())
+end
+TurfWarService.Publish = publish
+
+--- What one holder is paid each time a held patch pays its tribute.
+function TurfWarService.TributeFor(level: number, allHeld: boolean): number
+	local h = TurfWarService.HOLD
+	local amount = h.tribute.base + h.tribute.perThreat * (math.clamp(level, 1, TurfWarService.MAX_THREAT) - 1)
+	return math.floor(amount * (if allHeld then h.allHeld else 1) + 0.5)
+end
+
+local function inDistrict(player: Player): boolean
+	local root = rootOf(player)
+	if not root then
+		return false
+	end
+	local d = root.Position - CENTRE
+	return Vector3.new(d.X, 0, d.Z).Magnitude <= TurfWarService.HOLD.district and d.Y > -20 and d.Y < 220
+end
+
+local function anyoneInDistrict(): boolean
+	for _, player in ipairs(Players:GetPlayers()) do
+		if inDistrict(player) then
+			return true
+		end
+	end
+	return false
+end
+
+local function raidDelay(): number
+	local r = TurfWarService.HOLD.raidAfter
+	return r[1] + math.random() * (r[2] - r[1])
+end
+
 -- ---------------------------------------------------------------- wars --
 
 local function finish(turf: Turf, war: War, won: boolean)
@@ -479,7 +566,7 @@ local function finish(turf: Turf, war: War, won: boolean)
 		-- it was fought over, or finished one of the crew off. Damage alone used to decide
 		-- it, and a player whose hits did not all land on the record (a crew member who fell
 		-- off the waterfall cliff, one finished by someone else, a kill through something
-		-- that does not report damage) could win THE PARK, see TURF DEFENDED, and be neither
+		-- that does not report damage) could win THE PARK, see TURF TAKEN, and be neither
 		-- paid nor given the quest. Only the MVP is still decided by damage.
 		local fighters: { [Player]: boolean } = {}
 		for player, dealt in pairs(war.damage) do
@@ -513,7 +600,8 @@ local function finish(turf: Turf, war: War, won: boolean)
 				-- A known name gets paid more: the band the player is in BEFORE this win.
 				local _, band = TurfWarService.Cred(player)
 				local bonus = TurfWarService.CredBonus(band)
-				local reward = scaled(TurfWarService.RewardFor(war.level, mvp), 1 + bonus)
+				local reward = scaled(TurfWarService.RewardFor(war.level, mvp), (1 + bonus)
+					* (if war.retake then 1 + TurfWarService.HOLD.raidBonus else 1))
 				pay(player, reward)
 				local ContractService = service("ContractService")
 				if ContractService and ContractService.Note then
@@ -538,17 +626,43 @@ local function finish(turf: Turf, war: War, won: boolean)
 					credTotal = cred,
 					band = newBand,
 					bonus = bonus,
+					raid = war.retake,
 				})
 			end
 		end
 		TurfWarService.SetThreat(war.level + 1)
+		-- The patch is the street's now: its fighters hold it (and are paid for it), and its
+		-- crew will be back for it.
+		local now = TurfWarService.Clock()
+		if not war.retake then
+			table.clear(turf.holders)
+		end
+		for player in pairs(fighters) do
+			if player.Parent then
+				turf.holders[player] = true
+			end
+		end
+		for humanoid in pairs(war.crew) do
+			warOf[humanoid] = nil
+		end
+		turf.war = nil
+		turf.status = "held"
+		turf.nextRaidAt = now + raidDelay()
+		turf.nextTribute = now + TurfWarService.HOLD.tributeEvery
+		publish()
+		local control = TurfWarService.Control()
 		turfEvent:FireAllClients("won", { id = zone.id, zone = zone.name, position = turf.centre,
-			mvp = best and best.DisplayName or nil, threat = threat, cooldown = TurfWarService.COOLDOWN })
-		print(("[Turf] %s defended; threat now %d"):format(zone.name, threat))
-		-- Broken at the top of the scale: the one who runs them comes out to settle it.
-		if war.level >= TurfWarService.MAX_THREAT then
+			mvp = best and best.DisplayName or nil, threat = threat, held = true, raid = war.retake, control = control,
+			total = #turfs, tribute = TurfWarService.TributeFor(threat, control == #turfs) })
+		print(("[Turf] %s %s; threat now %d; the street holds %d of %d"):format(zone.name,
+			if war.retake then "kept" else "taken", threat, control, #turfs))
+		-- Broken at the top of the scale, or every patch lost to the street: the one who runs
+		-- them comes out to settle it.
+		if war.level >= TurfWarService.MAX_THREAT or control == #turfs then
 			TurfWarService.SummonKingpin(turf.zone.id)
 		end
+		refreshMarker(turf, now)
+		return
 	else
 		for humanoid, model in pairs(war.crew) do
 			if humanoid.Parent and humanoid.Health > 0 and model.Parent then
@@ -562,9 +676,10 @@ local function finish(turf: Turf, war: War, won: boolean)
 				task.spawn(TurfWarService.AddCred, player, TurfWarService.CRED.lost)
 			end
 		end
+		table.clear(turf.holders)
 		turfEvent:FireAllClients("lost", { id = zone.id, zone = zone.name, position = turf.centre, threat = threat,
-			cooldown = TurfWarService.COOLDOWN })
-		print(("[Turf] the crew held %s; threat now %d"):format(zone.name, threat))
+			cooldown = TurfWarService.COOLDOWN, raid = war.retake })
+		print(("[Turf] the crew %s %s; threat now %d"):format(if war.retake then "took back" else "held", zone.name, threat))
 	end
 	for humanoid in pairs(war.crew) do
 		warOf[humanoid] = nil
@@ -572,12 +687,14 @@ local function finish(turf: Turf, war: War, won: boolean)
 	turf.war = nil
 	turf.status = "cooldown"
 	turf.readyAt = TurfWarService.Clock() + TurfWarService.COOLDOWN
+	publish()
 	refreshMarker(turf, TurfWarService.Clock())
 end
 
 --- Start a turf war on one patch now (by id; a random ready one if none given). Returns false
---- if that patch is already at war or cooling down, or the crew could not spawn.
-function TurfWarService.Start(zoneId: string?): boolean
+--- if that patch is already at war or cooling down, or the crew could not spawn. `retake`:
+--- the crew coming back for a patch the street holds (a raid).
+function TurfWarService.Start(zoneId: string?, retake: boolean?): boolean
 	local turf: Turf? = nil
 	if zoneId then
 		turf = byId[zoneId]
@@ -590,7 +707,7 @@ function TurfWarService.Start(zoneId: string?): boolean
 		end
 		turf = if #ready > 0 then ready[math.random(1, #ready)] else nil
 	end
-	if not turf or turf.status ~= "idle" then
+	if not turf or turf.status ~= (if retake then "held" else "idle") then
 		return false
 	end
 	local ok, NPCService = pcall(require, ServerScriptService:FindFirstChild("NPCService") :: ModuleScript)
@@ -611,6 +728,7 @@ function TurfWarService.Start(zoneId: string?): boolean
 		left = 0,
 		lastSeen = now,
 		over = false,
+		retake = retake == true,
 	}
 	-- The crew comes out round the edge of the patch, facing in.
 	for i, archetype in ipairs(roster) do
@@ -636,9 +754,10 @@ function TurfWarService.Start(zoneId: string?): boolean
 	war.left = remaining(war)
 	turf.war = war
 	turf.status = "active"
+	publish()
 	turfEvent:FireAllClients("start", {
 		id = zone.id, zone = zone.name, position = turf.centre, left = war.left, total = war.total,
-		seconds = war.endsAt - now, threat = level,
+		seconds = war.endsAt - now, threat = level, raid = war.retake,
 	})
 	refreshMarker(turf, now)
 	print(("[Turf] threat %d: a crew of %d holds %s"):format(level, war.left, zone.name))
@@ -667,6 +786,8 @@ function TurfWarService.Status(zoneId: string): (string?, number)
 		return "active", math.max(0, turf.war.endsAt - now)
 	elseif turf.status == "cooldown" then
 		return "cooldown", math.max(0, turf.readyAt - now)
+	elseif turf.status == "held" then
+		return "held", math.max(0, turf.nextRaidAt - now)
 	end
 	return "idle", 0
 end
@@ -692,6 +813,38 @@ function TurfWarService.Step()
 		buildMarker(turf)
 		if turf.status == "cooldown" and now >= turf.readyAt then
 			turf.status = "idle"
+			publish()
+		end
+		if turf.status == "held" then
+			-- Tribute, to the ones who hold it and are here to collect it.
+			if now >= turf.nextTribute then
+				turf.nextTribute = now + TurfWarService.HOLD.tributeEvery
+				local amount = TurfWarService.TributeFor(threat, TurfWarService.Control() == #turfs)
+				for player in pairs(turf.holders) do
+					if player.Parent and inDistrict(player) then
+						pay(player, { coins = amount, xp = 0, crystals = 0 })
+						turfEvent:FireClient(player, "tribute", { id = turf.zone.id, zone = turf.zone.name, coins = amount,
+							control = TurfWarService.Control(), total = #turfs })
+					elseif not player.Parent then
+						turf.holders[player] = nil
+					end
+				end
+			end
+			-- The crew comes back for it: met if anyone is in Downtown to meet them, otherwise
+			-- they simply have it back.
+			if now >= turf.nextRaidAt then
+				if anyoneInDistrict() then
+					local ok, started = pcall(TurfWarService.Start, turf.zone.id, true)
+					if not ok or not started then
+						turf.nextRaidAt = now + 30
+					end
+				else
+					table.clear(turf.holders)
+					turf.status = "idle"
+					publish()
+					turfEvent:FireAllClients("retaken", { id = turf.zone.id, zone = turf.zone.name, position = turf.centre })
+				end
+			end
 		end
 		if turf.status == "idle" then
 			for _, player in ipairs(Players:GetPlayers()) do
@@ -890,6 +1043,7 @@ stepKingpin = function(now: number)
 end
 
 TurfWarService.SetThreat(1)
+publish()
 
 -- Street Cred on the player from the start, for the HUD and the Fixer.
 local function publishCred(player: Player)

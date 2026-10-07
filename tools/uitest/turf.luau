@@ -6,9 +6,12 @@
 --   * stepping onto a patch starts its war (its own crew, tagged with the patch), and only that
 --     patch's -- the others stay open;
 --   * two patches can be at war at once, each with its own crew and clock;
---   * clearing the crew pays the fighters and puts the patch on cooldown: standing on it does
---     nothing until the cooldown is up, then its crew comes back, bigger at the higher threat;
---   * a crew left alone for long enough leaves, and that patch cools down too.
+--   * clearing the crew pays the fighters and the street holds the patch: its sign goes green,
+--     standing on it starts nothing, and it pays its holders tribute while they are in Downtown;
+--   * a few minutes on its crew comes back for it (a raid, bigger at the higher threat); lose
+--     that and the patch goes quiet, theirs again; with nobody in Downtown they just take it;
+--   * a crew left alone for long enough leaves, and that patch cools down;
+--   * every patch's state and the street's hold are published for the HUD.
 --
 -- NPCService is stood in for by a module that makes bare NPC models; the clock is wound by hand.
 --
@@ -266,9 +269,10 @@ for _, model in ipairs(last) do
 	model:FindFirstChildOfClass("Humanoid").Health = 0
 end
 Turf.Step()
-check(Turf.Status("CarPark") == "cooldown", "the last one down: the patch goes quiet")
+check(Turf.Status("CarPark") == "held", "the last one down: the street holds the patch")
 local won = turfSent("won", "CarPark")
-check(won ~= nil and won.mvp == "Tester" and won.cooldown == Turf.COOLDOWN, "a win, with the MVP and the cooldown")
+check(won ~= nil and won.mvp == "Tester" and won.held == true and won.control == 1 and won.total == 4,
+	"a win, with the MVP, and the street holds 1 of 4")
 local reward = turfSent("reward", "CarPark")
 check(reward ~= nil and reward.mvp == true and reward.coins == 1650, "the fighter is paid, with the MVP bonus")
 check(coins.Value - before == 1650, ("coins +%d"):format(coins.Value - before))
@@ -278,35 +282,60 @@ check(reward and reward.cred == Turf.CRED.win + Turf.CRED.mvp and player:GetAttr
 	("Street Cred for the win and the MVP (%s)"):format(tostring(player:GetAttribute("StreetCred"))))
 check(reward and reward.bonus == 0 and reward.band == "Neutral", "an unknown name gets no bonus yet")
 check(Turf.Status("Courts") == "active", "the other war carries on")
-local _, cool = Turf.Status("CarPark")
-check(math.abs(cool - Turf.COOLDOWN) < 1, ("cooling down for %ds"):format(cool))
-check(signText("CarPark") == "QUIET FOR 3:00", ("the sign says for how long (%q)"):format(signText("CarPark")))
+local rs = World.service("ReplicatedStorage")
+check(rs:GetAttribute("Turf_CarPark") == "held" and rs:GetAttribute("Turf_Courts") == "war" and rs:GetAttribute("TurfControl") == 1,
+	"each patch's state is published, and the street's hold")
+local _, raidIn = Turf.Status("CarPark")
+check(raidIn >= Turf.HOLD.raidAfter[1] - 1 and raidIn <= Turf.HOLD.raidAfter[2] + 1, ("its crew will be back in %ds"):format(raidIn))
+check(signText("CarPark") == ("HELD BY THE STREET · $%d TRIBUTE"):format(Turf.TributeFor(2, false)),
+	("the sign says whose it is (%q)"):format(signText("CarPark")))
+check(dashColour("CarPark") ~= dashColour("Park"), "and its ring goes green")
 
--- --------------------------------------------------------------- the cooldown --
+-- --------------------------------------------------------------- holding it --
 
-print("the cooldown")
+print("holding it")
 local count = #NPCService.spawned
 now += 60
 Turf.Step()
-check(Turf.Status("CarPark") == "cooldown" and #NPCService.spawned == count, "standing on it a minute later: nothing")
-check(signText("CarPark") == "QUIET FOR 2:00", ("the sign counts down (%q)"):format(signText("CarPark")))
+check(Turf.Status("CarPark") == "held" and #NPCService.spawned == count, "standing on it a minute later: nothing starts")
 
 -- Meanwhile the crew at THE COURTS has had nobody near it for over a minute: it has left.
-check(Turf.Status("Courts") == "cooldown", "a crew left alone walks off, and its patch cools down too")
+check(Turf.Status("Courts") == "cooldown", "a crew left alone walks off, and its patch cools down")
 check(#crewOf("Courts") == 0, "taking its crew with it")
 check(turfSent("lost", "Courts") ~= nil, "everyone is told")
 check(Turf.Threat() == 1, "and the threat falls back")
+check(rs:GetAttribute("Turf_Courts") == "quiet", "THE COURTS shows quiet")
 
-Turf.SetThreat(3)
-now += Turf.COOLDOWN
+-- Tribute, every minute and a half, while the holder is in Downtown.
+before = coins.Value
+table.clear(sent)
+now += Turf.HOLD.tributeEvery - 60 + 1
 Turf.Step()
-check(Turf.Status("CarPark") == "active", "the cooldown up: standing on it brings the crew back")
-check(#crewOf("CarPark") == #Turf.CrewFor(3), ("bigger at threat III (%d)"):format(#crewOf("CarPark")))
+local tribute = turfSent("tribute", "CarPark")
+check(tribute ~= nil and tribute.coins == Turf.TributeFor(1, false) and coins.Value - before == tribute.coins,
+	("the patch pays its holder tribute ($%d)"):format(coins.Value - before))
+check(Turf.TributeFor(1, true) > Turf.TributeFor(1, false), "more while the street holds every patch")
+check(Turf.TributeFor(Turf.MAX_THREAT, true) * Turf.HOLD.raidAfter[2] / Turf.HOLD.tributeEvery < Turf.REWARD.coins,
+	"a patch's tribute between raids, at its best, is less than one war pays: holding is a bonus, not the job")
 
--- The clock running out.
+-- The raid: the crew back for it, bigger at the threat by then.
+Turf.SetThreat(3)
+table.clear(sent)
+now += Turf.HOLD.raidAfter[2] + 1
+Turf.Step()
+check(Turf.Status("CarPark") == "active", "a few minutes on, its crew comes back for it")
+local raid = turfSent("start", "CarPark")
+check(raid ~= nil and raid.raid == true and rs:GetAttribute("Turf_CarPark") == "raid", "a raid, and everyone is told")
+check(#crewOf("CarPark") == #Turf.CrewFor(3), ("bigger at threat III (%d)"):format(#crewOf("CarPark")))
+check(Turf.Control() == 1, "it is still the street's while they fight for it")
+
+-- The clock running out on the raid: the crew have it back.
+table.clear(sent)
 now += Turf.DURATION + Turf.DURATION_PER_THREAT * 2 + 1
 Turf.Step()
-check(Turf.Status("CarPark") == "cooldown" and #crewOf("CarPark") == 0, "out of time: the crew leaves")
+check(Turf.Status("CarPark") == "cooldown" and #crewOf("CarPark") == 0, "out of time: the crew take it back and leave")
+local lostIt = turfSent("lost", "CarPark")
+check(lostIt ~= nil and lostIt.raid == true and rs:GetAttribute("TurfControl") == 0, "the street holds none now")
 
 -- --------------------------------------------------------------- street cred --
 
@@ -390,6 +419,27 @@ check(Turf.SummonKingpin("Park"), "until the cooldown is up")
 now += Turf.KINGPIN_TIME + 1
 Turf.Step()
 check(not (Turf.KingpinOut()) and Turf.Threat() == Turf.MAX_THREAT - 1, "left alone too long, the Kingpin walks away")
+
+-- --------------------------------------------------------------- nobody home --
+
+print("nobody home")
+Turf.SetThreat(1)
+standAt(zone("Alley").offset)
+Turf.Step()
+check(Turf.Status("Alley") == "active", "THE ALLEY's war")
+for _, model in ipairs(crewOf("Alley")) do
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	KillCredit.Damaged:Fire(humanoid, 100, player)
+	humanoid.Health = 0
+end
+Turf.Step()
+check(Turf.Status("Alley") == "held" and rs:GetAttribute("Turf_Alley") == "held", "won: the street holds THE ALLEY")
+standAt(Vector3.new(0, 0, 2000))
+table.clear(sent)
+now += Turf.HOLD.raidAfter[2] + 1
+Turf.Step()
+check(Turf.Status("Alley") == "idle" and turfSent("retaken", "Alley") ~= nil and rs:GetAttribute("Turf_Alley") == "crew",
+	"nobody in Downtown when its crew comes back: they simply have it again")
 
 print(failures == 0 and "\27[32mall turf checks passed\27[0m" or ("\27[31m%d failed\27[0m"):format(failures))
 require("@lune/process").exit(failures == 0 and 0 or 1)

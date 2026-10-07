@@ -274,6 +274,21 @@ local function buildVitals(self, parent: GuiObject)
 	Components.Corner(fill, 8)
 	Components.Gradient(fill, Color3.fromRGB(235, 255, 235), Color3.fromRGB(160, 180, 160))
 
+	-- Ticks every tenth of the bar, over the fill, so it reads in tens at a glance; the
+	-- half-way one a little stronger.
+	for k = 1, 9 do
+		local tick = Instance.new("Frame")
+		tick.Name = "Tick"
+		tick.AnchorPoint = Vector2.new(0.5, 0)
+		tick.Position = UDim2.new(k / 10, 0, 0, 5)
+		tick.Size = UDim2.new(0, 2, 1, -10)
+		tick.BackgroundColor3 = Color3.fromRGB(10, 12, 16)
+		tick.BackgroundTransparency = if k == 5 then 0.3 else 0.62
+		tick.BorderSizePixel = 0
+		tick.ZIndex = 2
+		tick.Parent = track
+	end
+
 	-- A thin light line across the top of the fill: the glassy highlight on the reference bar.
 	local shine = Instance.new("Frame")
 	shine.Name = "Shine"

@@ -215,6 +215,7 @@ check(type(player:GetAttribute("Heat")) == "number" and player:GetAttribute("Hea
 local alarm = events("alarm")[1]
 check(alarm and alarm.all and alarm.args[2].amount == loot and alarm.args[2].place == "ZEE GUNS"
 	and alarm.args[2].seconds == Stickups.Kinds.register.heat, "everyone hears the alarm: where, how much, how long")
+check(alarm and alarm.args[2].stars == 1 and player:GetAttribute("Stars") == 1, "a first job: one star")
 check(#NPCService.spawned == 3, ("a squad of three comes (%d)"):format(#NPCService.spawned))
 local onAvenue = true
 for _, s in ipairs(NPCService.spawned) do
@@ -262,7 +263,15 @@ humanoid.Health = 100
 ok = Stickups.Rob(player, atm.part)
 local bag = player:GetAttribute("Bag")
 local atmRange = Stickups.Kinds.atm.loot
-check(ok == true and bag >= atmRange[1] and bag <= atmRange[2], ("the ATM: a bigger bag ($%s)"):format(tostring(bag)))
+-- Another job a minute after the last: notoriety. A second star, a bigger bag, longer heat,
+-- more of the crew after you.
+local St = Stickups.STARS
+local expectedBag = math.floor(math.floor((atmRange[1] + atmRange[2]) / 2) * (1 + St.loot) + 0.5)
+check(ok == true and bag == expectedBag, ("the ATM, a second job soon after: two stars, a third more in the bag ($%s)"):format(tostring(bag)))
+local alarm2 = events("alarm")[1]
+check(player:GetAttribute("Stars") == 2 and alarm2 and alarm2.args[2].stars == 2
+	and alarm2.args[2].seconds == Stickups.Kinds.atm.heat + St.heat, "the alarm says so, and the heat lasts longer")
+check(#NPCService.spawned == #Stickups.SQUAD + #St.extra[1], ("more of the crew come (%d)"):format(#NPCService.spawned))
 -- Another player puts the robber down.
 local rival = R.new("Player")
 rival.Name = "Rival"
@@ -290,7 +299,8 @@ table.clear(sent)
 humanoid.Health = 100
 local tactics = tills["ZEE TACTICS"]
 root.CFrame = CFrame.new(tactics.part.Position + Vector3.new(-3.5, -1.5, 0))
-check(Stickups.Rob(player, tactics.part) == true, "another job")
+check(Stickups.Rob(player, tactics.part) == true and player:GetAttribute("Stars") == 1,
+	"another job -- back to one star: being put down cost the notoriety")
 humanoid:FindFirstChild("creator"):Destroy()
 coinsBefore = coins.Value
 humanoid.Health = 0
@@ -298,6 +308,11 @@ R.fire(humanoid, "Died")
 World.advance(0.2)
 check(#events("busted") == 1 and coins.Value == coinsBefore and player:GetAttribute("Bag") == nil,
 	"killed by the squad (no player): busted, the bag is lost")
+
+print("notoriety")
+check(Stickups.NextStars(player) == 1, "down again: one star for the next")
+now += St.window + 1
+check(Stickups.NextStars(player) == 1, "and ten quiet minutes would do the same")
 
 print("restocked")
 now += Stickups.COOLDOWN + 1

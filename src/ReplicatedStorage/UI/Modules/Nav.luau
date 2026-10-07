@@ -46,10 +46,14 @@ export type Entry = {
 	onActivated: () -> (),
 }
 
+local HINT_ACCENT = Color3.fromRGB(255, 200, 48)
+
+--- A hint beside a tile: a dark glass pill with a gold edge and a pulsing dot, pointing at it.
 local function buildHint(tile: GuiObject, text: string): Frame
 	local bubble = Instance.new("Frame")
 	bubble.Name = "Hint"
-	bubble.BackgroundColor3 = Color3.new(1, 1, 1)
+	bubble.BackgroundColor3 = Color3.fromRGB(14, 16, 22)
+	bubble.BackgroundTransparency = 0.12
 	bubble.BorderSizePixel = 0
 	bubble.AnchorPoint = Vector2.new(1, 0.5)
 	bubble.Position = UDim2.new(0, -14, 0.5, 0)
@@ -57,35 +61,44 @@ local function buildHint(tile: GuiObject, text: string): Frame
 	bubble.AutomaticSize = Enum.AutomaticSize.X
 	bubble.ZIndex = Theme.Layer.Tooltip
 	bubble.Parent = tile
-	Components.Corner(bubble, 6)
-	Components.Stroke(bubble, Theme.Colour.Outline, 2).Transparency = 0.1
-	Components.Padding(bubble, nil, 10, 0)
+	Components.Corner(bubble, 15)
+	Components.Stroke(bubble, HINT_ACCENT, 1.5).Transparency = 0.35
+	Components.Padding(bubble, nil, 12, 0)
+	local row = Components.List(bubble, Enum.FillDirection.Horizontal, 8)
+	row.VerticalAlignment = Enum.VerticalAlignment.Center
+
+	-- A dot that pulses, so the eye finds it.
+	local dot = Instance.new("Frame")
+	dot.Name = "Dot"
+	dot.BackgroundColor3 = HINT_ACCENT
+	dot.BorderSizePixel = 0
+	dot.Size = UDim2.fromOffset(8, 8)
+	dot.LayoutOrder = 1
+	dot.ZIndex = Theme.Layer.Tooltip + 1
+	dot.Parent = bubble
+	Components.Corner(dot, 4)
+	local pulse = TweenService:Create(dot, TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+		{ BackgroundTransparency = 0.7 })
+	pulse:Play()
 
 	local label = Components.Label(bubble, {
-		text = text,
-		font = Theme.Font.Bold,
+		text = string.upper(text),
+		face = Theme.Face.Condensed,
 		size = Theme.Text.Body,
-		colour = Theme.Colour.Outline,
 		autoSize = true,
-		outline = false,
+		outline = 1.5,
 	})
-	label.AnchorPoint = Vector2.new(0, 0.5)
-	label.Position = UDim2.fromScale(0, 0.5)
+	label.LayoutOrder = 2
 	label.ZIndex = Theme.Layer.Tooltip + 1
 
-	-- The pointer: a small rotated square poking out of the bubble toward the tile.
-	local pointer = Instance.new("Frame")
+	-- The pointer: a small gold chevron toward the tile.
+	local pointer = Components.Label(bubble, { text = "›", font = Theme.Font.Bold, size = 22, colour = HINT_ACCENT, autoSize = true,
+		outline = false })
 	pointer.Name = "Pointer"
-	pointer.BackgroundColor3 = Color3.new(1, 1, 1)
-	pointer.BorderSizePixel = 0
-	pointer.AnchorPoint = Vector2.new(0.5, 0.5)
-	pointer.Position = UDim2.new(1, 10, 0.5, 0)
-	pointer.Size = UDim2.fromOffset(10, 10)
-	pointer.Rotation = 45
-	pointer.ZIndex = Theme.Layer.Tooltip
-	pointer.Parent = bubble
+	pointer.LayoutOrder = 3
+	pointer.ZIndex = Theme.Layer.Tooltip + 1
 
-	-- A gentle bob, so the eye finds it.
+	-- A gentle drift toward the tile.
 	local rest = bubble.Position
 	local bob = TweenService:Create(bubble, TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
 		Position = rest + UDim2.fromOffset(-6, 0),
@@ -93,6 +106,7 @@ local function buildHint(tile: GuiObject, text: string): Frame
 	bob:Play()
 	bubble.Destroying:Connect(function()
 		bob:Cancel()
+		pulse:Cancel()
 	end)
 	return bubble
 end

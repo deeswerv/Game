@@ -231,6 +231,56 @@ end
 
 World.advance(1)
 
+local V3, CFrame = roblox.Vector3, roblox.CFrame
+-- The radar and Downtown's card: an enemy near you is a red blip; in Downtown the card shows
+-- the threat and each patch as the server publishes them.
+do
+	local main = gui:FindFirstChild("MainUI")
+	local radar = main and main:FindFirstChild("Radar")
+	check("the radar is up, top right", radar ~= nil and radar.Visible and radar.AnchorPoint.X == 1
+		and radar.Position.X.Scale == 1)
+	local root = World.character:FindFirstChild("HumanoidRootPart")
+	local rs = World.service("ReplicatedStorage")
+	rs:SetAttribute("TurfThreat", 3)
+	rs:SetAttribute("Turf_CarPark", "held")
+	rs:SetAttribute("Turf_Courts", "war")
+	rs:SetAttribute("TurfControl", 1)
+	local at = V3.new(-155, 1003, 1500)
+	root.CFrame = CFrame.new(at)
+	root.Position = at
+	local npc = R.new("Model")
+	npc.Name = "Thug"
+	local body = R.new("Part")
+	body.Name = "HumanoidRootPart"
+	body.CFrame = CFrame.new(at + V3.new(0, 0, -20))
+	body.Position = at + V3.new(0, 0, -20)
+	body.Parent = npc
+	local h = R.new("Humanoid")
+	h.MaxHealth = 100
+	h.Health = 100
+	h.Parent = npc
+	npc.Parent = World.workspace
+	npc:AddTag("GameNPC")
+	World.advance(0.6)
+	local blips = radar and World.find(radar, "Blips")
+	local enemy = blips and blips:FindFirstChild("enemy")
+	check("an enemy close by is a red blip on it", enemy ~= nil and enemy.Visible)
+	local card = main and main:FindFirstChild("District")
+	check("in Downtown, the district card shows", card ~= nil and card.Visible)
+	local carPark = card and card:FindFirstChild("CarPark")
+	local state = carPark and World.find(carPark, "State")
+	local stateText = state and state:FindFirstChildOfClass("TextLabel")
+	check("THE CAR PARK reads HELD", stateText ~= nil and stateText.Text == "HELD")
+	local threat = card and World.find(card, "Threat")
+	check("and the threat III", threat ~= nil and threat.Text:find("▮▮▮▯▯", 1, true) ~= nil)
+	local home = V3.new(0, 3, 0)
+	root.CFrame = CFrame.new(home)
+	root.Position = home
+	World.advance(0.6)
+	check("out of Downtown, the card goes", card ~= nil and not card.Visible)
+	npc:Destroy()
+end
+
 print(("\n%d error(s)"):format(#R.errors))
 for _, line in ipairs(R.log) do
 	if line:find("%[UI%]") or line:find("failed to build") then

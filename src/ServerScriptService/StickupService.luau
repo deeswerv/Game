@@ -14,6 +14,11 @@
 --   * Hold on to it for the heat's length and it is yours (cash and XP): a clean getaway.
 --     Die first and it is gone -- and if a player put you down, the bag is theirs.
 --   * The target is empty for a while after; one job at a time; not from a duel.
+--   * NOTORIETY. Pull another job within ten minutes of the last and your stars go up (to
+--     three): every star puts a third more in the bag and more XP on a getaway, but the heat
+--     lasts longer and more of the crew come after you. Go quiet for ten minutes, or get
+--     put down, and you are back to one. Your stars are the "Stars" attribute while you
+--     hold a bag, and every alarm says how many you have.
 --
 -- Server-owned: the bag and the heat are the "Bag" / "Heat" attributes on the player (Heat is
 -- the server time it ends), which every client reads for the tag and the robber's own bar.
@@ -38,6 +43,15 @@ StickupService.SQUAD = { "Enforcer", "Gangster", "Shooter" }
 StickupService.SQUAD_OUT = 45       -- how far up and down the avenue they come from
 StickupService.CALL_EVERY = 2       -- how often the squad is pointed at the robber
 StickupService.DISPERSE = 20        -- a squad left standing goes home this long after
+-- Notoriety: stars from jobs pulled close together (see above).
+StickupService.STARS = {
+	max = 3,
+	window = 600,                    -- a job within this long of the last one adds a star
+	loot = 0.3,                      -- each star past the first puts this much more in the bag
+	xp = 0.5,                        -- and this much more XP on a clean getaway
+	heat = 15,                       -- seconds more heat per star
+	extra = { { "Thug", "Shooter" }, { "Enforcer", "Gangster", "Shooter" } },   -- more crew at 2 and 3 stars
+}
 StickupService.HANDS_UP = 14        -- how long the shop's clerk keeps their hands up
 
 -- Swappable for tests.
@@ -62,11 +76,23 @@ local stickupEvent = StickupEvent :: RemoteEvent
 type Target = { part: BasePart, prompt: ProximityPrompt, name: string, kind: string, readyAt: number, street: Vector3 }
 type Job = {
 	player: Player, target: Target, loot: number, endsAt: number, serverEndsAt: number,
-	squad: { Model }, done: boolean, died: RBXScriptConnection?,
+	squad: { Model }, done: boolean, died: RBXScriptConnection?, stars: number,
 }
 
 local targets: { [BasePart]: Target } = {}
 local jobs: { [Player]: Job } = {}
+-- Notoriety: each player's stars and when their last job was pulled.
+local notoriety: { [Player]: { stars: number, at: number } } = {}
+
+--- The stars the next job would carry for `player` (what they have now if it is soon enough,
+--- plus one).
+function StickupService.NextStars(player: Player): number
+	local n = notoriety[player]
+	if n and StickupService.Clock() - n.at <= StickupService.STARS.window then
+		return math.min(StickupService.STARS.max, n.stars + 1)
+	end
+	return 1
+end
 
 local function lazy(name: string): any?
 	local module = ServerScriptService:FindFirstChild(name)
@@ -136,6 +162,7 @@ local function endJob(job: Job)
 	job.player:SetAttribute("Bag", nil)
 	job.player:SetAttribute("Heat", nil)
 	job.player:SetAttribute("HeatPlace", nil)
+	job.player:SetAttribute("Stars", nil)
 	-- Whoever of the squad is still standing goes home after a while, so a job cannot leave
 	-- the district full of enforcers.
 	task.delay(StickupService.DISPERSE, function()
@@ -157,6 +184,8 @@ local function onRobberDied(job: Job)
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	local killer = humanoid and KillCredit.GetKiller(humanoid)
 	local place = describe(job.target)
+	-- Put down: the notoriety goes with the bag.
+	notoriety[job.player] = nil
 	if killer and killer ~= job.player then
 		payCoins(killer, job.loot)
 		stickupEvent:FireAllClients("stolen", {
@@ -177,10 +206,11 @@ local function getaway(job: Job)
 		return
 	end
 	payCoins(job.player, job.loot)
-	task.spawn(LevelSystem.AwardXP, job.player, StickupService.XP)
+	local xp = math.floor(StickupService.XP * (1 + StickupService.STARS.xp * (job.stars - 1)) + 0.5)
+	task.spawn(LevelSystem.AwardXP, job.player, xp)
 	stickupEvent:FireAllClients("getaway", {
-		robber = job.player.DisplayName, robberId = job.player.UserId, amount = job.loot, xp = StickupService.XP,
-		place = describe(job.target),
+		robber = job.player.DisplayName, robberId = job.player.UserId, amount = job.loot, xp = xp,
+		place = describe(job.target), stars = job.stars,
 	})
 	print(("[Stickup] %s got away with $%d"):format(job.player.Name, job.loot))
 	endJob(job)
@@ -254,19 +284,24 @@ function StickupService.Rob(player: Player, part: BasePart): (boolean, string?)
 	end
 
 	local kind = StickupService.Kinds[target.kind]
-	local loot = StickupService.Random(kind.loot[1], kind.loot[2])
+	local St = StickupService.STARS
+	local stars = StickupService.NextStars(player)
+	notoriety[player] = { stars = stars, at = now }
+	local loot = math.floor(StickupService.Random(kind.loot[1], kind.loot[2]) * (1 + St.loot * (stars - 1)) + 0.5)
+	local heat = kind.heat + St.heat * (stars - 1)
 	target.readyAt = now + StickupService.COOLDOWN
 	refreshPrompt(target)
 
-	local serverEndsAt = workspace:GetServerTimeNow() + kind.heat
+	local serverEndsAt = workspace:GetServerTimeNow() + heat
 	local job: Job = {
-		player = player, target = target, loot = loot, endsAt = now + kind.heat, serverEndsAt = serverEndsAt,
-		squad = {}, done = false, died = nil,
+		player = player, target = target, loot = loot, endsAt = now + heat, serverEndsAt = serverEndsAt,
+		squad = {}, done = false, died = nil, stars = stars,
 	}
 	jobs[player] = job
 	player:SetAttribute("Bag", loot)
 	player:SetAttribute("Heat", serverEndsAt)
 	player:SetAttribute("HeatPlace", describe(target))
+	player:SetAttribute("Stars", stars)
 	job.died = humanoid.Died:Connect(function()
 		onRobberDied(job)
 	end)
@@ -274,8 +309,19 @@ function StickupService.Rob(player: Player, part: BasePart): (boolean, string?)
 	-- The crew that runs the block comes up the avenue.
 	local NPCService = lazy("NPCService")
 	if NPCService and NPCService.Spawn then
-		for i, at in ipairs(StickupService.SquadPoints(target.street)) do
-			local archetype = StickupService.SQUAD[(i - 1) % #StickupService.SQUAD + 1]
+		-- The squad, and more of them for every star.
+		local roster = table.clone(StickupService.SQUAD)
+		for s = 2, stars do
+			for _, archetype in ipairs(St.extra[s - 1] or {}) do
+				table.insert(roster, archetype)
+			end
+		end
+		local points = StickupService.SquadPoints(target.street)
+		for i, archetype in ipairs(roster) do
+			local base = points[(i - 1) % #points + 1]
+			-- Later ones fan out a little from the same three approaches.
+			local spread = (i - 1) // #points
+			local at = base + Vector3.new(spread * 4 * (if i % 2 == 0 then 1 else -1), 0, spread * 6)
 			local ok, model = pcall(NPCService.Spawn, archetype, at,
 				{ respawn = false, ignoreCap = true, attributes = { StickupSquad = player.UserId } })
 			if ok and model then
@@ -296,9 +342,10 @@ function StickupService.Rob(player: Player, part: BasePart): (boolean, string?)
 	-- `part` lets every client open the till or the machine and throw the money out of it.
 	stickupEvent:FireAllClients("alarm", {
 		at = part.Position, part = part, place = describe(target), kind = target.kind, robber = player.DisplayName,
-		robberId = player.UserId, amount = loot, seconds = kind.heat, endsAt = serverEndsAt,
+		robberId = player.UserId, amount = loot, seconds = heat, endsAt = serverEndsAt, stars = stars,
 	})
-	print(("[Stickup] %s robbed %s for $%d"):format(player.Name, describe(target), loot))
+	print(("[Stickup] %s robbed %s for $%d (%d star%s)"):format(player.Name, describe(target), loot, stars,
+		if stars == 1 then "" else "s"))
 
 	task.spawn(function()
 		while not job.done do
@@ -370,6 +417,7 @@ Players.PlayerRemoving:Connect(function(player)
 	if job then
 		endJob(job)
 	end
+	notoriety[player] = nil
 end)
 
 -- Targets fill back up on their own; a few seconds late is fine.

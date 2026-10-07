@@ -92,6 +92,12 @@ shot("01_hud")
 
 -- 26. The title screen, as a player joining sees it; PLAY puts the HUD back for the rest.
 World.run(sps:FindFirstChild("TitleScreen"))
+-- 56. The intro film first (a title card up), then skipped by holding SPACE.
+shot("56_intro", 3.6)
+World.holdKey(Enum.KeyCode.Space, true)
+World.advance(1)
+World.holdKey(Enum.KeyCode.Space, false)
+World.advance(1)
 shot("26_title", 1.4)
 do
 	local title = World.playerGui:FindFirstChild("TitleScreen")
@@ -257,7 +263,7 @@ World.advance(4)
 World.serverFire("Remotes", "TurfEvent", "lost", { id = "Park", zone = "THE PARK", threat = 2 })
 World.advance(4)
 
--- A turf war won that finishes the job: TURF DEFENDED, the card shows the job done, and the
+-- A turf war won that finishes the job: TURF TAKEN, the card shows the job done, and the
 -- JOB COMPLETE banner queues behind the turf one instead of hiding under it.
 World.serverFire("GameRemotes", "QuestUpdated", { active = { id = "TakeTheCarPark", title = "The Car Park",
 	label = "Win the turf war at THE CAR PARK", progress = 0, goal = 1 } })
@@ -506,6 +512,66 @@ do
 	World.advance(4)
 	World.serverFire("Remotes", "TurfEvent", "won", { id = "Courts", zone = "THE COURTS", threat = 3 })
 	World.serverFire("GameRemotes", "QuestUpdated", { active = nil })
+	World.advance(0.5)
+end
+
+-- 57. In Downtown: its card beside the radar (the threat, each patch, the street's hold, the
+-- MOST WANTED), and the radar's blips -- the crew close by, a boss in gold, a job on the rim.
+if not only or only["57_district"] then
+	local rs = World.service("ReplicatedStorage")
+	local CS = World.service("CollectionService")
+	local root = World.character:FindFirstChild("HumanoidRootPart")
+	local home = root.Position
+	local at = Vector3.new(-155, 1003, 1500)
+	root.CFrame = World.CFrame.new(at)
+	root.Position = at
+	World.force(World.workspace.CurrentCamera, "CFrame", World.CFrame.lookAt(at + Vector3.new(0, 8, -14),
+		at + Vector3.new(0, 4, 60)))
+	rs:SetAttribute("TurfThreat", 3)
+	rs:SetAttribute("Turf_CarPark", "held")
+	rs:SetAttribute("Turf_Courts", "war")
+	rs:SetAttribute("Turf_Alley", "crew")
+	rs:SetAttribute("Turf_Park", "raid")
+	rs:SetAttribute("TurfControl", 1)
+	local people = {}
+	local function person(name, offset, tag, boss)
+		local model = R.new("Model")
+		model.Name = name
+		local body = R.new("Part")
+		body.Name = "HumanoidRootPart"
+		body.CFrame = World.CFrame.new(at + offset)
+		body.Position = at + offset
+		body.Parent = model
+		local h = R.new("Humanoid")
+		h.MaxHealth = 100
+		h.Health = 100
+		h.Parent = model
+		if boss then
+			model:SetAttribute("Boss", true)
+		end
+		model.Parent = World.workspace
+		CS:AddTag(model, tag)
+		table.insert(people, model)
+		return model
+	end
+	person("Thug", Vector3.new(-18, 0, 30), "GameNPC")
+	person("Shooter", Vector3.new(14, 0, 40), "GameNPC")
+	person("Enforcer", Vector3.new(30, 0, 12), "GameNPC")
+	local vice = person("Vinnie Russo", Vector3.new(-60, 0, 90), "GameNPC", true)
+	CS:AddTag(vice, "MostWanted")
+	World.serverFire("GameRemotes", "QuestUpdated", { active = { id = "TurfCarPark", title = "Car Park Run",
+		label = "Win the turf war at THE CAR PARK", progress = 0, goal = 1,
+		waypoint = at + Vector3.new(120, 0, 300), waypointName = "THE CAR PARK" } })
+	shot("57_district", 1.2)
+	World.serverFire("GameRemotes", "QuestUpdated", { active = nil })
+	for _, model in ipairs(people) do
+		model:Destroy()
+	end
+	for _, key in ipairs({ "TurfThreat", "Turf_CarPark", "Turf_Courts", "Turf_Alley", "Turf_Park", "TurfControl" }) do
+		rs:SetAttribute(key, nil)
+	end
+	root.CFrame = World.CFrame.new(home)
+	root.Position = home
 	World.advance(0.5)
 end
 
