@@ -23,7 +23,7 @@ local Settings = {}
 Settings.__index = Settings
 
 local WHITE = Color3.new(1, 1, 1)
-local ROW_HEIGHT = 48
+local ROW_HEIGHT = 42
 local SAVE_DELAY = 0.8
 
 -- ----------------------------------------------------------------- apply --
@@ -98,7 +98,7 @@ local function row(self, parent: GuiObject, setting: SettingsConfig.Setting, ord
 		size = 20,
 		outline = 2,
 	})
-	label.Position = UDim2.fromOffset(16, 4)
+	label.Position = UDim2.fromOffset(16, 2)
 	label.Size = UDim2.fromOffset(240, 24)
 	local hint = Components.Label(frame, {
 		text = setting.hint,
@@ -107,7 +107,7 @@ local function row(self, parent: GuiObject, setting: SettingsConfig.Setting, ord
 		colour = Theme.Colour.TextMuted,
 		outline = false,
 	})
-	hint.Position = UDim2.fromOffset(16, 28)
+	hint.Position = UDim2.fromOffset(16, 24)
 	hint.Size = UDim2.fromOffset(250, 16)
 
 	local minus = Components.Button(frame, {
@@ -223,12 +223,23 @@ function Settings.new(parent: Instance, remotes)
 	})
 	self._menu = menu
 
-	local list = Instance.new("Frame")
+	-- The rows scroll, so the panel fits however many settings there are on whatever screen
+	-- (the button underneath never covers the last of them).
+	local list = Instance.new("ScrollingFrame")
 	list.Name = "Rows"
 	list.BackgroundTransparency = 1
-	list.Size = UDim2.new(1, 0, 1, -60)
+	list.BorderSizePixel = 0
+	list.Size = UDim2.new(1, 0, 1, -52)
+	list.CanvasSize = UDim2.new()
+	list.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	list.ScrollingDirection = Enum.ScrollingDirection.Y
+	list.ScrollBarThickness = 5
+	list.ScrollBarImageColor3 = Theme.Colour.TextDim
 	list.Parent = menu.content
-	Components.List(list, Enum.FillDirection.Vertical, 4)
+	Components.List(list, Enum.FillDirection.Vertical, 3)
+	local inset = Instance.new("UIPadding")
+	inset.PaddingRight = UDim.new(0, 10)
+	inset.Parent = list
 
 	local order = 0
 	local lastGroup = nil
@@ -244,7 +255,7 @@ function Settings.new(parent: Instance, remotes)
 				outline = 2,
 			})
 			header.LayoutOrder = order
-			header.Size = UDim2.new(1, 0, 0, 22)
+			header.Size = UDim2.new(1, 0, 0, 20)
 		end
 		order += 1
 		row(self, list, setting, order)
