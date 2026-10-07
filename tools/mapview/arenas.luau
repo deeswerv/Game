@@ -196,6 +196,11 @@ end
 for _, extra in ipairs(map and map.Preview or {}) do
 	table.insert(data.cameras, extra)
 end
+-- Or take the cameras from a file (CAMFILE=cams.json: [{ pos, look, fov }] in the map's frame),
+-- e.g. frames sampled along the intro film's camera rails.
+if process.env.CAMFILE then
+	data.cameras = serde.decode("json", fs.readFile(process.env.CAMFILE))
+end
 -- Pick cameras by index (CAMS=0,3,5) to iterate on a few views quickly.
 local only = process.env.CAMS
 if only then

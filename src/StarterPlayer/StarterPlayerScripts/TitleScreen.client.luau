@@ -1,5 +1,6 @@
 --!strict
--- The title screen: the first thing after the loading bar, once per session.
+-- The title screen: the first thing after the loading bar (and the intro film), once per
+-- session.
 --
 -- The camera flies slow passes over the best of the world -- Downtown's plaza, the Flats
 -- battleground, a duel map, the harbour -- behind a PROJECT ZEE logo, a big PLAY button and
@@ -31,6 +32,18 @@ do
 	local started = os.clock()
 	while playerGui:FindFirstChild("LoadingScreen") and os.clock() - started < 25 do
 		task.wait(0.1)
+	end
+end
+
+-- The film first: the intro cutscene (ReplicatedStorage.IntroCutscene), skippable, ending on
+-- black for this screen to fade in from. The HUD stays back the whole way through.
+UIState.SetOpen("Title", true)
+do
+	local ok, err = pcall(function()
+		require(ReplicatedStorage:WaitForChild("IntroCutscene")).Play()
+	end)
+	if not ok then
+		warn("[Intro] " .. tostring(err))
 	end
 end
 
@@ -403,11 +416,11 @@ newsShine.Rotation = 90
 newsShine.Color = ColorSequence.new(GOLD_TOP, GOLD_BOTTOM)
 newsShine.Parent = newsTitle
 local NEWS = {
-	{ "🏙", "DOWNTOWN, REBUILT", "A painted city: new plaza, fountain, parks" },
-	{ "🧠", "SMARTER ENEMIES", "Grenades, callouts, flanking and medkits" },
-	{ "⚔", "THE FLATS", "The raider camp against the guard post" },
-	{ "🏅", "ACHIEVEMENTS", "25 goals and titles to earn -- press H" },
-	{ "🗺", "TRAVEL", "Press T to go anywhere in the world" },
+	{ "🌸", "HANAMI CITY, REBUILT", "A real city: the Scramble, giant screens, the castle" },
+	{ "🎬", "A NEW INTRO", "A short film of the world when you join" },
+	{ "🎒", "RESTOCK ANY TIME", "Grenades, medkits and armour from the Gear tab" },
+	{ "⭐", "MASTERY HITS HARDER", "Dark Matter guns deal +25% to +33% damage" },
+	{ "💰", "NEW PRICES", "Guns priced to match what playing pays" },
 }
 for i, item in ipairs(NEWS) do
 	local row = Instance.new("Frame")

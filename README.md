@@ -437,9 +437,23 @@ and `tools/mapview/shoot.mjs` render the city from its own cameras (`City.Previe
   distance on your screen -- the named zones are only the fallback. First to hold E on it keeps
   the cash, crystals and XP inside; about one in eight is a golden Elite drop worth more.
 
-## Title screen
+## The intro film and the title screen
 
-Joining opens on a title screen once per session: the camera flies over Downtown, the Flats,
+Joining first plays a short film (`ReplicatedStorage/IntroCutscene.luau`, about 40 seconds).
+It opens on PROJECT ZEE PRESENTS, then flies Hanami City: down over the station square to the
+Great Sakura, round the Scramble under its screens, along Lantern Row, and up the Thousand
+Gates to the keep. Then it climbs ZEE TOWER in Downtown, pushes into a duel arena, and comes
+down out of the sky onto your own character, where the logo lands. Every shot is a camera on
+rails: Catmull-Rom splines through keyframes, eased, with a breathing lens, a little roll and
+hand-held drift. Whip pans, flashes and dips to black link the shots. Letterbox bars frame
+it, with a colour grade and a depth of field that keeps the subject sharp, a title card per
+place that types itself in, and a progress line. **Hold SPACE** (or tap SKIP) to skip. A place
+that is missing just drops its shot, and everything is put back when it ends.
+`lune run tools/uitest/intro.luau` plays it through in the emulator. With `INTRO_CAMS=file` it
+also writes frames along Hanami's shots for `tools/mapview` (`CAMFILE=file`) to render over the
+city.
+
+Then the title screen, once per session: the camera flies over Downtown, the Flats,
 a duel map and the harbour behind the PROJECT ZEE logo, with your card (level, title, money)
 and what is new. **PLAY** (or Space / Enter) drops you in; the **1V1 DUEL**, **DOWNTOWN** and
 **THE FLATS** shortcuts drop you straight into the queue or onto that place.

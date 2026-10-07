@@ -200,6 +200,22 @@ end
 do
 	World.run(sps:FindFirstChild("TitleScreen"))
 	World.advance(1.2)
+	-- The intro film first: letterboxed, a title card per place, hold SPACE to skip.
+	local intro = gui:FindFirstChild("IntroCutscene")
+	check("the intro film plays first", intro ~= nil and World.player:GetAttribute("UIOpen") == true)
+	check("letterboxed", intro ~= nil and intro:FindFirstChild("BarTop") ~= nil)
+	check("its lighting is in", World.service("Lighting"):FindFirstChild("IntroGrade") ~= nil)
+	World.advance(4)
+	World.holdKey(Enum.KeyCode.Space, true)
+	World.advance(0.3)
+	check("a quick tap does not skip it", gui:FindFirstChild("IntroCutscene") ~= nil)
+	World.advance(0.8)
+	World.holdKey(Enum.KeyCode.Space, false)
+	World.advance(1)
+	check("holding SPACE skips it", gui:FindFirstChild("IntroCutscene") == nil)
+	check("and puts the lighting back", World.service("Lighting"):FindFirstChild("IntroGrade") == nil
+		and World.service("Lighting"):FindFirstChild("IntroFocus") == nil and World.service("Lighting"):FindFirstChild("IntroBlur") == nil)
+	World.advance(1.2)
 	local title = gui:FindFirstChild("TitleScreen")
 	check("title screen shows", title ~= nil)
 	check("title screen holds the HUD back", World.player:GetAttribute("UIOpen") == true)
