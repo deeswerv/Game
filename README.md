@@ -193,7 +193,9 @@ The squad counts toward your streak. `tools/uitest/stickups.luau`.
 **People on the street.** A dozen townsfolk walk Downtown's sidewalks -- students with bags,
 office workers in suits, joggers, an old gent in a fedora, tourists in shades -- each up and
 down a stretch of pavement between the lamps and trees, pausing and turning at the ends, legs
-and arms swinging as they go. They are the players' own rig dressed in street clothes
+and arms swinging as they go -- and when shooting starts near them (any tracer or impact
+within 45 studs, `CombatFX.Gunfire`) they break into a run, arms pumping, until it has been
+quiet for eight seconds. They are the players' own rig dressed in street clothes
 (`DistrictService.CIVILIANS`, routes in `Downtown.Walkers`), walked on every client
 (`Pedestrians.client.luau`) off the server clock so everyone sees them in the same place, and
 they are not part of any fight: nothing can hit, touch or stand on them.

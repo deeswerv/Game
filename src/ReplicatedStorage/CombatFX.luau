@@ -18,6 +18,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CombatFX = {}
 
+-- Where shooting is happening, for anything that wants out of the way of it: fired with the
+-- muzzle (every tracer) and the landing point (every impact). Downtown's people run from it
+-- (Pedestrians.client).
+CombatFX.Gunfire = Instance.new("BindableEvent")
+
 -- A kill effect can be a hundred short-lived parts on its own (they are rare, and meant to be
 -- seen), so there is room for one on top of a firefight.
 local MAX_LIVE = 220
@@ -684,6 +689,7 @@ end
 --- and width. A weapon with its own authored tracer keeps it: that look is what the weapon is.
 function CombatFX.Tracer(from: Vector3, to: Vector3, colour: Color3, width: number, weaponName: string?,
 	style: TracerStyle?): number
+	CombatFX.Gunfire:Fire(from)
 	local template = authored(weaponName, "Tracer")
 	return launch(from, to, colour, width, weaponName, template, if template then nil else style)
 end
@@ -873,6 +879,7 @@ local function fleshHit(position: Vector3, normal: Vector3)
 end
 
 function CombatFX.Impact(position: Vector3, origin: Vector3?, weaponName: string?)
+	CombatFX.Gunfire:Fire(position)
 	-- The authored burst first, so it is not lost if the surface work bails on budget.
 	local template = authored(weaponName, "Impact")
 	if template and budget() then

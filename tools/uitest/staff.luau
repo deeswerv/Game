@@ -480,6 +480,25 @@ check(moved, "they walk")
 check(onPath, "along their stretch and nowhere else")
 check(bent, "legs swinging as they go")
 
+print("gunfire")
+local function fastest(seconds)
+	local best, last = 0, froot.Position
+	for _ = 1, math.floor(seconds / 0.25) do
+		World.advance(0.25)
+		best = math.max(best, (froot.Position - last).Magnitude)
+		last = froot.Position
+	end
+	return best / 0.25
+end
+local calm = fastest(4)
+local CombatFX = World.require(World.service("ReplicatedStorage"):FindFirstChild("CombatFX"))
+CombatFX.Gunfire:Fire(froot.Position + Vector3.new(6, 0, 0))
+World.advance(1.2)
+local scared = fastest(4)
+check(scared > calm * 1.6, ("a shot close by and they run (%.1f -> %.1f studs/s)"):format(calm, scared))
+local stillOn = (froot.Position - from):Dot((to - from).Unit)
+check(stillOn > -0.1 and stillOn < (to - from).Magnitude + 0.1, "still on their stretch")
+
 local errors = R.errors or {}
 for _, e in ipairs(errors) do
 	print("    error: " .. tostring(e):sub(1, 300))
