@@ -32,7 +32,7 @@ local OWN_COLOUR: { [string]: boolean } = {
 }
 -- Facade windows (the opaque ones on the floors above the street; shop glass with a lit room
 -- behind it is left alone).
-local WINDOWS: { [string]: boolean } = { Windows = true, ArchGlass = true, BayGlass = true }
+local WINDOWS: { [string]: boolean } = { Windows = true, ArchGlass = true, BayGlass = true, TierGlass = true }
 
 local LAMP_GLOW = Color3.fromRGB(255, 214, 150)
 local WINDOW_WARM = {

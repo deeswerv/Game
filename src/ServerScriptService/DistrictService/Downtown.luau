@@ -78,11 +78,11 @@ local M = Enum.Material
 local ASPHALT = Color3.fromRGB(70, 72, 80)
 local WHITE_LINE = Color3.fromRGB(236, 234, 226)
 local YELLOW_LINE = Color3.fromRGB(236, 192, 64)
-local SIDEWALK = Color3.fromRGB(200, 192, 180)
-local SIDEWALK_EDGE = Color3.fromRGB(186, 178, 166)
-local CURB = Color3.fromRGB(218, 212, 202)
-local PLAZA_A = Color3.fromRGB(232, 220, 200)
-local PLAZA_B = Color3.fromRGB(184, 166, 146)
+local SIDEWALK = Color3.fromRGB(178, 172, 164)
+local SIDEWALK_EDGE = Color3.fromRGB(158, 152, 146)
+local CURB = Color3.fromRGB(200, 196, 188)
+local PLAZA_A = Color3.fromRGB(214, 200, 178)
+local PLAZA_B = Color3.fromRGB(164, 146, 128)
 local STONE = Color3.fromRGB(214, 204, 188)
 local STONE_LIGHT = Color3.fromRGB(234, 226, 212)
 local SOIL = Color3.fromRGB(96, 72, 54)
@@ -279,10 +279,18 @@ local function tree(b: Kit.Builder, seed: number, blossom: boolean?, bare: boole
 	if blossom then
 		shades = { Color3.fromRGB(232, 132, 170), BLOSSOM, BLOSSOM_LIGHT }
 	end
-	for _, blob in ipairs(canopy) do
+	-- Leaf-textured clumps (LeafyGrass reads as foliage close up), each with a smaller clump
+	-- budding off it, so the outline is bumpy and full rather than a few smooth balls.
+	for n, blob in ipairs(canopy) do
 		local size = blob[2] * rng:NextNumber(0.88, 1.12)
 		local at = blob[1] + Vector3.new(rng:NextNumber(-0.3, 0.3), rng:NextNumber(-0.2, 0.2), rng:NextNumber(-0.3, 0.3))
-		b:decor("Leaves", Vector3.new(size, size * 0.9, size), at, shades[blob[3]], M.SmoothPlastic, { shape = "Ball", shadow = true })
+		b:decor("Leaves", Vector3.new(size, size * 0.9, size), at, shades[blob[3]], M.LeafyGrass, { shape = "Ball", shadow = true })
+		local a = n * 2.4 + seed
+		local out = Vector3.new(at.X, 0, at.Z)
+		local dir = if out.Magnitude > 0.5 then out.Unit else Vector3.new(math.cos(a), 0, math.sin(a))
+		local bud = size * rng:NextNumber(0.42, 0.55)
+		b:decor("Leaves", Vector3.new(bud, bud * 0.9, bud), at + dir * size * 0.42 + Vector3.new(0, size * 0.12, 0),
+			shades[math.min(3, blob[3] + 1)], M.LeafyGrass, { shape = "Ball" })
 	end
 end
 
@@ -298,7 +306,7 @@ local function cypress(b: Kit.Builder, seed: number)
 		local t = k / (n - 1)
 		local w = 2.9 * (1 - t * 0.72)
 		b:decor("Leaves", Vector3.new(w, h / n * 1.7, w), Vector3.new(rng:NextNumber(-0.15, 0.15), 2.2 + t * (h - 2.6), 0),
-			shades[math.min(3, 1 + math.floor(t * 3))], nil, { shape = "Ball", shadow = true })
+			shades[math.min(3, 1 + math.floor(t * 3))], M.LeafyGrass, { shape = "Ball", shadow = true })
 	end
 end
 
@@ -306,9 +314,9 @@ end
 local function shrub(b: Kit.Builder, seed: number, size: number?)
 	local rng = Random.new(seed)
 	local s = size or 2.2
-	b:decor("Shrub", Vector3.new(s, s * 0.85, s), Vector3.new(0, s * 0.38, 0), HEDGE, nil, { shape = "Ball", shadow = true })
+	b:decor("Shrub", Vector3.new(s, s * 0.85, s), Vector3.new(0, s * 0.38, 0), HEDGE, M.LeafyGrass, { shape = "Ball", shadow = true })
 	b:decor("Shrub", Vector3.new(s * 0.7, s * 0.6, s * 0.7), Vector3.new(s * 0.35, s * 0.3, s * 0.2),
-		Color3.fromRGB(96, 160, 80), nil, { shape = "Ball" })
+		Color3.fromRGB(96, 160, 80), M.LeafyGrass, { shape = "Ball" })
 	local bloom = FLOWERS[rng:NextInteger(1, #FLOWERS)]
 	for _ = 1, 3 do
 		local a = rng:NextNumber(0, 6.28)
@@ -653,8 +661,9 @@ local function building(b: Kit.Builder, x0: number, x1: number, z0: number, z1: 
 	local cx, cz = (x0 + x1) / 2, (z0 + z1) / 2
 	local base = -2
 	local trim = if colour == FACADE[5] then Color3.fromRGB(214, 120, 86) else TRIM
+	-- Painted render (Plaster) or brick: a little texture, so a wall reads as a wall up close.
 	b:part("Building", Vector3.new(w, top - base, d), Vector3.new(cx, (top + base) / 2, cz), colour,
-		colour == BRICK and M.Brick or M.SmoothPlastic)
+		colour == BRICK and M.Brick or M.Plaster)
 	-- The cornice: a frieze band, a wide overhanging course, a cap.
 	b:decor("Frieze", Vector3.new(w + 0.5, 1.6, d + 0.5), Vector3.new(cx, top - 2.7, cz), darker(colour, 0.18))
 	b:decor("Cornice", Vector3.new(w + 1.6, 1, d + 1.6), Vector3.new(cx, top - 1.4, cz), trim)
@@ -769,6 +778,16 @@ local function building(b: Kit.Builder, x0: number, x1: number, z0: number, z1: 
 						slab("Frame", ww + 0.8, wh + 0.8, 0.22, y, along, trim)
 						slab("Glass", ww, wh, 0.34, y, along, WINDOW, M.Glass, { reflectance = 0.15 })
 						slab("Sill", ww + 1.2, 0.35, 0.6, y - wh / 2 - 0.45, along, trim)
+						-- Lived in: now and then an air unit hung under a window, or a box of flowers
+						-- on the sill.
+						local life = rng:NextNumber()
+						if floor >= 2 and life < 0.12 then
+							stand("WindowUnit", 1.7, 1.1, 1.1, y - wh / 2 - 1.3, along + ww * 0.15, 0, Color3.fromRGB(214, 216, 212))
+							stand("UnitGrille", 1.3, 0.7, 0.06, y - wh / 2 - 1.3, along + ww * 0.15, 1.1, STEEL)
+						elseif floor >= 2 and life < 0.24 then
+							stand("WindowBox", ww + 0.4, 0.5, 0.6, y - wh / 2 - 0.4, along, 0.6, darker(trim, 0.25))
+							stand("WindowBlooms", ww, 0.45, 0.5, y - wh / 2 + 0.05, along, 0.62, FLOWERS[(k + floor) % #FLOWERS + 1])
+						end
 						if style == 2 then
 							-- Arched: a round head on the frame and the glass.
 							disc("ArchFrame", ww + 0.8, 0.22, y + wh / 2, along, trim)
@@ -811,6 +830,12 @@ local function building(b: Kit.Builder, x0: number, x1: number, z0: number, z1: 
 				-- Stopped a little short of the corner and of the frieze, so no face is shared.
 				slab("Quoin", 1.2, top - 13, 0.46, (top + 8.2) / 2, edge * (span / 2 - 0.8), trim)
 			end
+			-- Carved brackets under the cornice, all along it, like a brownstone's.
+			local brackets = math.max(2, math.floor((span - 4) / 3.4))
+			for k = 0, brackets do
+				local along = -(span - 4) / 2 + k * ((span - 4) / brackets)
+				stand("Bracket", 0.7, 1.3, 0.55, top - 2.55, along, 0.25, trim)
+			end
 		end
 	end
 	-- Something on the roof: a water tank on legs, an air unit, a stair hut.
@@ -833,6 +858,21 @@ local function building(b: Kit.Builder, x0: number, x1: number, z0: number, z1: 
 		else
 			b:decor("StairHut", Vector3.new(6, 4.6, 6), Vector3.new(rx, top + 3, rz), darker(colour, 0.1))
 			b:decor("HutRoof", Vector3.new(6.6, 0.5, 6.6), Vector3.new(rx, top + 5.5, rz), trim)
+		end
+		-- And something else across the roof from it: a pair of chimney stacks, or an aerial.
+		local ox, oz = cx - (rx - cx) * 1.6, cz - (rz - cz) * 1.6
+		ox = math.clamp(ox, x0 + 3, x1 - 3)
+		oz = math.clamp(oz, z0 + 3, z1 - 3)
+		if rng:NextNumber() < 0.55 then
+			for _, dx in ipairs({ -1.1, 1.1 }) do
+				b:decor("Chimney", Vector3.new(1.6, 4.4, 1.6), Vector3.new(ox + dx, top + 2.5, oz), darker(BRICK, 0.1), M.Brick)
+				b:decor("ChimneyCap", Vector3.new(2, 0.4, 2), Vector3.new(ox + dx, top + 4.9, oz), STEEL)
+			end
+		else
+			b:decor("Aerial", Vector3.new(9, 0.25, 0.25), vertical(Vector3.new(ox, top + 4.8, oz)), STEEL, M.Metal, { shape = "Cylinder" })
+			for _, y in ipairs({ 6.4, 8 }) do
+				b:decor("AerialBar", Vector3.new(3, 0.18, 0.18), Vector3.new(ox, top + y, oz), STEEL, M.Metal)
+			end
 		end
 	end
 end
@@ -883,7 +923,7 @@ end
 local function pavement(b: Kit.Builder, x0: number, x1: number, z0: number, z1: number, colour: Color3,
 	kerbs: { string }?)
 	local cx, cz = (x0 + x1) / 2, (z0 + z1) / 2
-	b:part("Pavement", Vector3.new(x1 - x0, 0.5, z1 - z0), Vector3.new(cx, 0.25, cz), colour, M.Concrete)
+	b:part("Pavement", Vector3.new(x1 - x0, 0.5, z1 - z0), Vector3.new(cx, 0.25, cz), colour, M.Pavement)
 	-- Kerbs stand a few hundredths proud of the paving's edge. Flush, the kerb's face and the
 	-- slab's face were one plane in two colours, and every kerb flickered along its length.
 	local proud = 0.03
@@ -3551,11 +3591,17 @@ function Downtown.Build(parent: Instance, centre: Vector3)
 				local span = if inward.X ~= 0 then box[4] - box[3] else box[2] - box[1]
 				local faceAt = Vector3.new(bx, 0, bz) + inward * (halfDepth + 0.35)
 				local across = Vector3.new(inward.Z, 0, -inward.X)
+				-- A curtain wall above the shop floors: slim mullions up the face between the
+				-- glass bands, with a heavier pier every third, so it reads as a grid of windows.
 				local fin = lighter(colour, 0.32)
-				for k = -2, 2 do
-					local at = faceAt + across * (k * span / 5.2)
-					root:decor("TowerFin", if inward.X ~= 0 then Vector3.new(0.7, h - 40, 1.2) else Vector3.new(1.2, h - 40, 0.7),
-						at + Vector3.new(0, (h + 40) / 2 - 2, 0), fin)
+				local finTop = h - 3.4
+				for k = -4, 4 do
+					local at = faceAt + across * (k * span / 9.6)
+					local heavy = k % 3 == 0
+					local wide, deep = if heavy then 1.3 else 0.45, if heavy then 1.3 else 0.8
+					root:decor(if heavy then "TowerPier" else "Mullion",
+						if inward.X ~= 0 then Vector3.new(deep, finTop - 38, wide) else Vector3.new(wide, finTop - 38, deep),
+						at + Vector3.new(0, (finTop + 38) / 2, 0), if heavy then fin else lighter(colour, 0.5))
 				end
 				local brands = { "ZEE BANK", "NOVA", "PIXEL", "METRO", "BLOX", "SKYLINE", "CRUNCH", "ORBIT" }
 				if i % 3 == 1 then
@@ -3575,17 +3621,65 @@ function Downtown.Build(parent: Instance, centre: Vector3)
 					painted(root, brands[((i + 3) % #brands) + 1], Kit.Look(bb + Vector3.new(0, 9, 0) + inward * 0.4,
 						bb + Vector3.new(0, 9, 0) + inward * 10), span * 0.6, 5, CREAM)
 				end
-				-- A crown on every tower: a set-back top storey in a lighter tone with a trim cap,
-				-- and on every third a mast with a red beacon, so the skyline has a silhouette.
+				-- The top. A tall tower steps back: an upper tier, inset, with its own glass and
+				-- mullions; then an Art Deco crown in stepped tiers, and on the tallest a spire with
+				-- a beacon. A shorter one gets a set-back top storey and, now and then, a mast.
 				local cx, cz = (box[1] + box[2]) / 2, (box[3] + box[4]) / 2
-				local cw, cd = (box[2] - box[1]) * 0.56, (box[4] - box[3]) * 0.56
-				root:decor("Crown", Vector3.new(cw, 9, cd), Vector3.new(cx, h + 4.9, cz), lighter(colour, 0.22))
-				root:decor("CrownBand", Vector3.new(cw + 0.3, 1.2, cd + 0.3), Vector3.new(cx, h + 7, cz), darker(colour, 0.15))
-				root:decor("CrownCap", Vector3.new(cw + 1.2, 0.8, cd + 1.2), Vector3.new(cx, h + 9.7, cz), TRIM)
-				if i % 3 == 0 then
-					root:decor("Mast", Vector3.new(16, 0.5, 0.5), vertical(Vector3.new(cx, h + 18, cz)), STEEL, M.Metal,
-						{ shape = "Cylinder" })
-					root:decor("Beacon", Vector3.new(1.1, 1.1, 1.1), Vector3.new(cx, h + 26.3, cz), RED, nil, { shape = "Ball" })
+				local bw, bd = box[2] - box[1], box[4] - box[3]
+				local roof = h
+				if h >= 84 then
+					local tw, td = bw - 12, bd - 12
+					local th = math.floor(h * 0.22 / 7) * 7 + 7
+					local tierColour = lighter(colour, 0.12)
+					root:part("Tier", Vector3.new(tw, th, td), Vector3.new(cx, h + th / 2, cz), tierColour)
+					local tierHalf = if inward.X ~= 0 then tw / 2 else td / 2
+					local tierSpan = if inward.X ~= 0 then td else tw
+					local tierSide = if inward.X ~= 0 then tw else td
+					for y = h + 4, h + th - 3, 7 do
+						-- Glass on the inward face and both sides, so it reads from any angle.
+						local front = Vector3.new(cx, y, cz) + inward * (tierHalf + 0.17)
+						root:decor("TierGlass", if inward.X ~= 0 then Vector3.new(0.34, 3, tierSpan * 0.88)
+							else Vector3.new(tierSpan * 0.88, 3, 0.34), front, WINDOW, M.Glass, { reflectance = 0.15 })
+						for _, sd in ipairs({ -1, 1 }) do
+							local sideAt = Vector3.new(cx, y, cz) + across * (sd * (tierSpan / 2 + 0.17))
+							root:decor("TierGlass", if inward.X ~= 0 then Vector3.new(tierSide * 0.85, 3, 0.34)
+								else Vector3.new(0.34, 3, tierSide * 0.85), sideAt, WINDOW, M.Glass, { reflectance = 0.15 })
+						end
+					end
+					for k = -2, 2 do
+						local at = Vector3.new(cx, 0, cz) + inward * (tierHalf + 0.4) + across * (k * tierSpan / 5.2)
+						root:decor("Mullion", if inward.X ~= 0 then Vector3.new(0.8, th - 2, 0.5) else Vector3.new(0.5, th - 2, 0.8),
+							at + Vector3.new(0, h + th / 2, 0), lighter(colour, 0.5))
+					end
+					root:decor("TierCornice", Vector3.new(tw + 1.4, 1, td + 1.4), Vector3.new(cx, h + th - 0.3, cz), TRIM)
+					roof = h + th
+					-- The crown in steps, each narrower than the last, with a trim lip on each.
+					local cw, cd = tw, td
+					for step = 1, 3 do
+						cw, cd = cw * 0.72, cd * 0.72
+						local sh = 7 - step
+						root:decor("Crown", Vector3.new(cw, sh, cd), Vector3.new(cx, roof + sh / 2, cz),
+							if step % 2 == 1 then lighter(colour, 0.26) else darker(colour, 0.08))
+						root:decor("CrownLip", Vector3.new(cw + 0.8, 0.5, cd + 0.8), Vector3.new(cx, roof + sh - 0.1, cz), TRIM)
+						roof += sh
+					end
+					if h >= 104 then
+						root:decor("Spire", Vector3.new(26, 1.2, 1.2), vertical(Vector3.new(cx, roof + 13, cz)), STEEL, M.Metal,
+							{ shape = "Cylinder" })
+						root:decor("SpireFoot", Vector3.new(4, 2.6, 2.6), vertical(Vector3.new(cx, roof + 2, cz)), lighter(colour, 0.26),
+							nil, { shape = "Cylinder" })
+						root:decor("Beacon", Vector3.new(1.4, 1.4, 1.4), Vector3.new(cx, roof + 26.5, cz), RED, nil, { shape = "Ball" })
+					end
+				else
+					local cw, cd = bw * 0.56, bd * 0.56
+					root:decor("Crown", Vector3.new(cw, 9, cd), Vector3.new(cx, h + 4.9, cz), lighter(colour, 0.22))
+					root:decor("CrownBand", Vector3.new(cw + 0.3, 1.2, cd + 0.3), Vector3.new(cx, h + 7, cz), darker(colour, 0.15))
+					root:decor("CrownCap", Vector3.new(cw + 1.2, 0.8, cd + 1.2), Vector3.new(cx, h + 9.7, cz), TRIM)
+					if i % 3 == 0 then
+						root:decor("Mast", Vector3.new(16, 0.5, 0.5), vertical(Vector3.new(cx, h + 18, cz)), STEEL, M.Metal,
+							{ shape = "Cylinder" })
+						root:decor("Beacon", Vector3.new(1.1, 1.1, 1.1), Vector3.new(cx, h + 26.3, cz), RED, nil, { shape = "Ball" })
+					end
 				end
 			end
 		end
@@ -3630,8 +3724,38 @@ function Downtown.Build(parent: Instance, centre: Vector3)
 		local r = 330 + (k % 3) * 40
 		local x, z = math.cos(a) * r, math.sin(a) * r
 		local w = 34 + (k * 11) % 20
-		building(sky, x - w / 2, x + w / 2, z - w / 2, z + w / 2, 120 + ((k * 37) % 6) * 30, FACADE[(k % #FACADE) + 1],
-			{ math.abs(x) > math.abs(z) and (x > 0 and "-x" or "+x") or (z > 0 and "-z" or "+z") }, 100 + k, true)
+		local h = 120 + ((k * 37) % 6) * 30
+		local colour = FACADE[(k % #FACADE) + 1]
+		local face = math.abs(x) > math.abs(z) and (x > 0 and "-x" or "+x") or (z > 0 and "-z" or "+z")
+		building(sky, x - w / 2, x + w / 2, z - w / 2, z + w / 2, h, colour, { face }, 100 + k, true)
+		-- Dressed for the distance: mullions up the face that looks in, glass bands round the
+		-- sides, and a stepped crown (a spire on every other one) for the silhouette.
+		local inward = if face == "-x" then Vector3.new(-1, 0, 0) elseif face == "+x" then Vector3.new(1, 0, 0)
+			elseif face == "-z" then Vector3.new(0, 0, -1) else Vector3.new(0, 0, 1)
+		local across = Vector3.new(inward.Z, 0, -inward.X)
+		for m = -3, 3 do
+			local at = Vector3.new(x, (h + 4) / 2, z) + inward * (w / 2 + 0.4) + across * (m * w / 7.4)
+			sky:decor("Mullion", if inward.X ~= 0 then Vector3.new(0.8, h - 6, 0.7) else Vector3.new(0.7, h - 6, 0.8), at,
+				lighter(colour, 0.4))
+		end
+		for _, sd in ipairs({ -1, 1 }) do
+			for y = 14, h - 6, 14 do
+				local at = Vector3.new(x, y, z) + across * (sd * (w / 2 + 0.17))
+				sky:decor("Windows", if inward.X ~= 0 then Vector3.new(w * 0.86, 3, 0.34) else Vector3.new(0.34, 3, w * 0.86), at,
+					WINDOW, M.Glass, { reflectance = 0.15 })
+			end
+		end
+		local roof, cw = h + 0.7, w * 0.8
+		for step = 1, 2 do
+			cw *= 0.72
+			local sh = 8 - step * 2
+			sky:decor("Crown", Vector3.new(cw, sh, cw), Vector3.new(x, roof + sh / 2, z), lighter(colour, 0.2 + step * 0.06))
+			sky:decor("CrownLip", Vector3.new(cw + 0.8, 0.5, cw + 0.8), Vector3.new(x, roof + sh - 0.1, z), TRIM)
+			roof += sh
+		end
+		if k % 2 == 0 then
+			sky:decor("Spire", Vector3.new(22, 1, 1), vertical(Vector3.new(x, roof + 11, z)), STEEL, M.Metal, { shape = "Cylinder" })
+		end
 	end
 
 	-- The edge: nothing to fall off. The north wall stops below ZEE TOWER's roof: left full
