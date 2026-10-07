@@ -163,6 +163,7 @@ local coins = player:FindFirstChild("leaderstats"):FindFirstChild("Coins")
 coins.Value = 0
 
 local GearConfig = World.require(rs.GearConfig)
+local UtilityConfig = World.require(rs.UtilityConfig)
 local Gear = World.require(sss.GearService)
 local Utility = World.require(sss.UtilityService)
 World.advance(0.3)
@@ -196,15 +197,15 @@ levelValue.Value = 30
 player:SetAttribute("Level", 30)
 r = Gear.Buy(player, "Heal_TraumaKit")
 check(not r.ok and r.reason:find("more", 1, true) and coins.Value == 0, "no money: " .. tostring(r.reason))
-coins.Value = 200000
+coins.Value = 600000
 local price = Gear.PriceOf(player, GearConfig.Get("Armor_Carrier"))
 check(price == GearConfig.Get("Armor_Carrier").coins, ("full price with no Street Cred ($%d)"):format(price))
 r = Gear.Buy(player, "Armor_Carrier")
-check(r.ok and coins.Value == 200000 - price and Gear.Owns(player, "Armor_Carrier"), "bought: " .. tostring(r.reason))
+check(r.ok and coins.Value == 600000 - price and Gear.Owns(player, "Armor_Carrier"), "bought: " .. tostring(r.reason))
 check(Gear.Equipped(player, "Armor").id == "Armor_Carrier" and player:GetAttribute("GearArmor") == "Armor_Carrier",
 	"and straight into its slot")
 r = Gear.Buy(player, "Armor_Carrier")
-check(not r.ok and coins.Value == 200000 - price, "not twice")
+check(not r.ok and coins.Value == 600000 - price, "not twice")
 r = Gear.Buy(player, "Heal_ZeeElixir")
 check(not r.ok and r.reason:find("crystals", 1, true), "Mastery wants crystals: " .. tostring(r.reason))
 profile.Crystals = 40
@@ -320,6 +321,57 @@ World.advance(0.1)
 check(rig:GetAttribute("MaxArmour") == 75 and rig:GetAttribute("Armour") == 50 and Utility.Kit(player).Medkit == 2,
 	"in a duel: the Common armour and heals, whatever you own")
 check(Utility.GearOf(player, "Bomb").id == "Bomb_Frag", "and a plain frag")
+player:SetAttribute("DuelState", nil)
+
+print("restocking mid-life")
+World.advance(0.1)
+Utility.Refill(player)
+local kit = Utility.Kit(player)
+local fullFrags = kit.Frag
+local stock = Gear.State(player).restock
+check(stock ~= nil and stock.items.Frag.why == "full" and stock.items.Medkit.why == "full",
+	"a fresh life is full: nothing to restock")
+kit.Frag = 0
+kit.Medkit = 1
+rig:SetAttribute("Armour", 0)
+coins.Value = 100
+stock = Gear.State(player).restock
+check(stock.items.Frag.have == 0 and stock.items.Frag.cap == fullFrags and stock.items.Frag.why == "coins",
+	("out of bombs, and short of the price ($%d)"):format(stock.items.Frag.price))
+check(stock.items.Frag.price > UtilityConfig.RestockPrice("Frag", "Common"),
+	("a Singularity Charge costs more to restock than a frag ($%d)"):format(stock.items.Frag.price))
+check(UtilityConfig.RestockPrice("Smoke") == UtilityConfig.Restock.price.Smoke, "a smoke is always the Common price")
+coins.Value = 100000
+local before2 = coins.Value
+local ok, why = Utility.Buy(player, "Frag")
+check(ok and Utility.Kit(player).Frag == 1 and before2 - coins.Value == stock.items.Frag.price,
+	"one more, for its price: " .. tostring(why))
+check(#sentTo("kit") > 0, "and the hotbar is told")
+ok, why = Utility.Buy(player, "Frag")
+check(not ok and why == "busy", "not two in the same instant")
+World.advance(0.5)
+check(Utility.Buy(player, "Frag") and Utility.Kit(player).Frag == fullFrags, "up to a fresh life's worth")
+World.advance(0.5)
+ok, why = Utility.Buy(player, "Frag")
+check(not ok and why == "full", "and no further")
+World.advance(0.5)
+check(Utility.Buy(player, "Medkit") and Utility.Kit(player).Medkit == 2, "a heal")
+World.advance(0.5)
+local plate = GearConfig.Get("Armor_Carrier").stats.plate
+check(Utility.Buy(player, "Armour") and rig:GetAttribute("Armour") == plate, ("a plate of armour (+%d)"):format(plate))
+ok, why = Utility.Buy(player, "Nuke")
+check(not ok, "nothing that is not on the strip")
+-- Through the remote the inventory uses.
+World.advance(0.5)
+kit.Smoke = 0
+local reply = Gear.Invoke and Gear.Invoke(player, "restock", "Smoke") or nil
+check(reply == nil or (reply.ok and reply.state and reply.state.restock.items.Smoke.have == 1),
+	"the inventory's GearAction answers with the new state")
+player:SetAttribute("DuelState", "duel")
+World.advance(0.6)
+Utility.Kit(player).Frag = 0
+ok, why = Utility.Buy(player, "Frag")
+check(not ok and why == "duel", "never in a duel")
 player:SetAttribute("DuelState", nil)
 
 print(failures == 0 and "\27[32mall gear checks passed\27[0m" or ("\27[31m%d failed\27[0m"):format(failures))

@@ -127,12 +127,18 @@ end
 
 -- Tools bought with in-game Coins. `item` must name a child of ReplicatedStorage.storeitems.
 -- Everything here is a one-time purchase: once owned it is re-granted free on every spawn.
+--
+-- Prices are set against what a player actually earns (tools/uitest/economy.luau models it):
+-- kills pay roughly two-thirds of a level's XP requirement in coins, and quests, stick-ups,
+-- bounties and bosses about as much again, so a level is worth very roughly 130 * L^1.35
+-- coins. A gun costs three to four levels of that at the level it unlocks -- a goal to save
+-- for, not something already in the bank the moment it appears on the shelf.
 GameConfig.ShopItems = {
 	{
 		id = "BloodSword",
 		name = "Blood Sword",
 		desc = "A blade that drinks what it cuts. Heavier swing, deeper bite.",
-		price = 250,
+		price = 1500,
 		item = "BloodSword",
 		image = "rbxassetid://12653182981",
 		levelRequired = 1,
@@ -141,7 +147,7 @@ GameConfig.ShopItems = {
 		id = "Hornet",
 		name = "Hornet",
 		desc = "Automatic SMG. 30 rounds, high rate, low damage per shot.",
-		price = 1400,
+		price = 7500,
 		item = "Hornet",
 		image = "",
 		levelRequired = 8,
@@ -150,7 +156,7 @@ GameConfig.ShopItems = {
 		id = "Redwood",
 		name = "Redwood",
 		desc = "Automatic battle rifle. 30 rounds, scoped, hits hard at any range.",
-		price = 4200,
+		price = 20000,
 		item = "Redwood",
 		image = "",
 		levelRequired = 16,
@@ -159,7 +165,7 @@ GameConfig.ShopItems = {
 		id = "Carbine",
 		name = "Carbine",
 		desc = "Short-barrelled carbine. Accurate, controllable, and quietly expensive.",
-		price = 9000,
+		price = 38000,
 		item = "Carbine",
 		image = "",
 		levelRequired = 25,
@@ -168,7 +174,7 @@ GameConfig.ShopItems = {
 		id = "Warden",
 		name = "Warden",
 		desc = "Full-length rifle, optic already mounted. Nothing about it is a compromise.",
-		price = 11500,
+		price = 50000,
 		item = "Warden",
 		image = "",
 		levelRequired = 30,
@@ -177,7 +183,7 @@ GameConfig.ShopItems = {
 		id = "Longshot",
 		name = "Longshot",
 		desc = "Bolt-action sniper. Five rounds, a real scope, and one shot to the head.",
-		price = 8800,
+		price = 32000,
 		item = "Longshot",
 		image = "",
 		levelRequired = 22,
@@ -186,7 +192,7 @@ GameConfig.ShopItems = {
 		id = "Blackwood",
 		name = "Blackwood",
 		desc = "Walnut and blued steel. Seven pellets a shell and a very short argument.",
-		price = 6800,
+		price = 24000,
 		item = "Blackwood",
 		image = "",
 		levelRequired = 18,
@@ -195,7 +201,7 @@ GameConfig.ShopItems = {
 		id = "Sentinel",
 		name = "Sentinel",
 		desc = "Railed service pistol. Fifteen rounds and no bad habits.",
-		price = 2600,
+		price = 9000,
 		item = "Sentinel",
 		image = "",
 		levelRequired = 9,
@@ -204,7 +210,7 @@ GameConfig.ShopItems = {
 		id = "Wasp",
 		name = "Wasp",
 		desc = "Machine pistol. No range, no manners, empties in two seconds.",
-		price = 1800,
+		price = 6000,
 		item = "Wasp",
 		image = "",
 		levelRequired = 7,
@@ -213,7 +219,7 @@ GameConfig.ShopItems = {
 		id = "Talon",
 		name = "Talon",
 		desc = "Hand cannon. Seven rounds, and every one of them means it.",
-		price = 3600,
+		price = 16500,
 		item = "Talon",
 		image = "",
 		levelRequired = 14,
@@ -222,7 +228,7 @@ GameConfig.ShopItems = {
 		id = "Kestrel",
 		name = "Kestrel",
 		desc = "Cut-down rifle. Rifle punch in something you can swing round a corner.",
-		price = 5400,
+		price = 27500,
 		item = "Kestrel",
 		image = "",
 		levelRequired = 20,
@@ -231,7 +237,7 @@ GameConfig.ShopItems = {
 		id = "Sparrow",
 		name = "Sparrow",
 		desc = "Compact submachine gun. Fast, close, and unfussy about range.",
-		price = 3000,
+		price = 12000,
 		item = "Sparrow",
 		image = "",
 		levelRequired = 11,
@@ -240,7 +246,7 @@ GameConfig.ShopItems = {
 		id = "Fang",
 		name = "Fang",
 		desc = "Fast dagger. Backstabs deal triple damage.",
-		price = 1100,
+		price = 4500,
 		item = "Fang",
 		image = "",
 		levelRequired = 6,
@@ -249,7 +255,7 @@ GameConfig.ShopItems = {
 		id = "Ironjaw",
 		name = "Ironjaw",
 		desc = "Two-handed warhammer. Slow, enormous, launches whatever it hits.",
-		price = 3000,
+		price = 14000,
 		item = "Ironjaw",
 		image = "",
 		levelRequired = 14,
@@ -374,10 +380,10 @@ GameConfig.RetiredAbilities = {
 -- dashboard, paste the real IDs in, and the Robux tab turns itself on. Anything left
 -- at 0 is shown as unavailable rather than silently failing on the player.
 GameConfig.DeveloperProducts = {
-	{ id = 0, name = "Pouch of Coins", coins = 500, robux = 25, icon = "" },
-	{ id = 0, name = "Sack of Coins", coins = 1500, robux = 65, icon = "" },
-	{ id = 0, name = "Chest of Coins", coins = 4000, robux = 150, icon = "" },
-	{ id = 0, name = "Hoard of Coins", coins = 10000, robux = 350, icon = "" },
+	{ id = 0, name = "Pouch of Coins", coins = 1500, robux = 25, icon = "" },
+	{ id = 0, name = "Sack of Coins", coins = 4500, robux = 65, icon = "" },
+	{ id = 0, name = "Chest of Coins", coins = 12000, robux = 150, icon = "" },
+	{ id = 0, name = "Hoard of Coins", coins = 30000, robux = 350, icon = "" },
 }
 
 GameConfig.GamePasses = {

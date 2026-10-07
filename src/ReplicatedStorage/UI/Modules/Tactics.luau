@@ -9,7 +9,8 @@
 --
 -- The locker (Tactics.Locker) is the same gear, smaller, in the inventory's GEAR section:
 -- three rows, one per slot, and a click swaps what is in it. Anything you do not own shows
--- its price and where to buy it.
+-- its price and where to buy it. Along the top, the RESTOCK strip: run out of frags, heals
+-- or armour mid-life and buy one more right there, up to what a fresh life carries.
 --
 -- GearService owns every number; this only draws its state and names an id.
 
@@ -21,6 +22,7 @@ local Components = require(script.Parent.Components)
 local Menu = require(script.Parent.Menu)
 local UISound = require(script.Parent.UISound)
 local GearConfig = require(ReplicatedStorage:WaitForChild("GearConfig"))
+local UtilityConfig = require(ReplicatedStorage:WaitForChild("UtilityConfig"))
 
 local Tactics = {}
 Tactics.__index = Tactics
@@ -351,17 +353,114 @@ end
 
 --- The inventory's GEAR section: a row per slot, a click to swap. Returns an object with
 --- :Refresh() and the frame (hidden until the section is picked).
+-- The restock strip's tiles: what each refills, in the kit's own words and colours.
+local RESTOCK_LOOK = {
+	Frag = { icon = UtilityConfig.Throwables.Frag.icon, name = "FRAG", colour = UtilityConfig.Throwables.Frag.colour },
+	Flash = { icon = UtilityConfig.Throwables.Flash.icon, name = "FLASH", colour = UtilityConfig.Throwables.Flash.colour },
+	Smoke = { icon = UtilityConfig.Throwables.Smoke.icon, name = "SMOKE", colour = UtilityConfig.Throwables.Smoke.colour },
+	Medkit = { icon = UtilityConfig.Medkit.icon, name = "HEAL", colour = UtilityConfig.Medkit.colour },
+	Armour = { icon = "🛡", name = "ARMOUR", colour = Color3.fromRGB(80, 200, 255) },
+}
+local WHY_TEXT = { full = "FULL", locked = "LOCKED", duel = "NOT IN A DUEL", dead = "—", coins = "NEED $" }
+
+--- One restock tile: icon, what you carry of what you could, and the price -- the whole tile
+--- is the buy button.
+local function restockTile(parent: GuiObject, id: string, info: any, order: number, onBuy: (string) -> ()): TextButton
+	local look = RESTOCK_LOOK[id]
+	local can = info.why == nil
+	local tile = Instance.new("TextButton")
+	tile.Name = "Restock_" .. id
+	tile.Text = ""
+	tile.AutoButtonColor = false
+	tile.LayoutOrder = order
+	tile.Size = UDim2.fromOffset(128, 74)
+	tile.BackgroundColor3 = if can then Theme.Shade(look.colour, -0.55) else Theme.Colour.Sunken
+	tile.BorderSizePixel = 0
+	tile.Parent = parent
+	Components.Corner(tile, 12)
+	local rim = Components.Stroke(tile, look.colour, if can then 2.5 else 1.5)
+	rim.Transparency = if can then 0 else 0.55
+	Components.Gradient(tile, Color3.new(1, 1, 1), Color3.fromRGB(150, 150, 160), 90)
+
+	local icon = Components.Label(tile, { text = look.icon, size = 26 })
+	icon.Position = UDim2.fromOffset(8, 6)
+	icon.Size = UDim2.fromOffset(34, 34)
+	local name = Components.Label(tile, { text = look.name, face = Theme.Face.HeavyItalic, size = 16 })
+	name.Position = UDim2.fromOffset(46, 6)
+	name.Size = UDim2.new(1, -52, 0, 18)
+	local count = if id == "Armour" then ("%d / %d"):format(info.have, info.cap) else ("%d / %d"):format(info.have, info.cap)
+	local carried = Components.Label(tile, { text = count, size = 14, colour = Theme.Colour.TextMuted })
+	carried.Name = "Count"
+	carried.Position = UDim2.fromOffset(46, 24)
+	carried.Size = UDim2.new(1, -52, 0, 16)
+	local priceLine = if can then "+1  ·  $" .. commas(info.price)
+		elseif info.why == "coins" then WHY_TEXT.coins .. commas(info.price)
+		else WHY_TEXT[info.why] or ""
+	if id == "Armour" and can then
+		priceLine = ("+%d  ·  $%s"):format(info.plate or 25, commas(info.price))
+	end
+	local price = Components.Label(tile, { text = priceLine, face = Theme.Face.Condensed, size = 15,
+		colour = if can then GOLD elseif info.why == "coins" then Color3.fromRGB(255, 120, 110) else Theme.Colour.TextMuted })
+	price.Name = "Price"
+	price.Position = UDim2.fromOffset(8, 48)
+	price.Size = UDim2.new(1, -16, 0, 20)
+	tile.MouseEnter:Connect(function()
+		if can then
+			TweenService:Create(tile, TweenInfo.new(0.12), { BackgroundColor3 = Theme.Shade(look.colour, -0.4) }):Play()
+		end
+	end)
+	tile.MouseLeave:Connect(function()
+		TweenService:Create(tile, TweenInfo.new(0.12),
+			{ BackgroundColor3 = if can then Theme.Shade(look.colour, -0.55) else Theme.Colour.Sunken }):Play()
+	end)
+	tile.Activated:Connect(function()
+		if can then
+			onBuy(id)
+		else
+			UISound.Play("Clunk", 0.8, 0.35)
+		end
+	end)
+	return tile
+end
+
 function Tactics.Locker(parent: GuiObject, remote: RemoteFunction)
 	local locker = {} :: any
-	local frame = Instance.new("Frame")
+	-- Scrolls: the restock strip on top, the three gear rows under it.
+	local frame = Instance.new("ScrollingFrame")
 	frame.Name = "GearLocker"
 	frame.BackgroundTransparency = 1
+	frame.BorderSizePixel = 0
 	frame.Size = UDim2.fromScale(1, 1)
+	frame.CanvasSize = UDim2.fromOffset(0, 140 + #GearConfig.Slots * 144)
+	frame.ScrollBarThickness = 6
+	frame.ScrollBarImageColor3 = Theme.Colour.Stroke
+	frame.ScrollingDirection = Enum.ScrollingDirection.Y
 	frame.Visible = false
 	frame.Parent = parent
 	locker.frame = frame
 	local rows: { [string]: Frame } = {}
 	local cards: { Instance } = {}
+
+	-- RESTOCK: one more of anything you have run out of, without waiting for the next life.
+	local strip = Components.Panel(frame, { name = "Restock", colour = Theme.Colour.Sunken, radius = 12,
+		transparency = 0.2, size = UDim2.new(1, -10, 0, 100), position = UDim2.fromOffset(0, 30) })
+	local stripTitle = Components.Label(strip, { text = "RESTOCK", face = Theme.Face.HeavyItalic, size = 20 })
+	stripTitle.Position = UDim2.fromOffset(12, 8)
+	stripTitle.Size = UDim2.fromOffset(102, 24)
+	local stripBlurb = Components.Label(strip, { text = "Out mid-fight? One more, up to what a fresh life carries.",
+		size = 12, colour = Theme.Colour.TextMuted, wrap = true })
+	stripBlurb.Position = UDim2.fromOffset(12, 34)
+	stripBlurb.Size = UDim2.fromOffset(100, 60)
+	stripBlurb.TextYAlignment = Enum.TextYAlignment.Top
+	local restockRow = Instance.new("Frame")
+	restockRow.Name = "Row"
+	restockRow.BackgroundTransparency = 1
+	restockRow.Position = UDim2.fromOffset(120, 6)
+	restockRow.Size = UDim2.new(1, -126, 1, -12)
+	restockRow.Parent = strip
+	local restockList = Components.List(restockRow, Enum.FillDirection.Horizontal, 6, Enum.HorizontalAlignment.Left)
+	restockList.VerticalAlignment = Enum.VerticalAlignment.Center
+	local restockTiles: { Instance } = {}
 
 	local head = Components.Label(frame, { text = "GEAR  ·  click something you own to carry it",
 		face = Theme.Face.Condensed, size = 20 })
@@ -373,7 +472,7 @@ function Tactics.Locker(parent: GuiObject, remote: RemoteFunction)
 	for i, slot in ipairs(GearConfig.Slots) do
 		local info = GearConfig.SlotInfo[slot]
 		local band = Components.Panel(frame, { name = slot, colour = Theme.Colour.Sunken, radius = 12, transparency = 0.2,
-			size = UDim2.new(1, 0, 0, 136), position = UDim2.fromOffset(0, 30 + (i - 1) * 144) })
+			size = UDim2.new(1, -10, 0, 136), position = UDim2.fromOffset(0, 138 + (i - 1) * 144) })
 		local label = Components.Label(band, { text = info.icon .. "  " .. string.upper(info.label),
 			face = Theme.Face.HeavyItalic, size = 20 })
 		label.Position = UDim2.fromOffset(12, 8)
@@ -400,7 +499,39 @@ function Tactics.Locker(parent: GuiObject, remote: RemoteFunction)
 		rows[slot] = row
 	end
 
-	local function render(state: any)
+	local render: (any) -> ()
+	local function renderRestock(state: any)
+		for _, t in ipairs(restockTiles) do
+			t:Destroy()
+		end
+		table.clear(restockTiles)
+		local restock = type(state.restock) == "table" and state.restock or nil
+		strip.Visible = restock ~= nil
+		if not restock then
+			return
+		end
+		for i, id in ipairs(UtilityConfig.Restock.order) do
+			local info = restock.items and restock.items[id]
+			if info then
+				table.insert(restockTiles, restockTile(restockRow, id, info, i, function(item)
+					task.spawn(function()
+						local ok, result = pcall(function()
+							return remote:InvokeServer("restock", item)
+						end)
+						if ok and type(result) == "table" then
+							UISound.Play(if result.ok then "Ring" else "Clunk", if result.ok then 1.4 else 0.8, 0.5)
+							if type(result.state) == "table" then
+								render(result.state)
+							end
+						end
+					end)
+				end))
+			end
+		end
+	end
+
+	function render(state: any)
+		renderRestock(state)
 		for _, c in ipairs(cards) do
 			c:Destroy()
 		end

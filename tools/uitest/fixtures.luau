@@ -107,7 +107,15 @@ return function(World)
 			prices[item.id] = math.floor(item.coins * 0.92 / 50 + 0.5) * 50
 		end
 		local state = { owned = ownedGear, equipped = { Heal = "Heal_TraumaKit", Armor = "Armor_Carrier", Bomb = "Bomb_Impact" },
-			prices = prices, level = 12, coins = 24350, crystals = 37, discount = 0.08 }
+			prices = prices, level = 12, coins = 24350, crystals = 37, discount = 0.08,
+			-- Mid-life: thrown both bombs and the smoke, used a heal, armour knocked down.
+			restock = { coins = 24350, duel = false, items = {
+				Frag = { have = 0, cap = 2, price = 375 },
+				Flash = { have = 2, cap = 2, price = 250, why = "full" },
+				Smoke = { have = 0, cap = 1, price = 200 },
+				Medkit = { have = 1, cap = 2, price = 300 },
+				Armour = { have = 25, cap = 100, price = 525, plate = 25 },
+			} } }
 		if action == "state" then
 			return state
 		end

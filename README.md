@@ -124,9 +124,24 @@ behind the counter at ZEE TACTICS in Downtown and swapped in the inventory's **G
 | **Armor** | Padded Jacket (starts 0 / 75) | Kevlar Vest (25 / 75) | Plate Carrier (50 / 100) | Riot Rig (50 / 125) | Juggernaut Plates (75 / 150) | Titan Weave (100 / 150, bigger plates) |
 | **Bombs** | Frag Grenade | Impact Grenade (goes off on landing) | Sticky Bomb (sticks to what it hits) | Cluster Bomb (four bomblets) | Incendiary (six seconds of fire) | Singularity Charge (pulls them in) |
 
-Prices run from about $2,000 (level 3) to about $50,000 and 30 crystals (level 22+), with 8-15%
+Prices run from about $3,000 (level 3) to about $78,000 and 30 crystals (level 22+), with 8-15%
 off for Friendly/Honoured Street Cred. Equipping at the counter restocks your kit (every 20
 seconds); duels always use the Common of each, so a duel stays even. `tools/uitest/gear.luau`.
+
+**Restocking.** Run out mid-life and you don't have to die for more: the inventory's **GEAR**
+section has a **RESTOCK** strip along the top. Click a tile for one more frag (or whatever bomb
+you carry), flashbang, smoke or heal, up to what a fresh life carries, or a plate of armour up
+to your armour's cap. Each tile shows what you have, what it holds, and the price: $200-$350
+for the Common kit, more for higher-grade gear (a Mastery bomb or plate costs 2.6x). Not in a
+duel.
+
+**Prices.** The shop is priced against what playing actually pays (`tools/uitest/economy.luau`
+models it from the enemy rewards, the XP curve and the game's XP rate). A gun costs three to
+four levels' worth of income at the level it unlocks: $4,500 for the Fang at level 6, $7,500
+for the Hornet at 8, $20,000 for the Redwood at 16, $38,000 for the Carbine at 25 and $50,000
+for the Warden at 30. Gear is half again dearer than it was. Kill effects, tracers, cosmetics
+and attachments cost two and a half times as much, and the Robux coin packs give three times
+as many coins.
 
 ## Streaks and bounties
 

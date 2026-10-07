@@ -137,18 +137,26 @@ end
 
 -- ------------------------------------------------------------------- kit --
 
---- A fresh kit for this life (or duel round): throwables and medkits by level and gear, and
---- armour -- a duel's even amount, or what the equipped armour starts a life with.
-function UtilityService.Refill(player: Player, keepArmour: boolean?)
+--- What a fresh life carries, by level and gear: the most a restock fills up to.
+local function freshKit(player: Player): Kit
 	local kit = UtilityConfig.KitFor(levelOf(player))
-	local inDuel = player:GetAttribute("DuelState") == "duel"
-	local bomb, heal, armor = gearOf(player, "Bomb"), gearOf(player, "Heal"), gearOf(player, "Armor")
+	local bomb, heal = gearOf(player, "Bomb"), gearOf(player, "Heal")
 	if bomb.id ~= GearConfig.Default.Bomb then
 		kit.Frag = bomb.stats.perLife
 	end
 	if (kit.Medkit or 0) > 0 then
 		kit.Medkit = heal.stats.perLife
 	end
+	return kit
+end
+
+--- A fresh kit for this life (or duel round): throwables and medkits by level and gear, and
+--- armour -- a duel's even amount, or what the equipped armour starts a life with.
+function UtilityService.Refill(player: Player, keepArmour: boolean?)
+	local kit = freshKit(player)
+	local inDuel = player:GetAttribute("DuelState") == "duel"
+	local heal, armor = gearOf(player, "Heal"), gearOf(player, "Armor")
+	local bomb = gearOf(player, "Bomb")
 	kits[player] = kit
 	local character = player.Character
 	if character then
@@ -169,6 +177,95 @@ end
 
 function UtilityService.Kit(player: Player): Kit?
 	return kits[player]
+end
+
+-- --------------------------------------------------------------- restock --
+
+local lastBuy: { [Player]: number } = {}
+
+-- The gear grade an item's restock is priced by.
+local function restockTier(player: Player, item: string): string
+	if item == "Frag" then
+		return gearOf(player, "Bomb").tier
+	elseif item == "Medkit" then
+		return gearOf(player, "Heal").tier
+	elseif item == "Armour" then
+		return gearOf(player, "Armor").tier
+	end
+	return "Common"
+end
+
+local function coinsOf(player: Player): IntValue?
+	local stats = player:FindFirstChild("leaderstats")
+	local coins = stats and stats:FindFirstChild("Coins")
+	return if coins and coins:IsA("IntValue") then coins else nil
+end
+
+--- What the restock strip draws: for each item what you carry, the most you can, what one
+--- more costs, and whether you can buy it at all right now (and if not, why).
+function UtilityService.RestockState(player: Player): { [string]: any }
+	local fresh = freshKit(player)
+	local kit = kits[player] or {}
+	local character = player.Character
+	local inDuel = player:GetAttribute("DuelState") == "duel"
+	local coins = coinsOf(player)
+	local out = { items = {}, coins = coins and coins.Value or 0, duel = inDuel }
+	for _, item in ipairs(UtilityConfig.Restock.order) do
+		local have, cap, why
+		if item == "Armour" then
+			have = character and tonumber(character:GetAttribute("Armour")) or 0
+			cap = character and maxArmourOf(character) or Armour.max
+		else
+			have = kit[item] or 0
+			cap = fresh[item] or 0
+		end
+		local price = UtilityConfig.RestockPrice(item, restockTier(player, item))
+		if inDuel then
+			why = "duel"
+		elseif not alive(player) then
+			why = "dead"
+		elseif cap <= 0 then
+			why = "locked"
+		elseif have >= cap then
+			why = "full"
+		elseif (coins and coins.Value or 0) < price then
+			why = "coins"
+		end
+		out.items[item] = { have = have, cap = cap, price = price, why = why,
+			plate = if item == "Armour" then gearOf(player, "Armor").stats.plate else nil }
+	end
+	return out
+end
+
+--- Buy one more `item` (Frag, Flash, Smoke, Medkit; Armour is a plate). Up to what a fresh
+--- life carries, never in a duel, coins taken here. Returns ok and, if not, why.
+function UtilityService.Buy(player: Player, item: string): (boolean, string?)
+	if not UtilityConfig.Restock.price[item] then
+		return false, "unknown"
+	end
+	local now = os.clock()
+	if now - (lastBuy[player] or -math.huge) < UtilityConfig.Restock.cooldown then
+		return false, "busy"
+	end
+	local state = UtilityService.RestockState(player).items[item]
+	if state.why then
+		return false, state.why
+	end
+	local coins = coinsOf(player)
+	if not coins or coins.Value < state.price then
+		return false, "coins"
+	end
+	lastBuy[player] = now
+	coins.Value -= state.price
+	if item == "Armour" then
+		UtilityService.AddArmour(player, state.plate or Armour.plate)
+	else
+		local kit: Kit = kits[player] or {}
+		kit[item] = math.min((kit[item] or 0) + 1, state.cap)
+		kits[player] = kit
+		sendKit(player)
+	end
+	return true, nil
 end
 
 --- Top armour up by `amount` (to the cap). Returns what it is now.

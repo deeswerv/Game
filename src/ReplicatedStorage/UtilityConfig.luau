@@ -11,6 +11,10 @@
 -- below, and each kind unlocks at a level, like the guns do. Armour does not come in the
 -- kit: enemies drop plates, and a duel gives both fighters the same amount each round.
 --
+-- Run out mid-life and you can restock from the inventory's GEAR section: one at a time, up
+-- to what a fresh life carries (and armour a plate at a time up to its cap), for coins.
+-- Better gear costs more to restock. Not in a duel.
+--
 -- Shared, so the server that decides and the screen that shows agree on every number --
 -- including the flight path, which both work out with Trajectory below.
 
@@ -72,6 +76,27 @@ UtilityConfig.Armour = {
 	pickupRadius = 4.5,
 	lifetime = 45,       -- seconds a dropped plate waits
 }
+
+-- Restocking mid-life. A Common item's price, scaled by the grade of the gear it refills (a
+-- frag by the bomb you carry, a medkit by your heal, a plate by your armour); a flashbang or
+-- smoke is always Common. A restock is a fraction of what a level pays at the level it
+-- unlocks -- worth it to keep fighting, not something you do without thinking.
+UtilityConfig.Restock = {
+	price = { Frag = 300, Flash = 250, Smoke = 200, Medkit = 250, Armour = 350 },
+	tierScale = { Common = 1, Uncommon = 1.25, Rare = 1.5, Epic = 1.8, Legendary = 2.2, Mastery = 2.6 },
+	order = { "Frag", "Flash", "Smoke", "Medkit", "Armour" },
+	cooldown = 0.35,                      -- seconds between two buys
+}
+
+--- What one `item` (Frag, Flash, Smoke, Medkit, Armour) costs to restock with gear of `tier`.
+function UtilityConfig.RestockPrice(item: string, tier: string?): number
+	local base = UtilityConfig.Restock.price[item]
+	if not base then
+		return 0
+	end
+	local scale = UtilityConfig.Restock.tierScale[tier or "Common"] or 1
+	return math.floor(base * scale / 25 + 0.5) * 25
+end
 
 -- Throwing.
 UtilityConfig.THROW_SPEED = 76

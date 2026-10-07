@@ -73,24 +73,24 @@ AttachmentConfig.Options = {
 -- without a purchase record, so a player can always strip a weapon back to standard.
 AttachmentConfig.Pricing = {
 	Sight = {
-		Irons = { 0, "Common" }, RedDot = { 900, "Uncommon" }, Holo = { 1500, "Rare" },
-		Scope4x = { 3200, "Epic" },
+		Irons = { 0, "Common" }, RedDot = { 2200, "Uncommon" }, Holo = { 3800, "Rare" },
+		Scope4x = { 8000, "Epic" },
 	},
 	Muzzle = {
-		None = { 0, "Common" }, Compensator = { 1400, "Uncommon" }, Suppressor = { 3400, "Epic" },
+		None = { 0, "Common" }, Compensator = { 3500, "Uncommon" }, Suppressor = { 8500, "Epic" },
 	},
 	Underbarrel = {
-		None = { 0, "Common" }, Angled = { 800, "Common" }, Foregrip = { 1100, "Uncommon" },
-		Bipod = { 2800, "Epic" },
+		None = { 0, "Common" }, Angled = { 2000, "Common" }, Foregrip = { 2800, "Uncommon" },
+		Bipod = { 7000, "Epic" },
 	},
 	Side = {
-		None = { 0, "Common" }, Light = { 1500, "Uncommon" }, Laser = { 2200, "Rare" },
+		None = { 0, "Common" }, Light = { 3800, "Uncommon" }, Laser = { 5500, "Rare" },
 	},
 	Magazine = {
-		Standard = { 0, "Common" }, Extended = { 1800, "Rare" },
+		Standard = { 0, "Common" }, Extended = { 4500, "Rare" },
 	},
 	Stock = {
-		Standard = { 0, "Common" }, Skeleton = { 1400, "Uncommon" },
+		Standard = { 0, "Common" }, Skeleton = { 3500, "Uncommon" },
 	},
 }
 

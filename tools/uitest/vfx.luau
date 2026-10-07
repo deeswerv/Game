@@ -162,8 +162,9 @@ local ShopService = World.require(sss.ShopService)
 local VFXService = World.require(sss.VFXService)
 World.advance(0.2)
 local result = ShopService.AttemptPurchase(player, "vfx", "KillShatter")
-check(result.ok and coins.Value == 20000 - 900, ("bought Shatter for 900 (%s, $%d left)"):format(tostring(result.reason),
-	coins.Value))
+local shatterPrice = VFXConfig.Get("KillShatter").price
+check(result.ok and coins.Value == 20000 - shatterPrice, ("bought Shatter for its price, $%d (%s, $%d left)"):format(
+	shatterPrice, tostring(result.reason), coins.Value))
 check(table.find(profile.OwnedVFX, "KillShatter") ~= nil, "and it is recorded as owned")
 check(not ShopService.AttemptPurchase(player, "vfx", "KillShatter").ok, "not twice")
 check(not ShopService.AttemptPurchase(player, "vfx", "NoSuchThing").ok, "an unknown id is refused")

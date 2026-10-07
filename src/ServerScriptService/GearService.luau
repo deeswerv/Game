@@ -119,12 +119,15 @@ function GearService.State(player: Player): { [string]: any }
 		equipped[slot] = GearService.Equipped(player, slot).id
 	end
 	local Crystals = service("CrystalService")
+	local Utility = service("UtilityService")
 	local coins = coinsOf(player)
 	return {
 		owned = owned, equipped = equipped, prices = prices, level = levelOf(player),
 		coins = coins and coins.Value or 0,
 		crystals = Crystals and Crystals.Get and Crystals.Get(player) or 0,
 		discount = GearService.Discount(player),
+		-- The inventory's restock strip: what you carry, what one more costs.
+		restock = Utility and Utility.RestockState and Utility.RestockState(player) or nil,
 	}
 end
 
@@ -205,8 +208,8 @@ function GearService.Buy(player: Player, id: string): { [string]: any }
 	return { ok = true, restocked = equipped.restocked }
 end
 
-local gearRemote = GearAction :: RemoteFunction
-gearRemote.OnServerInvoke = function(player: Player, action: unknown, id: unknown)
+--- What the counter and the inventory's GEAR section ask: "state", "buy", "equip", "restock".
+function GearService.Invoke(player: Player, action: unknown, id: unknown): any
 	if action == "state" then
 		return GearService.State(player)
 	elseif action == "buy" and type(id) == "string" then
@@ -217,9 +220,19 @@ gearRemote.OnServerInvoke = function(player: Player, action: unknown, id: unknow
 		local result = GearService.Equip(player, id)
 		result.state = GearService.State(player)
 		return result
+	elseif action == "restock" and type(id) == "string" then
+		local Utility = service("UtilityService")
+		local ok, why = false, "unknown"
+		if Utility and Utility.Buy then
+			ok, why = Utility.Buy(player, id)
+		end
+		return { ok = ok, reason = why, state = GearService.State(player) }
 	end
 	return nil
 end
+
+local gearRemote = GearAction :: RemoteFunction
+gearRemote.OnServerInvoke = GearService.Invoke
 
 local function onPlayer(player: Player)
 	task.spawn(function()
