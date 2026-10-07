@@ -801,12 +801,12 @@ local function building(b: Kit.Builder, x0: number, x1: number, z0: number, z1: 
 				awning.CastShadow = true
 			end
 		end
-		-- Floors above. On a street face the first few are rows of real windows; the rest of
-		-- the height (and every face nobody walks past) is a glass band per floor.
+		-- Floors above. On a street face they are rows of real windows all the way up (seven
+		-- floors, the tallest street block); every face nobody walks past is a glass band a floor.
 		local floor = 0
 		for y = 14, top - 5, 7 do
 			floor += 1
-			if rich and floor <= 4 then
+			if rich and floor <= 7 then
 				if floor > 1 then
 					slab("BrickCourse", span - 3, 0.35, 0.25, y - 3.4, 0, darker(colour, 0.22))
 				end
@@ -3341,6 +3341,40 @@ local function armouredTruck(b: Kit.Builder)
 	return model
 end
 
+--- A bus shelter at the kerb: glass back and sides on a steel frame, a roof with a lip, a
+--- bench inside, a lit advert panel on one end and the stop's sign on a pole. Faces -Z (the
+--- road); origin on the pavement at its middle.
+local function busShelter(b: Kit.Builder, stopName: string)
+	local frame = Color3.fromRGB(52, 58, 66)
+	for _, x in ipairs({ -4, 4 }) do
+		for _, z in ipairs({ -1.3, 1.3 }) do
+			b:part("ShelterPost", Vector3.new(0.3, 7, 0.3), Vector3.new(x, 3.5, z), frame, M.Metal)
+		end
+	end
+	b:part("ShelterRoof", Vector3.new(9, 0.35, 3.4), Vector3.new(0, 7.15, -0.1), frame, M.Metal)
+	b:decor("ShelterLip", Vector3.new(9.1, 0.5, 0.15), Vector3.new(0, 7.0, -1.85), TEAL)
+	b:part("ShelterBack", Vector3.new(8, 5.6, 0.15), Vector3.new(0, 3.6, 1.3), Color3.fromRGB(170, 200, 214), M.Glass,
+		{ transparency = 0.55, reflectance = 0.15 })
+	b:part("ShelterSide", Vector3.new(0.15, 5.6, 2.4), Vector3.new(-4, 3.6, 0.1), Color3.fromRGB(170, 200, 214), M.Glass,
+		{ transparency = 0.55, reflectance = 0.15 })
+	-- The advert: a lit panel in a frame at the other end.
+	b:part("AdFrame", Vector3.new(0.5, 5.8, 2.6), Vector3.new(4, 3.6, 0.1), frame, M.Metal)
+	b:decor("AdPanel", Vector3.new(0.12, 5, 2.1), Vector3.new(4.3, 3.6, 0.1), Color3.fromRGB(250, 196, 70))
+	painted(b, "ZEE COLA", Kit.Look(Vector3.new(4.37, 4.6, 0.1), Vector3.new(10, 4.6, 0.1)), 2, 0.6, RED)
+	painted(b, "ICE COLD", Kit.Look(Vector3.new(4.37, 3.2, 0.1), Vector3.new(10, 3.2, 0.1)), 1.8, 0.4, NAVY, Enum.Font.GothamBold)
+	-- The bench inside, against the glass.
+	b:part("ShelterBench", Vector3.new(6, 0.25, 1), Vector3.new(-0.4, 1.9, 0.6), WOOD, M.WoodPlanks)
+	for _, x in ipairs({ -3, 2.2 }) do
+		b:decor("BenchLeg", Vector3.new(0.2, 1.8, 0.8), Vector3.new(x, 0.9, 0.6), frame, M.Metal)
+	end
+	-- The stop's sign on its own pole at the kerb.
+	b:part("StopPole", Vector3.new(0.25, 9, 0.25), Vector3.new(-5.4, 4.5, -1.3), frame, M.Metal)
+	b:decor("StopSign", Vector3.new(1.6, 1.6, 0.12), Vector3.new(-5.4, 8.2, -1.3), TEAL)
+	painted(b, "BUS", Kit.Look(Vector3.new(-5.4, 8.45, -1.37), Vector3.new(-5.4, 8.45, -10)), 1.3, 0.5, CREAM)
+	painted(b, stopName, Kit.Look(Vector3.new(-5.4, 7.85, -1.37), Vector3.new(-5.4, 7.85, -10)), 1.4, 0.3, CREAM,
+		Enum.Font.GothamBold)
+end
+
 local function manhole(b: Kit.Builder)
 	b:decor("Manhole", Vector3.new(0.05, 2.6, 2.6), vertical(Vector3.new(0, 0.035, 0)), Color3.fromRGB(58, 58, 64), M.DiamondPlate,
 		{ shape = "Cylinder" })
@@ -3597,6 +3631,9 @@ function Downtown.Build(parent: Instance, centre: Vector3)
 	-- A taco truck at the kerb on the east arm, an ice-cream van outside Rainbow Park.
 	foodTruck(root:within(CFrame.new(60, 0, -13.5)), Color3.fromRGB(250, 200, 48), "TACOS ZEE", Color3.fromRGB(220, 60, 50))
 	iceCreamVan(root:within(CFrame.new(-110, 0, 13.5) * CFrame.Angles(0, math.pi, 0)))
+	-- Bus shelters on the avenue, between the lamps, open to the road.
+	busShelter(root:within(CFrame.new(-20.3, 0.54, 138) * CFrame.Angles(0, math.rad(-90), 0)), "ZEE TOWER")
+	busShelter(root:within(CFrame.new(20.3, 0.54, 100) * CFrame.Angles(0, math.rad(90), 0)), "THE COURTS")
 	-- The ZEE BANK truck at the kerb up the west arm, its back doors toward the plaza.
 	armouredTruck(root:within(CFrame.new(-150, 0, 13.8) * CFrame.Angles(0, math.rad(90), 0)))
 

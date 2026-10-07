@@ -242,9 +242,11 @@ gets a cut. `tools/uitest/wanted.luau`.
 **Built in detail.** The ring of towers has curtain walls (a mullion grid with heavier piers),
 the tall ones step back into an upper tier with glass on three sides and finish in stepped Art
 Deco crowns, the tallest with a spire and a beacon; the far skyline is dressed the same way.
-Street fronts have carved brackets under every cornice, window air units and flower boxes,
+Street fronts have framed windows on every floor (arched, shuttered or with lintels, bays and
+little balconies low down), carved brackets under every cornice, window air units and flower boxes,
 chimney stacks and aerials on the roofs, painted render (Plaster) or brick, and tiled
-sidewalks (Pavement). Trees are full, leaf-textured canopies. Cars have wheels in dark arches
+sidewalks (Pavement). Trees are full, leaf-textured canopies. Bus shelters on the avenue (glass, a bench, a lit ZEE COLA advert and the stop's sign). Cars
+have wheels in dark arches
 with five-spoke rims, chrome belt lines and door handles, lamp surrounds, an exhaust and an
 aerial.
 
