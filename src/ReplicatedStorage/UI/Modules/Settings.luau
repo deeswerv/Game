@@ -62,6 +62,8 @@ local function apply(id: string, value: number)
 		Players.LocalPlayer:SetAttribute("CrosshairColour", value)
 	elseif id == "HeadLook" then
 		Players.LocalPlayer:SetAttribute("HeadLookSetting", value)
+	elseif id == "Graphics" then
+		Players.LocalPlayer:SetAttribute("GraphicsQuality", value)
 	end
 end
 
@@ -71,6 +73,8 @@ local function format(setting: SettingsConfig.Setting, value: number): string
 	elseif setting.format == "colour" then
 		local entry = SettingsConfig.CrosshairColours[math.floor(value + 0.5)]
 		return entry and entry.name or "?"
+	elseif setting.format == "quality" then
+		return SettingsConfig.GraphicsLevels[math.floor(value + 0.5)] or "?"
 	end
 	return string.format("%d%%", math.floor(value * 100 + 0.5))
 end
@@ -114,7 +118,7 @@ local function row(self, parent: GuiObject, setting: SettingsConfig.Setting, ord
 		anchor = Vector2.new(0, 0.5),
 		position = UDim2.new(0, 270, 0.5, 0),
 		onActivated = function()
-			self:Set(setting.id, (self._values[setting.id] or setting.default) - setting.step * (setting.format == "degrees" and 5 or setting.format == "colour" and 1 or 2))
+			self:Set(setting.id, (self._values[setting.id] or setting.default) - setting.step * (setting.format == "degrees" and 5 or (setting.format == "colour" or setting.format == "quality") and 1 or 2))
 		end,
 	})
 	minus.instance.Name = "Minus"
@@ -156,7 +160,7 @@ local function row(self, parent: GuiObject, setting: SettingsConfig.Setting, ord
 		anchor = Vector2.new(0, 0.5),
 		position = UDim2.new(0, 574, 0.5, 0),
 		onActivated = function()
-			self:Set(setting.id, (self._values[setting.id] or setting.default) + setting.step * (setting.format == "degrees" and 5 or setting.format == "colour" and 1 or 2))
+			self:Set(setting.id, (self._values[setting.id] or setting.default) + setting.step * (setting.format == "degrees" and 5 or (setting.format == "colour" or setting.format == "quality") and 1 or 2))
 		end,
 	})
 	plus.instance.Name = "Plus"

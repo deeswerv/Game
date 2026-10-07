@@ -12,7 +12,8 @@ export type Setting = {
 	max: number,
 	step: number,
 	default: number,
-	format: string,        -- "percent", "degrees" or "colour" (an index into CrosshairColours)
+	format: string,        -- "percent", "degrees", "colour" (an index into CrosshairColours)
+	                       -- or "quality" (an index into GraphicsLevels)
 	hint: string,
 }
 
@@ -33,7 +34,16 @@ SettingsConfig.Schema = {
 		format = "percent", hint = "Head turns where you look; 0% is off" },
 	{ id = "Crosshair", label = "CROSSHAIR COLOUR", group = "COMBAT", min = 1, max = 6, step = 1, default = 1,
 		format = "colour", hint = "Dot, arms and shotgun ring" },
+	{ id = "Graphics", label = "GRAPHICS", group = "GRAPHICS", min = 1, max = 3, step = 1, default = 3,
+		format = "quality", hint = "Lower it if the game stutters" },
 } :: { Setting }
+
+-- The graphics levels, by index (GraphicsQuality.client applies them):
+--   PERFORMANCE  no depth of field, sun rays or bloom; the far skyline and small trim (brackets,
+--                spokes, window units...) are not drawn
+--   BALANCED     no depth of field or sun rays; everything drawn
+--   ULTRA        everything
+SettingsConfig.GraphicsLevels = { "PERFORMANCE", "BALANCED", "ULTRA" }
 
 -- The crosshair colours, by index. The panel names them; WeaponController draws them.
 SettingsConfig.CrosshairColours = {

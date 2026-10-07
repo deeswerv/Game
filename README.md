@@ -45,7 +45,7 @@ The live game always saves.
 | **H** | Achievements: claim rewards and pick the title you wear |
 | **T** | Travel: jump to the Crossing, Downtown, the Flats, the Mine, the Watchpoint or the Reach (not while under fire or in a duel) |
 | **E** (hold) | Open a supply drop; rob a till or an ATM downtown |
-| **F1** | Settings: volumes, camera shake, field of view, crosshair colour |
+| **F1** | Settings: volumes, camera shake, field of view, crosshair colour, graphics |
 | **Right mouse** | Aim; with the Longshot (or a strong scope) you look through the scope |
 | **V** | Go to (or leave) the gun range |
 | **Shift** or double-tap **W** | Sprint; **Ctrl** / **C** while sprinting slides |
@@ -91,6 +91,10 @@ pads at the Crossing are retired).
 
 ## Look, HUD and sound
 
+- **GRAPHICS setting** (F1, Settings): ULTRA (default), BALANCED (no depth of field or sun
+  rays) or PERFORMANCE (no bloom either, and the cities' far skylines and small trim -- cornice
+  brackets, wheel spokes, window units, chimneys -- are not drawn). Local to your client only
+  (`GraphicsQuality.client.luau`, `tools/uitest/graphics.luau`).
 - **Lighting.** The game renders with Future lighting. Lamps, lanterns, furnace mouths and signs
   really light the streets around them at night, and Roblox scales it down on devices that
   cannot afford it. Shade takes its colour from the sky, glass and metal catch it, and the day
@@ -219,6 +223,15 @@ target. The one who brings them in gets $1,500, XP, crystals and Street Cred; an
 gets a cut. `tools/uitest/wanted.luau`.
 
 ## Downtown
+
+**Built in detail.** The ring of towers has curtain walls (a mullion grid with heavier piers),
+the tall ones step back into an upper tier with glass on three sides and finish in stepped Art
+Deco crowns, the tallest with a spire and a beacon; the far skyline is dressed the same way.
+Street fronts have carved brackets under every cornice, window air units and flower boxes,
+chimney stacks and aerials on the roofs, painted render (Plaster) or brick, and tiled
+sidewalks (Pavement). Trees are full, leaf-textured canopies. Cars have wheels in dark arches
+with five-spoke rims, chrome belt lines and door handles, lamp surrounds, an exhaust and an
+aerial.
 
 **Downtown is the first stop.** You wash up at the Crossing; the Quartermaster's first job is
 *Welcome to Downtown*, and the Travel menu marks it START HERE. Everything past it -- the Flats,
@@ -523,6 +536,11 @@ Six raiders hold the camp (down from eight). `lune run tools/uitest/flats.luau` 
 post has room, the ways through are open and the high ground can be reached.
 
 ## Enemies
+
+**Levels make them better, not just tougher.** A higher-level enemy has more health, hits
+harder and is more accurate, and it also reacts faster and settles its aim sooner (2.5% a
+level, down to two thirds of the archetype's times), within limits (`NPCConfig.Levelled`,
+`tools/uitest/npclevels.luau`).
 
 **Dressed for the part.** Every enemy is the players' own rig in clothes made to measure
 (`NPCService/Outfit.luau`): Thugs in hoodies with the strings and pocket, beanies, the crew's

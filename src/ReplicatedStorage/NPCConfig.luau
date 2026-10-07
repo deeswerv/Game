@@ -1367,6 +1367,9 @@ local ARMOR_PER_LEVEL = 0.08
 -- Returns a COPY with its stats scaled for `level`. Never mutates the cached archetype --
 -- Get hands out one shared table per archetype, so scaling it in place would level up
 -- every enemy of that type in the world, permanently, every time one spawned.
+local REACTION_PER_LEVEL = 0.025
+local REACTION_FLOOR = 0.66
+
 function NPCConfig.Levelled(cfg, level: number)
 	local out = {}
 	for k, v in pairs(cfg) do
@@ -1380,6 +1383,11 @@ function NPCConfig.Levelled(cfg, level: number)
 	out.CoinReward = math.floor(cfg.CoinReward * (1 + REWARD_PER_LEVEL * steps) + 0.5)
 	out.XPReward = math.floor((cfg.XPReward or 15) * (1 + REWARD_PER_LEVEL * steps) + 0.5)
 	out.Accuracy = math.min(ACCURACY_CAP, (cfg.Accuracy or 0.5) + ACCURACY_PER_LEVEL * steps)
+	-- A higher-level enemy is quicker on the draw and settles its aim sooner, not just harder
+	-- to kill: 2.5% a level, down to two thirds of the archetype's own times.
+	local quick = math.max(REACTION_FLOOR, 1 - REACTION_PER_LEVEL * steps)
+	out.ReactionTime = (cfg.ReactionTime or 0.45) * quick
+	out.AimTime = (cfg.AimTime or 0.25) * quick
 	out.Armor = (cfg.Armor or 0) * (1 + ARMOR_PER_LEVEL * steps)
 	return out
 end

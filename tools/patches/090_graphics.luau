@@ -21,9 +21,10 @@ return function(ctx)
 
 	local atmosphere = lighting:FindFirstChildOfClass("Atmosphere")
 	if atmosphere then
-		atmosphere.Density = 0.3
+		-- Clear air, like the reference streets: the skyline keeps its colour at a distance.
+		atmosphere.Density = 0.26
 		atmosphere.Offset = 0.2
-		atmosphere.Haze = 1.4
+		atmosphere.Haze = 1
 		atmosphere.Glare = 0.4
 	end
 

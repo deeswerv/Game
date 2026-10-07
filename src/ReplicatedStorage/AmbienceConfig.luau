@@ -45,12 +45,14 @@ AmbienceConfig.NIGHT_SATURATION = -0.15
 -- The Sky is a fixed daytime skybox, so the grade alone barely moved it. Atmosphere DOES
 -- tint and fog the sky itself, which is what actually sells dusk without swapping the sky
 -- asset -- that would need a night skybox chosen deliberately rather than guessed at.
+-- The haze is kept down, so a night street is clear and the lit windows carry across it
+-- (at 1.9 it read as murk).
 AmbienceConfig.NIGHT_ATMOSPHERE = {
-	Density = 0.33,
+	Density = 0.31,
 	Offset = 0.15,
 	Color = Color3.fromRGB(118, 132, 178),
 	Decay = Color3.fromRGB(52, 62, 102),
-	Haze = 1.9,
+	Haze = 1.3,
 	Glare = 0.15,
 }
 

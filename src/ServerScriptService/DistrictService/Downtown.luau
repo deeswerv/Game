@@ -401,10 +401,32 @@ local CAR_CHROME = Color3.fromRGB(200, 202, 208)
 --- middle, `r` the tyre's radius.
 local function wheels(b: Kit.Builder, track: number, axles: { number }, r: number)
 	for _, x in ipairs({ -track, track }) do
+		local side = if x > 0 then 1 else -1
 		for _, z in ipairs(axles) do
+			-- The well: a dark disc on the body behind the tyre, so each wheel sits in an arch.
+			b:decor("WheelWell", Vector3.new(0.05, r * 2.5, r * 2.5), Vector3.new(x + side * 0.36, r, z), Color3.fromRGB(18, 18, 20),
+				nil, { shape = "Cylinder" })
 			b:decor("Wheel", Vector3.new(0.8, r * 2, r * 2), Vector3.new(x, r, z), CAR_TRIM, M.Rubber, { shape = "Cylinder" })
 			b:decor("Rim", Vector3.new(0.84, r * 1.15, r * 1.15), Vector3.new(x, r, z), CAR_CHROME, M.Metal, { shape = "Cylinder" })
+			-- Five spokes across the rim, and the hub over them.
+			for k = 0, 4 do
+				local a = k * math.pi * 2 / 5
+				b:decor("Spoke", Vector3.new(0.08, r * 1.05, 0.16),
+					CFrame.new(x + side * 0.43, r, z) * CFrame.Angles(a, 0, 0), Color3.fromRGB(150, 152, 158), M.Metal)
+			end
 			b:decor("HubCap", Vector3.new(0.9, r * 0.4, r * 0.4), Vector3.new(x, r, z), CAR_TRIM, nil, { shape = "Cylinder" })
+		end
+	end
+end
+
+--- Both sides of a car: a chrome strip under the windows from `z0` to `z1` at `belt`, and a
+--- door handle at each of `handles` (z), at `y`.
+local function carSides(b: Kit.Builder, width: number, belt: number, z0: number, z1: number, y: number, handles: { number })
+	for _, x in ipairs({ -1, 1 }) do
+		b:decor("BeltLine", Vector3.new(0.06, 0.12, z1 - z0), Vector3.new(x * (width / 2 + 0.03), belt, (z0 + z1) / 2), CAR_CHROME,
+			M.Metal)
+		for _, z in ipairs(handles) do
+			b:decor("Handle", Vector3.new(0.08, 0.14, 0.5), Vector3.new(x * (width / 2 + 0.04), y, z), CAR_CHROME, M.Metal)
 		end
 	end
 end
@@ -419,9 +441,14 @@ local function carEnds(b: Kit.Builder, width: number, length: number, y: number,
 		for _, x in ipairs({ -1, 1 }) do
 			b:decor(if s < 0 then "Headlight" else "Taillight", Vector3.new(0.9, 0.36, 0.1),
 				Vector3.new(x * (width / 2 - 0.6), lamp, s * (half + 0.03)),
-				if s < 0 then Color3.fromRGB(250, 246, 226) else Color3.fromRGB(200, 40, 40))
+				if s < 0 then Color3.fromRGB(250, 246, 226) else Color3.fromRGB(200, 40, 40), M.Glass, { reflectance = 0.2 })
+			b:decor("LampSurround", Vector3.new(1.06, 0.5, 0.06), Vector3.new(x * (width / 2 - 0.6), lamp, s * (half + 0.0)),
+				CAR_CHROME, M.Metal)
 		end
 	end
+	-- An exhaust under the back bumper, off to one side.
+	b:decor("Exhaust", Vector3.new(0.7, 0.26, 0.26), CFrame.new(width / 2 - 1, y - 0.35, half + 0.2) * CFrame.Angles(0, math.pi / 2, 0),
+		Color3.fromRGB(120, 122, 128), M.Metal, { shape = "Cylinder" })
 	b:decor("Grille", Vector3.new(width * 0.5, 0.42, 0.08), Vector3.new(0, lamp - 0.05, -half - 0.03), CAR_TRIM)
 end
 
@@ -461,6 +488,9 @@ local function car(b: Kit.Builder, colour: Color3, kind: string?)
 		b:decor("DoorLine", Vector3.new(W + 0.03, 1.0, 0.06), Vector3.new(0, 1.5, 0.6), trimColour)
 		carEnds(b, W, L, 1.0, 1.8)
 		wheels(b, 2.0, { -3.2, 3.2 }, 1.05)
+		carSides(b, W, 2.13, -1.9, 2.3, 1.85, { -0.2, 1.4 })
+		b:decor("Aerial", Vector3.new(3, 0.08, 0.08), CFrame.new(1.6, 3.6, 4.4) * CFrame.Angles(0, 0, math.rad(80)), CAR_TRIM, nil,
+			{ shape = "Cylinder" })
 		for _, x in ipairs({ -1, 1 }) do
 			b:decor("Mirror", Vector3.new(0.45, 0.3, 0.35), Vector3.new(x * 2.45, 2.55, -1.6), colour)
 		end
@@ -484,6 +514,7 @@ local function car(b: Kit.Builder, colour: Color3, kind: string?)
 		b:decor("DoorLine", Vector3.new(W - 0.17, 1.0, 0.06), Vector3.new(0, 1.5, 0.9), trimColour)
 		carEnds(b, W - 0.2, L, 1.0, 1.85)
 		wheels(b, 1.9, { -2.6, 2.6 }, 1.0)
+		carSides(b, W - 0.2, 2.13, -1.9, 3.0, 1.85, { 0, 1.8 })
 		for _, x in ipairs({ -1, 1 }) do
 			b:decor("Mirror", Vector3.new(0.45, 0.3, 0.35), Vector3.new(x * 2.3, 2.6, -1.5), colour)
 		end
@@ -506,6 +537,7 @@ local function car(b: Kit.Builder, colour: Color3, kind: string?)
 		b:decor("DoorLine", Vector3.new(W + 0.23, 1.2, 0.06), Vector3.new(0, 2.0, 0.9), trimColour)
 		carEnds(b, W + 0.2, L, 1.2, 2.3)
 		wheels(b, 2.1, { -3.4, 3.4 }, 1.2)
+		carSides(b, W + 0.2, 2.73, -2.5, 4.6, 2.4, { 0.2, 2.6 })
 		b:decor("Spare", Vector3.new(0.6, 2, 2), CFrame.new(0, 2.4, L / 2 + 0.35) * CFrame.Angles(0, math.rad(90), 0),
 			CAR_TRIM, M.Rubber, { shape = "Cylinder" })
 		b:decor("SpareCover", Vector3.new(0.64, 1.4, 1.4), CFrame.new(0, 2.4, L / 2 + 0.38) * CFrame.Angles(0, math.rad(90), 0),
@@ -530,6 +562,7 @@ local function car(b: Kit.Builder, colour: Color3, kind: string?)
 		b:decor("Crate", Vector3.new(1.6, 1.0, 1.4), CFrame.new(-0.8, 3.0, 3.4) * CFrame.Angles(0, math.rad(12), 0), WOOD, M.WoodPlanks)
 		carEnds(b, W + 0.2, L, 1.05, 2.1)
 		wheels(b, 2.1, { -3.6, 3.4 }, 1.15)
+		carSides(b, W + 0.2, 2.43, -2.4, 1.1, 2.1, { -0.6 })
 	end
 end
 
