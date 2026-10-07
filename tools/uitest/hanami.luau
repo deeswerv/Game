@@ -315,7 +315,7 @@ for name, want in pairs({ HanamiArrival = 1, CaptiveSpot = #HanamiConfig.Captive
 	local have = named[name] and #named[name] or 0
 	check(have == want, ("%s: %d (wants %d)"):format(name, have, want))
 end
-check(parts < 20000, ("a sane part count (%d)"):format(parts))
+check(parts < 34000, ("a sane part count (%d)"):format(parts))
 local counter = named.HanamiCounter and named.HanamiCounter[1]
 check(counter and counter:GetAttribute("OpenPanel") == "Market" and promptOn(counter) ~= nil,
 	"the trader's counter opens the shop")
@@ -411,8 +411,8 @@ end
 check(NPCConfig.Get("Shieldbearer").Shield and NPCConfig.Get("Shieldbearer").Behaviour == "Shield",
 	"the Shieldbearer carries a shield and fights behind it")
 check(NPCConfig.Get("Shinobi").Charge ~= nil, "the Shinobi dashes in")
-local lantern = NPCConfig.ZoneAt(HanamiConfig.At(-150, 0, 30))
-local keep = NPCConfig.ZoneAt(HanamiConfig.At(0, 30, 180))
+local lantern = NPCConfig.ZoneAt(HanamiConfig.Site("LanternHeart"))
+local keep = NPCConfig.ZoneAt(HanamiConfig.Site("Court"))
 check(lantern and lantern.id == "Hanami_LanternRow" and keep and keep.id == "Hanami_Keep"
 	and keep.level[1] > lantern.level[1], "the valley's zones, tougher toward the Keep")
 
@@ -511,7 +511,7 @@ local row = living(function(m)
 	return m:GetAttribute("Zone") == "Hanami_LanternRow"
 end)
 for i = #row + 1, 8 do
-	table.insert(row, Hanami.Spawn("Ronin", Vector3.new(-90 - i * 6, 0, 20)))
+	table.insert(row, Hanami.Spawn("Ronin", Vector3.new(-200 - i * 6, 0.5, 0)))
 end
 for i = 1, 8 do
 	kill(row[i])
@@ -810,7 +810,7 @@ print("Captain Rei")
 state = QuestService.GetState(player, "Captain")
 check(state.offer and state.offer.id == "ShieldWall", "Captain Rei's first bounty: " .. tostring(state.offer and state.offer.id))
 take("ShieldWall")
-local shield = Hanami.Spawn("Shieldbearer", Vector3.new(-100, 0, 60))
+local shield = Hanami.Spawn("Shieldbearer", Vector3.new(-250, 0.5, 0))
 kill(shield)
 check(profile.QuestProgress == 1, "a Shieldbearer counts")
 for _, id in ipairs({ "ShieldWall", "Shadows", "Giants", "OniAtTheGate" }) do

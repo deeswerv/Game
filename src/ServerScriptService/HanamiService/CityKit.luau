@@ -15,8 +15,10 @@
 -- body of every building, every pole and every vehicle is a solid part, so cover is real.
 
 local ServerScriptService = game:GetService("ServerScriptService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Kit = require(ServerScriptService.ArenaService.Kit)
+local CityScreens = require(ReplicatedStorage.CityScreens)
 
 local CityKit = {}
 
@@ -30,7 +32,7 @@ local P = {
 	ROAD_DARK = Color3.fromRGB(72, 74, 82),
 	LINE = Color3.fromRGB(240, 238, 230),
 	LINE_YELLOW = Color3.fromRGB(240, 196, 58),
-	WALK = Color3.fromRGB(206, 200, 190),
+	WALK = Color3.fromRGB(184, 180, 174),
 	WALK_DARK = Color3.fromRGB(184, 178, 170),
 	TACTILE = Color3.fromRGB(246, 204, 60),
 	KERB = Color3.fromRGB(222, 218, 210),
@@ -181,12 +183,66 @@ export type Spec = {
 	seed: number,
 }
 
-CityKit.GROUND = 10      -- the shop floor's height
-CityKit.FLOOR = 7.5      -- every floor above
+CityKit.GROUND = 10      -- the shop floor's height, as drawn
+CityKit.FLOOR = 7.5      -- every floor above, as drawn
 
---- The height of a building with this many floors over the shop.
+-- Buildings are drawn at the numbers above and built through CityKit.Scaled at this size: a
+-- shop floor 12.7 studs high and 9.5 a floor, a door eight studs -- the proportions of a real
+-- street next to the Roblox Boy (5.2 studs: a stud is about a third of a metre). Street
+-- furniture is already drawn at that size and is not scaled.
+CityKit.SCALE = 1.27
+
+--- The height of a building with this many floors over the shop, as built (scaled).
 function CityKit.Height(floors: number): number
-	return CityKit.GROUND + floors * CityKit.FLOOR
+	return (CityKit.GROUND + floors * CityKit.FLOOR) * CityKit.SCALE
+end
+
+--- A builder that builds everything `k` times bigger about its own origin: sizes, positions,
+--- lettering and light ranges all scale; rotations do not. Wraps any builder, so a building
+--- drawn at one size can stand at another.
+function CityKit.Scaled(b: B, k: number): B
+	local function place(at: CFrame | Vector3): CFrame
+		if typeof(at) == "Vector3" then
+			return CFrame.new(at * k)
+		end
+		local cf = at :: CFrame
+		return cf.Rotation + cf.Position * k
+	end
+	local s = {} :: any
+	s.side = b.side
+	s.parent = b.parent
+	s.frame = b.frame
+	s.scale = k
+	function s.part(_self, name, size, at, colour, material, opts)
+		return b:part(name, size * k, place(at), colour, material, opts)
+	end
+	function s.decor(_self, name, size, at, colour, material, opts)
+		return b:decor(name, size * k, place(at), colour, material, opts)
+	end
+	function s.neon(_self, name, size, at, colour, transparency)
+		return b:neon(name, size * k, place(at), colour, transparency)
+	end
+	function s.light(_self, kind, at, colour, brightness, range, extra)
+		return b:light(kind, place(at), colour, brightness, range * k, extra)
+	end
+	function s.sign(_self, label, at, width, height, colour, opts)
+		local o = table.clone(opts or {})
+		o.ppS = (o.ppS or 14) / k
+		if o.stroke then
+			o.stroke = o.stroke
+		end
+		return b:sign(label, place(at), width * k, height * k, colour, o)
+	end
+	function s.world(_self, at)
+		return b:world(place(at))
+	end
+	function s.within(_self, offset)
+		return CityKit.Scaled(b:within(place(offset)), k)
+	end
+	function s.folder(_self, name)
+		return CityKit.Scaled(b:folder(name), k)
+	end
+	return s :: B
 end
 
 --- A window air-conditioner unit hung on a wall: its back against the plane z = 0 at (x, y).
@@ -820,29 +876,33 @@ function CityKit.StreetLamp(b: B, withLight: boolean?)
 	end
 end
 
---- A cherry tree with its foot at the origin.
+--- A cherry tree with its foot at the origin: a short trunk that forks low, and a broad, flat
+--- canopy of blossom -- clouds of it, deeper pink underneath where the shade is, pale on top,
+--- sprays reaching out at the edge.
 function CityKit.Sakura(b: B, seed: number, scale: number?)
 	local s = scale or 1
 	local rng = Random.new(seed)
-	b:part("Trunk", Vector3.new(6 * s, 1 * s, 1 * s), vertical(Vector3.new(0, 3 * s, 0)), P.BARK, M.Wood, { shape = "Cylinder" })
+	b:part("Trunk", Vector3.new(5.6 * s, 1.1 * s, 1.1 * s), vertical(Vector3.new(0, 2.8 * s, 0)), P.BARK, M.Wood, { shape = "Cylinder" })
 	for k = 1, 3 do
 		local a = seed + k * 2.1
-		local from = Vector3.new(0, 5.4 * s, 0)
-		local to = Vector3.new(math.cos(a) * 2.6 * s, 8 * s, math.sin(a) * 2.6 * s)
-		local cf, len = Kit.Span(from, to)
+		local cf, len = Kit.Span(Vector3.new(0, 4.8 * s, 0), Vector3.new(math.cos(a) * 3.4 * s, 8.2 * s, math.sin(a) * 3.4 * s))
 		b:decor("Branch", Vector3.new(0.55 * s, 0.55 * s, len), cf, P.BARK, M.Wood)
 	end
-	local shades = { P.SAKURA_DEEP, P.SAKURA, P.SAKURA_LIGHT }
+	-- The canopy: an underside ring, a middle, a crown, and sprays at the rim.
 	for _, blob in ipairs({
-		{ Vector3.new(0, 8.6, 0), 6.4, 2 }, { Vector3.new(2.8, 8, 1), 4.8, 1 }, { Vector3.new(-2.7, 8.1, -1), 5, 2 },
-		{ Vector3.new(-0.5, 7.7, 2.8), 4.4, 1 }, { Vector3.new(0.9, 10.2, -0.9), 4.6, 3 }, { Vector3.new(-1.5, 10, 1.1), 4, 3 },
-	} :: { { any } }) do
-		local size = blob[2] * rng:NextNumber(0.88, 1.12) * s
-		local at = blob[1] * s + Vector3.new(rng:NextNumber(-0.4, 0.4), rng:NextNumber(-0.3, 0.3), rng:NextNumber(-0.4, 0.4))
-		b:decor("Blossom", Vector3.new(size, size, size), at, shades[blob[3]], nil, { shape = "Ball", shadow = true })
+		{ 0, 7.6, 3.6, 5.2, 1 }, { 2.1, 7.6, 3.6, 5.2, 1 }, { 4.2, 7.6, 3.6, 5.2, 1 },
+		{ 1.0, 9.4, 1.6, 6.4, 2 }, { 3.1, 9.4, 1.6, 6.0, 2 }, { 5.2, 9.4, 1.6, 6.2, 2 },
+		{ 0, 10.6, 0, 6.8, 3 }, { 0.5, 7.8, 5.6, 2.8, 2 }, { 2.6, 8.4, 5.6, 2.6, 3 }, { 4.7, 8.0, 5.6, 2.8, 2 },
+	} :: { { number } }) do
+		local a = blob[1] + seed * 0.37
+		local r = blob[3] * s
+		local size = blob[4] * s * rng:NextNumber(0.88, 1.12)
+		local at = Vector3.new(math.cos(a) * r, blob[2] * s + rng:NextNumber(-0.3, 0.3) * s, math.sin(a) * r)
+		local shade = if blob[5] == 1 then P.SAKURA_DEEP elseif blob[5] == 2 then P.SAKURA else P.SAKURA_LIGHT
+		b:decor("Blossom", Vector3.new(size, size * 0.66, size), at, shade, nil, { shape = "Ball", shadow = true })
 	end
-	b:decor("Petals", Vector3.new(0.06, 7.4 * s, 7.4 * s), CFrame.new(0, 0.05, 0) * CFrame.Angles(0, 0, math.rad(90)), P.SAKURA_LIGHT,
-		nil, { shape = "Cylinder", transparency = 0.3 })
+	b:decor("Petals", Vector3.new(0.06, 9 * s, 9 * s), CFrame.new(0, 0.05, 0) * CFrame.Angles(0, 0, math.rad(90)), P.SAKURA_LIGHT,
+		nil, { shape = "Cylinder", transparency = 0.35 })
 end
 
 --- A street tree: a trunk in a grate and a round green crown.
@@ -1141,6 +1201,245 @@ function CityKit.FireStair(b: B, at: Vector3, rise: number, w: number?)
 		local p = at:Lerp(at + Vector3.new(0, rise, run), k / 3)
 		b:decor("StairPost", Vector3.new(0.2, 3, 0.2), p + Vector3.new(-width / 2, 1.5 + 0.4, 0), P.STEEL)
 	end
+end
+
+-- ------------------------------------------------------------------ the big city --
+-- Pieces drawn at full size (never through Scaled): the giant screens, the glass towers, the
+-- round tower, the avenue's lamps and trees and rails, the bus.
+
+--- A giant screen on the wall behind (x, y): a dark bezel proud of the plane z = 0 and the
+--- picture, which shines by itself. `ad` is its first picture (CityScreens turns them over).
+function CityKit.Screen(b: B, x: number, y: number, w: number, h: number, ad: number, out: number?): BasePart
+	local o = out or 0
+	local bezel = b:decor("ScreenFrame", Vector3.new(w + 1.6, h + 1.6, 1.2), Vector3.new(x, y, -0.6 - o), P.KURO)
+	bezel.CastShadow = true
+	b:decor("ScreenLip", Vector3.new(w + 2.2, 0.6, 1.8), Vector3.new(x, y - h / 2 - 1.1, -0.9 - o), P.STEEL)
+	local panel = b:decor("Screen", Vector3.new(w, h, 0.2), Vector3.new(x, y, -1.3 - o), CityScreens.Get(ad).bg)
+	panel:AddTag(CityScreens.TAG)
+	CityScreens.Paint(panel, ad)
+	return panel
+end
+
+export type TowerSpec = {
+	w: number, d: number, floors: number, seed: number,
+	glass: Color3?, body: Color3?, fin: Color3?, podium: Color3?, accent: Color3?,
+	name: string?,        -- over the lobby doors
+	jp: string?,          -- on the crown, big
+	left: boolean?, right: boolean?, back: boolean?,
+	crown: string?,       -- "setback" (default), "flat", "spire"
+	finStep: number?,     -- the spacing of the fins up the glass
+	mast: boolean?,
+}
+
+CityKit.TOWER_LOBBY = 16      -- a tower's lobby floor
+CityKit.TOWER_FLOOR = 10      -- and every floor over it
+
+--- A high-rise, front on z = 0 looking -Z: a lobby of tall dark glass under a band, then a pane
+--- of glass a floor (lit at night floor by floor, like offices) between slim spandrels, fins up
+--- every face you can see, and a crown: a glass setback with a coloured band round it, a flat
+--- roof with plant, or a spire. Drawn at full size. Returns its height.
+function CityKit.Tower(b: B, s: TowerSpec): number
+	local w, d = s.w, s.d
+	local L, F = CityKit.TOWER_LOBBY, CityKit.TOWER_FLOOR
+	local top = L + s.floors * F
+	local glass = s.glass or P.GLASS
+	local body = s.body or Color3.fromRGB(214, 218, 222)
+	local fin = s.fin or lighter(body, 0.25)
+	local podium = s.podium or Color3.fromRGB(62, 66, 74)
+	local accent = s.accent or P.GOLD
+	b:part("Tower", Vector3.new(w, top, d), Vector3.new(0, top / 2, d / 2), body)
+	local function face(fb: B, span: number, lobby: boolean)
+		for i = 1, s.floors do
+			local y0 = L + (i - 1) * F
+			fb:decor("Windows", Vector3.new(span - 1.6, F - 2.4, 0.3), Vector3.new(0, y0 + F / 2 + 0.6, -0.15), glass, M.Glass,
+				{ reflectance = 0.22 })
+		end
+		local n = math.max(2, math.floor(span / (s.finStep or 7.5) + 0.5))
+		for k = 0, n do
+			fb:decor("Fin", Vector3.new(0.7, top - L, 1.2), Vector3.new(-span / 2 + 0.35 + k * (span - 0.7) / n, L + (top - L) / 2, -0.6), fin)
+		end
+		fb:decor("LobbyBand", Vector3.new(span + 0.2, 3.2, 1.4), Vector3.new(0, L - 1.6, -0.7), podium)
+		if lobby then
+			fb:decor("LobbyGlass", Vector3.new(span - 2, L - 3.6, 0.3), Vector3.new(0, (L - 3.6) / 2 + 0.3, -0.15), P.GLASS_DARK, M.Glass,
+				{ reflectance = 0.3 })
+			local m = math.max(2, math.floor(span / 9))
+			for k = 0, m do
+				fb:decor("Mullion", Vector3.new(0.5, L - 3.6, 0.6), Vector3.new(-(span - 2) / 2 + k * (span - 2) / m, (L - 3.6) / 2 + 0.3, -0.3),
+					podium)
+			end
+		else
+			fb:decor("Plinth", Vector3.new(span, L - 3.2, 0.4), Vector3.new(0, (L - 3.2) / 2, -0.2), podium, M.Granite)
+		end
+	end
+	face(b, w, true)
+	for _, side in ipairs({ -1, 1 }) do
+		if (side < 0 and s.left) or (side > 0 and s.right) then
+			face(b:within(CFrame.new(side * w / 2, 0, d / 2) * CFrame.Angles(0, -side * math.pi / 2, 0)), d, false)
+		end
+	end
+	if s.back then
+		face(b:within(CFrame.new(0, 0, d) * CFrame.Angles(0, math.pi, 0)), w, false)
+	end
+	-- The doors' canopy and the name over them.
+	local cw = math.min(w * 0.5, 40)
+	local canopy = b:decor("Canopy", Vector3.new(cw, 0.8, 9), Vector3.new(0, 10.6, -4.5), podium)
+	canopy.CastShadow = true
+	b:decor("CanopyEdge", Vector3.new(cw, 0.5, 0.4), Vector3.new(0, 10.6, -9.1), accent)
+	if s.name then
+		text(b, s.name, CFrame.new(0, L - 1.6, -1.46), w * 0.6, 2.2, accent, Enum.Font.GothamBold)
+	end
+	-- The roof's edge, then the crown.
+	b:decor("RoofEdge", Vector3.new(w + 1, 1.4, d + 1), Vector3.new(0, top + 0.2, d / 2), fin)
+	local crown = s.crown or "setback"
+	local peak = top
+	if crown == "setback" then
+		local sw, sd, sh = w * 0.7, d * 0.7, F * 2.4
+		b:part("Crown", Vector3.new(sw, sh, sd), Vector3.new(0, top + sh / 2, d / 2), body)
+		b:decor("CrownGlass", Vector3.new(sw + 0.3, sh - 4, sd + 0.3), Vector3.new(0, top + sh / 2 - 0.6, d / 2), glass, M.Glass,
+			{ reflectance = 0.3 })
+		b:decor("NameBand", Vector3.new(sw + 0.8, 1.4, sd + 0.8), Vector3.new(0, top + sh - 0.7, d / 2), accent)
+		peak = top + sh
+		if s.jp then
+			text(b, s.jp, CFrame.new(0, top + sh / 2 - 0.6, d / 2 - sd / 2 - 0.3), sw * 0.8, sh * 0.6, P.WHITE, Enum.Font.GothamBlack)
+		end
+	elseif crown == "spire" then
+		b:part("Crown", Vector3.new(w * 0.5, F * 1.5, d * 0.5), Vector3.new(0, top + F * 0.75, d / 2), body)
+		b:decor("NameBand", Vector3.new(w * 0.5 + 0.6, 1.2, d * 0.5 + 0.6), Vector3.new(0, top + F * 1.5, d / 2), accent)
+		b:decor("Spire", Vector3.new(1.4, 40, 1.4), Vector3.new(0, top + F * 1.5 + 20, d / 2), P.STEEL, M.Metal)
+		peak = top + F * 1.5 + 40
+	else
+		for k = 0, 2 do
+			b:decor("RoofUnit", Vector3.new(6, 4, 6), Vector3.new(-w / 4 + k * w / 4, top + 2.6, d * 0.6), Color3.fromRGB(196, 198, 196))
+		end
+		b:decor("Helipad", Vector3.new(0.3, math.min(w, d) * 0.6, math.min(w, d) * 0.6), vertical(Vector3.new(0, top + 0.95, d / 2)),
+			Color3.fromRGB(70, 74, 82), nil, { shape = "Cylinder" })
+		if s.jp then
+			text(b, s.jp, CFrame.new(0, top - F / 2, -0.32), w * 0.7, F * 0.7, P.WHITE, Enum.Font.GothamBlack)
+		end
+	end
+	if s.mast ~= false and peak > 120 then
+		b:decor("Mast", Vector3.new(0.8, 18, 0.8), Vector3.new(0, peak + 9, d / 2), P.STEEL)
+		b:decor("AirLight", Vector3.new(1.2, 1.2, 1.2), Vector3.new(0, peak + 18.6, d / 2), Color3.fromRGB(240, 60, 50), M.Neon)
+	end
+	return peak
+end
+
+export type RoundSpec = {
+	r: number, floors: number, seed: number,
+	body: Color3?, glass: Color3?, ring: Color3?,
+	sign: string?,        -- written down the tall fin up its front
+	head: string?,        -- the box sign on top of the fin
+	signColour: Color3?,
+}
+
+--- A round tower standing on the origin, its front to -Z (the one on the Scramble's corner):
+--- a drum of glass bands between silver floors over a ring of shop windows, a coloured ring
+--- round the top, and the tall sign up its front with the name in a box over the roof.
+function CityKit.RoundTower(b: B, s: RoundSpec): number
+	local r = s.r
+	local L, F = CityKit.TOWER_LOBBY, CityKit.TOWER_FLOOR
+	local top = L + s.floors * F
+	local body = s.body or Color3.fromRGB(214, 218, 224)
+	local glass = s.glass or P.GLASS_DARK
+	local ring = s.ring or P.SAKURA_DEEP
+	local sc = s.signColour or P.KURO
+	b:part("RoundTower", Vector3.new(top, r * 2, r * 2), vertical(Vector3.new(0, top / 2, 0)), body, nil, { shape = "Cylinder" })
+	for i = 1, s.floors do
+		local y0 = L + (i - 1) * F
+		b:decor("Windows", Vector3.new(F - 2.8, r * 2 + 0.5, r * 2 + 0.5), vertical(Vector3.new(0, y0 + F / 2 + 0.5, 0)), glass, M.Glass,
+			{ shape = "Cylinder", reflectance = 0.25 })
+	end
+	b:decor("ShopGlass", Vector3.new(L - 4.4, r * 2 + 0.5, r * 2 + 0.5), vertical(Vector3.new(0, (L - 4.4) / 2 + 0.3, 0)), P.GLASS, M.Glass,
+		{ shape = "Cylinder", reflectance = 0.2 })
+	local skirt = b:decor("PodiumRing", Vector3.new(3.2, r * 2 + 3, r * 2 + 3), vertical(Vector3.new(0, L - 1.8, 0)), P.KURO, nil,
+		{ shape = "Cylinder" })
+	skirt.CastShadow = true
+	b:decor("SignBand", Vector3.new(4.4, r * 2 + 1, r * 2 + 1), vertical(Vector3.new(0, top - 2.6, 0)), ring, nil, { shape = "Cylinder" })
+	b:decor("RoofCap", Vector3.new(1.4, r * 2 - 1, r * 2 - 1), vertical(Vector3.new(0, top + 0.7, 0)), body, nil, { shape = "Cylinder" })
+	if s.sign then
+		local fh = top - L - 4
+		local y = L + 2 + fh / 2
+		local fin = b:decor("TallSign", Vector3.new(7, fh, 2.6), Vector3.new(0, y, -r - 1.8), sc)
+		fin.CastShadow = true
+		text(b, stacked(s.sign), CFrame.new(0, y, -r - 3.16), 5.6, fh * 0.94, ink(sc), Enum.Font.GothamBlack)
+		local box = b:decor("TallSign", Vector3.new(16, 12, 3), Vector3.new(0, top + 7, -r - 1.8), sc)
+		box.CastShadow = true
+		text(b, s.head or "109", CFrame.new(0, top + 7, -r - 3.36), 14.4, 10, ink(sc), Enum.Font.GothamBlack)
+		b:decor("SignStay", Vector3.new(1, 1, r * 0.8), Vector3.new(0, top + 2, -r * 0.6), P.STEEL)
+	end
+	return top
+end
+
+--- An avenue lamp: a tall dark pole and a long arm out over the road (-Z), a slim head on its
+--- end; `both` gives it a second, lower arm over the pavement. A light under the road's head
+--- if `withLight` (one lamp in two, to keep the lights few).
+function CityKit.AvenueLamp(b: B, withLight: boolean?, both: boolean?)
+	local h = 28
+	local c = Color3.fromRGB(70, 74, 82)
+	b:part("LampPole", Vector3.new(h, 0.9, 0.9), vertical(Vector3.new(0, h / 2, 0)), c, M.Metal, { shape = "Cylinder" })
+	b:decor("LampFoot", Vector3.new(1.6, 3, 1.6), Vector3.new(0, 1.5, 0), c, M.Metal)
+	b:decor("LampArm", Vector3.new(0.45, 0.45, 9), Vector3.new(0, h - 0.6, -4.4), c, M.Metal)
+	b:decor("LampHead", Vector3.new(1.8, 0.6, 4.2), Vector3.new(0, h - 1, -8.6), Color3.fromRGB(240, 240, 232))
+	if both then
+		b:decor("LampArm", Vector3.new(0.4, 0.4, 5), Vector3.new(0, h - 6, 2.4), c, M.Metal)
+		b:decor("LampHead", Vector3.new(1.4, 0.5, 2.6), Vector3.new(0, h - 6.4, 4.6), Color3.fromRGB(240, 240, 232))
+	end
+	if withLight then
+		b:light("Spot", CFrame.new(0, h - 1.6, -8.6) * CFrame.Angles(math.rad(-90), 0, 0), Color3.fromRGB(255, 232, 196), 1.5, 44,
+			{ Angle = 120 })
+	end
+end
+
+--- A street tree in its bed: a granite kerb round a square of earth and a zelkova -- a tall
+--- trunk, a broad crown -- or a cherry (`sakura`).
+function CityKit.TreeBed(b: B, seed: number, sakura: boolean?, scale: number?)
+	b:decor("TreeKerb", Vector3.new(7.4, 0.7, 7.4), Vector3.new(0, 0.35, 0), P.STONE, M.Granite)
+	b:decor("TreeEarth", Vector3.new(6.4, 0.72, 6.4), Vector3.new(0, 0.36, 0), Color3.fromRGB(104, 84, 62), M.Ground)
+	if sakura then
+		CityKit.Sakura(b, seed, scale or 2.4)
+	else
+		CityKit.StreetTree(b, seed, scale or 2.3)
+	end
+end
+
+--- The white guard rail along a kerb, from a to c on the pavement: a top rail and a lower one
+--- on posts.
+function CityKit.Guardrail(b: B, a: Vector3, c: Vector3)
+	local cf, len = Kit.Span(a + Vector3.new(0, 3, 0), c + Vector3.new(0, 3, 0))
+	b:part("GuardRail", Vector3.new(0.4, 0.4, len), cf, P.WHITE, nil, { query = false, shadow = true })
+	local cf2 = Kit.Span(a + Vector3.new(0, 1.6, 0), c + Vector3.new(0, 1.6, 0))
+	b:decor("GuardRail", Vector3.new(0.3, 0.3, len), cf2, P.WHITE)
+	local n = math.max(1, math.floor(len / 7))
+	for k = 0, n do
+		b:decor("RailPost", Vector3.new(0.35, 3, 0.35), a:Lerp(c, k / n) + Vector3.new(0, 1.5, 0), P.WHITE)
+	end
+end
+
+--- A city bus, its nose to -Z: white over a coloured skirt, its route over the windscreen.
+function CityKit.Bus(b: B, colour: Color3, route: string?)
+	b:part("Bus", Vector3.new(8.4, 8.6, 36), Vector3.new(0, 5.6, 0), Color3.fromRGB(244, 244, 240), M.SmoothPlastic)
+	b:decor("BusSkirt", Vector3.new(8.5, 1.6, 36.1), Vector3.new(0, 2, 0), colour)
+	b:decor("BusStripe", Vector3.new(8.5, 0.6, 36.1), Vector3.new(0, 3.4, 0), lighter(colour, 0.35))
+	b:decor("BusGlass", Vector3.new(8.52, 3, 28), Vector3.new(0, 7.4, 2.4), Color3.fromRGB(52, 66, 84), M.Glass)
+	b:decor("BusScreen", Vector3.new(7.6, 4.8, 0.2), Vector3.new(0, 6.8, -18.06), Color3.fromRGB(52, 66, 84), M.Glass)
+	b:decor("BusRoof", Vector3.new(7.4, 0.8, 30), Vector3.new(0, 10.2, 1), Color3.fromRGB(214, 216, 218))
+	b:decor("BusSign", Vector3.new(6.4, 1.2, 0.2), Vector3.new(0, 9.4, -18.1), P.KURO)
+	text(b, route or "花見駅 HANAMI STN", CFrame.new(0, 9.4, -18.22), 6, 1, Color3.fromRGB(250, 186, 70), Enum.Font.Code)
+	for _, x in ipairs({ -3.9, 3.9 }) do
+		for _, z in ipairs({ -11, 11 }) do
+			b:decor("BusWheel", Vector3.new(1.2, 3.4, 3.4), Vector3.new(x, 1.7, z), P.KURO, nil, { shape = "Cylinder" })
+		end
+	end
+	for _, z in ipairs({ -15, 2 }) do
+		b:decor("BusDoor", Vector3.new(0.1, 6.6, 3.6), Vector3.new(-4.26, 4.6, z), Color3.fromRGB(60, 74, 90), M.Glass)
+	end
+	b:decor("HeadLamp", Vector3.new(1.4, 0.6, 0.1), Vector3.new(-3, 2.8, -18.06), Color3.fromRGB(250, 246, 220))
+	b:decor("HeadLamp", Vector3.new(1.4, 0.6, 0.1), Vector3.new(3, 2.8, -18.06), Color3.fromRGB(250, 246, 220))
+end
+
+--- A car at the size of the city's streets (the drawn car, a third bigger).
+function CityKit.BigCar(b: B, kind: string, colour: Color3)
+	CityKit.Car(CityKit.Scaled(b, 1.3), kind, colour)
 end
 
 return CityKit

@@ -15,6 +15,8 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 const DATA = window.MAP;
 const W = 1280, H = 720;
@@ -49,6 +51,14 @@ const SKY = {
   scene.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, depthWrite: false })));
 }
 
+// The sky's light in glass and metal (Roblox lights shade and reflections from its sky), and
+// haze so distance reads.
+{
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+  scene.environmentIntensity = mood === 'night' ? 0.12 : 0.45;
+  scene.fog = new THREE.Fog(SKY.bottom, mood === 'night' ? 160 : 420, mood === 'night' ? 1600 : 3200);
+}
 scene.add(new THREE.HemisphereLight(...SKY.hemi));
 const sun = new THREE.DirectionalLight(SKY.sun[0], SKY.sun[1]);
 scene.add(sun);
@@ -71,6 +81,93 @@ const MATS = {
   Grass: { roughness: 1 }, LeafyGrass: { roughness: 1 }, Fabric: { roughness: 1 }, Ice: { roughness: 0.1 },
   ForceField: { roughness: 0.2, transparent: true, opacity: 0.25 },
 };
+// Roblox's materials have texture; flat colour makes every surface look like plastic. Each
+// is drawn once on a canvas (near-white, so the part's colour tints it) and tiled by world
+// size: `tile` studs per repeat.
+const TEX = {};
+function noise(g, w, h, amount, alpha) {
+  const img = g.getImageData(0, 0, w, h);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const n = (Math.random() - 0.5) * amount;
+    img.data[i] += n; img.data[i + 1] += n; img.data[i + 2] += n; img.data[i + 3] = alpha ?? 255;
+  }
+  g.putImageData(img, 0, 0);
+}
+function makeTexture(kind) {
+  const N = 256;
+  const c = document.createElement('canvas'); c.width = c.height = N;
+  const g = c.getContext('2d');
+  g.fillStyle = '#f0f0f0'; g.fillRect(0, 0, N, N);
+  let tile = 4;
+  if (kind === 'Brick') {
+    tile = 4;
+    const rows = 8, bw = N / 4;
+    for (let r = 0; r < rows; r++) {
+      const off = (r % 2) * bw / 2;
+      for (let x = -bw; x < N + bw; x += bw) {
+        const v = 215 + Math.floor(Math.random() * 35);
+        g.fillStyle = `rgb(${v},${v},${v})`;
+        g.fillRect(x + off + 2, r * (N / rows) + 2, bw - 4, N / rows - 4);
+      }
+    }
+    g.fillStyle = 'rgba(150,150,150,1)';
+    noise(g, N, N, 18);
+    g.globalCompositeOperation = 'destination-over'; g.fillStyle = '#a8a8a8'; g.fillRect(0, 0, N, N);
+    g.globalCompositeOperation = 'source-over';
+  } else if (kind === 'Concrete' || kind === 'Granite' || kind === 'Slate' || kind === 'Plaster') {
+    tile = kind === 'Concrete' ? 10 : 6;
+    noise(g, N, N, kind === 'Granite' ? 40 : 22);
+    if (kind === 'Concrete') { g.strokeStyle = 'rgba(0,0,0,0.10)'; g.lineWidth = 2; g.strokeRect(1, 1, N - 2, N - 2); }
+    if (kind === 'Slate') for (let i = 0; i < 9; i++) { g.fillStyle = `rgba(0,0,0,${0.03 + Math.random() * 0.05})`; g.fillRect(0, Math.random() * N, N, 6 + Math.random() * 18); }
+  } else if (kind === 'Asphalt') {
+    tile = 8; noise(g, N, N, 34);
+  } else if (kind === 'Pavement' || kind === 'CeramicTiles') {
+    tile = kind === 'Pavement' ? 6 : 3;
+    noise(g, N, N, 14);
+    g.strokeStyle = 'rgba(0,0,0,0.22)'; g.lineWidth = 3;
+    for (let i = 0; i <= N; i += N / 2) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, N); g.stroke(); g.beginPath(); g.moveTo(0, i); g.lineTo(N, i); g.stroke(); }
+  } else if (kind === 'Cobblestone' || kind === 'Pebble') {
+    tile = 4;
+    g.fillStyle = '#9a9a9a'; g.fillRect(0, 0, N, N);
+    for (let i = 0; i < 70; i++) {
+      const v = 200 + Math.floor(Math.random() * 50);
+      g.fillStyle = `rgb(${v},${v},${v})`;
+      g.beginPath(); g.ellipse(Math.random() * N, Math.random() * N, 12 + Math.random() * 14, 10 + Math.random() * 10, Math.random() * 3, 0, Math.PI * 2); g.fill();
+    }
+  } else if (kind === 'WoodPlanks' || kind === 'Wood') {
+    tile = 4;
+    const planks = kind === 'WoodPlanks' ? 4 : 1;
+    for (let p = 0; p < planks; p++) {
+      const v = 205 + Math.floor(Math.random() * 40);
+      g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(0, p * N / planks, N, N / planks);
+      for (let l = 0; l < 14; l++) { g.strokeStyle = `rgba(0,0,0,${0.05 + Math.random() * 0.08})`; g.beginPath(); const y = p * N / planks + Math.random() * N / planks; g.moveTo(0, y); g.bezierCurveTo(N / 3, y + 4, N * 2 / 3, y - 4, N, y + 2); g.stroke(); }
+      if (planks > 1) { g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(0, p * N / planks, N, 3); }
+    }
+  } else if (kind === 'Marble') {
+    tile = 12; noise(g, N, N, 8);
+    for (let i = 0; i < 6; i++) { g.strokeStyle = 'rgba(0,0,0,0.08)'; g.lineWidth = 1 + Math.random() * 2; g.beginPath(); let x = Math.random() * N, y = 0; g.moveTo(x, y); while (y < N) { x += (Math.random() - 0.5) * 40; y += 20; g.lineTo(x, y); } g.stroke(); }
+  } else if (kind === 'DiamondPlate') {
+    tile = 2; noise(g, N, N, 10);
+    g.fillStyle = 'rgba(255,255,255,0.6)';
+    for (let x = 0; x < N; x += 32) for (let y = 0; y < N; y += 32) { g.save(); g.translate(x + 16, y + 16); g.rotate(((x + y) / 32) % 2 ? 0.8 : -0.8); g.fillRect(-10, -3, 20, 6); g.restore(); }
+  } else if (kind === 'Fabric') {
+    tile = 2; for (let i = 0; i < N; i += 4) { g.fillStyle = 'rgba(0,0,0,0.06)'; g.fillRect(i, 0, 2, N); g.fillRect(0, i, N, 2); }
+  } else if (kind === 'Grass' || kind === 'LeafyGrass' || kind === 'Ground' || kind === 'Mud') {
+    tile = 8; noise(g, N, N, 50);
+  } else if (kind === 'Metal' || kind === 'CorrodedMetal') {
+    tile = 4; noise(g, N, N, kind === 'CorrodedMetal' ? 50 : 10);
+  } else return null;
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  return { map: t, tile };
+}
+function textureFor(kind) {
+  if (!(kind in TEX)) TEX[kind] = makeTexture(kind);
+  return TEX[kind];
+}
+
 function material(p) {
   const color = new THREE.Color(`rgb(${p.c[0]},${p.c[1]},${p.c[2]})`);
   const opacity = 1 - (p.t || 0);
@@ -79,7 +176,10 @@ function material(p) {
     return new THREE.MeshBasicMaterial({ color: color.multiplyScalar(1.6), transparent: opacity < 1, opacity });
   }
   const spec = MATS[p.m] || { roughness: 0.6 };
-  const m = new THREE.MeshStandardMaterial({ color, roughness: spec.roughness ?? 0.6, metalness: spec.metalness ?? 0 });
+  const tex = textureFor(p.m);
+  const m = new THREE.MeshStandardMaterial({ color, roughness: spec.roughness ?? 0.6, metalness: spec.metalness ?? 0,
+    map: tex ? tex.map : null });
+  if (p.m === 'Glass') { m.envMapIntensity = 1.6; m.roughness = 0.04; }
   const o = Math.min(opacity, spec.opacity ?? 1);
   if (o < 1 || spec.transparent) { m.transparent = true; m.opacity = o; m.depthWrite = o > 0.6; }
   if (p.rf) m.metalness = Math.max(m.metalness, p.rf * 0.8);
@@ -102,13 +202,26 @@ function wedgeGeometry(sx, sy, sz) {
 const geoCache = new Map();
 function geometry(p) {
   const [sx, sy, sz] = p.z;
-  const key = `${p.s}|${sx.toFixed(3)}|${sy.toFixed(3)}|${sz.toFixed(3)}`;
+  const tex = textureFor(p.m);
+  const tile = tex ? tex.tile : 0;
+  const key = `${p.s}|${sx.toFixed(3)}|${sy.toFixed(3)}|${sz.toFixed(3)}|${tile}`;
   if (geoCache.has(key)) return geoCache.get(key);
   let g;
   if (p.s === 'Ball') g = new THREE.SphereGeometry(Math.min(sx, sy, sz) / 2, 20, 14);
   else if (p.s === 'Cylinder') { g = new THREE.CylinderGeometry(Math.min(sy, sz) / 2, Math.min(sy, sz) / 2, sx, 24); g.rotateZ(Math.PI / 2); }
   else if (p.s === 'Wedge' || p.s === 'CornerWedge') g = wedgeGeometry(sx, sy, sz);
-  else g = new THREE.BoxGeometry(sx, sy, sz);
+  else {
+    g = new THREE.BoxGeometry(sx, sy, sz);
+    if (tile) {
+      // Tile the texture by world size: each face's u,v spans its own two dimensions.
+      const uv = g.attributes.uv;
+      const dims = [[sz, sy], [sz, sy], [sx, sz], [sx, sz], [sx, sy], [sx, sy]];
+      for (let f = 0; f < 6; f++) for (let v = 0; v < 4; v++) {
+        const i = f * 4 + v;
+        uv.setXY(i, uv.getX(i) * dims[f][0] / tile, uv.getY(i) * dims[f][1] / tile);
+      }
+    }
+  }
   geoCache.set(key, g);
   return g;
 }
@@ -128,6 +241,32 @@ for (const p of DATA.parts) {
   mesh.receiveShadow = !isNeon;
   scene.add(mesh);
   if (p.z[0] < 400 && p.z[2] < 400) bounds.expandByPoint(new THREE.Vector3(...p.p));
+}
+
+// ----------------------------------------------------------------- people --
+// The players' own rig for scale: the Roblox Boy in a white tee and dark trousers.
+if (DATA.rig && DATA.figures) {
+  const SKIN = 0xd2a88a, TEE = 0xf4f4f0, PANTS = 0x2b2f38, SHOE = 0xf0f0ec;
+  const DRESS = { Head: SKIN, UpperTorso: TEE, LowerTorso: PANTS, LeftUpperArm: TEE, RightUpperArm: TEE,
+    LeftLowerArm: SKIN, RightLowerArm: SKIN, LeftHand: SKIN, RightHand: SKIN, LeftUpperLeg: PANTS,
+    RightUpperLeg: PANTS, LeftLowerLeg: PANTS, RightLowerLeg: PANTS, LeftFoot: SHOE, RightFoot: SHOE };
+  for (const f of DATA.figures) {
+    const [x, y, z, yaw] = f;
+    const root = new THREE.Matrix4().makeRotationY(THREE.MathUtils.degToRad(yaw || 0));
+    root.setPosition(x, y + DATA.rig.stand, z);
+    for (const part of DATA.rig.parts) {
+      const [px, py, pz] = part.z;
+      const geo = part.n === 'Head' ? new THREE.CylinderGeometry(Math.min(px, pz) / 2, Math.min(px, pz) / 2, py, 20)
+        : new RoundedBoxGeometry(px * 0.98, py * 0.98, pz * 0.98, 2, Math.min(px, py, pz) * 0.22);
+      const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: DRESS[part.n] ?? 0x888888, roughness: 0.55 }));
+      const m = part.m;
+      const local = new THREE.Matrix4().set(m[3], m[4], m[5], m[0], m[6], m[7], m[8], m[1], m[9], m[10], m[11], m[2], 0, 0, 0, 1);
+      mesh.matrixAutoUpdate = false;
+      mesh.matrix.multiplyMatrices(root, local);
+      mesh.castShadow = true;
+      scene.add(mesh);
+    }
+  }
 }
 
 // ------------------------------------------------------------------ lights --
@@ -195,7 +334,9 @@ function addSigns() {
 const camera = new THREE.PerspectiveCamera(60, W / H, 0.5, 9000);
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
-const bloom = new UnrealBloomPass(new THREE.Vector2(W, H), mood === 'night' ? 0.9 : 0.5, 0.55, 0.82);
+// (Roblox blooms only what is brighter than its threshold, 1.7 here: neon, lamps, the sun on
+// glass -- never a pale pavement in daylight.)
+const bloom = new UnrealBloomPass(new THREE.Vector2(W, H), mood === 'night' ? 0.9 : 0.45, 0.55, mood === 'night' ? 0.82 : 1.6);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
 
@@ -219,6 +360,15 @@ window.renderView = (i) => {
   camera.updateProjectionMatrix();
   camera.position.set(...c.pos);
   camera.lookAt(new THREE.Vector3(...c.look));
+  // A big world: fit the sun's shadow round what this view looks at, so shadows stay sharp.
+  if (reach > 400) {
+    const target = new THREE.Vector3(...c.look);
+    const r = Math.min(reach, Math.max(160, camera.position.distanceTo(target) * 1.3));
+    sun.position.set(target.x + r * 0.6, target.y + r * 1.4, target.z + r * 0.45);
+    sun.target.position.copy(target);
+    sc.left = -r; sc.right = r; sc.top = r; sc.bottom = -r; sc.far = r * 5;
+    sc.updateProjectionMatrix();
+  }
   composer.render();
   return cams.length;
 };

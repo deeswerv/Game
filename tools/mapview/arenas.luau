@@ -189,8 +189,71 @@ data.cameras = {
 	-- From a high corner inside the map, across the middle.
 	{ pos = { -(hw - 3), 24, -(hl - 12) }, look = { hw * 0.3, 0, hl * 0.35 }, fov = 62 },
 }
+-- A big world (a city) has its own cameras only.
+if map and map.Preview and map.PreviewOnly then
+	data.cameras = {}
+end
 for _, extra in ipairs(map and map.Preview or {}) do
 	table.insert(data.cameras, extra)
+end
+-- Pick cameras by index (CAMS=0,3,5) to iterate on a few views quickly.
+local only = process.env.CAMS
+if only then
+	local picked = {}
+	for n in only:gmatch("%d+") do
+		local cam = data.cameras[tonumber(n) + 1]
+		if cam then
+			table.insert(picked, cam)
+		end
+	end
+	data.cameras = picked
+end
+if process.env.MOOD then
+	data.mood = process.env.MOOD
+end
+
+-- People for scale: the players' own rig (the locked Roblox Boy) standing where the module
+-- says (map.Figures: { x, y, z, yaw } in the map's frame, on the ground at y).
+local starter = game:GetService("StarterPlayer"):FindFirstChild("StarterCharacter")
+if starter and map and map.Figures then
+	local motors, parts = {}, {}
+	for _, d in ipairs(starter:GetDescendants()) do
+		if d.ClassName == "Motor6D" and d.Part0 and d.Part1 then
+			motors[d.Part1.Name] = { part0 = d.Part0.Name, c0 = d.C0, c1 = d.C1 }
+		elseif d:IsA("BasePart") and d.Name ~= "HumanoidRootPart" then
+			parts[d.Name] = d
+		end
+	end
+	local at = { HumanoidRootPart = roblox.CFrame.new() }
+	local progress = true
+	while progress do
+		progress = false
+		for name, m in pairs(motors) do
+			if not at[name] and at[m.part0] then
+				at[name] = at[m.part0] * m.c0 * m.c1:Inverse()
+				progress = true
+			end
+		end
+	end
+	local low = math.huge
+	local rig = {}
+	for name, cf in pairs(at) do
+		local part = parts[name]
+		if part then
+			for _, sx in ipairs({ -1, 1 }) do
+				for _, sy in ipairs({ -1, 1 }) do
+					for _, sz in ipairs({ -1, 1 }) do
+						low = math.min(low, cf:PointToWorldSpace(part.Size / 2 * roblox.Vector3.new(sx, sy, sz)).Y)
+					end
+				end
+			end
+			local x, y, z = cf.XVector, cf.YVector, cf.ZVector
+			table.insert(rig, { n = name, z = { part.Size.X, part.Size.Y, part.Size.Z },
+				m = { cf.X, cf.Y, cf.Z, x.X, y.X, z.X, x.Y, y.Y, z.Y, x.Z, y.Z, z.Z } })
+		end
+	end
+	data.rig = { parts = rig, stand = -low }
+	data.figures = map.Figures
 end
 fs.writeFile(outPath, serde.encode("json", data))
 print(("%s: %d parts, %d lights, %d signs"):format(id, #data.parts, #data.lights, #data.signs))

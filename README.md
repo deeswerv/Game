@@ -347,30 +347,50 @@ prompt in `docs/prompts/downtown-expansion.md`.
 
 ## Hanami City (chapter 2)
 
-Beat the Don and **Hanami City** opens on the Travel menu (🌸, LV 10-16): a dense Japanese city
-of tiled houses and mixed-use blocks, vertical signs and lantern strings, shrines, canals and
-a castle on its hill, built by `HanamiService` (`HanamiService/City.luau` from the props and
-building kit in `HanamiService/CityKit.luau`). Everything's position lives in
-`ReplicatedStorage/HanamiConfig.luau`. Seven districts, each with its own name card as you walk
-in and its own enemy levels:
+Beat the Don and **Hanami City** opens on the Travel menu (🌸, LV 10-16): a Japanese city
+1,200 studs square, built at the scale of a real one next to the Roblox Boy (a stud is about a
+third of a metre). Avenues have 44 studs of road between 14-stud pavements, floors are 9.5
+studs and shop doors are 8, and the Scramble takes a while to walk across. `HanamiService`
+builds it: `HanamiService/City.luau` calls the district builders `CitySouth`, `CityMiddle` and
+`CityNorth`. They draw from the layout tools in `CityBlocks.luau` (rows and blocks of
+buildings, raised pavements with kerbs, lane paint, crossings, avenue lamps and trees) and the
+piece kit in `CityKit.luau` (buildings drawn once and built through `CityKit.Scaled`, plus glass
+towers, the round tower, giant screens, buses and street props). Everything's position lives in
+`ReplicatedStorage/HanamiConfig.luau`. Nine areas, each with its own name card as you walk in
+and its own enemy levels:
 
-- **Hanami Station** (safe), where you arrive. The station square has the Great Sakura, the
-  shrine through its torii, the department store, the covered shopping arcade, taxis and
-  bikes, and Elder Hoshi under the tree.
-- **The Rail Yard**: sidings, signal box, the old engine shed where the gang holds the
-  captives.
-- **The Fish Market**, the dawn auction floor by the canal.
-- **Lantern Row**, the old drinking alleys: izakaya fronts, lantern strings and roof terraces
-  with riflemen on them.
-- **The Scramble**, Hanami Crossing: the big crossing under the billboards.
-- **The Steelworks**: the foundry and docks, the crane you can climb, and the furnace yard where
-  **Foreman Tetsu** works.
-- **Kurogane Castle** on its hill, up **the Thousand Gates** stair: walls, towers, the palace,
-  the tea pond and the Shogun's court.
+- **Hanami Station** (safe), where you arrive. The railway runs along the south edge on its
+  viaduct, with a train at the island platform over the glass-fronted station. The square has
+  the Great Sakura, the dog statue, a taxi rank and a bus bay. The department store's giant
+  screen faces the square, and the shrine sits through its torii. **Hanami Ginza**, the covered
+  shopping street, holds the trader's counter.
+- **The Rail Yard**: sidings and container wagons, the signal box, the danchi flats and their
+  playground, and the old engine shed where the gang holds the captives.
+- **The Fish Market**: the auction hall and its stalls, turret trucks, the wholesalers on the
+  canal road, and bars in the arches under the railway.
+- **The Scramble**: the big crossing, with wide zebras on every side and both diagonals. On its
+  corners stand the Q-FRONT screen building, the round **109** tower, a tower of tenant signs
+  with a screen on its roof, and the glass Mark City tower over the corner café. Behind them
+  are blocks of shops and offices with tall signs, Hanami Hills, and Hotel Sakura.
+- **Lantern Row**, the drinking alleys: stone paving, two-storey izakaya under strings of red
+  lanterns, the festival tower (yagura) in its little square, and roof terraces up ladders.
+- **The Steelworks**: warehouses and containers, the furnace hall and its striped stacks, the
+  furnace yard where **Foreman Tetsu** works, the quay with the crane you can climb, and the
+  ship in the dock.
+- **Kurogane Castle**, forty studs up on its stone base. You reach it by **the Thousand
+  Gates**, a stair through a tunnel of red torii. Up top are the walls and gate house, the
+  court, the palace hall, the tea garden, and the five-tier black keep.
+- **Hanami Park** (safe): the lantern pond, with paper lanterns floating on it, a torii in the
+  water, an island pavilion over a red bridge, stone lanterns, cherry trees and a tea house.
+- **Kurogane Heights**: the clan's glass towers round their plaza.
 
-The streets are lined end to end: poles and wires, vending machines, curve mirrors,
-crosswalks and painted road text, bikes in racks, kei cars and taxis, cherry trees and pines.
-At night the lanterns and signs light the streets.
+The giant screens rotate through their adverts (`ReplicatedStorage/CityScreens.luau`;
+`StarterPlayerScripts/CityScreens` wipes each to its next picture on its own timer). They
+shine by day as well as by night. The streets have avenue lamps and street trees in turn,
+white guard rails along the kerbs, traffic lights, buses, taxis and kei cars keeping left,
+poles and wires down the side streets, and cherry trees and lantern strings along the canal.
+At night the lanterns, signs and windows light up. Past the edges stand a skyline ring, the
+Hanami Tower and the mountain.
 
 **The Kurogane clan.** Ronin (blades, rush you), Riflemen (keep their distance from high
 ground), **Shieldbearers** (an iron shield stops your rounds dead until it breaks -- shoot it
@@ -379,7 +399,7 @@ of dust -- step aside), **Juggernauts** (big, armoured, slow), Oni (the Shogun's
 grenades and good rifles), with elites among them. The city only fills while someone is in it,
 refills a fallen post after a while, and empties a minute after the last player leaves.
 
-**Elder Hoshi's story** (under the Great Sakura), one job of each kind:
+**Elder Hoshi's story** (inside the shrine's torii, off the square), one job of each kind:
 1. Reach the Lantern Row gate (*Petals and Iron*).
 2. Clear eight of the clan out of Lantern Row.
 3. **Free three townsfolk** tied up in the rail yard's engine shed (hold E).
@@ -388,8 +408,9 @@ refills a fallen post after a while, and empties a minute after the last player 
    under you, and at 30% he goes into overtime.
 6. **Hold the fish market** through three raid waves. The raiders go for the catch on the
    floor.
-7. Find **five iron seals**: on the ramen shop's roof by the canal, up a Lantern Row terrace, on
-   the dock crane, behind the waterfall, and on a hill.
+7. Find **five iron seals**: on the ramen shop's roof on the canal road (the ladder up its side),
+   on a Lantern Row roof terrace, on the dock crane's walkway, on the rail yard signal box's
+   balcony, and under the railway past the bars in its arches.
 8. Climb **the Thousand Gates**.
 9. End **THE IRON SHOGUN** in his court (level 12+). He sends blade waves across the court. At
    66% comes BLOSSOM STORM (Shinobi and riflemen, petal storms under everyone), and at 33% IRON
@@ -402,7 +423,8 @@ and Oni, then a repeatable patrol contract.
 `lune run tools/uitest/hanami.luau` plays all of it through the real services;
 `tools/uitest/shields.luau` checks the shield against the real gun code and the Shinobi's dash;
 `lune run tools/mapview/arenas.luau -- src/ServerScriptService/HanamiService/City.luau out.json`
-and `tools/mapview/shoot.mjs` render the city.
+and `tools/mapview/shoot.mjs` render the city from its own cameras (`City.Preview`; pick some with
+`CAMS=0,3`), with the players' rig standing about for scale (`City.Figures`).
 
 ## Contracts and supply drops
 

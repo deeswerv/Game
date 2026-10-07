@@ -270,7 +270,7 @@ for _, q in ipairs({
 		summary = "Drive the Kurogane out of Lantern Row: eight of them, on its streets and roofs.",
 		dialogue = "Those alleys were the liveliest in the city. Now the clan drinks there, and the lanterns burn for them. Put eight of them down in Lantern Row. Mind the roofs -- their riflemen like a high place.",
 		objective = { kind = "KillInZone", zone = "Hanami_LanternRow", archetype = "Any", count = 8,
-			position = Hanami.At(-150, 0, 30), where = "LANTERN ROW", label = "Kurogane driven out of Lantern Row" },
+			position = Hanami.Site("LanternHeart"), where = "LANTERN ROW", label = "Kurogane driven out of Lantern Row" },
 		rewards = { coins = 1800, xp = 1400, crystals = 2 },
 	},
 	{
@@ -293,7 +293,7 @@ for _, q in ipairs({
 		levelRequired = 11,
 		summary = "Search the Steelworks for proof of where the steel goes: four different clues.",
 		dialogue = "Everything the foundry makes goes up to the castle, and nobody knows why. Search the Steelworks past the Scramble -- the warehouse ledgers, the crates on the quay, the site office, the gate.  Bring me four things that tell the story.",
-		objective = { kind = "Inspect", unique = true, count = 4, position = Hanami.At(120, 0, 10), where = "THE STEELWORKS",
+		objective = { kind = "Inspect", unique = true, count = 4, position = Hanami.Site("SteelworksHeart"), where = "THE STEELWORKS",
 			label = "Clues found in the Steelworks" },
 		rewards = { coins = 2200, xp = 1800, crystals = 3 },
 	},
@@ -433,7 +433,7 @@ QuestConfig.Givers = {
 	Captain = {
 		displayName = "Captain Rei",
 		position = Hanami.Site("Captain"),
-		lookAt = Hanami.At(0, 0, -112),
+		lookAt = Hanami.Site("RedBridge"),
 		colour = Color3.fromRGB(196, 54, 60),
 		signText = "BOUNTIES",
 		where = "at the red bridge, Hanami City",
