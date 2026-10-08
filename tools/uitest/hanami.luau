@@ -187,7 +187,7 @@ crystals.Parent = sss
 local Crystals = World.require(crystals)
 
 for _, name in ipairs({ "ArenaService", "KillCredit", "ShopService", "ReputationService", "LevelSystem", "WalletService",
-	"AbilityService", "VFXService", "QuestService", "TurfWarService", "TravelService", "HanamiService" }) do
+	"AbilityService", "VFXService", "QuestService", "TurfWarService", "TravelService", "DistrictService", "HanamiService" }) do
 	R.mirror(place:GetService("ServerScriptService"):FindFirstChild(name), sss)
 end
 

@@ -24,7 +24,10 @@
 -- client cannot, it simply sees the part-built prop.
 
 local CollectionService = game:GetService("CollectionService")
+local ServerScriptService = game:GetService("ServerScriptService")
 local ServerStorage = game:GetService("ServerStorage")
+
+local Kit = require(ServerScriptService:WaitForChild("ArenaService"):WaitForChild("Kit"))
 
 local Data = require(game:GetService("ReplicatedStorage"):WaitForChild("MeshKitData")) :: any
 
@@ -34,6 +37,7 @@ export type Paint = {
 	colour: Color3,
 	material: Enum.Material?,
 	reflectance: number?,
+	transparency: number?,
 	shadow: boolean?,      -- casts a shadow (default: no)
 	name: string?,         -- what the piece is called (default: its role)
 }
@@ -195,6 +199,7 @@ function MeshKit.Place(b: any, name: string, paints: { [string]: Paint }, opts: 
 			p.Color = paint.colour
 			p.Material = paint.material or Enum.Material.SmoothPlastic
 			p.Reflectance = paint.reflectance or 0
+			p.Transparency = paint.transparency or 0
 		end
 		p.Parent = b.parent
 		placed[role] = p
@@ -204,7 +209,7 @@ end
 
 --- For a client to draw `name` itself: a Model for the part-built prop, tagged "KitProp", with
 --- where the kit's model stands (KitFrame, KitScale) and each role's paint (KitColour_<role>,
---- KitMaterial_, KitShine_, KitShadow_, KitName_). Build the pieces the kit replaces into it;
+--- KitMaterial_, KitShine_, KitClear_, KitShadow_, KitName_). Build the pieces the kit replaces into it;
 --- a piece in it marked KitKeep stays drawn (raised by its KitRaise, if any, to sit on the
 --- kit's model).
 function MeshKit.Group(b: any, name: string, paints: { [string]: Paint }, opts: Opts?): Model
@@ -219,6 +224,9 @@ function MeshKit.Group(b: any, name: string, paints: { [string]: Paint }, opts: 
 		if paint.reflectance then
 			model:SetAttribute("KitShine_" .. role, paint.reflectance)
 		end
+		if paint.transparency then
+			model:SetAttribute("KitClear_" .. role, paint.transparency)
+		end
 		if paint.shadow then
 			model:SetAttribute("KitShadow_" .. role, true)
 		end
@@ -229,6 +237,32 @@ function MeshKit.Group(b: any, name: string, paints: { [string]: Paint }, opts: 
 	model.Parent = b.parent
 	CollectionService:AddTag(model, "KitProp")
 	return model
+end
+
+--- A prop the kit can draw, built by `b`. With the kit imported, its meshes are placed now
+--- (`mesh`), and `body` builds only the prop's solid pieces, as invisible hulls, and none of
+--- its trim. Without it, `body` builds into a Group the clients draw the kit over: build the
+--- whole part-built prop into it. What stays drawn either way (a banner, a sign) goes on `b`.
+function MeshKit.Prop(b: any, name: string, paints: { [string]: Paint }, opts: Opts?): ({ [string]: BasePart }?, any)
+	local mesh = MeshKit.Place(b, name, paints, opts)
+	if mesh then
+		local hulls = setmetatable({}, { __index = b }) :: any
+		function hulls.part(_, n: string, size: Vector3, at: any, colour: Color3, material: Enum.Material?, o: any): BasePart
+			local solid = table.clone(o or {})
+			solid.transparency = 1
+			solid.shadow = false
+			return b:part(n, size, at, colour, material, solid)
+		end
+		function hulls.decor(_, n: string, size: Vector3, at: any, colour: Color3, material: Enum.Material?, o: any): BasePart
+			local p = b:decor(n, size, at, colour, material, o)
+			p.Parent = nil
+			return p
+		end
+		return mesh, hulls
+	end
+	local body = Kit.new(MeshKit.Group(b, name, paints, opts), b.frame)
+	body.side = b.side
+	return nil, body
 end
 
 --- Forget what was read (tests, or a kit swapped while running).

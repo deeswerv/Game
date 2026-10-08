@@ -39,6 +39,13 @@ PREVIEW = {
     "Iron": (0.16, 0.22, 0.20), "LanternGlass": (1.0, 0.92, 0.70), "Trunk": (0.36, 0.24, 0.16),
     "Leaves1": (0.16, 0.42, 0.16), "Leaves2": (0.28, 0.58, 0.22), "Leaves3": (0.48, 0.74, 0.30),
     "Paint": (0.55, 0.30, 0.80), "Red": (0.78, 0.16, 0.12), "Gold": (0.90, 0.66, 0.16), "Wood": (0.62, 0.42, 0.24),
+    "Stone": (0.72, 0.68, 0.62), "Water": (0.25, 0.55, 0.75), "Pole": (0.08, 0.08, 0.09), "Head": (0.92, 0.75, 0.15),
+    "SignalRed": (0.5, 0.1, 0.1), "SignalAmber": (0.5, 0.36, 0.1), "SignalGreen": (0.3, 0.92, 0.45), "Blade": (0.13, 0.46, 0.3),
+    "WalkLamp": (0.97, 0.97, 0.95), "Lid": (0.2, 0.32, 0.22), "Wheel": (0.1, 0.1, 0.1), "Band": (0.12, 0.12, 0.13),
+    "Bloom": (0.95, 0.45, 0.65), "Stripe": (0.96, 0.95, 0.9),
+    "Blossom1": (0.91, 0.52, 0.67), "Blossom2": (0.96, 0.69, 0.79), "Blossom3": (0.99, 0.83, 0.89),
+    "Pine1": (0.18, 0.36, 0.25), "Pine2": (0.23, 0.42, 0.29), "Dark": (0.08, 0.08, 0.09),
+    "WingL": (0.55, 0.57, 0.62), "WingR": (0.55, 0.57, 0.62), "Feet": (0.85, 0.45, 0.45),
 }
 
 random.seed(7)
@@ -216,8 +223,10 @@ def model(name, pieces):
 # One generator, three bodies. Studs, matching the part-built cars: W wide (X), L long (Y),
 # the nose at +Y (Roblox's -Z), wheels of radius r at the axles.
 
-def car(name, L, W, r, axles, belt, roof, cabin, nose, tail, ride=0.45, rails=False, spare=False):
+def car(name, L, W, r, axles, belt, roof, cabin, nose, tail, ride=0.45, rails=False, spare=False, radii=None,
+        arch=0.14, muscle=False):
     hl = L / 2
+    radii = radii or [r for _ in axles]       # each axle's tyre radius
     # The lower body: a side profile, bevelled round every edge, with the arches cut out.
     lower = bmesh.new()
     # The bonnet is kept above the tyres (the arches are cut no higher than a tyre's top), so
@@ -228,8 +237,8 @@ def car(name, L, W, r, axles, belt, roof, cabin, nose, tail, ride=0.45, rails=Fa
     add_profile(lower, prof, -W / 2, W / 2, bevel=0.22, segments=3)
     body = mesh_object(f"{name}_BodyTmp", lower)
     arches = bmesh.new()
-    for y in axles:
-        add_cylinder(arches, (0, y, r), r + 0.14, W + 1, axis="X", segments=32)
+    for y, rr in zip(axles, radii):
+        add_cylinder(arches, (0, y, rr), rr + arch, W + 1, axis="X", segments=32)
     cut(body, arches)
     # The roof: a slab over the glass house.
     c0, c1, c2, c3 = cabin       # rear-of-roof y, front-of-roof y, windscreen base y (ahead of c1),
@@ -281,7 +290,7 @@ def car(name, L, W, r, axles, belt, roof, cabin, nose, tail, ride=0.45, rails=Fa
     # Wheels: tyre with a rounded shoulder; five-spoke rim with a hub.
     tyre, rim = bmesh.new(), bmesh.new()
     for x in (-1, 1):
-        for y in axles:
+        for y, r in zip(axles, radii):
             cx = x * (W / 2 - 0.32)
             add_lathe_x(tyre, [(r * 0.62, -0.36), (r * 0.92, -0.38), (r, -0.25), (r, 0.25), (r * 0.92, 0.38), (r * 0.62, 0.36)],
                         (cx, y, r), x)
@@ -295,8 +304,22 @@ def car(name, L, W, r, axles, belt, roof, cabin, nose, tail, ride=0.45, rails=Fa
                 bmesh.ops.rotate(tmp, verts=tmp.verts, matrix=Matrix.Rotation(a, 3, "X"))
                 bmesh.ops.translate(tmp, vec=(cx + x * 0.36, y, r), verts=tmp.verts)
                 merge(rim, tmp)
+    if muscle:
+        # Racing stripes over the roof and the boot, a scoop on the bonnet, a wing on posts,
+        # twin pipes.
+        stripes = bmesh.new()
+        for x in (-0.55, 0.55):
+            add_box(stripes, (x, (c0 + c1) / 2, roof + 0.005), (0.5, c1 - c0 - 0.1, 0.02))
+            add_box(stripes, (x, (-hl + 0.3 + c3) / 2, belt + 0.005), (0.5, c3 + hl - 0.4, 0.02))
+        add_box(pillars, (0, hl - nose * 0.55, belt + 0.12), (1.8, 2.2, 0.36), bevel=0.12)
+        add_box(pillars, (0, -hl + 0.55, belt + 0.62), (W - 0.3, 0.9, 0.18), bevel=0.06)
+        for x in (-1.9, 1.9):
+            add_box(pillars, (x, -hl + 0.6, belt + 0.28), (0.22, 0.4, 0.55))
+            add_cylinder(chrome, (x * 0.35, -hl - 0.15, ride + 0.35), 0.18, 0.7, axis="Y", segments=12)
     pieces = {"Body": body, "Glass": glass, "Chrome": chrome, "LampFront": front, "LampRear": rear, "Tyre": tyre, "Rim": rim,
               "Trim": pillars}
+    if muscle:
+        pieces["Stripe"] = stripes
     if spare:
         sp = bmesh.new()
         add_cylinder(sp, (0, -hl - 0.35, belt - 0.2), r * 0.95, 0.6, axis="Y", segments=24, bevel=0.1)
@@ -420,6 +443,353 @@ def bin_():
     return model("Bin", {"Iron": iron, "Gold": gold})
 
 
+# ------------------------------------------------------------------ props, round two --
+#
+# These match part-built props in Downtown.luau measure for measure, so they are written in
+# Roblox's coordinates as that file gives them and turned into Blender's here:
+# Roblox (x, y, z) is Blender (x, -z, y).
+
+def rb(x, y, z):
+    return (x, -z, y)
+
+
+def rbs(sx, sy, sz):
+    return (sx, sz, sy)
+
+
+def rbox(bm, centre, size, rot_x=0.0, rot_y=0.0, bevel=0.0):
+    """A box placed as Downtown places it (Roblox centre and size; turned about Roblox X, then Y)."""
+    tmp = bmesh.new()
+    add_box(tmp, (0, 0, 0), rbs(*size), bevel=bevel)
+    if rot_x:
+        bmesh.ops.rotate(tmp, verts=tmp.verts, matrix=Matrix.Rotation(math.radians(rot_x), 3, "X"))
+    if rot_y:
+        # Roblox's +Y turn is Blender's +Z turn.
+        bmesh.ops.rotate(tmp, verts=tmp.verts, matrix=Matrix.Rotation(math.radians(rot_y), 3, "Z"))
+    bmesh.ops.translate(tmp, vec=Vector(rb(*centre)), verts=tmp.verts)
+    merge(bm, tmp)
+
+
+OCT = 1 / math.cos(math.pi / 8)
+
+
+def add_octagon(bm, profile, closed=False):
+    """An eight-sided lathe with flat faces toward the axes, from an (apothem, z) profile."""
+    pts = [(a * OCT, z) for a, z in profile]
+    if closed:
+        pts.append(pts[0])
+    tmp = bmesh.new()
+    add_lathe(tmp, pts, segments=8)
+    bmesh.ops.rotate(tmp, verts=tmp.verts, matrix=Matrix.Rotation(math.pi / 8, 3, "Z"))
+    merge(bm, tmp)
+
+
+def ring(bm, profile, centre=(0, 0, 0), segments=32):
+    """A lathe of a closed profile that does not touch the axis (lips, rims, collars)."""
+    add_lathe(bm, profile + [profile[0]], centre, segments=segments)
+
+
+def fountain():
+    """The plaza's three-tier fountain: an octagonal pool with a moulded coping, a pedestal,
+    a wide bowl, a slim stem, a small bowl and a finial, eight spouts round it."""
+    stone, trim, water = bmesh.new(), bmesh.new(), bmesh.new()
+    add_octagon(stone, [(0, 0), (12.95, 0), (12.95, 0.3), (12.8, 0.45), (12.8, 2.2), (11.2, 2.2), (11.2, 0.6), (0, 0.6)])
+    add_octagon(trim, [(10.95, 2.2), (13.05, 2.2), (13.15, 2.32), (13.05, 2.5), (10.95, 2.5), (10.85, 2.35)], closed=True)
+    add_lathe(stone, [(0, 0.6), (2.0, 0.6), (2.0, 1.0), (1.7, 1.15), (1.4, 1.5), (1.35, 4.3), (1.6, 4.55), (2.0, 4.95),
+                      (0, 4.95)], segments=24)
+    add_lathe(stone, [(0, 4.9), (1.9, 4.9), (3.3, 5.12), (4.4, 5.45), (5.0, 5.85), (5.15, 6.15), (4.7, 6.15), (0, 6.15)],
+              segments=32)
+    ring(trim, [(4.62, 6.1), (5.25, 6.1), (5.32, 6.28), (5.12, 6.42), (4.7, 6.38), (4.58, 6.22)])
+    add_lathe(stone, [(0, 6.1), (1.1, 6.1), (0.8, 6.5), (0.6, 7.3), (0.7, 8.2), (1.25, 8.85), (0, 8.85)], segments=20)
+    add_lathe(stone, [(0, 8.8), (1.3, 8.8), (2.2, 9.05), (2.75, 9.45), (2.85, 9.7), (0, 9.7)], segments=28)
+    ring(trim, [(2.42, 9.65), (2.95, 9.65), (3.0, 9.8), (2.82, 9.9), (2.5, 9.86), (2.4, 9.75)])
+    add_lathe(trim, [(0, 9.7), (0.75, 9.7), (0.6, 9.85), (0.3, 9.95), (0.28, 10.1), (0, 10.1)], segments=16)
+    add_sphere(trim, (0, 0, 10.5), 0.5, subdiv=2)
+    for i in range(8):
+        a = math.radians(i * 45 + 22.5)
+        add_lathe(trim, [(0, 0.6), (0.7, 0.6), (0.6, 0.9), (0.42, 1.45), (0.6, 1.65), (0.5, 1.8), (0, 1.8)],
+                  rb(math.cos(a) * 8, 0, math.sin(a) * 8), segments=12)
+    add_octagon(water, [(0, 1.2), (11.25, 1.2), (11.25, 1.38), (0, 1.38)])
+    add_lathe(water, [(0, 6.12), (4.75, 6.12), (4.75, 6.27), (0, 6.27)], segments=32)
+    add_lathe(water, [(0, 9.66), (2.5, 9.66), (2.5, 9.8), (0, 9.8)], segments=24)
+    return model("Fountain", {"Stone": stone, "Trim": trim, "Water": water})
+
+
+def traffic_light():
+    """trafficLight(): a pole with a mast arm over the road (-X), the signal head at its end lit
+    on both faces, a crossing signal on the pole, the street-name blades on top. Standing on
+    the kerb (Roblox y 0.5 is Blender z 0)."""
+    pole, head, red, amber, green, blade, walk = (bmesh.new() for _ in range(7))
+    k = -0.5                                      # Roblox heights to the kerb's
+    add_lathe(pole, [(0, 0), (0.75, 0), (0.75, 0.55), (0.55, 0.75), (0.32, 0.95), (0, 0.95)], segments=16)
+    add_cylinder(pole, (0, 0, 7.9), 0.28, 14.2, segments=16, radius2=0.23)
+    add_sphere(pole, (0, 0, 15.05), 0.27, subdiv=2)
+    hx = -8.2
+    add_tube(pole, [(0, 0, 14.1), (-2.5, 0, 14.25), (hx + 0.3, 0, 14.25)], 0.19, segments=10)
+    add_tube(pole, [(0, 0, 12.0), (-3.5, 0, 14.1)], 0.09, segments=8)
+    rbox(pole, (hx, 14.2 + k, 0), (0.3, 0.5, 0.3))
+    rbox(head, (hx, 12.6 + k, 0), (1.2, 3.64, 1.1), bevel=0.08)
+    rbox(pole, (hx, 12.6 + k, 0), (1.7, 3.95, 0.16), bevel=0.04)
+    for z, bm in ((13.7, red), (12.6, amber), (11.5, green)):
+        for face in (-1, 1):
+            add_cylinder(bm, rb(hx, z + k, face * 0.6), 0.4, 0.12, axis="Y", segments=20)
+            # A hood over each lamp: a top and two cheeks.
+            rbox(pole, (hx, z + k + 0.48, face * 0.86), (0.98, 0.08, 0.52))
+            for x in (-0.47, 0.47):
+                rbox(pole, (hx + x, z + k + 0.2, face * 0.86), (0.06, 0.62, 0.52))
+    rbox(pole, (0, 8.4 + k, 0.72), (0.9, 1.3, 0.9), bevel=0.06)
+    add_cylinder(walk, rb(0, 8.4 + k, 1.18), 0.33, 0.08, axis="Y", segments=16)
+    rbox(head, (0.35, 4 + k, 0.4), (0.4, 0.6, 0.3), bevel=0.05)
+    add_cylinder(pole, (0, 0, 16.1), 0.13, 2.7, segments=10)
+    rbox(blade, (-2, 16.2 + k, 0), (5.2, 0.9, 0.14), bevel=0.03)
+    rbox(blade, (0, 17.2 + k, -2), (0.14, 0.9, 5.2), bevel=0.03)
+    return model("TrafficLight", {"Pole": pole, "Head": head, "SignalRed": red, "SignalAmber": amber,
+                                  "SignalGreen": green, "Blade": blade, "WalkLamp": walk})
+
+
+def dumpster():
+    """dumpster(): a wheeled skip, wider at the top, ribbed, one lid shut and one thrown back."""
+    body, lid, trim, wheel = (bmesh.new() for _ in range(4))
+    add_profile(body, [(-1.55, 0.42), (1.55, 0.42), (1.72, 4.0), (-1.72, 4.0)], -3.0, 3.0, bevel=0.08)
+    for x in (-1.2, 1.2):
+        rbox(trim, (x, 2.2, -1.67), (0.24, 3.0, 0.12), rot_x=-2.7)
+        rbox(trim, (x, 2.2, 1.67), (0.24, 3.0, 0.12), rot_x=2.7)
+    rbox(trim, (0, 4.05, 0), (6.24, 0.3, 3.62), bevel=0.06)
+    for x in (-2.4, 2.4):
+        rbox(trim, (x, 2.4, -1.8), (1.2, 0.8, 0.25), bevel=0.04)
+        for z in (-1.3, 1.3):
+            add_cylinder(wheel, rb(x, 0.4, z), 0.4, 0.36, axis="X", segments=14)
+            rbox(trim, (x, 0.75, z), (0.5, 0.3, 0.5))
+    rbox(lid, (-1.5, 4.35, 0.1), (2.95, 0.2, 3.7), rot_x=-6, bevel=0.05)
+    rbox(lid, (1.5, 4.9, 1.2), (2.95, 0.2, 3.7), rot_x=-58, bevel=0.05)
+    return model("Dumpster", {"Body": body, "Lid": lid, "Trim": trim, "Wheel": wheel})
+
+
+def phone_booth():
+    """phoneBooth(): a red kiosk, its door toward Roblox -Z: corner posts, small-paned glass on
+    three sides, a PHONE band, a stepped roof and a shallow dome."""
+    red, glass, band = bmesh.new(), bmesh.new(), bmesh.new()
+    rbox(red, (0, 0.15, 0), (3.3, 0.3, 3.3), bevel=0.04)
+    for x in (-1.35, 1.35):
+        for z in (-1.35, 1.35):
+            rbox(red, (x, 3.85, z), (0.36, 7.1, 0.36), bevel=0.04)
+    rbox(red, (0, 3.9, 1.42), (2.4, 6.6, 0.16))
+    rbox(band, (0, 3.6, 1.32), (0.9, 1.3, 0.2), bevel=0.05)             # the phone, on the back wall
+    for fx, fz in ((0, -1), (1, 0), (-1, 0)):
+        along = (1, 0) if fz else (0, 1)
+        def at(u, y, depth=1.46):
+            return (fx * depth + along[0] * u, y, fz * depth + along[1] * u)
+        def size(w, h, t):
+            return (w, h, t) if fz else (t, h, w)
+        rbox(glass, at(0, 3.85, 1.47), size(2.36, 4.5, 0.05))
+        rbox(red, at(0, 1.0, 1.46), size(2.4, 1.1, 0.14))                # kick panel
+        for u in (-0.4, 0.4):
+            rbox(red, at(u, 3.85, 1.5), size(0.07, 4.5, 0.06))
+        for k in range(1, 6):
+            rbox(red, at(0, 1.6 + k * 0.75, 1.5), size(2.36, 0.07, 0.06))
+        rbox(band, at(0, 6.9, 1.53), size(2.4, 0.6, 0.14))
+    rbox(red, (0, 7.85, 0), (3.4, 0.5, 3.4), bevel=0.08)
+    rbox(red, (0, 8.15, 0), (3.0, 0.16, 3.0), bevel=0.05)
+    add_lathe(red, [(0, 8.2), (1.35, 8.2), (1.25, 8.4), (0.95, 8.6), (0.5, 8.72), (0, 8.75)], segments=24)
+    add_sphere(red, (0, 0, 8.85), 0.18, subdiv=1)
+    return model("PhoneBooth", {"Red": red, "Glass": glass, "Band": band})
+
+
+def square_lathe(bm, profile):
+    """A four-sided lathe, square to the axes: (corner radius, z) profile."""
+    tmp = bmesh.new()
+    add_lathe(tmp, profile, segments=4)
+    bmesh.ops.rotate(tmp, verts=tmp.verts, matrix=Matrix.Rotation(math.pi / 4, 3, "Z"))
+    merge(bm, tmp)
+
+
+def post_lamp():
+    """postLamp(): a short plaza lamp, a four-sided lantern on a fluted post. On the paving
+    (Roblox y 0.5 is Blender z 0)."""
+    iron, glass = bmesh.new(), bmesh.new()
+    add_lathe(iron, [(0, 0), (0.75, 0), (0.75, 0.25), (0.6, 0.4), (0.6, 0.85), (0.42, 1.0), (0.3, 1.2), (0, 1.2)],
+              segments=12)
+    add_cylinder(iron, (0, 0, 4.6), 0.22, 7.0, segments=12, radius2=0.18)
+    for z in (2.0, 7.4):
+        add_cylinder(iron, (0, 0, z), 0.3, 0.18, segments=12, bevel=0.04)
+    square_lathe(iron, [(0, 7.9), (0.35, 7.9), (0.7, 8.1), (1.0, 8.18), (1.0, 8.3), (0, 8.3)])
+    # The lantern: glass panes leaning out a little, iron corners, a pyramid cap and a finial.
+    rb_, rt_ = 0.8, 1.0
+    square_lathe(glass, [(0, 8.3), (rb_, 8.3), (rt_, 9.8), (0, 9.8)])
+    for k in range(4):
+        a = math.pi / 4 + k * math.pi / 2
+        add_tube(iron, [(math.cos(a) * rb_, math.sin(a) * rb_, 8.3), (math.cos(a) * rt_, math.sin(a) * rt_, 9.8)], 0.06,
+                 segments=6)
+    square_lathe(iron, [(0, 9.75), (1.27, 9.75), (1.27, 9.9), (0.4, 10.45), (0, 10.5)])
+    add_sphere(iron, (0, 0, 10.62), 0.16, subdiv=1)
+    return model("PostLamp", {"Iron": iron, "LanternGlass": glass})
+
+
+def cypress():
+    """A slim cypress 10.5 tall (scaled to each one's height): a short trunk, then a lumpy
+    flame of dark foliage, lighter toward the tip."""
+    trunk = bmesh.new()
+    add_cylinder(trunk, (0, 0, 1.2), 0.38, 2.4, segments=10, radius2=0.3)
+    shades = {"Leaves1": bmesh.new(), "Leaves2": bmesh.new(), "Leaves3": bmesh.new()}
+    rng = random.Random(11)
+    for k in range(22):
+        t = k / 21
+        z = 2.4 + t * 7.6
+        w = 1.55 * (1 - t * 0.78) * rng.uniform(0.85, 1.05)
+        a = k * 2.4
+        off = w * 0.28
+        role = "Leaves1" if t < 0.4 else ("Leaves2" if t < 0.75 else "Leaves3")
+        add_sphere(shades[role], (math.cos(a) * off, math.sin(a) * off, z), w, subdiv=2, squash=1.5, noise=0.14)
+    add_sphere(shades["Leaves3"], (0, 0, 10.2), 0.35, subdiv=1, squash=1.8)
+    return model("Cypress", {"Trunk": trunk, **shades})
+
+
+def shrub():
+    """A round flowering shrub 2.2 across (scaled to each): lumpy clumps of leaves, two
+    greens, flowers dotted over the top."""
+    dark, light, bloom = bmesh.new(), bmesh.new(), bmesh.new()
+    rng = random.Random(5)
+    add_sphere(dark, (0, 0, 0.85), 1.05, subdiv=2, squash=0.82, noise=0.14)
+    for k in range(6):
+        a = k * 1.05
+        add_sphere(dark if k % 2 else light, (math.cos(a) * 0.62, math.sin(a) * 0.62, 0.72 + rng.uniform(-0.1, 0.15)),
+                   rng.uniform(0.55, 0.72), subdiv=2, squash=0.85, noise=0.16)
+    add_sphere(light, (0.2, -0.1, 1.45), 0.6, subdiv=2, squash=0.8, noise=0.15)
+    for k in range(11):
+        a = k * 2.39996
+        rr = 0.25 + 0.7 * math.sqrt((k + 0.5) / 11)
+        z = 0.85 + math.sqrt(max(0.0, 1.05 ** 2 - rr ** 2)) * 0.82 + 0.06
+        add_sphere(bloom, (math.cos(a) * rr, math.sin(a) * rr, z), 0.17, subdiv=1)
+    return model("Shrub", {"Leaves1": dark, "Leaves2": light, "Bloom": bloom})
+
+
+# ----------------------------------------------------------------------- Hanami City --
+
+def sakura():
+    """A cherry tree in bloom (Hanami's CityKit.Sakura at scale 1): a short gnarled trunk that
+    forks into three limbs, and a wide umbrella of blossom in three pinks, deepest underneath."""
+    trunk = bmesh.new()
+    add_cylinder(trunk, (0, 0, 2.4), 0.62, 4.8, segments=10, radius2=0.45)
+    add_cylinder(trunk, (0, 0, 0.35), 0.9, 0.7, segments=10, radius2=0.62)
+    for k in range(3):
+        a = k * 2.1 + 0.3
+        mid = (math.cos(a) * 1.4, math.sin(a) * 1.4, 6.2)
+        tip = (math.cos(a) * 3.6, math.sin(a) * 3.6, 8.0)
+        add_tube(trunk, [(0, 0, 4.4), mid, tip], 0.32, segments=8)
+        add_tube(trunk, [mid, (math.cos(a + 0.7) * 2.6, math.sin(a + 0.7) * 2.6, 7.6)], 0.18, segments=6)
+    shades = {"Blossom1": bmesh.new(), "Blossom2": bmesh.new(), "Blossom3": bmesh.new()}
+    rng = random.Random(23)
+    tiers = ((10, 4.6, 7.4, (2.4, 3.1), "Blossom1"), (8, 3.2, 9.0, (2.6, 3.2), "Blossom2"),
+             (5, 1.6, 10.4, (2.2, 2.8), "Blossom3"), (9, 6.2, 8.0, (1.4, 1.9), "Blossom2"))
+    for count, ring_r, z0, (s0, s1), role in tiers:
+        for k in range(count):
+            a = k / count * math.pi * 2 + rng.uniform(-0.2, 0.2)
+            rr = ring_r * rng.uniform(0.88, 1.08)
+            add_sphere(shades[role], (math.cos(a) * rr, math.sin(a) * rr, z0 + rng.uniform(-0.4, 0.4)),
+                       rng.uniform(s0, s1), subdiv=2, squash=0.66, noise=0.18)
+    add_sphere(shades["Blossom3"], (0, 0, 11.0), 2.6, subdiv=2, squash=0.6, noise=0.12)
+    return model("Sakura", {"Trunk": trunk, **shades})
+
+
+def pine():
+    """A cloud-pruned garden pine (CityKit.Pine at scale 1): a trunk leaning and kinking, flat
+    lumpy pads of needles on short arms."""
+    trunk = bmesh.new()
+    path = [(0, 0, 0), (0.5, 0, 3.0), (0.2, 0, 6.0), (0.9, 0, 9.4)]
+    add_tube(trunk, path, 0.5, segments=10)
+    add_cylinder(trunk, (0, 0, 0.3), 0.8, 0.6, segments=10, radius2=0.5)
+    pads = {"Pine1": bmesh.new(), "Pine2": bmesh.new()}
+    spots = (((0.9, 0, 9.6), 3.4, "Pine1"), ((3.0, 0.6, 6.4), 2.5, "Pine2"), ((-2.6, -0.6, 7.6), 2.4, "Pine1"),
+             ((1.2, 0.2, 11.3), 2.0, "Pine2"), ((0.4, 2.2, 5.2), 1.7, "Pine2"))
+    for (x, y, z), size, role in spots:
+        add_tube(trunk, [(0.4, 0, z - 0.6), (x * 0.8, y * 0.8, z - 0.25)], 0.16, segments=6)
+        add_sphere(pads[role], (x, y, z), size, subdiv=2, squash=0.34, noise=0.2)
+        add_sphere(pads[role], (x + size * 0.35, y - size * 0.2, z + 0.25), size * 0.55, subdiv=2, squash=0.4, noise=0.2)
+    return model("Pine", {"Trunk": trunk, **pads})
+
+
+def hexagon(bm, profile, centre=(0, 0, 0)):
+    tmp = bmesh.new()
+    add_lathe(tmp, profile, segments=6)
+    bmesh.ops.translate(tmp, vec=Vector(centre), verts=tmp.verts)
+    merge(bm, tmp)
+
+
+def stone_lantern():
+    """A tōrō (CityKit.StoneLantern at scale 1): a hexagonal base, a post, the fire box with its
+    paper windows, a roof with upturned corners and the jewel on top."""
+    stone, paper = bmesh.new(), bmesh.new()
+    hexagon(stone, [(0, 0), (0.95, 0), (0.95, 0.35), (0.8, 0.5), (0.55, 0.62), (0, 0.62)])
+    add_cylinder(stone, (0, 0, 1.75), 0.36, 2.3, segments=12, radius2=0.3)
+    hexagon(stone, [(0, 2.7), (0.45, 2.7), (0.85, 2.85), (0.9, 3.0), (0, 3.0)])
+    for k in range(6):
+        a = k * math.pi / 3
+        add_box(stone, (math.cos(a) * 0.62, math.sin(a) * 0.62, 3.45), (0.16, 0.16, 0.9))
+    hexagon(paper, [(0, 3.0), (0.56, 3.0), (0.56, 3.9), (0, 3.9)])
+    roof = bmesh.new()
+    hexagon(roof, [(0, 3.85), (1.2, 3.85), (1.3, 3.98), (0.95, 4.25), (0.45, 4.45), (0, 4.5)])
+    for v in roof.verts:
+        rr = math.hypot(v.co.x, v.co.y)
+        if rr > 1.15:
+            v.co.z += 0.18          # the corners turn up
+    merge(stone, roof)
+    add_lathe(stone, [(0, 4.4), (0.25, 4.4), (0.3, 4.6), (0.22, 4.82), (0.08, 4.98), (0, 5.02)], segments=10)
+    return model("StoneLantern", {"Stone": stone, "LanternGlass": paper})
+
+
+def vending():
+    """A drinks machine (CityKit.Vending): the cabinet, its lit window recessed in a frame (the
+    window and the cans are the game's own), the buttons, the slot and the header. Front -Z
+    (Blender +Y), the back on the origin's line."""
+    body, trim, dark = bmesh.new(), bmesh.new(), bmesh.new()
+    rbox(body, (0, 3.2, 1.1), (3.0, 6.4, 2.2), bevel=0.12)
+    rbox(trim, (0, 4.5, 0.06), (2.85, 3.1, 0.12), bevel=0.04)           # the frame round the window
+    rbox(dark, (0, 3.05, -0.1), (2.4, 0.22, 0.14), bevel=0.03)
+    for k in range(6):
+        rbox(trim, (-1.0 + k * 0.4, 3.05, -0.19), (0.22, 0.12, 0.06))
+    rbox(dark, (0, 0.95, -0.06), (2.2, 0.8, 0.14), bevel=0.05)
+    rbox(trim, (0.95, 2.2, -0.08), (0.35, 0.55, 0.12), bevel=0.03)        # the coin box
+    rbox(trim, (0, 6.05, -0.06), (3.0, 0.62, 0.16), bevel=0.04)
+    rbox(dark, (0, 0.12, 1.1), (3.1, 0.24, 2.3))
+    return model("Vending", {"Body": body, "Trim": trim, "Dark": dark})
+
+
+# -------------------------------------------------------------------------- city life --
+
+def pigeon():
+    """A street pigeon about a stud long, facing +Y (Roblox -Z), feet on the origin. The
+    wings are their own pieces, folded along the back; CityLife flaps them about their
+    shoulders."""
+    body, head, wing_l, wing_r, feet = (bmesh.new() for _ in range(5))
+    add_sphere(body, (0, -0.05, 0.42), 0.3, subdiv=2, squash=0.95)
+    for v in body.verts:
+        v.co.y = (v.co.y + 0.05) * 1.75 - 0.05          # long and plump
+        if v.co.y < -0.25:
+            v.co.z += (v.co.y + 0.25) * -0.25            # the tail end rises a touch
+    add_box(body, (0, -0.72, 0.5), (0.26, 0.38, 0.06), bevel=0.02)       # the tail fan
+    add_sphere(head, (0, 0.42, 0.68), 0.17, subdiv=2)
+    add_sphere(head, (0, 0.3, 0.56), 0.19, subdiv=1, squash=1.2)         # the neck, its sheen
+    tmp = bmesh.new()
+    bmesh.ops.create_cone(tmp, cap_ends=True, segments=6, radius1=0.045, radius2=0.0, depth=0.14)
+    bmesh.ops.rotate(tmp, verts=tmp.verts, matrix=Matrix.Rotation(-math.pi / 2, 3, "X"))
+    bmesh.ops.translate(tmp, vec=(0, 0.6, 0.66), verts=tmp.verts)
+    merge(feet, tmp)
+    for x in (-0.08, 0.08):
+        add_cylinder(feet, (x, 0.02, 0.1), 0.025, 0.24, segments=5)
+        add_box(feet, (x, 0.07, 0.015), (0.06, 0.16, 0.03))
+    for bm, side in ((wing_l, -1), (wing_r, 1)):
+        # A folded wing: a long flat teardrop lying along the back from the shoulder.
+        pts = [(0.0, 0.18), (0.12, 0.1), (0.17, -0.15), (0.14, -0.45), (0.06, -0.62), (0.0, -0.5), (-0.03, -0.1)]
+        tmp = bmesh.new()
+        verts = [tmp.verts.new((side * (0.2 + px), py, 0.62 - (0.18 - py) * 0.12)) for px, py in pts]
+        face = tmp.faces.new(verts if side > 0 else list(reversed(verts)))
+        res = bmesh.ops.extrude_face_region(tmp, geom=[face])
+        moved = [g for g in res["geom"] if isinstance(g, bmesh.types.BMVert)]
+        bmesh.ops.translate(tmp, vec=(0, 0, -0.05), verts=moved)
+        merge(bm, tmp)
+    return model("Pigeon", {"Body": body, "Head": head, "WingL": wing_l, "WingR": wing_r, "Feet": feet})
+
+
 # ------------------------------------------------------------------------- build it all --
 
 def build():
@@ -434,6 +804,20 @@ def build():
     bench()
     hydrant()
     bin_()
+    car("MuscleCar", L=11.5, W=5, r=1.05, axles=(-3.4, 3.6), radii=(1.2, 1.05), belt=2.55, roof=3.85,
+        cabin=(-2.9, 0.5, 1.75, -4.3), nose=4.2, tail=1.25, ride=0.5, arch=0.08, muscle=True)
+    fountain()
+    traffic_light()
+    dumpster()
+    phone_booth()
+    post_lamp()
+    cypress()
+    shrub()
+    sakura()
+    pine()
+    stone_lantern()
+    vending()
+    pigeon()
 
 
 def piece_frame(obj):
@@ -603,20 +987,22 @@ def render_previews(entries):
         o.hide_render = False
     # The whole kit in one shot (previews/sheet.png): the street furniture on the kerb, the cars
     # parked along it, the trees behind.
-    if not only:
-        layout = {"Tree": (-14, -9), "TreeTall": (9, -10), "StreetLamp": (-2, -6.5), "Bench": (-8, -5.5),
-                  "Bin": (3.5, -5.5), "Hydrant": (6.5, -5), "Sedan": (-13, 2), "Hatch": (0, 2), "SUV": (13, 2)}
+    def lineup(filename, layout, turned, repaints, eye, target):
+        """Several models in one shot: `layout` name -> (x, y[, yaw degrees]); the rest hidden."""
         home = {}
-        for name, (x, y) in layout.items():
+        for name, (empty, objs) in MODELS.items():
+            for o in objs:
+                o.hide_render = name not in layout
+        for name, spot in layout.items():
             empty = MODELS[name][0]
             home[name] = empty.location.copy()
-            empty.location = (x, y, 0)
-            if name in ("Sedan", "Hatch", "SUV"):
-                empty.rotation_euler = (0, 0, math.radians(-90))
-        # Each car in its own paint for the shot (put back afterwards; the game paints them).
+            empty.location = (spot[0], spot[1], 0)
+            yaw = spot[2] if len(spot) > 2 else (-90 if name in turned else 0)
+            empty.rotation_euler = (0, 0, math.radians(yaw))
+        # Paints for the shot only (put back afterwards; the game paints them).
         repaint = {}
-        for name, colour in (("Hatch", (0.16, 0.36, 0.72)), ("SUV", (0.16, 0.17, 0.19))):
-            obj = bpy.data.objects[f"{name}_Body"]
+        for (obj_name, colour) in repaints:
+            obj = bpy.data.objects[obj_name]
             repaint[obj] = obj.data.materials[0]
             mat = repaint[obj].copy()
             mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (*colour, 1)
@@ -624,10 +1010,10 @@ def render_previews(entries):
         bpy.context.view_layer.update()
         scene.render.resolution_x, scene.render.resolution_y = 1600, 900
         scene.cycles.samples = 96
-        cam.location = (22, 42, 21)
-        cam.rotation_euler = (Vector((0, -3, 5.5)) - cam.location).to_track_quat("-Z", "Y").to_euler()
+        cam.location = eye
+        cam.rotation_euler = (Vector(target) - cam.location).to_track_quat("-Z", "Y").to_euler()
         cam.data.lens = 32
-        scene.render.filepath = os.path.join(prev, "sheet.png")
+        scene.render.filepath = os.path.join(prev, filename)
         bpy.ops.render.render(write_still=True)
         for obj, mat in repaint.items():
             extra = obj.data.materials[0]
@@ -636,7 +1022,23 @@ def render_previews(entries):
         for name, loc in home.items():
             MODELS[name][0].location = loc
             MODELS[name][0].rotation_euler = (0, 0, 0)
+        for name, (empty, objs) in MODELS.items():
+            for o in objs:
+                o.hide_render = False
         bpy.context.view_layer.update()
+
+    if not only:
+        # The street: furniture on the kerb, the cars parked along it, the trees behind.
+        lineup("sheet.png", {"Tree": (-14, -9), "TreeTall": (9, -10), "StreetLamp": (-2, -6.5), "Bench": (-8, -5.5),
+                             "Bin": (3.5, -5.5), "Hydrant": (6.5, -5), "Sedan": (-13, 2), "Hatch": (0, 2), "SUV": (13, 2)},
+               ("Sedan", "Hatch", "SUV"), (("Hatch_Body", (0.16, 0.36, 0.72)), ("SUV_Body", (0.16, 0.17, 0.19))),
+               (22, 42, 21), (0, -3, 5.5))
+        # The plaza: the fountain, its lamps, cypresses and shrubs, a phone box, a skip, a muscle car.
+        lineup("sheet2.png", {"Fountain": (0, -4), "PostLamp": (-15, 6), "Cypress": (15, -14), "Shrub": (12, 8),
+                              "PhoneBooth": (-17, -12, 30), "TrafficLight": (22, 2, 180), "Dumpster": (-24, 4, 20),
+                              "MuscleCar": (6, 18, -100)},
+               (), (("MuscleCar_Body", (0.8, 0.12, 0.1)), ("Dumpster_Body", (0.2, 0.45, 0.3))),
+               (30, 56, 30), (0, -2, 4))
     bpy.data.objects.remove(g)
     bpy.data.objects.remove(sun)
     bpy.data.objects.remove(cam)

@@ -211,6 +211,7 @@ local function draw(prop: Instance)
 			end
 		end
 		p.Reflectance = tonumber(prop:GetAttribute("KitShine_" .. role)) or 0
+		p.Transparency = tonumber(prop:GetAttribute("KitClear_" .. role)) or 0
 		p.CastShadow = prop:GetAttribute("KitShadow_" .. role) == true
 		p.Parent = drawn
 	end

@@ -19,6 +19,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Kit = require(ServerScriptService.ArenaService.Kit)
 local CityScreens = require(ReplicatedStorage.CityScreens)
+local MeshKit = require(ServerScriptService.DistrictService.MeshKit)
 
 local CityKit = {}
 
@@ -790,7 +791,13 @@ end
 --- A drinks vending machine, its front looking down -Z, its back on z = 0... standing on the
 --- ground with its front at the origin.
 function CityKit.Vending(b: B, colour: Color3, seed: number)
-	b:part("Vending", Vector3.new(3, 6.4, 2.2), Vector3.new(0, 3.2, 1.1), colour)
+	-- The kit's cabinet where a client can draw it; the lit window and the cans stay as they are.
+	local _, body = MeshKit.Prop(b, "Vending", {
+		Body = { colour = colour, shadow = true, name = "Cabinet" },
+		Trim = { colour = darker(colour, 0.25) },
+		Dark = { colour = P.KURO },
+	})
+	body:part("Vending", Vector3.new(3, 6.4, 2.2), Vector3.new(0, 3.2, 1.1), colour)
 	b:decor("LightPanel", Vector3.new(2.6, 2.8, 0.12), Vector3.new(0, 4.5, -0.05), Color3.fromRGB(246, 246, 240))
 	local rng = Random.new(seed)
 	for k, y in ipairs({ 3.6, 4.5, 5.4 }) do
@@ -799,9 +806,9 @@ function CityKit.Vending(b: B, colour: Color3, seed: number)
 				CityKit.SIGNS[(rng:NextInteger(1, 9) + k + j) % #CityKit.SIGNS + 1])
 		end
 	end
-	b:decor("Buttons", Vector3.new(2.4, 0.2, 0.16), Vector3.new(0, 3.05, -0.12), P.IRON)
-	b:decor("Slot", Vector3.new(2.2, 0.8, 0.2), Vector3.new(0, 0.9, -0.08), P.KURO)
-	b:decor("VendingTop", Vector3.new(3, 0.7, 0.2), Vector3.new(0, 6.0, -0.08), darker(colour, 0.25))
+	body:decor("Buttons", Vector3.new(2.4, 0.2, 0.16), Vector3.new(0, 3.05, -0.12), P.IRON)
+	body:decor("Slot", Vector3.new(2.2, 0.8, 0.2), Vector3.new(0, 0.9, -0.08), P.KURO)
+	body:decor("VendingTop", Vector3.new(3, 0.7, 0.2), Vector3.new(0, 6.0, -0.08), darker(colour, 0.25))
 end
 
 --- A bicycle standing on the ground, front wheel toward -Z: the city's mamachari, basket and all.
@@ -882,11 +889,18 @@ end
 function CityKit.Sakura(b: B, seed: number, scale: number?)
 	local s = scale or 1
 	local rng = Random.new(seed)
-	b:part("Trunk", Vector3.new(5.6 * s, 1.1 * s, 1.1 * s), vertical(Vector3.new(0, 2.8 * s, 0)), P.BARK, M.Wood, { shape = "Cylinder" })
+	-- The kit's cherry where a client can draw it (CityMeshes): turned by its seed, sized as asked.
+	local _, body = MeshKit.Prop(b, "Sakura", {
+		Trunk = { colour = P.BARK, material = M.Wood, shadow = true, name = "Bark" },
+		Blossom1 = { colour = P.SAKURA_DEEP, material = M.LeafyGrass, shadow = true, name = "Blossom" },
+		Blossom2 = { colour = P.SAKURA, material = M.LeafyGrass, shadow = true, name = "Blossom" },
+		Blossom3 = { colour = P.SAKURA_LIGHT, material = M.LeafyGrass, shadow = true, name = "Blossom" },
+	}, { scale = s, yaw = (seed * 2.39996) % (math.pi * 2) })
+	body:part("Trunk", Vector3.new(5.6 * s, 1.1 * s, 1.1 * s), vertical(Vector3.new(0, 2.8 * s, 0)), P.BARK, M.Wood, { shape = "Cylinder" })
 	for k = 1, 3 do
 		local a = seed + k * 2.1
 		local cf, len = Kit.Span(Vector3.new(0, 4.8 * s, 0), Vector3.new(math.cos(a) * 3.4 * s, 8.2 * s, math.sin(a) * 3.4 * s))
-		b:decor("Branch", Vector3.new(0.55 * s, 0.55 * s, len), cf, P.BARK, M.Wood)
+		body:decor("Branch", Vector3.new(0.55 * s, 0.55 * s, len), cf, P.BARK, M.Wood)
 	end
 	-- The canopy: an underside ring, a middle, a crown, and sprays at the rim.
 	for _, blob in ipairs({
@@ -899,7 +913,7 @@ function CityKit.Sakura(b: B, seed: number, scale: number?)
 		local size = blob[4] * s * rng:NextNumber(0.88, 1.12)
 		local at = Vector3.new(math.cos(a) * r, blob[2] * s + rng:NextNumber(-0.3, 0.3) * s, math.sin(a) * r)
 		local shade = if blob[5] == 1 then P.SAKURA_DEEP elseif blob[5] == 2 then P.SAKURA else P.SAKURA_LIGHT
-		b:decor("Blossom", Vector3.new(size, size * 0.66, size), at, shade, nil, { shape = "Ball", shadow = true })
+		body:decor("Blossom", Vector3.new(size, size * 0.66, size), at, shade, nil, { shape = "Ball", shadow = true })
 	end
 	b:decor("Petals", Vector3.new(0.06, 9 * s, 9 * s), CFrame.new(0, 0.05, 0) * CFrame.Angles(0, 0, math.rad(90)), P.SAKURA_LIGHT,
 		nil, { shape = "Cylinder", transparency = 0.35 })
@@ -909,12 +923,18 @@ end
 function CityKit.StreetTree(b: B, seed: number, scale: number?)
 	local s = scale or 1
 	local rng = Random.new(seed)
+	local _, body = MeshKit.Prop(b, "Tree", {
+		Trunk = { colour = P.BARK, material = M.Wood, shadow = true, name = "Bark" },
+		Leaves1 = { colour = P.LEAF_DARK, material = M.LeafyGrass, shadow = true, name = "Leaves" },
+		Leaves2 = { colour = P.LEAF, material = M.LeafyGrass, shadow = true, name = "Leaves" },
+		Leaves3 = { colour = lighter(P.LEAF, 0.15), material = M.LeafyGrass, shadow = true, name = "Leaves" },
+	}, { scale = s * 0.87, yaw = (seed * 2.39996) % (math.pi * 2) })
 	b:decor("TreeGrate", Vector3.new(3.4, 0.12, 3.4), Vector3.new(0, 0.06, 0), P.IRON)
-	b:part("Trunk", Vector3.new(7 * s, 0.8 * s, 0.8 * s), vertical(Vector3.new(0, 3.5 * s, 0)), P.BARK, M.Wood, { shape = "Cylinder" })
+	body:part("Trunk", Vector3.new(7 * s, 0.8 * s, 0.8 * s), vertical(Vector3.new(0, 3.5 * s, 0)), P.BARK, M.Wood, { shape = "Cylinder" })
 	for k, blob in ipairs({ { Vector3.new(0, 8.4, 0), 5.4 }, { Vector3.new(1.6, 7.4, 0.8), 3.8 }, { Vector3.new(-1.5, 7.6, -0.8), 4 },
 		{ Vector3.new(0.2, 10, 0.4), 3.6 } } :: { { any } }) do
 		local size = blob[2] * rng:NextNumber(0.9, 1.1) * s
-		b:decor("Leaves", Vector3.new(size, size, size), blob[1] * s, if k % 2 == 0 then P.LEAF else P.LEAF_DARK, nil,
+		body:decor("Leaves", Vector3.new(size, size, size), blob[1] * s, if k % 2 == 0 then P.LEAF else P.LEAF_DARK, nil,
 			{ shape = "Ball", shadow = true })
 	end
 end
@@ -924,12 +944,17 @@ function CityKit.Pine(b: B, seed: number, scale: number?)
 	local s = scale or 1
 	local rng = Random.new(seed)
 	local lean = rng:NextNumber(-0.25, 0.25)
+	local _, body = MeshKit.Prop(b, "Pine", {
+		Trunk = { colour = P.BARK, material = M.Wood, shadow = true, name = "Bark" },
+		Pine1 = { colour = darker(P.PINE, 0.15), material = M.LeafyGrass, shadow = true, name = "PinePad" },
+		Pine2 = { colour = P.PINE, material = M.LeafyGrass, shadow = true, name = "PinePad" },
+	}, { scale = s, yaw = if lean < 0 then math.pi else 0 })
 	local cf, len = Kit.Span(Vector3.new(0, 0, 0), Vector3.new(lean * 6 * s, 9 * s, 0))
-	b:part("Trunk", Vector3.new(1.1 * s, 1.1 * s, len), cf, P.BARK, M.Wood)
+	body:part("Trunk", Vector3.new(1.1 * s, 1.1 * s, len), cf, P.BARK, M.Wood)
 	for k, pad in ipairs({ { Vector3.new(lean * 6, 9.4, 0), 6.4 }, { Vector3.new(lean * 3 + 2.6, 6.4, 0.6), 4.6 },
 		{ Vector3.new(lean * 4 - 2.8, 7.6, -0.6), 4.4 }, { Vector3.new(lean * 6 + 0.4, 11.2, 0.2), 3.6 } } :: { { any } }) do
 		local size = pad[2] * s
-		b:decor("PinePad", Vector3.new(size * 0.34, size, size), vertical(pad[1] * s), if k % 2 == 0 then P.PINE else darker(P.PINE, 0.15),
+		body:decor("PinePad", Vector3.new(size * 0.34, size, size), vertical(pad[1] * s), if k % 2 == 0 then P.PINE else darker(P.PINE, 0.15),
 			nil, { shape = "Cylinder", shadow = true })
 	end
 end
@@ -956,15 +981,19 @@ end
 --- A stone lantern (toro) standing at the origin.
 function CityKit.StoneLantern(b: B, scale: number?)
 	local s = scale or 1
-	b:part("ToroBase", Vector3.new(1.6 * s, 0.5 * s, 1.6 * s), Vector3.new(0, 0.25 * s, 0), P.STONE, M.Slate)
-	b:part("ToroPost", Vector3.new(2.2 * s, 0.7 * s, 0.7 * s), vertical(Vector3.new(0, 1.6 * s, 0)), P.STONE, M.Slate,
+	local _, body = MeshKit.Prop(b, "StoneLantern", {
+		Stone = { colour = P.STONE, material = M.Slate, shadow = true },
+		LanternGlass = { colour = P.PAPER, name = "LanternGlass" },
+	}, { scale = s })
+	body:part("ToroBase", Vector3.new(1.6 * s, 0.5 * s, 1.6 * s), Vector3.new(0, 0.25 * s, 0), P.STONE, M.Slate)
+	body:part("ToroPost", Vector3.new(2.2 * s, 0.7 * s, 0.7 * s), vertical(Vector3.new(0, 1.6 * s, 0)), P.STONE, M.Slate,
 		{ shape = "Cylinder" })
-	b:decor("ToroShelf", Vector3.new(1.5 * s, 0.3 * s, 1.5 * s), Vector3.new(0, 2.85 * s, 0), P.STONE, M.Slate)
-	b:decor("LanternGlass", Vector3.new(0.9 * s, 0.9 * s, 0.9 * s), Vector3.new(0, 3.45 * s, 0), P.PAPER)
-	b:decor("ToroCap", Vector3.new(2 * s, 0.35 * s, 2 * s), Vector3.new(0, 4.1 * s, 0), P.STONE, M.Slate)
-	b:decor("ToroCap", Vector3.new(1.2 * s, 0.35 * s, 1.2 * s), CFrame.new(0, 4.4 * s, 0) * CFrame.Angles(0, math.rad(45), 0), P.STONE,
+	body:decor("ToroShelf", Vector3.new(1.5 * s, 0.3 * s, 1.5 * s), Vector3.new(0, 2.85 * s, 0), P.STONE, M.Slate)
+	body:decor("LanternGlass", Vector3.new(0.9 * s, 0.9 * s, 0.9 * s), Vector3.new(0, 3.45 * s, 0), P.PAPER)
+	body:decor("ToroCap", Vector3.new(2 * s, 0.35 * s, 2 * s), Vector3.new(0, 4.1 * s, 0), P.STONE, M.Slate)
+	body:decor("ToroCap", Vector3.new(1.2 * s, 0.35 * s, 1.2 * s), CFrame.new(0, 4.4 * s, 0) * CFrame.Angles(0, math.rad(45), 0), P.STONE,
 		M.Slate)
-	b:decor("ToroJewel", Vector3.new(0.45 * s, 0.45 * s, 0.45 * s), Vector3.new(0, 4.75 * s, 0), P.STONE, M.Slate, { shape = "Ball" })
+	body:decor("ToroJewel", Vector3.new(0.45 * s, 0.45 * s, 0.45 * s), Vector3.new(0, 4.75 * s, 0), P.STONE, M.Slate, { shape = "Ball" })
 end
 
 --- A car, its nose to -Z: "kei" (a tall little box), "taxi", "van", "truck" (a kei truck).

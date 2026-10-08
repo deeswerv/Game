@@ -128,7 +128,7 @@ for _, shell in ipairs(shells) do
 		local rel = hullPart.CFrame:PointToObjectSpace(shell.Position)
 		local nose = hullPart.CFrame:PointToObjectSpace(lamp.Position)
 		local sized = false
-		for _, spec in pairs({ Data.Sedan.Body, Data.Hatch.Body, Data.SUV.Body }) do
+		for _, spec in pairs({ Data.Sedan.Body, Data.Hatch.Body, Data.SUV.Body, Data.MuscleCar.Body }) do
 			if (shell.Size - spec.size).Magnitude < 0.05 then
 				sized = true
 			end
@@ -155,8 +155,11 @@ for _, p in ipairs(folder:GetDescendants()) do
 end
 check(solidMesh == 0, "the meshes never collide or catch a bullet")
 check(visibleHull == 0 and n(names, "Body") == n(plainNames, "Body") and n(names, "Cabin") == n(plainNames, "Cabin"),
-	"every car keeps its solid body and cabin, as invisible hulls")
-check(n(names, "Pole") == n(plainNames, "Pole") and n(names, "Trunk") == n(plainNames, "Trunk"), "lamp posts and trunks still solid")
+	("every car keeps its solid body and cabin, as invisible hulls (%d shown; bodies %d/%d, cabins %d/%d)"):format(visibleHull,
+		n(names, "Body"), n(plainNames, "Body"), n(names, "Cabin"), n(plainNames, "Cabin")))
+check(n(names, "Pole") == n(plainNames, "Pole") and n(names, "Trunk") == n(plainNames, "Trunk"),
+	("lamp posts and trunks still solid (poles %d/%d, trunks %d/%d)"):format(n(names, "Pole"), n(plainNames, "Pole"),
+		n(names, "Trunk"), n(plainNames, "Trunk")))
 
 -- A lamp's globe hangs where the part-built one did (half a stud higher: it stands on the pavement).
 local pole, globe = nil, nil

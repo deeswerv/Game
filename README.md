@@ -96,6 +96,12 @@ pads at the Crossing are retired).
   brackets, wheel spokes, window units, sills, shutters, chimney pots, leaf buds -- are not
   drawn; anything big enough to be a landmark stays). Local to your client only
   (`GraphicsQuality.client.luau`, `tools/uitest/graphics.luau`).
+- **Rain you can see.** When the weather turns to Rain (it comes round on its own, or
+  F4 → Weather → Rain), streaks fall round you, slanting in the wind, with splashes on the
+  ground. The cities' roads and paving take a wet sheen, the grade turns cooler and greyer, and
+  now and then lightning flashes twice, with thunder after it. It eases off under a roof and
+  fades in and out over a few seconds. PERFORMANCE draws fewer streaks and no splashes
+  (`Rain.client.luau`, `tools/uitest/rain.luau`).
 - **Lighting.** The game renders with Future lighting. Lamps, lanterns, furnace mouths and signs
   really light the streets around them at night, and Roblox scales it down on devices that
   cannot afford it. Shade takes its colour from the sky, glass and metal catch it, and the day
@@ -253,12 +259,20 @@ have wheels in dark arches
 with five-spoke rims, chrome belt lines and door handles, lamp surrounds, an exhaust and an
 aerial.
 
-**Real meshes from Blender (the city kit).** `tools/models/build_kit.py` models three cars
-(saloon, hatchback, SUV), the crook street lamp, two trees, a bench, a bin and a hydrant in
-Blender, in code, and exports `assets/models/CityKit.glb` (previews in
-`assets/models/previews/`, the whole kit in `sheet.png`). Once the kit is in the place, Downtown
-draws its cars, lamps, trees, benches, bins and hydrants from it: a car is 8 meshes instead of
-about 40 parts. The lamp globes still light at night.
+**Real meshes from Blender (the city kit).** `tools/models/build_kit.py` models the city's
+props in Blender, in code, and exports `assets/models/CityKit.glb` (previews in
+`assets/models/previews/`; the street in `sheet.png`, the plaza in `sheet2.png`):
+
+- Downtown: the saloon (and taxi), hatchback, SUV and muscle car; the crook street lamps and
+  the plaza's post lamps; leafy trees, cypresses and flowering shrubs; benches, bins, hydrants,
+  dumpsters, phone booths and traffic lights; and the three-tier plaza fountain.
+- Hanami City: the cherry trees, cloud-pruned pines, stone lanterns, vending machines and its
+  street trees.
+
+Each is drawn from the kit in place of its part-built version. A car is 8 meshes instead of
+about 40 parts, and the fountain's basins are turned, not stacked cylinders. Lamp globes and
+lantern windows still light at night; a taxi keeps its roof light, a vending machine its lit
+window and cans, and signs their lettering.
 
 **Nothing to import.** The meshes ship inside the game (`ReplicatedStorage.MeshKitGeometry`,
 written by the same script). Every player's device builds them itself with EditableMesh

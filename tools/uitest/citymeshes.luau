@@ -58,7 +58,9 @@ for _, p in ipairs(props) do
 	kinds[p:GetAttribute("KitModel")] = (kinds[p:GetAttribute("KitModel")] or 0) + 1
 end
 check(#props > 100 and kinds.Sedan and kinds.Hatch and kinds.SUV and kinds.StreetLamp and (kinds.Tree or kinds.TreeTall)
-	and kinds.Bench and kinds.Bin and kinds.Hydrant, ("%d props marked for the kit"):format(#props))
+	and kinds.Bench and kinds.Bin and kinds.Hydrant and kinds.Fountain and kinds.TrafficLight and kinds.Dumpster
+	and kinds.PhoneBooth and kinds.MuscleCar and kinds.PostLamp and kinds.Cypress and kinds.Shrub,
+	("%d props marked for the kit"):format(#props))
 
 -- The stand-in: EditableMesh records what it is given; a MeshPart comes back sized to it.
 local made, volumeSign, normalsSet = 0, 0, 0

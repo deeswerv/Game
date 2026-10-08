@@ -182,22 +182,6 @@ local function vertical(at: Vector3): CFrame
 	return CFrame.new(at) * CFrame.Angles(0, 0, math.rad(90))
 end
 
---- A street prop the city kit can draw. With the kit imported, its meshes are placed now
---- (`mesh`): build only the prop's solid pieces, as hulls, into `body`. Without it, `body` builds
---- into a Model that every client draws the kit over by itself (MeshKit.Group, CityMeshes):
---- build the whole part-built prop into it. Whatever stays drawn either way (a banner, a
---- planter) goes on `b` as usual.
-local function kitProp(b: Kit.Builder, name: string, paints: { [string]: MeshKit.Paint }, opts: MeshKit.Opts?)
-	: ({ [string]: BasePart }?, Kit.Builder)
-	local mesh = MeshKit.Place(b, name, paints, opts)
-	if mesh then
-		return mesh, b
-	end
-	local body = Kit.new(MeshKit.Group(b, name, paints, opts), b.frame)
-	body.side = b.side
-	return nil, body
-end
-
 --- The options for a prop's solid piece: as given -- or, when the mesh kit is drawing the prop
 --- (`mesh`), the same piece kept as an invisible hull, so the prop collides and stops bullets
 --- exactly as the part-built one does.
@@ -209,6 +193,17 @@ local function hull(mesh: { [string]: BasePart }?, opts: Kit.Opts?): Kit.Opts?
 	o.transparency = 1
 	o.shadow = false
 	return o
+end
+
+--- A street prop the city kit can draw. With the kit imported, its meshes are placed now
+--- (`mesh`): build only the prop's solid pieces, as hulls, into `body`. Without it, `body` builds
+--- into a Model that every client draws the kit over by itself (MeshKit.Group, CityMeshes):
+--- build the whole part-built prop into it. Whatever stays drawn either way (a banner, a
+--- planter) goes on `b` as usual.
+local function kitProp(b: Kit.Builder, name: string, paints: { [string]: MeshKit.Paint }, opts: MeshKit.Opts?)
+	: ({ [string]: BasePart }?, Kit.Builder)
+	local mesh, body = MeshKit.Prop(b, name, paints, opts)
+	return mesh, body :: Kit.Builder
 end
 
 --- Lettering painted straight onto a surface. `at` looks the way it is read from.
@@ -276,12 +271,16 @@ end
 
 --- A short plaza lamp: an iron post and a lantern on top.
 local function postLamp(b: Kit.Builder)
-	b:part("Base", Vector3.new(1.4, 1, 1.4), Vector3.new(0, 1, 0), IRON)
-	b:part("Post", Vector3.new(7, 0.45, 0.45), vertical(Vector3.new(0, 5, 0)), IRON, nil, { shape = "Cylinder" })
-	b:decor("LanternBase", Vector3.new(1.5, 0.3, 1.5), Vector3.new(0, 8.6, 0), IRON)
-	b:decor("LanternGlass", Vector3.new(1.3, 1.6, 1.3), Vector3.new(0, 9.55, 0), LAMP_GLASS)
-	b:decor("LanternCap", Vector3.new(1.8, 0.4, 1.8), Vector3.new(0, 10.55, 0), IRON)
-	b:decor("LanternTop", Vector3.new(0.8, 0.5, 0.8), Vector3.new(0, 10.95, 0), IRON)
+	local _, body = kitProp(b, "PostLamp", {
+		Iron = { colour = IRON, shadow = true },
+		LanternGlass = { colour = LAMP_GLASS, name = "LanternGlass" },
+	}, { lift = 0.5 })
+	body:part("Base", Vector3.new(1.4, 1, 1.4), Vector3.new(0, 1, 0), IRON)
+	body:part("Post", Vector3.new(7, 0.45, 0.45), vertical(Vector3.new(0, 5, 0)), IRON, nil, { shape = "Cylinder" })
+	body:decor("LanternBase", Vector3.new(1.5, 0.3, 1.5), Vector3.new(0, 8.6, 0), IRON)
+	body:decor("LanternGlass", Vector3.new(1.3, 1.6, 1.3), Vector3.new(0, 9.55, 0), LAMP_GLASS)
+	body:decor("LanternCap", Vector3.new(1.8, 0.4, 1.8), Vector3.new(0, 10.55, 0), IRON)
+	body:decor("LanternTop", Vector3.new(0.8, 0.5, 0.8), Vector3.new(0, 10.95, 0), IRON)
 	b:light("Point", Vector3.new(0, 9.5, 0), WARM, 1.1, 20)
 end
 
@@ -366,13 +365,19 @@ end
 local function cypress(b: Kit.Builder, seed: number)
 	local rng = Random.new(seed)
 	local h = rng:NextNumber(9, 12)
-	b:part("Trunk", Vector3.new(2.2, 0.7, 0.7), vertical(Vector3.new(0, 1.1, 0)), BARK, M.Wood, { shape = "Cylinder" })
 	local shades = { Color3.fromRGB(44, 112, 62), Color3.fromRGB(58, 132, 70), Color3.fromRGB(80, 156, 80) }
+	local _, body = kitProp(b, "Cypress", {
+		Trunk = { colour = BARK, material = M.Wood, shadow = true, name = "Bark" },
+		Leaves1 = { colour = shades[1], material = M.LeafyGrass, shadow = true, name = "Leaves" },
+		Leaves2 = { colour = shades[2], material = M.LeafyGrass, shadow = true, name = "Leaves" },
+		Leaves3 = { colour = shades[3], material = M.LeafyGrass, shadow = true, name = "Leaves" },
+	}, { scale = h / 10.5, yaw = (seed * 2.39996) % (math.pi * 2) })
+	body:part("Trunk", Vector3.new(2.2, 0.7, 0.7), vertical(Vector3.new(0, 1.1, 0)), BARK, M.Wood, { shape = "Cylinder" })
 	local n = 5
 	for k = 0, n - 1 do
 		local t = k / (n - 1)
 		local w = 2.9 * (1 - t * 0.72)
-		b:decor("Leaves", Vector3.new(w, h / n * 1.7, w), Vector3.new(rng:NextNumber(-0.15, 0.15), 2.2 + t * (h - 2.6), 0),
+		body:decor("Leaves", Vector3.new(w, h / n * 1.7, w), Vector3.new(rng:NextNumber(-0.15, 0.15), 2.2 + t * (h - 2.6), 0),
 			shades[math.min(3, 1 + math.floor(t * 3))], M.LeafyGrass, { shape = "Ball", shadow = true })
 	end
 end
@@ -381,13 +386,18 @@ end
 local function shrub(b: Kit.Builder, seed: number, size: number?)
 	local rng = Random.new(seed)
 	local s = size or 2.2
-	b:decor("Shrub", Vector3.new(s, s * 0.85, s), Vector3.new(0, s * 0.38, 0), HEDGE, M.LeafyGrass, { shape = "Ball", shadow = true })
-	b:decor("Shrub", Vector3.new(s * 0.7, s * 0.6, s * 0.7), Vector3.new(s * 0.35, s * 0.3, s * 0.2),
-		Color3.fromRGB(96, 160, 80), M.LeafyGrass, { shape = "Ball" })
 	local bloom = FLOWERS[rng:NextInteger(1, #FLOWERS)]
+	local _, body = kitProp(b, "Shrub", {
+		Leaves1 = { colour = HEDGE, material = M.LeafyGrass, shadow = true, name = "Shrub" },
+		Leaves2 = { colour = Color3.fromRGB(96, 160, 80), material = M.LeafyGrass, shadow = true, name = "Shrub" },
+		Bloom = { colour = bloom },
+	}, { scale = s / 2.2, yaw = (seed * 2.39996) % (math.pi * 2) })
+	body:decor("Shrub", Vector3.new(s, s * 0.85, s), Vector3.new(0, s * 0.38, 0), HEDGE, M.LeafyGrass, { shape = "Ball", shadow = true })
+	body:decor("Shrub", Vector3.new(s * 0.7, s * 0.6, s * 0.7), Vector3.new(s * 0.35, s * 0.3, s * 0.2),
+		Color3.fromRGB(96, 160, 80), M.LeafyGrass, { shape = "Ball" })
 	for _ = 1, 3 do
 		local a = rng:NextNumber(0, 6.28)
-		b:decor("Bloom", Vector3.new(0.45, 0.45, 0.45), Vector3.new(math.cos(a) * s * 0.4, s * 0.62, math.sin(a) * s * 0.4),
+		body:decor("Bloom", Vector3.new(0.45, 0.45, 0.45), Vector3.new(math.cos(a) * s * 0.4, s * 0.62, math.sin(a) * s * 0.4),
 			bloom, nil, { shape = "Ball" })
 	end
 end
@@ -1118,31 +1128,38 @@ end
 --- stone fountain in the middle with water falling from bowl to bowl, and eight arcing jets
 --- from the coping. Origin at the pool's centre on the plaza floor.
 local function fountain(b: Kit.Builder)
+	-- The kit's fountain (turned basins, a moulded coping) where a client can draw it; the
+	-- falling water and the jets stay as they are.
+	local _, body = kitProp(b, "Fountain", {
+		Stone = { colour = STONE, shadow = true },
+		Trim = { colour = STONE_LIGHT, shadow = true },
+		Water = { colour = WATER, material = M.Glass, transparency = 0.2, reflectance = 0.15 },
+	})
 	local R = 12                                     -- the pool's apothem
 	local side = 2 * R * math.tan(math.rad(22.5))
-	b:part("PoolFloor", Vector3.new(0.6, 2 * R + 1, 2 * R + 1), vertical(Vector3.new(0, 0.3, 0)), STONE, nil,
+	body:part("PoolFloor", Vector3.new(0.6, 2 * R + 1, 2 * R + 1), vertical(Vector3.new(0, 0.3, 0)), STONE, nil,
 		{ shape = "Cylinder" })
-	b:decor("Water", Vector3.new(0.2, 2 * R + 0.4, 2 * R + 0.4), vertical(Vector3.new(0, 1.3, 0)), WATER, M.Glass,
+	body:decor("Water", Vector3.new(0.2, 2 * R + 0.4, 2 * R + 0.4), vertical(Vector3.new(0, 1.3, 0)), WATER, M.Glass,
 		{ shape = "Cylinder", transparency = 0.2, reflectance = 0.15 })
 	for i = 0, 7 do
 		local cf = CFrame.Angles(0, math.rad(i * 45), 0) * CFrame.new(0, 1.1, -R)
-		b:part("Coping", Vector3.new(side + 0.9, 2.2, 1.6), cf, STONE)
-		b:decor("CopingCap", Vector3.new(side + 1.3, 0.3, 2.1), cf * CFrame.new(0, 1.25, 0), STONE_LIGHT)
+		body:part("Coping", Vector3.new(side + 0.9, 2.2, 1.6), cf, STONE)
+		body:decor("CopingCap", Vector3.new(side + 1.3, 0.3, 2.1), cf * CFrame.new(0, 1.25, 0), STONE_LIGHT)
 	end
 	-- The tiers: pedestal, wide bowl, slim pedestal, small bowl, finial.
-	b:part("Pedestal", Vector3.new(4.4, 3, 3), vertical(Vector3.new(0, 2.8, 0)), STONE, nil, { shape = "Cylinder" })
-	b:part("Bowl", Vector3.new(0.9, 10, 10), vertical(Vector3.new(0, 5.45, 0)), STONE, nil, { shape = "Cylinder" })
-	b:decor("BowlLip", Vector3.new(0.3, 10.4, 10.4), vertical(Vector3.new(0, 6.05, 0)), STONE_LIGHT, nil,
+	body:part("Pedestal", Vector3.new(4.4, 3, 3), vertical(Vector3.new(0, 2.8, 0)), STONE, nil, { shape = "Cylinder" })
+	body:part("Bowl", Vector3.new(0.9, 10, 10), vertical(Vector3.new(0, 5.45, 0)), STONE, nil, { shape = "Cylinder" })
+	body:decor("BowlLip", Vector3.new(0.3, 10.4, 10.4), vertical(Vector3.new(0, 6.05, 0)), STONE_LIGHT, nil,
 		{ shape = "Cylinder" })
-	b:decor("BowlWater", Vector3.new(0.1, 9.4, 9.4), vertical(Vector3.new(0, 6.24, 0)), WATER, M.Glass,
+	body:decor("BowlWater", Vector3.new(0.1, 9.4, 9.4), vertical(Vector3.new(0, 6.24, 0)), WATER, M.Glass,
 		{ shape = "Cylinder", transparency = 0.15 })
-	b:part("Stem", Vector3.new(3, 1.6, 1.6), vertical(Vector3.new(0, 7.4, 0)), STONE, nil, { shape = "Cylinder" })
-	b:part("TopBowl", Vector3.new(0.7, 5.6, 5.6), vertical(Vector3.new(0, 9.2, 0)), STONE, nil, { shape = "Cylinder" })
-	b:decor("TopLip", Vector3.new(0.25, 5.9, 5.9), vertical(Vector3.new(0, 9.65, 0)), STONE_LIGHT, nil,
+	body:part("Stem", Vector3.new(3, 1.6, 1.6), vertical(Vector3.new(0, 7.4, 0)), STONE, nil, { shape = "Cylinder" })
+	body:part("TopBowl", Vector3.new(0.7, 5.6, 5.6), vertical(Vector3.new(0, 9.2, 0)), STONE, nil, { shape = "Cylinder" })
+	body:decor("TopLip", Vector3.new(0.25, 5.9, 5.9), vertical(Vector3.new(0, 9.65, 0)), STONE_LIGHT, nil,
 		{ shape = "Cylinder" })
-	b:decor("TopWater", Vector3.new(0.1, 5.1, 5.1), vertical(Vector3.new(0, 9.82, 0)), WATER, M.Glass,
+	body:decor("TopWater", Vector3.new(0.1, 5.1, 5.1), vertical(Vector3.new(0, 9.82, 0)), WATER, M.Glass,
 		{ shape = "Cylinder", transparency = 0.15 })
-	b:decor("Finial", Vector3.new(1.2, 1.2, 1.2), Vector3.new(0, 10.3, 0), STONE_LIGHT, nil, { shape = "Ball" })
+	body:decor("Finial", Vector3.new(1.2, 1.2, 1.2), Vector3.new(0, 10.3, 0), STONE_LIGHT, nil, { shape = "Ball" })
 	b:decor("Jet", Vector3.new(1.8, 0.5, 0.5), vertical(Vector3.new(0, 11.6, 0)), lighter(WATER, 0.5), nil,
 		{ shape = "Cylinder", transparency = 0.35 })
 	-- Sheets of water falling from each bowl's rim.
@@ -1155,7 +1172,7 @@ local function fountain(b: Kit.Builder)
 	for i = 0, 7 do
 		local a = math.rad(i * 45 + 22.5)
 		local at = Vector3.new(math.cos(a) * 8, 0, math.sin(a) * 8)
-		b:decor("Spout", Vector3.new(0.8, 1.2, 1.2), vertical(at + Vector3.new(0, 1.2, 0)), STONE_LIGHT, nil,
+		body:decor("Spout", Vector3.new(0.8, 1.2, 1.2), vertical(at + Vector3.new(0, 1.2, 0)), STONE_LIGHT, nil,
 			{ shape = "Cylinder" })
 		b:decor("Jet", Vector3.new(1.8, 0.3, 0.3), vertical(at + Vector3.new(0, 2.5, 0)), fall, nil,
 			{ shape = "Cylinder", transparency = 0.4 })
@@ -2758,16 +2775,22 @@ local function fireEscape(b: Kit.Builder, floors: { number }, width: number)
 end
 
 local function dumpster(b: Kit.Builder, colour: Color3)
-	b:part("Dumpster", Vector3.new(6, 3.6, 3.4), Vector3.new(0, 2.2, 0), colour, M.Metal)
-	b:decor("Rim", Vector3.new(6.2, 0.3, 3.6), Vector3.new(0, 4.05, 0), darker(colour, 0.2), M.Metal)
-	b:decor("Lid", Vector3.new(2.95, 0.2, 3.7), CFrame.new(-1.5, 4.35, 0.1) * CFrame.Angles(math.rad(-6), 0, 0),
+	local _, body = kitProp(b, "Dumpster", {
+		Body = { colour = colour, material = M.Metal, shadow = true, name = "Skip" },
+		Lid = { colour = darker(colour, 0.35), material = M.Plastic, shadow = true },
+		Trim = { colour = darker(colour, 0.2), material = M.Metal },
+		Wheel = { colour = BAG },
+	})
+	body:part("Dumpster", Vector3.new(6, 3.6, 3.4), Vector3.new(0, 2.2, 0), colour, M.Metal)
+	body:decor("Rim", Vector3.new(6.2, 0.3, 3.6), Vector3.new(0, 4.05, 0), darker(colour, 0.2), M.Metal)
+	body:decor("Lid", Vector3.new(2.95, 0.2, 3.7), CFrame.new(-1.5, 4.35, 0.1) * CFrame.Angles(math.rad(-6), 0, 0),
 		darker(colour, 0.35), M.Plastic)
-	b:decor("Lid", Vector3.new(2.95, 0.2, 3.7), CFrame.new(1.5, 4.9, 1.2) * CFrame.Angles(math.rad(-58), 0, 0),
+	body:decor("Lid", Vector3.new(2.95, 0.2, 3.7), CFrame.new(1.5, 4.9, 1.2) * CFrame.Angles(math.rad(-58), 0, 0),
 		darker(colour, 0.35), M.Plastic)
 	for _, x in ipairs({ -2.4, 2.4 }) do
-		b:decor("Wheel", Vector3.new(0.4, 0.8, 0.8), Vector3.new(x, 0.4, -1.3), BAG, nil, { shape = "Cylinder" })
-		b:decor("Wheel", Vector3.new(0.4, 0.8, 0.8), Vector3.new(x, 0.4, 1.3), BAG, nil, { shape = "Cylinder" })
-		b:decor("Pocket", Vector3.new(1.2, 0.8, 0.25), Vector3.new(x, 2.4, -1.8), darker(colour, 0.25), M.Metal)
+		body:decor("Wheel", Vector3.new(0.4, 0.8, 0.8), Vector3.new(x, 0.4, -1.3), BAG, nil, { shape = "Cylinder" })
+		body:decor("Wheel", Vector3.new(0.4, 0.8, 0.8), Vector3.new(x, 0.4, 1.3), BAG, nil, { shape = "Cylinder" })
+		body:decor("Pocket", Vector3.new(1.2, 0.8, 0.25), Vector3.new(x, 2.4, -1.8), darker(colour, 0.25), M.Metal)
 	end
 	painted(b, "WASTE", Kit.Look(Vector3.new(0, 2.6, -1.72), Vector3.new(0, 2.6, -10)), 2.6, 0.6, TRIM)
 end
@@ -2803,6 +2826,10 @@ end
 --- Nose toward -Z.
 local function muscleCar(b: Kit.Builder, colour: Color3)
 	local trim = Color3.fromRGB(28, 28, 32)
+	local paint = carPaint(colour)
+	paint.Stripe = { colour = TRIM }
+	local _, body = kitProp(b, "MuscleCar", paint)
+	b = body
 	b:part("Body", Vector3.new(5, 1.5, 11.5), Vector3.new(0, 1.55, 0), colour, nil, { reflectance = 0.08 })
 	b:part("Cabin", Vector3.new(4.3, 1.3, 4.6), Vector3.new(0, 2.95, 1), colour)
 	b:decor("Glass", Vector3.new(4.36, 0.9, 4.66), Vector3.new(0, 2.95, 1), Color3.fromRGB(40, 52, 70), M.Glass,
@@ -3265,35 +3292,44 @@ local SIGNAL_BLACK = Color3.fromRGB(30, 32, 36)
 --- head at its end showing both ways (red, amber, green -- green on), a crossing signal on the
 --- pole, and street-name blades on top. Origin at road level, on the kerb.
 local function trafficLight(b: Kit.Builder, avenueName: string, streetName: string)
-	b:part("SignalBase", Vector3.new(1.3, 0.8, 1.3), Vector3.new(0, 0.9, 0), SIGNAL_BLACK)
-	b:part("SignalPole", Vector3.new(15, 0.55, 0.55), vertical(Vector3.new(0, 8, 0)), SIGNAL_BLACK, nil, { shape = "Cylinder" })
-	b:decor("MastArm", Vector3.new(9, 0.4, 0.4), Vector3.new(-4.5, 14.6, 0), SIGNAL_BLACK)
+	local _, body = kitProp(b, "TrafficLight", {
+		Pole = { colour = SIGNAL_BLACK, material = M.Metal, shadow = true, name = "SignalIron" },
+		Head = { colour = Color3.fromRGB(236, 196, 40), shadow = true },
+		SignalRed = { colour = Color3.fromRGB(120, 34, 34) },
+		SignalAmber = { colour = Color3.fromRGB(130, 96, 30) },
+		SignalGreen = { colour = Color3.fromRGB(80, 236, 120) },
+		Blade = { colour = Color3.fromRGB(34, 118, 76) },
+		WalkLamp = { colour = Color3.fromRGB(250, 250, 244) },
+	}, { lift = 0.5 })
+	body:part("SignalBase", Vector3.new(1.3, 0.8, 1.3), Vector3.new(0, 0.9, 0), SIGNAL_BLACK)
+	body:part("SignalPole", Vector3.new(15, 0.55, 0.55), vertical(Vector3.new(0, 8, 0)), SIGNAL_BLACK, nil, { shape = "Cylinder" })
+	body:decor("MastArm", Vector3.new(9, 0.4, 0.4), Vector3.new(-4.5, 14.6, 0), SIGNAL_BLACK)
 	local brace, len = Kit.Span(Vector3.new(0, 12.6, 0), Vector3.new(-3.5, 14.4, 0))
-	b:decor("MastBrace", Vector3.new(0.2, 0.2, len), brace, SIGNAL_BLACK)
+	body:decor("MastBrace", Vector3.new(0.2, 0.2, len), brace, SIGNAL_BLACK)
 	-- The head: a box, a visor over each lamp, lamps on both faces.
 	local hx = -8.2
-	b:decor("SignalHead", Vector3.new(1.2, 3.64, 1.1), Vector3.new(hx, 12.6, 0), Color3.fromRGB(236, 196, 40))
-	b:decor("HeadBack", Vector3.new(1.5, 3.9, 0.2), Vector3.new(hx, 12.6, 0), SIGNAL_BLACK)
+	body:decor("SignalHead", Vector3.new(1.2, 3.64, 1.1), Vector3.new(hx, 12.6, 0), Color3.fromRGB(236, 196, 40))
+	body:decor("HeadBack", Vector3.new(1.5, 3.9, 0.2), Vector3.new(hx, 12.6, 0), SIGNAL_BLACK)
 	for i, spec in ipairs({ { 13.7, Color3.fromRGB(120, 34, 34) }, { 12.6, Color3.fromRGB(130, 96, 30) },
 		{ 11.5, Color3.fromRGB(80, 236, 120) } } :: { { any } }) do
 		for _, face in ipairs({ -1, 1 }) do
-			b:decor("SignalLamp", Vector3.new(0.16, 0.8, 0.8), CFrame.new(hx, spec[1], face * 0.62) * CFrame.Angles(0, math.rad(90), 0),
+			body:decor("SignalLamp", Vector3.new(0.16, 0.8, 0.8), CFrame.new(hx, spec[1], face * 0.62) * CFrame.Angles(0, math.rad(90), 0),
 				spec[2], nil, { shape = "Cylinder" })
 			if i == 3 then
-				b:decor("Visor", Vector3.new(1, 0.14, 0.5), Vector3.new(hx, spec[1] + 0.52, face * 0.9), SIGNAL_BLACK)
+				body:decor("Visor", Vector3.new(1, 0.14, 0.5), Vector3.new(hx, spec[1] + 0.52, face * 0.9), SIGNAL_BLACK)
 			end
 		end
 	end
 	-- The crossing signal on the pole, facing along the kerb.
-	b:decor("WalkBox", Vector3.new(0.9, 1.3, 0.9), Vector3.new(0, 8.4, 0.72), SIGNAL_BLACK)
-	b:decor("WalkLamp", Vector3.new(0.1, 0.7, 0.7), CFrame.new(0, 8.4, 1.2) * CFrame.Angles(0, math.rad(90), 0),
+	body:decor("WalkBox", Vector3.new(0.9, 1.3, 0.9), Vector3.new(0, 8.4, 0.72), SIGNAL_BLACK)
+	body:decor("WalkLamp", Vector3.new(0.1, 0.7, 0.7), CFrame.new(0, 8.4, 1.2) * CFrame.Angles(0, math.rad(90), 0),
 		Color3.fromRGB(250, 250, 244), nil, { shape = "Cylinder" })
-	b:decor("PushButton", Vector3.new(0.4, 0.6, 0.3), Vector3.new(0.35, 4, 0.4), Color3.fromRGB(236, 196, 40))
+	body:decor("PushButton", Vector3.new(0.4, 0.6, 0.3), Vector3.new(0.35, 4, 0.4), Color3.fromRGB(236, 196, 40))
 	-- Street-name blades crossing on top.
 	local green = Color3.fromRGB(34, 118, 76)
-	b:decor("BladePost", Vector3.new(0.3, 2.6, 0.3), Vector3.new(0, 16.6, 0), SIGNAL_BLACK)
-	b:decor("BladeX", Vector3.new(5.2, 0.9, 0.14), Vector3.new(-2, 16.2, 0), green)
-	b:decor("BladeZ", Vector3.new(0.14, 0.9, 5.2), Vector3.new(0, 17.2, -2), green)
+	body:decor("BladePost", Vector3.new(0.3, 2.6, 0.3), Vector3.new(0, 16.6, 0), SIGNAL_BLACK)
+	body:decor("BladeX", Vector3.new(5.2, 0.9, 0.14), Vector3.new(-2, 16.2, 0), green)
+	body:decor("BladeZ", Vector3.new(0.14, 0.9, 5.2), Vector3.new(0, 17.2, -2), green)
 	for _, face in ipairs({ -1, 1 }) do
 		b:sign(streetName, Kit.Look(Vector3.new(-2, 16.2, face * 0.09), Vector3.new(-2, 16.2, face * 10)), 4.8, 0.7, TRIM,
 			{ lit = true, glow = false, font = Enum.Font.GothamBold, textColour = TRIM, brightness = 1 })
@@ -3305,16 +3341,21 @@ end
 --- A red phone booth, its door toward -Z.
 local function phoneBooth(b: Kit.Builder)
 	local red = Color3.fromRGB(206, 44, 44)
-	b:part("Booth", Vector3.new(3, 7.6, 3), Vector3.new(0, 3.8, 0), red)
-	b:decor("BoothRoof", Vector3.new(3.4, 0.5, 3.4), Vector3.new(0, 7.85, 0), darker(red, 0.15))
-	b:decor("BoothDome", Vector3.new(0.6, 2.6, 2.6), vertical(Vector3.new(0, 8.3, 0)), red, nil, { shape = "Cylinder" })
+	local _, body = kitProp(b, "PhoneBooth", {
+		Red = { colour = red, shadow = true },
+		Glass = { colour = Color3.fromRGB(180, 210, 230), material = M.Glass, transparency = 0.3 },
+		Band = { colour = Color3.fromRGB(30, 30, 34) },
+	})
+	body:part("Booth", Vector3.new(3, 7.6, 3), Vector3.new(0, 3.8, 0), red)
+	body:decor("BoothRoof", Vector3.new(3.4, 0.5, 3.4), Vector3.new(0, 7.85, 0), darker(red, 0.15))
+	body:decor("BoothDome", Vector3.new(0.6, 2.6, 2.6), vertical(Vector3.new(0, 8.3, 0)), red, nil, { shape = "Cylinder" })
 	for _, face in ipairs({ { 0, -1 }, { 1, 0 }, { -1, 0 } }) do
 		local fx, fz = face[1], face[2]
 		local size = if fz ~= 0 then Vector3.new(2.2, 4.6, 0.12) else Vector3.new(0.12, 4.6, 2.2)
-		b:decor("BoothGlass", size, Vector3.new(fx * 1.52, 3.8, fz * 1.52), Color3.fromRGB(180, 210, 230), M.Glass,
+		body:decor("BoothGlass", size, Vector3.new(fx * 1.52, 3.8, fz * 1.52), Color3.fromRGB(180, 210, 230), M.Glass,
 			{ transparency = 0.3 })
 		local band = if fz ~= 0 then Vector3.new(2.4, 0.6, 0.14) else Vector3.new(0.14, 0.6, 2.4)
-		b:decor("BoothBand", band, Vector3.new(fx * 1.53, 6.9, fz * 1.53), Color3.fromRGB(30, 30, 34))
+		body:decor("BoothBand", band, Vector3.new(fx * 1.53, 6.9, fz * 1.53), Color3.fromRGB(30, 30, 34))
 		local at = Vector3.new(fx * 1.62, 6.9, fz * 1.62)
 		painted(b, "PHONE", Kit.Look(at, at + Vector3.new(fx, 0, fz) * 10), 2, 0.45, TRIM, Enum.Font.GothamBold)
 	end
