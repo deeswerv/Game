@@ -47,6 +47,11 @@ local function apply(d: Instance)
 	if level > 1 and not anyHidden then
 		return
 	end
+	-- A part-built prop the city kit is drawn over (CityMeshes) stays hidden whatever the level.
+	local parent = d.Parent
+	if parent and parent:GetAttribute("KitDrawn") then
+		return
+	end
 	-- Anything that could ever be hidden is put right either way (a part named like trim but
 	-- too big to be trim is shown).
 	if d:IsA("BasePart") and (TRIM[d.Name] or d:FindFirstAncestor("Skyline")) then

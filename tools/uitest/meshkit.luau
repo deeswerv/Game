@@ -36,7 +36,7 @@ local ss = World.service("ServerStorage")
 
 local Downtown = World.require(sss.DistrictService.Downtown)
 local MeshKit = World.require(sss.DistrictService.MeshKit)
-local Data = World.require(sss.DistrictService.MeshKitData)
+local Data = World.require(World.service("ReplicatedStorage"):FindFirstChild("MeshKitData"))
 local centre = Vector3.new(-155, 1000, 1500)
 
 local function build(name)

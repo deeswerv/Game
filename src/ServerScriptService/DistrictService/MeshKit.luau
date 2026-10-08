@@ -16,10 +16,17 @@
 -- Meshes are only ever seen: no collision, no raycasts, no touch. A prop drawn by the kit keeps
 -- its part-built solid pieces as invisible hulls, so it collides and stops bullets exactly as
 -- it always has.
+--
+-- With no imported kit there is a second way, which needs nothing from anyone: Group puts the
+-- part-built prop in a Model tagged "KitProp" that says where the kit's model goes and how to
+-- paint it, and every client draws the kit over it itself from the meshes' own data
+-- (CityMeshes, with EditableMesh), hiding the part-built pieces on its own screen only. Where a
+-- client cannot, it simply sees the part-built prop.
 
+local CollectionService = game:GetService("CollectionService")
 local ServerStorage = game:GetService("ServerStorage")
 
-local Data = require(script.Parent.MeshKitData) :: any
+local Data = require(game:GetService("ReplicatedStorage"):WaitForChild("MeshKitData")) :: any
 
 local MeshKit = {}
 
@@ -144,6 +151,12 @@ local function load(name: string): { [string]: Piece } | false
 	return pieces
 end
 
+--- The prop's frame (its origin, lifted and turned as `opts` say).
+local function frameOf(b: any, opts: Opts?): CFrame
+	local o: Opts = opts or {}
+	return b:world(CFrame.new(0, o.lift or 0, 0) * CFrame.Angles(0, o.yaw or 0, 0)) :: CFrame
+end
+
 --- Whether the kit has a usable `name`.
 function MeshKit.Has(name: string): boolean
 	if templates[name] == nil then
@@ -160,9 +173,8 @@ function MeshKit.Place(b: any, name: string, paints: { [string]: Paint }, opts: 
 		return nil
 	end
 	local pieces = templates[name] :: { [string]: Piece }
-	local o: Opts = opts or {}
-	local scale = o.scale or 1
-	local base = b:world(CFrame.new(0, o.lift or 0, 0) * CFrame.Angles(0, o.yaw or 0, 0)) :: CFrame
+	local scale = (opts and opts.scale) or 1
+	local base = frameOf(b, opts)
 	local placed: { [string]: BasePart } = {}
 	for role, piece in pairs(pieces) do
 		local p = piece.template:Clone()
@@ -188,6 +200,35 @@ function MeshKit.Place(b: any, name: string, paints: { [string]: Paint }, opts: 
 		placed[role] = p
 	end
 	return placed
+end
+
+--- For a client to draw `name` itself: a Model for the part-built prop, tagged "KitProp", with
+--- where the kit's model stands (KitFrame, KitScale) and each role's paint (KitColour_<role>,
+--- KitMaterial_, KitShine_, KitShadow_, KitName_). Build the pieces the kit replaces into it;
+--- a piece in it marked KitKeep stays drawn (raised by its KitRaise, if any, to sit on the
+--- kit's model).
+function MeshKit.Group(b: any, name: string, paints: { [string]: Paint }, opts: Opts?): Model
+	local model = Instance.new("Model")
+	model.Name = name
+	model:SetAttribute("KitModel", name)
+	model:SetAttribute("KitFrame", frameOf(b, opts))
+	model:SetAttribute("KitScale", (opts and opts.scale) or 1)
+	for role, paint in pairs(paints) do
+		model:SetAttribute("KitColour_" .. role, paint.colour)
+		model:SetAttribute("KitMaterial_" .. role, (paint.material or Enum.Material.SmoothPlastic).Name)
+		if paint.reflectance then
+			model:SetAttribute("KitShine_" .. role, paint.reflectance)
+		end
+		if paint.shadow then
+			model:SetAttribute("KitShadow_" .. role, true)
+		end
+		if paint.name then
+			model:SetAttribute("KitName_" .. role, paint.name)
+		end
+	end
+	model.Parent = b.parent
+	CollectionService:AddTag(model, "KitProp")
+	return model
 end
 
 --- Forget what was read (tests, or a kit swapped while running).

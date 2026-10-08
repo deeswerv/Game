@@ -258,9 +258,18 @@ aerial.
 Blender, in code, and exports `assets/models/CityKit.glb` (previews in
 `assets/models/previews/`, the whole kit in `sheet.png`). Once the kit is in the place, Downtown
 draws its cars, lamps, trees, benches, bins and hydrants from it: a car is 8 meshes instead of
-about 40 parts. The lamp globes still light at night. The part-built solid pieces stay as invisible
-hulls, so nothing collides or stops a bullet differently. Without the kit, every prop is
-part-built as before. To bring it in (once, in Studio, which uploads the meshes to your account):
+about 40 parts. The lamp globes still light at night.
+
+**Nothing to import.** The meshes ship inside the game (`ReplicatedStorage.MeshKitGeometry`,
+written by the same script). Every player's device builds them itself with EditableMesh
+(`CityMeshes`) and draws them over the part-built props, which it hides on that screen only. The
+part-built props stay solid for everything else, so nothing collides or stops a bullet
+differently, and a device that cannot make meshes simply sees the part-built props. If the
+meshes do not show in a live server, check **Game Settings → Security → Allow Mesh / Image APIs**.
+`tools/uitest/citymeshes.luau` checks it all.
+
+Optionally, the kit can be imported instead, which draws it on the server for everyone (once, in
+Studio, which uploads the meshes to your account):
 
 1. **Home → Import 3D** (or **Avatar → Import 3D**), pick `assets/models/CityKit.glb`, Insert.
 2. Drag the imported **CityKit** model into **ServerStorage**. If it is left in the world, the

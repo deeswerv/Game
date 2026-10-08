@@ -3,7 +3,7 @@
 --
 -- The city kit's pieces: for each model, each mesh piece's size and its centre's offset from
 -- the model's origin, in studs, in Roblox's frame (+Y up, the model facing -Z, origin on the
--- ground). MeshKit places imported MeshParts by these, whatever scale they came in at.
+-- ground). MeshKit and CityMeshes place the pieces by these, whatever scale they came in at.
 
 return {
 	Sedan = {

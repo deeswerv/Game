@@ -182,6 +182,22 @@ local function vertical(at: Vector3): CFrame
 	return CFrame.new(at) * CFrame.Angles(0, 0, math.rad(90))
 end
 
+--- A street prop the city kit can draw. With the kit imported, its meshes are placed now
+--- (`mesh`): build only the prop's solid pieces, as hulls, into `body`. Without it, `body` builds
+--- into a Model that every client draws the kit over by itself (MeshKit.Group, CityMeshes):
+--- build the whole part-built prop into it. Whatever stays drawn either way (a banner, a
+--- planter) goes on `b` as usual.
+local function kitProp(b: Kit.Builder, name: string, paints: { [string]: MeshKit.Paint }, opts: MeshKit.Opts?)
+	: ({ [string]: BasePart }?, Kit.Builder)
+	local mesh = MeshKit.Place(b, name, paints, opts)
+	if mesh then
+		return mesh, b
+	end
+	local body = Kit.new(MeshKit.Group(b, name, paints, opts), b.frame)
+	body.side = b.side
+	return nil, body
+end
+
 --- The options for a prop's solid piece: as given -- or, when the mesh kit is drawing the prop
 --- (`mesh`), the same piece kept as an invisible hull, so the prop collides and stops bullets
 --- exactly as the part-built one does.
@@ -197,7 +213,8 @@ end
 
 --- Lettering painted straight onto a surface. `at` looks the way it is read from.
 local function painted(b: Kit.Builder, text: string, at: CFrame, w: number, h: number, colour: Color3, font: Enum.Font?)
-	b:sign(text, at, w, h, colour, { lit = true, glow = false, font = font or Enum.Font.GothamBlack,
+	: BasePart
+	return b:sign(text, at, w, h, colour, { lit = true, glow = false, font = font or Enum.Font.GothamBlack,
 		textColour = colour, brightness = 1 })
 end
 
@@ -220,16 +237,16 @@ end
 local function lamp(b: Kit.Builder, withLight: boolean, banner: Color3?)
 	-- The kit's lamp (a fluted post, a cast plinth, a real curve), its globe still LanternGlass
 	-- so it lights at night; standing on the pavement, so its globe hangs half a stud higher.
-	local mesh = MeshKit.Place(b, "StreetLamp", {
+	local mesh, body = kitProp(b, "StreetLamp", {
 		Iron = { colour = IRON, shadow = true },
 		LanternGlass = { colour = LAMP_GLASS, name = "LanternGlass" },
 	}, { lift = 0.5 })
-	b:part("Base", Vector3.new(1.4, 1.4, 1.4), Vector3.new(0, 1.2, 0), IRON, nil, hull(mesh))
-	b:part("Pole", Vector3.new(14, 0.5, 0.5), vertical(Vector3.new(0, 9, 0)), IRON, nil, hull(mesh, { shape = "Cylinder" }))
+	body:part("Base", Vector3.new(1.4, 1.4, 1.4), Vector3.new(0, 1.2, 0), IRON, nil, hull(mesh))
+	body:part("Pole", Vector3.new(14, 0.5, 0.5), vertical(Vector3.new(0, 9, 0)), IRON, nil, hull(mesh, { shape = "Cylinder" }))
 	local r, cx, cy = 1.9, -1.9, 16
 	local lx = cx - r
 	if not mesh then
-		b:decor("Collar", Vector3.new(0.4, 0.8, 0.8), vertical(Vector3.new(0, 6.2, 0)), IRON, nil, { shape = "Cylinder" })
+		body:decor("Collar", Vector3.new(0.4, 0.8, 0.8), vertical(Vector3.new(0, 6.2, 0)), IRON, nil, { shape = "Cylinder" })
 		-- The crook: four straight pieces round a half circle from the top of the pole, over toward
 		-- -X and down, each a little long so the joints close up into one bent tube.
 		local prev = Vector3.new(0, cy, 0)
@@ -237,15 +254,15 @@ local function lamp(b: Kit.Builder, withLight: boolean, banner: Color3?)
 			local a = k / 4 * math.pi
 			local nextPoint = Vector3.new(cx + math.cos(a) * r, cy + math.sin(a) * r, 0)
 			local cf, len = Kit.Span(prev, nextPoint)
-			b:decor("Crook", Vector3.new(0.42, 0.42, len + 0.3), cf, IRON)
+			body:decor("Crook", Vector3.new(0.42, 0.42, len + 0.3), cf, IRON)
 			prev = nextPoint
 		end
-		b:decor("Knuckle", Vector3.new(0.5, 0.5, 0.5), Vector3.new(cx, cy + r, 0), IRON, nil, { shape = "Ball" })
+		body:decor("Knuckle", Vector3.new(0.5, 0.5, 0.5), Vector3.new(cx, cy + r, 0), IRON, nil, { shape = "Ball" })
 		-- The lantern hangs from the crook's end: a cap, a round globe of warm glass, a finial.
-		b:decor("Hanger", Vector3.new(0.2, 0.7, 0.2), Vector3.new(lx, cy - 0.35, 0), IRON)
-		b:decor("LanternCap", Vector3.new(1.8, 0.5, 1.8), Vector3.new(lx, cy - 0.85, 0), IRON)
-		b:decor("LanternGlass", Vector3.new(1.7, 1.7, 1.7), Vector3.new(lx, cy - 1.9, 0), LAMP_GLASS, nil, { shape = "Ball" })
-		b:decor("LanternBase", Vector3.new(0.7, 0.4, 0.7), Vector3.new(lx, cy - 2.85, 0), IRON)
+		body:decor("Hanger", Vector3.new(0.2, 0.7, 0.2), Vector3.new(lx, cy - 0.35, 0), IRON)
+		body:decor("LanternCap", Vector3.new(1.8, 0.5, 1.8), Vector3.new(lx, cy - 0.85, 0), IRON)
+		body:decor("LanternGlass", Vector3.new(1.7, 1.7, 1.7), Vector3.new(lx, cy - 1.9, 0), LAMP_GLASS, nil, { shape = "Ball" })
+		body:decor("LanternBase", Vector3.new(0.7, 0.4, 0.7), Vector3.new(lx, cy - 2.85, 0), IRON)
 	end
 	if banner then
 		b:decor("BannerRod", Vector3.new(0.15, 0.15, 2.1), Vector3.new(0, 12.7, 1.15), IRON)
@@ -312,20 +329,20 @@ local function tree(b: Kit.Builder, seed: number, blossom: boolean?, bare: boole
 		shades = { Color3.fromRGB(232, 132, 170), BLOSSOM, BLOSSOM_LIGHT }
 	end
 	-- The kit's tree, turned and sized by the seed so a row of them is not one tree copied.
-	local mesh = MeshKit.Place(b, if tall then "TreeTall" else "Tree", {
+	local mesh, body = kitProp(b, if tall then "TreeTall" else "Tree", {
 		Trunk = { colour = BARK, material = M.Wood, shadow = true, name = "Bark" },
 		Leaves1 = { colour = shades[1], material = M.LeafyGrass, shadow = true, name = "Leaves" },
 		Leaves2 = { colour = shades[2], material = M.LeafyGrass, shadow = true, name = "Leaves" },
 		Leaves3 = { colour = shades[3], material = M.LeafyGrass, shadow = true, name = "Leaves" },
 	}, { lift = 1.4, yaw = (seed * 2.39996) % (math.pi * 2), scale = 0.9 + (seed * 0.618034) % 1 * 0.18 })
-	b:part("Trunk", Vector3.new(if tall then 8 else 7, 1, 1), vertical(Vector3.new(0, if tall then 5.4 else 4.9, 0)), BARK,
+	body:part("Trunk", Vector3.new(if tall then 8 else 7, 1, 1), vertical(Vector3.new(0, if tall then 5.4 else 4.9, 0)), BARK,
 		M.Wood, hull(mesh, { shape = "Cylinder" }))
 	if mesh then
 		return
 	end
-	b:decor("TrunkFoot", Vector3.new(0.8, 1.5, 1.5), vertical(Vector3.new(0, 1.85, 0)), BARK, M.Wood, { shape = "Cylinder" })
+	body:decor("TrunkFoot", Vector3.new(0.8, 1.5, 1.5), vertical(Vector3.new(0, 1.85, 0)), BARK, M.Wood, { shape = "Cylinder" })
 	for _, side in ipairs({ 1, -1 }) do
-		b:decor("Branch", Vector3.new(2.6, 0.45, 0.45),
+		body:decor("Branch", Vector3.new(2.6, 0.45, 0.45),
 			CFrame.new(side * 0.9, 7.4 + side * 0.4, side * 0.3) * CFrame.Angles(0, side * 0.6, side * math.rad(40)), BARK, M.Wood,
 			{ shape = "Cylinder" })
 	end
@@ -334,12 +351,12 @@ local function tree(b: Kit.Builder, seed: number, blossom: boolean?, bare: boole
 	for n, blob in ipairs(canopy) do
 		local size = blob[2] * rng:NextNumber(0.88, 1.12)
 		local at = blob[1] + Vector3.new(rng:NextNumber(-0.3, 0.3), rng:NextNumber(-0.2, 0.2), rng:NextNumber(-0.3, 0.3))
-		b:decor("Leaves", Vector3.new(size, size * 0.9, size), at, shades[blob[3]], M.LeafyGrass, { shape = "Ball", shadow = true })
+		body:decor("Leaves", Vector3.new(size, size * 0.9, size), at, shades[blob[3]], M.LeafyGrass, { shape = "Ball", shadow = true })
 		local a = n * 2.4 + seed
 		local out = Vector3.new(at.X, 0, at.Z)
 		local dir = if out.Magnitude > 0.5 then out.Unit else Vector3.new(math.cos(a), 0, math.sin(a))
 		local bud = size * rng:NextNumber(0.42, 0.55)
-		b:decor("LeafBud", Vector3.new(bud, bud * 0.9, bud), at + dir * size * 0.42 + Vector3.new(0, size * 0.12, 0),
+		body:decor("LeafBud", Vector3.new(bud, bud * 0.9, bud), at + dir * size * 0.42 + Vector3.new(0, size * 0.12, 0),
 			shades[math.min(3, blob[3] + 1)], M.LeafyGrass, { shape = "Ball" })
 	end
 end
@@ -381,27 +398,27 @@ local benchCount = 0
 local function bench(b: Kit.Builder, colour: Color3?)
 	benchCount += 1
 	local paint = colour or BENCH_COLOURS[(benchCount % #BENCH_COLOURS) + 1]
-	local mesh = MeshKit.Place(b, "Bench", {
+	local mesh, body = kitProp(b, "Bench", {
 		Iron = { colour = IRON, shadow = true },
 		Paint = { colour = paint, shadow = true },
 	}, { lift = 0.45 })
-	b:part("Seat", Vector3.new(6, 0.3, 1.7), Vector3.new(0, 1.85, 0), darker(paint, 0.35), nil, hull(mesh))
+	body:part("Seat", Vector3.new(6, 0.3, 1.7), Vector3.new(0, 1.85, 0), darker(paint, 0.35), nil, hull(mesh))
 	if mesh then
 		return
 	end
 	for i, z in ipairs({ -0.55, 0, 0.55 }) do
-		b:decor("Slat", Vector3.new(6.1, 0.14, 0.44), Vector3.new(0, 2.05, z), if i == 2 then lighter(paint, 0.08) else paint)
+		body:decor("Slat", Vector3.new(6.1, 0.14, 0.44), Vector3.new(0, 2.05, z), if i == 2 then lighter(paint, 0.08) else paint)
 	end
 	for i, y in ipairs({ 2.6, 3.2 }) do
-		b:decor("BackSlat", Vector3.new(6.1, 0.46, 0.18), CFrame.new(0, y, 0.82 + i * 0.1) * CFrame.Angles(math.rad(-12), 0, 0),
+		body:decor("BackSlat", Vector3.new(6.1, 0.46, 0.18), CFrame.new(0, y, 0.82 + i * 0.1) * CFrame.Angles(math.rad(-12), 0, 0),
 			paint)
 	end
 	for _, x in ipairs({ -2.6, 2.6 }) do
-		b:decor("Leg", Vector3.new(0.3, 1.5, 1.6), Vector3.new(x, 1.2, 0), IRON)
-		b:decor("Arm", Vector3.new(0.34, 0.3, 1.5), Vector3.new(x, 2.6, 0.05), IRON)
-		b:decor("Curl", Vector3.new(0.34, 0.5, 0.5), vertical(Vector3.new(x, 2.6, -0.75)) * CFrame.Angles(math.rad(90), 0, 0),
+		body:decor("Leg", Vector3.new(0.3, 1.5, 1.6), Vector3.new(x, 1.2, 0), IRON)
+		body:decor("Arm", Vector3.new(0.34, 0.3, 1.5), Vector3.new(x, 2.6, 0.05), IRON)
+		body:decor("Curl", Vector3.new(0.34, 0.5, 0.5), vertical(Vector3.new(x, 2.6, -0.75)) * CFrame.Angles(math.rad(90), 0, 0),
 			IRON, nil, { shape = "Cylinder" })
-		b:decor("BackPost", Vector3.new(0.3, 1.6, 0.3), CFrame.new(x, 2.9, 0.95) * CFrame.Angles(math.rad(-12), 0, 0), IRON)
+		body:decor("BackPost", Vector3.new(0.3, 1.6, 0.3), CFrame.new(x, 2.9, 0.95) * CFrame.Angles(math.rad(-12), 0, 0), IRON)
 	end
 end
 
@@ -435,27 +452,27 @@ local function cafeTable(b: Kit.Builder, colour: Color3, seats: number?)
 end
 
 local function bin(b: Kit.Builder)
-	local mesh = MeshKit.Place(b, "Bin", { Iron = { colour = IRON, shadow = true }, Gold = { colour = GOLD } }, { lift = 0.5 })
-	b:part("Bin", Vector3.new(2.6, 1.6, 1.6), vertical(Vector3.new(0, 1.8, 0)), IRON, nil, hull(mesh, { shape = "Cylinder" }))
+	local mesh, body = kitProp(b, "Bin", { Iron = { colour = IRON, shadow = true }, Gold = { colour = GOLD } }, { lift = 0.5 })
+	body:part("Bin", Vector3.new(2.6, 1.6, 1.6), vertical(Vector3.new(0, 1.8, 0)), IRON, nil, hull(mesh, { shape = "Cylinder" }))
 	if mesh then
 		return
 	end
-	b:decor("Band", Vector3.new(0.3, 1.66, 1.66), vertical(Vector3.new(0, 2.4, 0)), GOLD, nil, { shape = "Cylinder" })
-	b:decor("Lid", Vector3.new(0.2, 1.8, 1.8), vertical(Vector3.new(0, 3.2, 0)), IRON, nil, { shape = "Cylinder" })
+	body:decor("Band", Vector3.new(0.3, 1.66, 1.66), vertical(Vector3.new(0, 2.4, 0)), GOLD, nil, { shape = "Cylinder" })
+	body:decor("Lid", Vector3.new(0.2, 1.8, 1.8), vertical(Vector3.new(0, 3.2, 0)), IRON, nil, { shape = "Cylinder" })
 end
 
 local function hydrant(b: Kit.Builder)
 	local red = Color3.fromRGB(206, 56, 48)
-	local mesh = MeshKit.Place(b, "Hydrant", {
+	local mesh, body = kitProp(b, "Hydrant", {
 		Red = { colour = red, shadow = true },
 		Chrome = { colour = Color3.fromRGB(200, 202, 208), material = M.Metal },
 	}, { lift = 0.5 })
-	b:part("Hydrant", Vector3.new(2, 0.9, 0.9), vertical(Vector3.new(0, 1.5, 0)), red, nil, hull(mesh, { shape = "Cylinder" }))
+	body:part("Hydrant", Vector3.new(2, 0.9, 0.9), vertical(Vector3.new(0, 1.5, 0)), red, nil, hull(mesh, { shape = "Cylinder" }))
 	if mesh then
 		return
 	end
-	b:decor("Cap", Vector3.new(0.4, 1.1, 1.1), vertical(Vector3.new(0, 2.6, 0)), red, nil, { shape = "Cylinder" })
-	b:decor("Nozzle", Vector3.new(1.4, 0.4, 0.4), Vector3.new(0, 1.8, 0), darker(red, 0.2), nil, { shape = "Cylinder" })
+	body:decor("Cap", Vector3.new(0.4, 1.1, 1.1), vertical(Vector3.new(0, 2.6, 0)), red, nil, { shape = "Cylinder" })
+	body:decor("Nozzle", Vector3.new(1.4, 0.4, 0.4), Vector3.new(0, 1.8, 0), darker(red, 0.2), nil, { shape = "Cylinder" })
 end
 
 --- A parked car, nose toward -Z.
@@ -556,9 +573,15 @@ local function car(b: Kit.Builder, colour: Color3, kind: string?)
 		trimColour = darker(colour, 0.35)
 	end
 	-- The kit's car where there is one: a few meshes for the whole car, over the part-built
-	-- car's solid body and cabin kept as invisible hulls.
+	-- car's solid body and cabin kept as invisible hulls (or, with no kit imported, the whole
+	-- part-built car in a group the clients draw the kit over).
 	local model = CAR_MODELS[style]
-	local mesh = if model then MeshKit.Place(b, model, carPaint(colour)) else nil
+	local mesh: { [string]: BasePart }? = nil
+	if model then
+		local body
+		mesh, body = kitProp(b, model, carPaint(colour))
+		b = body
+	end
 	if mesh then
 		if style == "hatch" then
 			b:part("Body", Vector3.new(W - 0.2, 1.3, 8.2), Vector3.new(0, 1.45, 0), colour, nil, hull(mesh))
@@ -603,9 +626,17 @@ local function car(b: Kit.Builder, colour: Color3, kind: string?)
 			b:decor("Mirror", Vector3.new(0.45, 0.3, 0.35), Vector3.new(x * 2.45, 2.55, -1.6), colour)
 		end
 		if style == "taxi" then
-			b:decor("Checker", Vector3.new(W + 0.05, 0.26, 5.6), Vector3.new(0, 1.85, 0.3), CAR_TRIM)
-			b:decor("TaxiLight", Vector3.new(1.6, 0.45, 0.6), Vector3.new(0, 3.65, 0.8), Color3.fromRGB(252, 240, 200))
-			painted(b, "TAXI", Kit.Look(Vector3.new(0, 3.65, 0.48), Vector3.new(0, 3.65, -5)), 1.4, 0.36, CAR_TRIM)
+			-- Kept when a client draws the kit's saloon over this one, the light raised onto its
+			-- taller roof.
+			local function keep(p: BasePart, raise: number)
+				p:SetAttribute("KitKeep", true)
+				if raise > 0 then
+					p:SetAttribute("KitRaise", raise)
+				end
+			end
+			keep(b:decor("Checker", Vector3.new(W + 0.05, 0.26, 5.6), Vector3.new(0, 1.85, 0.3), CAR_TRIM), 0)
+			keep(b:decor("TaxiLight", Vector3.new(1.6, 0.45, 0.6), Vector3.new(0, 3.65, 0.8), Color3.fromRGB(252, 240, 200)), 0.18)
+			keep(painted(b, "TAXI", Kit.Look(Vector3.new(0, 3.65, 0.48), Vector3.new(0, 3.65, -5)), 1.4, 0.36, CAR_TRIM), 0.18)
 		end
 	elseif style == "hatch" then
 		local L = 8.2
