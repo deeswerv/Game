@@ -214,6 +214,11 @@ function CityKit.Scaled(b: B, k: number): B
 	s.parent = b.parent
 	s.frame = b.frame
 	s.scale = k
+	-- For MeshKit.Prop: the builder underneath, and how to scale another one the same way.
+	s.base = b
+	function s.rescale(inner: B): B
+		return CityKit.Scaled(inner, k)
+	end
 	function s.part(_self, name, size, at, colour, material, opts)
 		return b:part(name, size * k, place(at), colour, material, opts)
 	end

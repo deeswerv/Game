@@ -246,6 +246,17 @@ end
 --- its trim. Without it, `body` builds into a Group the clients draw the kit over: build the
 --- whole part-built prop into it. What stays drawn either way (a banner, a sign) goes on `b`.
 function MeshKit.Prop(b: any, name: string, paints: { [string]: Paint }, opts: Opts?): ({ [string]: BasePart }?, any)
+	-- A scaling builder (Hanami's CityKit.Scaled): the kit goes on the builder underneath with
+	-- the scale folded in, and the part-built prop is built back through the same scaling.
+	if type(b.scale) == "number" and b.base and b.rescale then
+		local k = b.scale :: number
+		local o: Opts = table.clone(opts or {})
+		local raw = o.scale
+		o.scale = if typeof(raw) == "Vector3" then raw * k elseif type(raw) == "number" then raw * k else k
+		o.lift = (o.lift or 0) * k
+		local mesh, body = MeshKit.Prop(b.base, name, paints, o)
+		return mesh, b.rescale(body)
+	end
 	local mesh = MeshKit.Place(b, name, paints, opts)
 	if mesh then
 		local function hullsOf(real: any): any

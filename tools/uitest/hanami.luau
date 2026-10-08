@@ -295,6 +295,26 @@ end
 print("the valley")
 local folder = workspace:FindFirstChild("Hanami")
 check(folder ~= nil, "HanamiService builds the valley into workspace.Hanami")
+-- The kit's props match the part-built ones they stand in for, even built at the city's scale
+-- (a vending machine on a street site, a lantern in the scaled shrine): the kit's model at that
+-- scale, and the part-built pieces in its group that size too.
+local kitted, sized = 0, 0
+for _, m in ipairs(folder:GetDescendants()) do
+	local kind = m:IsA("Model") and m:GetAttribute("KitModel")
+	local k = kind and m:GetAttribute("KitScale")
+	if kind == "Vending" or kind == "StoneLantern" then
+		kitted += 1
+		local piece = m:FindFirstChild(if kind == "Vending" then "Vending" else "ToroBase")
+		local want = if kind == "Vending" then 6.4 else 0.5
+		-- Every vending machine stands on a street site, at the city's scale.
+		local scaleOk = kind ~= "Vending" or (type(k) == "number" and math.abs(k - 1.27) < 0.01)
+		if piece and type(k) == "number" and scaleOk and math.abs(piece.Size.Y - want * k) < 0.05 then
+			sized += 1
+		end
+	end
+end
+check(kitted >= 10 and sized == kitted, ("vending machines and stone lanterns sized for the kit at the city's scale (%d of %d)"):format(
+	sized, kitted))
 local named: { [string]: { BasePart } } = {}
 local solids = {}
 local parts = 0
