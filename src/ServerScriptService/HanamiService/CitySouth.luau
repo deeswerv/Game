@@ -13,6 +13,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Kit = require(ServerScriptService.ArenaService.Kit)
+local MeshKit = require(ServerScriptService.DistrictService.MeshKit)
 local CityKit = require(ServerScriptService.HanamiService.CityKit)
 local Blocks = require(ServerScriptService.HanamiService.CityBlocks)
 local HanamiConfig = require(ReplicatedStorage.HanamiConfig)
@@ -219,15 +220,24 @@ end
 --- The Great Sakura: a trunk you could not reach round, limbs out like an umbrella, a canopy
 --- wider than the road, the sacred rope round it, in a raised stone ring you can sit on.
 local function greatSakura(t: B)
+	-- The kit's cherry, grown huge (and spread wider than tall, like an old tree's), where a
+	-- client can draw it; the stone ring, the rope and its paper stay as they are.
+	local _, tree = MeshKit.Prop(t, "Sakura", {
+		Trunk = { colour = P.BARK, material = M.Wood, shadow = true, name = "Bark" },
+		Blossom1 = { colour = P.SAKURA_DEEP, material = M.LeafyGrass, shadow = true, name = "Blossom" },
+		Blossom2 = { colour = P.SAKURA, material = M.LeafyGrass, shadow = true, name = "Blossom" },
+		Blossom3 = { colour = P.SAKURA_LIGHT, material = M.LeafyGrass, shadow = true, name = "Blossom" },
+	}, { lift = 2.2, scale = Vector3.new(5, 4, 5), yaw = 0.6 })
+	CityKit.Life(t, "PetalFall", Vector3.new(0, 34, 0), Vector3.new(60, 8, 60))
 	t:part("TreeRing", Vector3.new(2, 32, 32), vertical(Vector3.new(0, 1, 0)), P.STONE, M.Granite, { shape = "Cylinder" })
 	t:decor("TreeRingCap", Vector3.new(0.4, 33, 33), vertical(Vector3.new(0, 2.1, 0)), lighter(P.STONE, 0.2), M.Granite, { shape = "Cylinder" })
 	t:decor("TreeSoil", Vector3.new(0.2, 28, 28), vertical(Vector3.new(0, 2.2, 0)), Color3.fromRGB(104, 80, 58), M.Ground, { shape = "Cylinder" })
-	t:part("GreatTrunk", Vector3.new(22, 6.4, 6.4), vertical(Vector3.new(0, 13, 0)), P.BARK, M.Wood, { shape = "Cylinder" })
-	t:decor("TrunkFlare", Vector3.new(4, 9, 9), vertical(Vector3.new(0, 4, 0)), P.BARK, M.Wood, { shape = "Cylinder" })
+	tree:part("GreatTrunk", Vector3.new(22, 6.4, 6.4), vertical(Vector3.new(0, 13, 0)), P.BARK, M.Wood, { shape = "Cylinder" })
+	tree:decor("TrunkFlare", Vector3.new(4, 9, 9), vertical(Vector3.new(0, 4, 0)), P.BARK, M.Wood, { shape = "Cylinder" })
 	for k = 0, 5 do
 		local a = k / 6 * math.pi * 2 + 0.4
 		local cf, len = Kit.Span(Vector3.new(0, 19, 0), Vector3.new(math.cos(a) * 11, 27 + (k % 2) * 3, math.sin(a) * 11))
-		t:decor("GreatLimb", Vector3.new(2.4, 2.4, len + 1), cf, P.BARK, M.Wood)
+		tree:decor("GreatLimb", Vector3.new(2.4, 2.4, len + 1), cf, P.BARK, M.Wood)
 	end
 	t:decor("Shimenawa", Vector3.new(1.4, 8, 8), vertical(Vector3.new(0, 9, 0)), Color3.fromRGB(216, 190, 130), nil, { shape = "Cylinder" })
 	for k = 0, 7 do
@@ -244,7 +254,7 @@ local function greatSakura(t: B)
 			local a = (k + 0.5 * (layer[2] % 2)) / n * math.pi * 2 + rng:NextNumber(-0.1, 0.1)
 			local r: number = layer[2]
 			local size = layer[4] * rng:NextNumber(0.85, 1.15)
-			t:decor("Blossom", Vector3.new(size, size * 0.62, size), Vector3.new(math.cos(a) * r, layer[3] + rng:NextNumber(-1.5, 1.5),
+			tree:decor("Blossom", Vector3.new(size, size * 0.62, size), Vector3.new(math.cos(a) * r, layer[3] + rng:NextNumber(-1.5, 1.5),
 				math.sin(a) * r), layer[5], nil, { shape = "Ball", shadow = true })
 		end
 	end
