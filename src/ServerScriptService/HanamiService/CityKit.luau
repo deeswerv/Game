@@ -1013,30 +1013,49 @@ function CityKit.StoneLantern(b: B, scale: number?)
 end
 
 --- A car, its nose to -Z: "kei" (a tall little box), "taxi", "van", "truck" (a kei truck).
+local KIT_CARS: { [string]: string } = { kei = "Kei", taxi = "JSedan", van = "Van" }
+
 function CityKit.Car(b: B, kind: string, colour: Color3)
+	-- The kit's car where a client can draw it (all but the kei truck); a taxi keeps its roof
+	-- sign and its stripe either way.
+	local model = if kind == "truck" then nil else (KIT_CARS[kind] or "JSedan")
+	local body = b
+	if model then
+		local _, kb = MeshKit.Prop(b, model, {
+			Body = { colour = colour, reflectance = 0.05, shadow = true, name = "CarShell" },
+			Glass = { colour = Color3.fromRGB(64, 84, 104), reflectance = 0.25 },
+			Chrome = { colour = Color3.fromRGB(200, 202, 208), material = M.Metal },
+			LampFront = { colour = Color3.fromRGB(250, 246, 220), material = M.Glass, name = "HeadLamp" },
+			LampRear = { colour = Color3.fromRGB(210, 50, 44), material = M.Glass, name = "TailLamp" },
+			Tyre = { colour = P.KURO, material = M.Rubber, shadow = true },
+			Rim = { colour = Color3.fromRGB(200, 202, 208), material = M.Metal },
+			Trim = { colour = P.KURO },
+		})
+		body = kb
+	end
 	local long = if kind == "van" then 10 elseif kind == "kei" or kind == "truck" then 7.2 else 9
 	local wide = if kind == "kei" or kind == "truck" then 3.8 else 4.4
 	-- The body (solid: cars are cover), the cabin, glass, wheels, lamps.
-	b:part("CarBody", Vector3.new(wide, 1.8, long), Vector3.new(0, 1.6, 0), colour, M.SmoothPlastic)
-	b:decor("CarSkirt", Vector3.new(wide + 0.04, 0.4, long + 0.04), Vector3.new(0, 0.9, 0), P.KURO)
+	body:part("CarBody", Vector3.new(wide, 1.8, long), Vector3.new(0, 1.6, 0), colour, M.SmoothPlastic)
+	body:decor("CarSkirt", Vector3.new(wide + 0.04, 0.4, long + 0.04), Vector3.new(0, 0.9, 0), P.KURO)
 	local glass = Color3.fromRGB(64, 84, 104)
 	if kind == "truck" then
-		b:decor("Cab", Vector3.new(wide - 0.2, 2.2, 2.6), Vector3.new(0, 3.6, -long / 2 + 1.4), colour)
-		b:decor("CabGlass", Vector3.new(wide - 0.5, 1.4, 0.2), Vector3.new(0, 3.9, -long / 2 + 0.06), glass, M.Glass)
-		b:decor("Bed", Vector3.new(wide, 1, long - 3), Vector3.new(0, 3, 1.4), darker(colour, 0.1))
-		b:decor("Load", Vector3.new(wide - 1, 1.2, 2.4), Vector3.new(0, 3.6, 2), Color3.fromRGB(150, 110, 70), M.WoodPlanks)
+		body:decor("Cab", Vector3.new(wide - 0.2, 2.2, 2.6), Vector3.new(0, 3.6, -long / 2 + 1.4), colour)
+		body:decor("CabGlass", Vector3.new(wide - 0.5, 1.4, 0.2), Vector3.new(0, 3.9, -long / 2 + 0.06), glass, M.Glass)
+		body:decor("Bed", Vector3.new(wide, 1, long - 3), Vector3.new(0, 3, 1.4), darker(colour, 0.1))
+		body:decor("Load", Vector3.new(wide - 1, 1.2, 2.4), Vector3.new(0, 3.6, 2), Color3.fromRGB(150, 110, 70), M.WoodPlanks)
 	elseif kind == "van" then
-		b:decor("VanBox", Vector3.new(wide - 0.1, 3, long - 2.4), Vector3.new(0, 4, 1.1), colour)
-		b:decor("Windscreen", Vector3.new(wide - 0.6, 1.6, 0.2), CFrame.new(0, 4, -long / 2 + 1.25) * CFrame.Angles(math.rad(-16), 0, 0),
+		body:decor("VanBox", Vector3.new(wide - 0.1, 3, long - 2.4), Vector3.new(0, 4, 1.1), colour)
+		body:decor("Windscreen", Vector3.new(wide - 0.6, 1.6, 0.2), CFrame.new(0, 4, -long / 2 + 1.25) * CFrame.Angles(math.rad(-16), 0, 0),
 			glass, M.Glass)
-		b:decor("SideGlass", Vector3.new(wide + 0.02, 1.3, 1.8), Vector3.new(0, 4.4, -long / 2 + 2.6), glass, M.Glass)
+		body:decor("SideGlass", Vector3.new(wide + 0.02, 1.3, 1.8), Vector3.new(0, 4.4, -long / 2 + 2.6), glass, M.Glass)
 	else
 		local cabinLen = if kind == "kei" then long - 1.6 else long * 0.5
 		local cabinH = if kind == "kei" then 2.4 else 1.7
 		local cz = if kind == "kei" then 0.5 else 0.4
-		b:decor("Cabin", Vector3.new(wide - 0.4, cabinH, cabinLen), Vector3.new(0, 2.5 + cabinH / 2, cz), colour)
-		b:decor("CarGlass", Vector3.new(wide - 0.36, cabinH * 0.62, cabinLen - 0.6), Vector3.new(0, 2.56 + cabinH * 0.55, cz), glass, M.Glass)
-		b:decor("CarRoof", Vector3.new(wide - 0.5, 0.2, cabinLen - 0.4), Vector3.new(0, 2.5 + cabinH + 0.05, cz), darker(colour, 0.08))
+		body:decor("Cabin", Vector3.new(wide - 0.4, cabinH, cabinLen), Vector3.new(0, 2.5 + cabinH / 2, cz), colour)
+		body:decor("CarGlass", Vector3.new(wide - 0.36, cabinH * 0.62, cabinLen - 0.6), Vector3.new(0, 2.56 + cabinH * 0.55, cz), glass, M.Glass)
+		body:decor("CarRoof", Vector3.new(wide - 0.5, 0.2, cabinLen - 0.4), Vector3.new(0, 2.5 + cabinH + 0.05, cz), darker(colour, 0.08))
 		if kind == "taxi" then
 			b:decor("TaxiSign", Vector3.new(1.6, 0.8, 0.6), Vector3.new(0, 2.5 + cabinH + 0.5, cz), Color3.fromRGB(250, 206, 60))
 			b:decor("TaxiStripe", Vector3.new(wide + 0.06, 0.25, long - 2), Vector3.new(0, 2.2, 0), Color3.fromRGB(250, 206, 60))
@@ -1044,12 +1063,12 @@ function CityKit.Car(b: B, kind: string, colour: Color3)
 	end
 	for _, x in ipairs({ -wide / 2 + 0.3, wide / 2 - 0.3 }) do
 		for _, z in ipairs({ -long / 2 + 1.6, long / 2 - 1.6 }) do
-			b:decor("CarWheel", Vector3.new(0.7, 1.7, 1.7), Vector3.new(x, 0.85, z), P.KURO, nil, { shape = "Cylinder" })
+			body:decor("CarWheel", Vector3.new(0.7, 1.7, 1.7), Vector3.new(x, 0.85, z), P.KURO, nil, { shape = "Cylinder" })
 		end
-		b:decor("HeadLamp", Vector3.new(0.9, 0.5, 0.1), Vector3.new(x * 0.7, 1.9, -long / 2 - 0.05), Color3.fromRGB(250, 246, 220))
-		b:decor("TailLamp", Vector3.new(0.9, 0.5, 0.1), Vector3.new(x * 0.7, 1.9, long / 2 + 0.05), Color3.fromRGB(210, 50, 44))
+		body:decor("HeadLamp", Vector3.new(0.9, 0.5, 0.1), Vector3.new(x * 0.7, 1.9, -long / 2 - 0.05), Color3.fromRGB(250, 246, 220))
+		body:decor("TailLamp", Vector3.new(0.9, 0.5, 0.1), Vector3.new(x * 0.7, 1.9, long / 2 + 0.05), Color3.fromRGB(210, 50, 44))
 	end
-	b:decor("Plate", Vector3.new(1.4, 0.7, 0.1), Vector3.new(0, 1.3, -long / 2 - 0.06), Color3.fromRGB(240, 240, 234))
+	body:decor("Plate", Vector3.new(1.4, 0.7, 0.1), Vector3.new(0, 1.3, -long / 2 - 0.06), Color3.fromRGB(240, 240, 234))
 end
 
 --- A bench: a slatted seat on two legs, along X.
@@ -1430,13 +1449,18 @@ end
 function CityKit.AvenueLamp(b: B, withLight: boolean?, both: boolean?)
 	local h = 28
 	local c = Color3.fromRGB(70, 74, 82)
-	b:part("LampPole", Vector3.new(h, 0.9, 0.9), vertical(Vector3.new(0, h / 2, 0)), c, M.Metal, { shape = "Cylinder" })
-	b:decor("LampFoot", Vector3.new(1.6, 3, 1.6), Vector3.new(0, 1.5, 0), c, M.Metal)
-	b:decor("LampArm", Vector3.new(0.45, 0.45, 9), Vector3.new(0, h - 0.6, -4.4), c, M.Metal)
-	b:decor("LampHead", Vector3.new(1.8, 0.6, 4.2), Vector3.new(0, h - 1, -8.6), Color3.fromRGB(240, 240, 232))
+	-- The kit's lamp (a tapering pole, a curving arm, slim LED heads) where a client can draw it.
+	local _, body = MeshKit.Prop(b, if both then "AvenueLamp2" else "AvenueLamp", {
+		Pole = { colour = c, material = M.Metal, shadow = true },
+		LampHead = { colour = Color3.fromRGB(240, 240, 232), name = "LampHead" },
+	})
+	body:part("LampPole", Vector3.new(h, 0.9, 0.9), vertical(Vector3.new(0, h / 2, 0)), c, M.Metal, { shape = "Cylinder" })
+	body:decor("LampFoot", Vector3.new(1.6, 3, 1.6), Vector3.new(0, 1.5, 0), c, M.Metal)
+	body:decor("LampArm", Vector3.new(0.45, 0.45, 9), Vector3.new(0, h - 0.6, -4.4), c, M.Metal)
+	body:decor("LampHead", Vector3.new(1.8, 0.6, 4.2), Vector3.new(0, h - 1, -8.6), Color3.fromRGB(240, 240, 232))
 	if both then
-		b:decor("LampArm", Vector3.new(0.4, 0.4, 5), Vector3.new(0, h - 6, 2.4), c, M.Metal)
-		b:decor("LampHead", Vector3.new(1.4, 0.5, 2.6), Vector3.new(0, h - 6.4, 4.6), Color3.fromRGB(240, 240, 232))
+		body:decor("LampArm", Vector3.new(0.4, 0.4, 5), Vector3.new(0, h - 6, 2.4), c, M.Metal)
+		body:decor("LampHead", Vector3.new(1.4, 0.5, 2.6), Vector3.new(0, h - 6.4, 4.6), Color3.fromRGB(240, 240, 232))
 	end
 	if withLight then
 		b:light("Spot", CFrame.new(0, h - 1.6, -8.6) * CFrame.Angles(math.rad(-90), 0, 0), Color3.fromRGB(255, 232, 196), 1.5, 44,

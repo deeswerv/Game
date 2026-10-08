@@ -52,13 +52,21 @@ function Export.Parts(root, origin)
 	local parts, lights, signs = {}, {}, {}
 	local useKit = process.env.KIT ~= "0"
 	local kitData = useKit and loadData("src/ReplicatedStorage/MeshKitData.luau")
-	local kitGeometry = useKit and loadData("src/ReplicatedStorage/MeshKitGeometry.luau")
+	-- One geometry module per model (MeshKitGeometry/<Model>.luau), read as needed.
+	local kitGeometry = useKit and setmetatable({}, { __index = function(t, name)
+		return nil
+	end })
+	if kitGeometry and kitData then
+		for name in pairs(kitData) do
+			kitGeometry[name] = loadData("src/ReplicatedStorage/MeshKitGeometry/" .. name .. ".luau")
+		end
+	end
 	local kits, kitGeo = {}, {}
 	if kitData and kitGeometry then
 		for _, d in ipairs(root:GetDescendants()) do
 			local name = d.ClassName == "Model" and d:GetAttribute("KitModel")
 			local frame = name and d:GetAttribute("KitFrame")
-			if name and frame and kitData[name] then
+			if name and frame and kitData[name] and kitGeometry[name] then
 				local raw = d:GetAttribute("KitScale")
 				local sc = if typeof(raw) == "Vector3" then raw else roblox.Vector3.new(raw or 1, raw or 1, raw or 1)
 				local paint = {}

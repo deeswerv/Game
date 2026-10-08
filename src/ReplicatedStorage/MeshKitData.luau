@@ -170,4 +170,42 @@ return {
 	Awning = {
 		Fabric = { size = Vector3.new(2.400, 1.570, 3.150), offset = Vector3.new(0.000, -0.135, 0.025), tris = 216 },
 	},
+	Kei = {
+		Body = { size = Vector3.new(3.800, 4.400, 7.200), offset = Vector3.new(0.000, 2.700, -0.000), tris = 796 },
+		Glass = { size = Vector3.new(3.100, 2.230, 6.012), offset = Vector3.new(0.000, 3.565, 0.437), tris = 108 },
+		Chrome = { size = Vector3.new(4.320, 1.990, 7.650), offset = Vector3.new(0.000, 1.755, -0.000), tris = 996 },
+		LampFront = { size = Vector3.new(3.450, 0.340, 0.200), offset = Vector3.new(0.000, 1.850, -3.580), tris = 216 },
+		LampRear = { size = Vector3.new(3.500, 0.300, 0.200), offset = Vector3.new(0.000, 1.870, 3.580), tris = 216 },
+		Tyre = { size = Vector3.new(3.920, 1.700, 5.700), offset = Vector3.new(0.000, 0.850, -0.000), tris = 1120 },
+		Rim = { size = Vector3.new(4.020, 1.020, 5.020), offset = Vector3.new(0.000, 0.850, -0.000), tris = 784 },
+		Trim = { size = Vector3.new(3.840, 3.899, 6.337), offset = Vector3.new(0.000, 2.824, 0.457), tris = 232 },
+	},
+	JSedan = {
+		Body = { size = Vector3.new(4.400, 3.750, 9.000), offset = Vector3.new(0.000, 2.375, -0.000), tris = 812 },
+		Glass = { size = Vector3.new(3.700, 1.530, 5.139), offset = Vector3.new(0.000, 3.265, 0.149), tris = 108 },
+		Chrome = { size = Vector3.new(4.920, 2.040, 9.450), offset = Vector3.new(0.000, 1.780, -0.000), tris = 996 },
+		LampFront = { size = Vector3.new(4.050, 0.340, 0.200), offset = Vector3.new(0.000, 1.900, -4.480), tris = 216 },
+		LampRear = { size = Vector3.new(4.100, 0.300, 0.200), offset = Vector3.new(0.000, 1.920, 4.480), tris = 216 },
+		Tyre = { size = Vector3.new(4.520, 1.900, 7.700), offset = Vector3.new(0.000, 0.950, -0.000), tris = 1120 },
+		Rim = { size = Vector3.new(4.620, 1.140, 6.940), offset = Vector3.new(0.000, 0.950, -0.000), tris = 784 },
+		Trim = { size = Vector3.new(4.440, 3.259, 5.419), offset = Vector3.new(0.000, 2.504, 0.151), tris = 232 },
+	},
+	AvenueLamp = {
+		Pole = { size = Vector3.new(1.900, 28.390, 11.450), offset = Vector3.new(0.000, 14.195, -4.775), tris = 460 },
+		LampHead = { size = Vector3.new(1.800, 0.500, 4.200), offset = Vector3.new(0.000, 26.950, -8.600), tris = 108 },
+	},
+	AvenueLamp2 = {
+		Pole = { size = Vector3.new(1.900, 28.390, 16.250), offset = Vector3.new(0.000, 14.195, -2.375), tris = 736 },
+		LampHead = { size = Vector3.new(1.800, 5.860, 16.600), offset = Vector3.new(0.000, 24.270, -2.400), tris = 216 },
+	},
+	Van = {
+		Body = { size = Vector3.new(4.400, 4.950, 10.000), offset = Vector3.new(0.000, 3.025, -0.000), tris = 800 },
+		Glass = { size = Vector3.new(3.700, 2.680, 9.016), offset = Vector3.new(0.000, 3.940, 0.339), tris = 108 },
+		Chrome = { size = Vector3.new(4.920, 2.090, 10.450), offset = Vector3.new(0.000, 1.855, -0.000), tris = 996 },
+		LampFront = { size = Vector3.new(4.050, 0.340, 0.200), offset = Vector3.new(0.000, 2.000, -4.980), tris = 216 },
+		LampRear = { size = Vector3.new(4.100, 0.300, 0.200), offset = Vector3.new(0.000, 2.020, 4.980), tris = 216 },
+		Tyre = { size = Vector3.new(4.520, 1.900, 8.500), offset = Vector3.new(0.000, 0.950, -0.000), tris = 1120 },
+		Rim = { size = Vector3.new(4.620, 1.140, 7.740), offset = Vector3.new(0.000, 0.950, -0.000), tris = 784 },
+		Trim = { size = Vector3.new(4.440, 4.444, 9.437), offset = Vector3.new(0.000, 3.147, 0.407), tris = 232 },
+	},
 }

@@ -268,8 +268,9 @@ props in Blender, in code, and exports `assets/models/CityKit.glb` (previews in
   flowering shrubs; benches, bins, hydrants, dumpsters, phone booths, traffic lights and cafe
   tables under their umbrellas; the shops' striped awnings (curved canvas, scalloped valance);
   and the three-tier plaza fountain.
-- Hanami City: the cherry trees, cloud-pruned pines, stone lanterns, vending machines, its
-  street trees and the big torii (stretched to each gate).
+- Hanami City: the cherry trees (the Great Sakura too, grown huge), cloud-pruned pines, stone
+  lanterns, vending machines, its street trees, the big torii (stretched to each gate) and its
+  cars: kei boxes, the saloons its taxis are, and vans.
 - The pigeons.
 
 Each is drawn from the kit in place of its part-built version. A car is 8 meshes instead of

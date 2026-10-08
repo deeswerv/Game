@@ -18,7 +18,7 @@ local roblox = require("@lune/roblox")
 local Vector3 = roblox.Vector3
 local R = World.R
 
-task.delay(120, function()
+task.delay(240, function()
 	print("\27[31mtimed out\27[0m")
 	process.exit(2)
 end)
@@ -116,14 +116,15 @@ check(e and e.Rate > 100, "splashes on the ground")
 check(road.Reflectance > 0.1, ("the street takes a sheen (%.2f)"):format(road.Reflectance))
 local grade = lighting:FindFirstChild("RainGrade")
 check(grade and grade.Enabled and grade.Saturation < 0, "the grade cools")
-World.advance(60)
-local thunder = nil
-for _, s in ipairs(World.service("SoundService"):GetChildren()) do
+-- A storm brings a bolt every 18-44 s; watch a minute and a half of it for any thunder (each
+-- clap is cleared away after it has rolled).
+local struck = false
+World.service("SoundService").ChildAdded:Connect(function(s)
 	if s.Name == "Thunder" then
-		thunder = s
+		struck = true
 	end
-end
-local struck = thunder ~= nil
+end)
+World.advance(90)
 check(struck, "lightning, then thunder")
 
 print("under a roof")

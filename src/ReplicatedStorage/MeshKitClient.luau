@@ -9,7 +9,19 @@ local AssetService = game:GetService("AssetService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Data = require(ReplicatedStorage:WaitForChild("MeshKitData")) :: any
-local Geometry = require(ReplicatedStorage:WaitForChild("MeshKitGeometry")) :: any
+local GeometryFolder = ReplicatedStorage:WaitForChild("MeshKitGeometry")
+
+-- Each model's geometry module, required the first time it is drawn (false: there is none).
+local geometry: { [string]: any } = {}
+local function geometryOf(model: string): any
+	local g = geometry[model]
+	if g == nil then
+		local m = GeometryFolder:FindFirstChild(model)
+		g = if m and m:IsA("ModuleScript") then require(m) :: any else false
+		geometry[model] = g
+	end
+	return g or nil
+end
 
 local MeshKitClient = {}
 
@@ -56,7 +68,7 @@ end
 --- One piece of one model as a MeshPart, from its data; `withNormals` false makes the device
 --- work its own normals out (for an API that will not take ours).
 local function piece(model: string, role: string, withNormals: boolean): MeshPart
-	local g = Geometry[model][role]
+	local g = geometryOf(model)[role]
 	local half = Data[model][role].size / 2
 	local buf = decode(g.data)
 	local V, T = g.verts, g.tris
@@ -105,7 +117,7 @@ local building: { [string]: { thread } } = {}
 local warned = false
 
 local function build(model: string): Pieces
-	local spec, geo = Data[model], Geometry[model]
+	local spec, geo = Data[model], geometryOf(model)
 	if not spec or not geo then
 		return FAILED
 	end
