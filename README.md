@@ -324,6 +324,12 @@ gravel and in the festival square. PERFORMANCE thins the flocks and turns the st
 petals and fireflies off (`CityLife.client.luau`,
 `tools/uitest/citylife.luau`).
 
+**Car alarms.** Put a round into a parked car, in either city, and it goes off: the hazards
+flash amber front and back, throwing a glow on the street, and it whoops its two-tone alarm
+for seven seconds before it settles. Every client works it out from the shots it already sees,
+so it costs no network traffic, and the people on the pavement scatter from the shooting as
+before (`CarAlarms.client.luau`, `tools/uitest/caralarms.luau`).
+
 **Downtown is the first stop.** You wash up at the Crossing; the Quartermaster's first job is
 *Welcome to Downtown*, and the Travel menu marks it START HERE. Everything past it -- the Flats,
 Watchpoint, the Reach, and the Quartermaster's work out there -- stays locked until you beat the
