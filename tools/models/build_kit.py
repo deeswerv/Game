@@ -49,6 +49,11 @@ PREVIEW = {
     "Counter": (0.96, 0.95, 0.92), "AwningA": (0.85, 0.24, 0.2), "AwningB": (0.96, 0.95, 0.92), "Top": (0.96, 0.95, 0.92),
     "CanopyA": (0.9, 0.35, 0.38), "CanopyB": (0.96, 0.95, 0.92), "Chair": (0.9, 0.35, 0.38), "Black": (0.12, 0.13, 0.16),
     "Fabric": (0.2, 0.6, 0.55), "LampHead": (0.97, 0.96, 0.92),
+    "Skirt": (0.16, 0.47, 0.78), "Door": (0.12, 0.18, 0.26), "Roof": (0.84, 0.85, 0.86), "Sign": (0.06, 0.06, 0.07),
+    "Bed": (0.72, 0.74, 0.76), "Load": (0.6, 0.45, 0.28), "Frame": (0.2, 0.22, 0.26), "Lip": (0.15, 0.59, 0.59),
+    "AdPanel": (0.98, 0.77, 0.27), "Bench": (0.69, 0.49, 0.31), "Concrete": (0.7, 0.7, 0.68), "Insulator": (0.94, 0.94, 0.92),
+    "Sleeve": (0.95, 0.78, 0.15), "Box": (0.62, 0.64, 0.66), "Basket": (0.75, 0.77, 0.8), "Saddle": (0.08, 0.08, 0.09),
+    "Stripe2": (0.9, 0.45, 0.6), "Under": (0.08, 0.08, 0.09),
 }
 
 random.seed(7)
@@ -227,7 +232,7 @@ def model(name, pieces):
 # the nose at +Y (Roblox's -Z), wheels of radius r at the axles.
 
 def car(name, L, W, r, axles, belt, roof, cabin, nose, tail, ride=0.45, rails=False, spare=False, radii=None,
-        arch=0.14, muscle=False):
+        arch=0.14, muscle=False, bed=None):
     hl = L / 2
     radii = radii or [r for _ in axles]       # each axle's tyre radius
     # The lower body: a side profile, bevelled round every edge, with the arches cut out.
@@ -243,6 +248,13 @@ def car(name, L, W, r, axles, belt, roof, cabin, nose, tail, ride=0.45, rails=Fa
     for y, rr in zip(axles, radii):
         add_cylinder(arches, (0, y, rr), rr + arch, W + 1, axis="X", segments=32)
     cut(body, arches)
+    if bed:
+        # A pickup's open bed (from y bed[0] back to bed[1]): hollowed out of the body down to
+        # its floor, leaving the sides and the tailgate.
+        hollow = bmesh.new()
+        floor = belt - 0.8
+        add_box(hollow, (0, (bed[0] + bed[1]) / 2 + 0.1, floor + 1.0), (W - 0.5, abs(bed[0] - bed[1]) - 0.2, 2.0))
+        cut(body, hollow)
     # The roof: a slab over the glass house.
     c0, c1, c2, c3 = cabin       # rear-of-roof y, front-of-roof y, windscreen base y (ahead of c1),
                                  # rear glass base y (behind c0)
@@ -323,6 +335,18 @@ def car(name, L, W, r, axles, belt, roof, cabin, nose, tail, ride=0.45, rails=Fa
               "Trim": pillars}
     if muscle:
         pieces["Stripe"] = stripes
+    if bed:
+        liner = bmesh.new()
+        floor = belt - 0.8
+        add_box(liner, (0, (bed[0] + bed[1]) / 2 + 0.1, floor + 0.04), (W - 0.55, abs(bed[0] - bed[1]) - 0.3, 0.08))
+        for k in range(5):
+            add_box(liner, (-(W - 0.8) / 2 + k * (W - 0.8) / 4, (bed[0] + bed[1]) / 2 + 0.1, floor + 0.1),
+                    (0.12, abs(bed[0] - bed[1]) - 0.4, 0.06))
+        # A roll bar behind the cab, and the tailgate's handle.
+        add_tube(chrome, [(-(W / 2 - 0.35), bed[0] - 0.1, belt), (-(W / 2 - 0.35), bed[0] - 0.1, belt + 0.95),
+                          (W / 2 - 0.35, bed[0] - 0.1, belt + 0.95), (W / 2 - 0.35, bed[0] - 0.1, belt)], 0.09, segments=8)
+        add_box(chrome, (0, -hl - 0.02, belt - 0.3), (0.9, 0.06, 0.16), bevel=0.03)
+        pieces["Bed"] = liner
     if spare:
         sp = bmesh.new()
         add_cylinder(sp, (0, -hl - 0.35, belt - 0.2), r * 0.95, 0.6, axis="Y", segments=24, bevel=0.1)
@@ -983,6 +1007,457 @@ def pigeon():
     return model("Pigeon", {"Body": body, "Head": head, "WingL": wing_l, "WingR": wing_r, "Feet": feet})
 
 
+def wheels(tyre, rim, W, r, axles_z, inset, width, nuts=0):
+    """Four wheels for a body W wide: tyres with rounded shoulders at Roblox z `axles_z`, steel
+    rims with a hub and (if `nuts`) a ring of wheel nuts. Roblox coordinates."""
+    hw = width / 2
+    for x in (-1, 1):
+        cx = x * (W / 2 - inset)
+        for z in axles_z:
+            c = rb(cx, r, z)
+            add_lathe_x(tyre, [(r * 0.6, -hw * 0.92), (r * 0.9, -hw), (r, -hw * 0.66), (r, hw * 0.66), (r * 0.9, hw),
+                               (r * 0.6, hw * 0.92)], c, x)
+            add_cylinder(rim, (c[0] + x * hw * 0.8, c[1], c[2]), r * 0.62, 0.12, axis="X", segments=24)
+            add_cylinder(rim, (c[0] + x * (hw * 0.8 + 0.08), c[1], c[2]), r * 0.22, 0.16, axis="X", segments=12)
+            for k in range(nuts):
+                a = k * math.pi * 2 / nuts
+                add_cylinder(rim, (c[0] + x * (hw * 0.8 + 0.07), c[1] + math.cos(a) * r * 0.36, c[2] + math.sin(a) * r * 0.36),
+                             0.07, 0.12, axis="X", segments=6)
+
+
+def bus():
+    """CityKit.Bus: a Japanese city bus, its nose to Roblox -Z. A tall body with rounded
+    corners and wheel arches, a coloured skirt and a stripe (painted by the game), a long window
+    band with black pillars, a deep windscreen in a black mask under the route sign, two doors
+    on the kerb side (Roblox -X), the air-con pod on the roof, rabbit-ear mirrors, the lamps."""
+    W, hl, r = 8.4, 18.0, 1.7
+    axles = (-11.0, 11.0)
+
+    def arches(extra):
+        a = bmesh.new()
+        for z in axles:
+            add_cylinder(a, rb(0, r, z), r + extra, W + 2, axis="X", segments=32)
+        return a
+
+    shell = bmesh.new()
+    prof = [(-hl, 1.3), (hl, 1.3), (hl, 9.2), (hl - 0.6, 10.0), (-hl + 0.8, 10.0), (-hl - 0.05, 9.0), (-hl - 0.1, 5.0)]
+    add_profile(shell, [(-z, y) for z, y in prof], -W / 2, W / 2, bevel=0.45, segments=3)
+    body = mesh_object("Bus_BodyTmp", shell)
+    cut(body, arches(0.2))
+    skirt_bm = bmesh.new()
+    rbox(skirt_bm, (0, 2.05, 0), (W + 0.06, 1.5, 2 * hl + 0.1), bevel=0.35)
+    skirt = mesh_object("Bus_SkirtTmp", skirt_bm)
+    cut(skirt, arches(0.24))
+    stripe = bmesh.new()
+    rbox(stripe, (0, 4.85, 0), (W + 0.05, 0.45, 2 * hl + 0.07), bevel=0.2)
+    glass, trim, door, roof, sign, front, rear, tyre, rim, chrome = (bmesh.new() for _ in range(10))
+    # The window band: the driver's side runs to the windscreen, the kerb side stops at the door.
+    rbox(glass, (W / 2 + 0.02, 7.3, 0), (0.06, 3.4, 2 * hl - 2.2), bevel=0.02)
+    rbox(glass, (-W / 2 - 0.02, 7.3, 2.1), (0.06, 3.4, 2 * hl - 6.4), bevel=0.02)
+    for x in (-1, 1):
+        for k in range(10):
+            z = -12.6 + k * 3.2
+            if x < 0 and abs(z - 2.0) < 2.2:
+                continue
+            rbox(trim, (x * (W / 2 + 0.05), 7.3, z), (0.05, 3.4, 0.32))
+        rbox(trim, (x * (W / 2 + 0.05), 5.55, 0.3), (0.05, 0.12, 2 * hl - 1.4))
+    rbox(trim, (0, 6.2, -hl - 0.07), (W - 0.5, 6.2, 0.06), bevel=0.04)   # the mask round the windscreen
+    rbox(glass, (0, 6.3, -hl - 0.11), (W - 1.1, 5.2, 0.06), bevel=0.04)  # the windscreen
+    rbox(trim, (0, 6.3, -hl - 0.15), (0.12, 5.2, 0.05))                  # its centre post
+    rbox(glass, (0, 7.6, hl + 0.06), (6.2, 2.2, 0.08), bevel=0.04)       # the rear window
+    # The doors on the kerb side: glazed leaves in black frames, a step light over each.
+    for z in (-15.2, 2.0):
+        rbox(trim, (-W / 2 - 0.04, 5.0, z), (0.06, 7.1, 3.8), bevel=0.04)
+        for dz in (-0.85, 0.85):
+            rbox(door, (-W / 2 - 0.08, 5.2, z + dz), (0.06, 6.2, 1.5), bevel=0.03)
+        rbox(front, (-W / 2 - 0.08, 8.85, z), (0.06, 0.18, 2.6))
+    # The route signs: over the windscreen, beside the front door, on the back.
+    rbox(sign, (0, 9.35, -hl - 0.1), (6.4, 1.0, 0.12), bevel=0.03)
+    rbox(sign, (-W / 2 - 0.04, 9.1, -9.0), (0.08, 0.75, 4.4), bevel=0.02)
+    rbox(sign, (0, 9.25, hl + 0.06), (3.2, 0.7, 0.1), bevel=0.02)
+    # The roof: the air-con pod and a hatch.
+    rbox(roof, (0, 10.4, 1.5), (6.6, 0.9, 13), bevel=0.4)
+    rbox(roof, (0, 10.4, 1.5), (6.9, 0.2, 13.3), bevel=0.08)
+    rbox(roof, (0, 10.1, -11), (2.4, 0.3, 2.4), bevel=0.1)
+    # Bumpers, lamps.
+    for z in (-1, 1):
+        rbox(trim, (0, 1.75, z * (hl + 0.12)), (W - 0.1, 0.9, 0.45), bevel=0.18)
+    for x in (-1, 1):
+        rbox(front, (x * 3.05, 3.0, -hl - 0.12), (1.5, 0.6, 0.1), bevel=0.12)
+        add_cylinder(front, rb(x * 3.25, 1.75, -hl - 0.36), 0.25, 0.1, axis="Y", segments=12)
+        rbox(rear, (x * 3.55, 4.2, hl + 0.08), (0.6, 2.6, 0.1), bevel=0.1)
+        rbox(front, (x * (W / 2 - 0.15), 9.85, -hl + 0.6), (0.3, 0.2, 0.5), bevel=0.05)   # marker lamps
+        # Rabbit-ear mirrors: out of the roof's front corners, forward and down.
+        m0 = rb(x * 3.7, 9.6, -hl + 0.6)
+        m1 = rb(x * 4.6, 9.3, -hl - 1.0)
+        m2 = rb(x * 4.6, 7.4, -hl - 1.6)
+        add_tube(chrome, [m0, m1, m2], 0.07, segments=8)
+        rbox(trim, (x * 4.6, 7.0, -hl - 1.65), (0.5, 1.3, 0.22), bevel=0.08)
+    wheels(tyre, rim, W, r, axles, inset=0.75, width=1.2, nuts=8)
+    return model("Bus", {"Body": body, "Skirt": skirt, "Stripe": stripe, "Glass": glass, "Trim": trim, "Door": door,
+                         "Roof": roof, "Sign": sign, "LampFront": front, "LampRear": rear, "Tyre": tyre, "Rim": rim,
+                         "Chrome": chrome})
+
+
+def kei_truck():
+    """CityKit.Car "truck": a kei truck, its nose to Roblox -Z. A cab-over cab with a near
+    upright windscreen and a little bonnet lip, the flat bed behind with fold-down sides and a
+    headboard guard, crates of produce on it, small wheels."""
+    W, L, r = 3.8, 7.2, 0.85
+    hl = L / 2
+    axles = (-hl + 1.6, hl - 1.6)
+
+    def arches():
+        a = bmesh.new()
+        for z in axles:
+            add_cylinder(a, rb(0, r, z), r + 0.12, W + 2, axis="X", segments=28)
+        return a
+
+    cab_bm = bmesh.new()
+    cprof = [(-hl, 0.75), (-hl + 2.75, 0.75), (-hl + 2.75, 4.65), (-hl + 0.55, 4.65), (-hl + 0.12, 3.2), (-hl, 2.0)]
+    add_profile(cab_bm, [(-z, y) for z, y in cprof], -W / 2, W / 2, bevel=0.22, segments=3)
+    cab = mesh_object("KeiTruck_CabTmp", cab_bm)
+    cut(cab, arches())
+    bed, glass, trim, load, front, rear, tyre, rim, chrome = (bmesh.new() for _ in range(9))
+    z0, z1 = -hl + 2.85, hl
+    rbox(trim, (0, 1.15, (z0 + z1) / 2 - 0.2), (W - 0.6, 0.5, z1 - z0 - 0.4))         # the chassis under the bed
+    rbox(bed, (0, 2.15, (z0 + z1) / 2), (W, 0.22, z1 - z0), bevel=0.04)               # the deck
+    for x in (-1, 1):
+        rbox(bed, (x * (W / 2 - 0.05), 2.7, (z0 + z1) / 2), (0.1, 0.9, z1 - z0), bevel=0.03)
+        for k in range(3):
+            rbox(trim, (x * (W / 2 + 0.01), 2.7, z0 + 0.5 + k * 1.6), (0.04, 0.8, 0.08))
+    rbox(bed, (0, 2.7, z1 - 0.05), (W, 0.9, 0.1), bevel=0.03)                         # the tailgate
+    rbox(bed, (0, 3.3, z0 + 0.05), (W, 2.1, 0.1), bevel=0.03)                         # the headboard
+    for x in (-1.2, -0.4, 0.4, 1.2):
+        rbox(chrome, (x, 3.6, z0 - 0.02), (0.08, 2.0, 0.06))                           # its guard bars
+    # Glass: the windscreen, the side windows, the cab's back window.
+    gprof = [(-hl + 0.16, 3.3), (-hl + 0.55, 4.5), (-hl + 0.6, 4.5), (-hl + 0.21, 3.3)]
+    add_profile(glass, [(-z, y) for z, y in gprof], -(W / 2 - 0.25), W / 2 - 0.25)
+    for x in (-1, 1):
+        rbox(glass, (x * (W / 2 + 0.01), 3.85, -hl + 1.7), (0.06, 1.2, 1.6), bevel=0.04)
+        rbox(trim, (x * (W / 2 + 0.03), 2.2, -hl + 1.75), (0.03, 2.2, 0.05))          # the door's shut line
+        rbox(chrome, (x * (W / 2 + 0.03), 2.85, -hl + 2.2), (0.08, 0.1, 0.4), bevel=0.02)
+        rbox(trim, (x * (W / 2 + 0.18), 3.6, -hl + 0.55), (0.12, 0.45, 0.3), bevel=0.04)  # mirrors
+        rbox(front, (x * 1.25, 1.75, -hl - 0.03), (0.8, 0.5, 0.1), bevel=0.06)
+        rbox(rear, (x * 1.55, 1.55, hl + 0.03), (0.4, 0.5, 0.08), bevel=0.04)
+    rbox(glass, (0, 3.9, -hl + 2.77), (W - 0.9, 0.9, 0.05))
+    rbox(trim, (0, 1.1, -hl - 0.06), (W - 0.1, 0.45, 0.25), bevel=0.1)                 # the bumper
+    rbox(trim, (0, 2.45, -hl - 0.01), (1.6, 0.35, 0.06), bevel=0.04)                  # the grille slot
+    # The load: crates of produce and a sack.
+    for (x, z, h) in ((-0.9, 0.0, 0.9), (0.9, 0.0, 0.9), (-0.9, 1.6, 0.9), (0.6, 1.8, 0.6)):
+        rbox(load, (x, 2.26 + h / 2, z + 0.3), (1.5, h, 1.3), bevel=0.06)
+    add_sphere(load, rb(-0.9, 3.55, 0.3), 0.55, subdiv=2, squash=0.7, noise=0.12)
+    wheels(tyre, rim, W, r, axles, inset=0.4, width=0.6)
+    return model("KeiTruck", {"Body": cab, "Bed": bed, "Glass": glass, "Trim": trim, "Load": load, "LampFront": front,
+                              "LampRear": rear, "Tyre": tyre, "Rim": rim, "Chrome": chrome})
+
+
+def bus_shelter():
+    """busShelter(): a glass bus shelter, its open side toward Roblox -Z (the road), origin on
+    the pavement at its middle: four steel posts, a roof that curves down to a lip at the front,
+    glass back and end panels in thin frames, the lit advert box at the +X end, a slatted bench
+    inside, and the stop's round sign on its own pole at the kerb."""
+    frame, roof, lip, glass, ad, bench, sign = (bmesh.new() for _ in range(7))
+    for x in (-4, 4):
+        for z in (-1.3, 1.3):
+            add_cylinder(frame, rb(x, 3.45, z), 0.15, 6.9, segments=12)
+    # The roof: a curved sheet (a profile across Z, extruded along X), its lip at the front.
+    pts = []
+    for k in range(9):
+        t = k / 8
+        z = 1.75 - t * 3.6
+        y = 7.05 + math.sin(t * math.pi * 0.85) * 0.45
+        pts.append((z, y))
+    upper = [(-z, y + 0.12) for z, y in pts]
+    lower = [(-z, y - 0.12) for z, y in reversed(pts)]
+    add_profile(roof, upper + lower, -4.55, 4.55, bevel=0.05)
+    rbox(lip, (0, 6.95, -1.86), (9.1, 0.5, 0.14), bevel=0.04)
+    # Glass in thin frames: the back and the -X end.
+    rbox(glass, (0, 3.75, 1.3), (7.7, 5.3, 0.08))
+    rbox(glass, (-4, 3.75, 0.0), (0.08, 5.3, 2.3))
+    for y in (1.05, 6.45):
+        rbox(frame, (0, y, 1.3), (8.0, 0.14, 0.16))
+        rbox(frame, (-4, y, 0.0), (0.16, 0.14, 2.6))
+    rbox(frame, (0, 3.75, 1.3), (0.12, 5.3, 0.14))
+    # The advert box at the +X end, its lit panel facing out.
+    rbox(frame, (4, 3.6, 0.1), (0.5, 5.8, 2.6), bevel=0.06)
+    rbox(ad, (4.28, 3.6, 0.1), (0.08, 5.0, 2.1), bevel=0.02)
+    # The bench: slats on two brackets.
+    for k in range(3):
+        rbox(bench, (-0.4, 1.95, 0.25 + k * 0.32), (6.0, 0.14, 0.26), bevel=0.04)
+    for x in (-3.0, 2.2):
+        rbox(frame, (x, 0.95, 0.6), (0.18, 1.9, 0.2))
+        rbox(frame, (x, 1.85, 0.6), (0.18, 0.12, 1.0))
+    # The stop's sign: a pole with a round plate.
+    add_cylinder(frame, rb(-5.4, 4.5, -1.3), 0.12, 9.0, segments=12)
+    add_cylinder(sign, rb(-5.4, 8.2, -1.3), 0.85, 0.1, axis="Y", segments=28, bevel=0.03)
+    rbox(frame, (-5.4, 7.0, -1.3), (0.5, 0.9, 0.3), bevel=0.05)                       # the timetable box
+    return model("BusShelter", {"Frame": frame, "Roof": roof, "Lip": lip, "Glass": glass, "AdPanel": ad, "Bench": bench,
+                                "Sign": sign})
+
+
+def water_tower():
+    """A rooftop water tower (Downtown's roofs): a wooden barrel tank bound with iron hoops under
+    a conical cap, on four steel legs with cross bracing and a ring beam, a ladder up the side.
+    Origin on the roof under its middle."""
+    wood, iron, cap = bmesh.new(), bmesh.new(), bmesh.new()
+    y0, y1 = 3.8, 8.6
+    # The tank: staves (a faceted, slightly barrelled lathe), the hoops round it.
+    prof = [(0.0, y0), (2.42, y0), (2.5, (y0 + y1) / 2), (2.42, y1), (0.0, y1)]
+    add_lathe(wood, [(r, y) for r, y in prof], segments=20)
+    for y in (4.3, 5.5, 6.8, 8.1):
+        ring(iron, [(2.47, y - 0.08), (2.58, y - 0.08), (2.58, y + 0.08), (2.47, y + 0.08)], segments=20)
+    # The cap: a shallow cone with an overhang and a finial.
+    add_lathe(cap, [(0.0, y1 - 0.05), (2.75, y1 - 0.05), (2.75, y1 + 0.12), (0.12, y1 + 1.8), (0.0, y1 + 1.8)], segments=20)
+    add_sphere(cap, (0, 0, y1 + 1.95), 0.22, subdiv=1)
+    # The legs, braced, on the ring beam under the tank.
+    corners = [(-1.6, -1.6), (1.6, -1.6), (1.6, 1.6), (-1.6, 1.6)]
+    for x, z in corners:
+        add_cylinder(iron, rb(x, y0 / 2, z), 0.17, y0, segments=10)
+        add_box(iron, rb(x, 0.1, z), (0.6, 0.6, 0.2))
+    for k in range(4):
+        (xa, za), (xb, zb) = corners[k], corners[(k + 1) % 4]
+        add_tube(iron, [rb(xa, 0.4, za), rb(xb, y0 - 0.4, zb)], 0.07, segments=6)
+        add_tube(iron, [rb(xb, 0.4, zb), rb(xa, y0 - 0.4, za)], 0.07, segments=6)
+        add_tube(iron, [rb(xa, y0 - 0.1, za), rb(xb, y0 - 0.1, zb)], 0.12, segments=6)
+    # The ladder up the -Z side to the cap.
+    for x in (-0.35, 0.35):
+        add_tube(iron, [rb(x, 0.1, -2.75), rb(x, y1 + 0.2, -2.75)], 0.05, segments=6)
+    for k in range(13):
+        y = 0.6 + k * 0.65
+        add_box(iron, rb(0, y, -2.75), (0.7, 0.06, 0.06))
+    return model("WaterTower", {"Wood": wood, "Iron": iron, "Roof": cap})
+
+
+def roof_unit():
+    """A rooftop air unit (Downtown's roofs): a bevelled steel cabinet on a base frame, louvres
+    down its sides, a round fan grille on top with its hub, and a duct into the roof. Origin on
+    the roof under its middle."""
+    body, dark, frame = bmesh.new(), bmesh.new(), bmesh.new()
+    rbox(frame, (0, 0.35, 0), (6.2, 0.7, 5.2), bevel=0.05)
+    rbox(body, (0, 2.2, 0), (6, 3, 5), bevel=0.15)
+    for x in (-1, 1):
+        for k in range(7):
+            rbox(dark, (x * 3.01, 1.25 + k * 0.32, 0.6), (0.04, 0.12, 3.2))
+    for k in range(9):
+        rbox(dark, (-2.2 + k * 0.32, 2.2, -2.51), (0.12, 2.0, 0.04))
+    # The fan on top: a ring, its guard bars, the hub.
+    ring(frame, [(1.35, 3.68), (1.55, 3.68), (1.55, 3.95), (1.35, 3.95)], centre=rb(0.8, 0, 0.4), segments=28)
+    add_cylinder(dark, rb(0.8, 3.72, 0.4), 1.36, 0.06, segments=28)
+    for k in range(4):
+        tmp = bmesh.new()
+        add_box(tmp, (0, 0, 0), (2.8, 0.08, 0.06))
+        bmesh.ops.rotate(tmp, verts=tmp.verts, matrix=Matrix.Rotation(k * math.pi / 4, 3, "Z"))
+        bmesh.ops.translate(tmp, vec=Vector(rb(0.8, 3.9, 0.4)), verts=tmp.verts)
+        merge(frame, tmp)
+    add_cylinder(frame, rb(0.8, 3.92, 0.4), 0.3, 0.12, segments=12)
+    # A service panel and the duct down into the roof.
+    rbox(frame, (-2.0, 3.72, -1.2), (1.4, 0.06, 1.6))
+    rbox(body, (-3.6, 1.0, 1.2), (1.4, 1.2, 1.2), bevel=0.08)
+    return model("RoofUnit", {"Body": body, "Dark": dark, "Frame": frame})
+
+
+def utility_pole(name, transformer):
+    """CityKit.Pole: a Japanese concrete utility pole, 31 studs (the game stretches it to each
+    pole's height), origin on the ground. Tapered, with the yellow-and-black guard sleeve at its
+    foot, step bolts up its sides, two steel cross-arms with braces and white insulators where
+    the wires hang (x -2.3, 0, 2.3 a stud from the top; -1.6 at 3.6 down), the cable box, and
+    (`transformer`) the transformer drum."""
+    h = 31
+    con, steel, ins, sleeve, trim, box = (bmesh.new() for _ in range(6))
+    add_lathe(con, [(0.0, 0.0), (0.5, 0.0), (0.38, h), (0.0, h)], segments=16)
+    add_lathe(sleeve, [(0.0, 1.5), (0.55, 1.5), (0.55, 2.9), (0.0, 2.9)], segments=16)
+    for y in (1.75, 2.15, 2.55):
+        ring(trim, [(0.54, y - 0.1), (0.57, y - 0.1), (0.57, y + 0.1), (0.54, y + 0.1)], segments=16)
+    # Step bolts, alternating sides, from out of reach to the arms.
+    for k in range(17):
+        y = 7.0 + k * 1.05
+        side = 1 if k % 2 == 0 else -1
+        radius = 0.5 - 0.12 * y / h
+        add_tube(steel, [rb(side * radius, y, 0), rb(side * (radius + 0.45), y, 0)], 0.05, segments=6)
+    # The cross-arms, braced back to the pole.
+    for (y, half) in ((h - 1.4, 2.6), (h - 3.6, 1.8)):
+        rbox(steel, (0, y, 0), (half * 2, 0.32, 0.32))
+        for x in (-1, 1):
+            add_tube(steel, [rb(x * half * 0.6, y - 0.1, 0), rb(0, y - 1.2, 0)], 0.05, segments=6)
+    # Insulators: a stack of porcelain discs on a pin.
+    for (x, y) in ((-2.3, h - 1.4), (0.0, h - 1.4), (2.3, h - 1.4), (-1.6, h - 3.6), (1.6, h - 3.6)):
+        for k in range(3):
+            add_cylinder(ins, rb(x, y + 0.28 + k * 0.17, 0), 0.2 - k * 0.03, 0.12, segments=12)
+    # The cable box on the -Z side, its bracket.
+    rbox(box, (0, h - 9, -0.75), (1.0, 1.4, 0.6), bevel=0.06)
+    rbox(steel, (0, h - 9, -0.42), (0.3, 0.9, 0.12))
+    if transformer:
+        add_cylinder(box, rb(0, h - 6.6, 1.3), 0.8, 2.6, segments=20)
+        for y in (h - 7.6, h - 5.6):
+            ring(trim, [(0.79, y - 0.06), (0.85, y - 0.06), (0.85, y + 0.06), (0.79, y + 0.06)], centre=rb(0, 0, 1.3),
+                 segments=20)
+        add_cylinder(box, rb(0, h - 5.15, 1.3), 0.9, 0.3, segments=20)
+        for x in (-0.35, 0.35):
+            add_cylinder(ins, rb(x, h - 4.75, 1.3), 0.12, 0.5, segments=10)
+        rbox(steel, (0, h - 6.2, 0.6), (1.0, 0.25, 0.9))
+        rbox(steel, (0, h - 7.2, 0.6), (1.0, 0.25, 0.9))
+    return model(name, {"Concrete": con, "Steel": steel, "Insulator": ins, "Sleeve": sleeve, "Trim": trim, "Box": box})
+
+
+def bike():
+    """CityKit.Bike: a mamachari (the city's shopping bike), front wheel toward Roblox -Z, origin
+    on the ground: spoked wheels with fenders, a step-through frame, the chain guard, a sprung
+    saddle, swept-back bars and the wire basket over the front wheel, a kickstand."""
+    frame, tyre, rim, basket, saddle, chrome = (bmesh.new() for _ in range(6))
+    R = 1.15
+    for z in (-1.45, 1.45):
+        c = rb(0, R, z)
+        add_lathe_x(tyre, [(R - 0.14, -0.08), (R - 0.02, -0.09), (R, 0.0), (R - 0.02, 0.09), (R - 0.14, 0.08), (R - 0.14, -0.08)],
+                    c, 1)
+        add_lathe_x(rim, [(R - 0.2, -0.05), (R - 0.13, -0.05), (R - 0.13, 0.05), (R - 0.2, 0.05), (R - 0.2, -0.05)], c, 1)
+        add_cylinder(rim, c, 0.09, 0.22, axis="X", segments=10)
+        for k in range(12):
+            a = k * math.pi * 2 / 12
+            side = 0.05 if k % 2 == 0 else -0.05
+            add_tube(rim, [(side, c[1], c[2]), (0, c[1] + math.cos(a) * (R - 0.18), c[2] + math.sin(a) * (R - 0.18))], 0.014,
+                     segments=4)
+        # The fender: an arc over the top of the wheel.
+        pts = []
+        for k in range(9):
+            a = math.radians(-20 + k * 25) if z > 0 else math.radians(20 + k * 17.5)
+            pts.append((0, c[1] + math.cos(a) * (R + 0.1), c[2] + math.sin(a) * (R + 0.1)))
+        add_tube(chrome, pts, 0.07, segments=6)
+    # The frame (Roblox y, z): head (-1.05, 2.55), bottom bracket (0.25, 0.95), seat (0.75, 2.4).
+    head_top, head_bot = rb(0, 2.75, -1.12), rb(0, 2.2, -1.02)
+    bb = rb(0, 0.95, 0.25)
+    seat = rb(0, 2.4, 0.72)
+    add_tube(frame, [head_bot, rb(0, 1.5, -0.6), bb], 0.09, segments=8)                 # the low step-through tube
+    add_tube(frame, [head_top, head_bot], 0.1, segments=8)
+    add_tube(frame, [bb, seat], 0.085, segments=8)
+    add_tube(frame, [bb, rb(0, R, 1.45)], 0.05, segments=6)                             # chain stay
+    add_tube(frame, [seat, rb(0, R, 1.45)], 0.045, segments=6)                          # seat stay
+    add_tube(frame, [head_bot, rb(0, R, -1.45)], 0.06, segments=6)                      # the fork
+    add_tube(frame, [rb(0, R + 0.9, 1.45), rb(0, R + 0.7, 1.95), rb(0, R + 0.3, 1.9)], 0.04, segments=6)   # the rack's strut
+    rbox(frame, (0, R + 0.95, 1.45), (0.55, 0.06, 1.2), bevel=0.02)                     # the rear rack
+    # The chain guard on the right, the crank and pedals.
+    rbox(frame, (0.1, 1.05, 0.85), (0.04, 0.4, 1.3), bevel=0.02, rot_x=-4)
+    add_cylinder(chrome, rb(0.1, 0.95, 0.25), 0.3, 0.05, axis="X", segments=16)
+    for side, a in ((1, 0.6), (-1, math.pi + 0.6)):
+        end = (side * 0.3, -(0.25 + math.cos(a) * 0.5), 0.95 + math.sin(a) * 0.5)
+        add_tube(chrome, [(side * 0.12, -0.25, 0.95), end], 0.035, segments=6)
+        add_box(saddle, (side * 0.42, end[1], end[2]), (0.3, 0.2, 0.08))
+    # The saddle on its post, springs under it.
+    add_tube(chrome, [seat, rb(0, 2.75, 0.75)], 0.04, segments=6)
+    rbox(saddle, (0, 2.85, 0.78), (0.45, 0.16, 0.85), bevel=0.06)
+    for x in (-0.14, 0.14):
+        add_cylinder(chrome, rb(x, 2.72, 1.0), 0.05, 0.16, segments=6)
+    # The bars: a stem up from the head, swept back to grips.
+    add_tube(chrome, [head_top, rb(0, 3.0, -1.18)], 0.04, segments=6)
+    add_tube(chrome, [rb(-0.75, 2.95, -0.8), rb(-0.45, 3.02, -1.15), rb(0.45, 3.02, -1.15), rb(0.75, 2.95, -0.8)], 0.035,
+             segments=6)
+    for x in (-0.72, 0.72):
+        add_cylinder(saddle, rb(x, 2.96, -0.84), 0.06, 0.28, axis="Y", segments=8)
+    # The basket: a wire box (four walls and a floor of bars) on a bracket over the front wheel.
+    bx, by, bz = 0.0, 2.45, -1.8
+    for k in range(6):
+        y = by - 0.33 + k * 0.13
+        for (cx, cz, sx, sz) in ((bx, bz - 0.4, 1.0, 0.03), (bx, bz + 0.4, 1.0, 0.03), (bx - 0.5, bz, 0.03, 0.8),
+                                 (bx + 0.5, bz, 0.03, 0.8)):
+            rbox(basket, (cx, y, cz), (sx, 0.025, sz))
+    for k in range(7):
+        x = bx - 0.45 + k * 0.15
+        rbox(basket, (x, by, bz - 0.4), (0.025, 0.7, 0.03))
+        rbox(basket, (x, by, bz + 0.4), (0.025, 0.7, 0.03))
+        rbox(basket, (x, by - 0.34, bz), (0.03, 0.03, 0.8))
+    add_tube(frame, [rb(0, by - 0.35, bz + 0.2), rb(0, 2.3, -1.08)], 0.03, segments=4)
+    # The kickstand, down on the left.
+    add_tube(chrome, [rb(-0.08, 0.95, 0.5), rb(-0.45, 0.05, 0.75)], 0.035, segments=6)
+    return model("Bike", {"Frame": frame, "Tyre": tyre, "Rim": rim, "Basket": basket, "Saddle": saddle, "Chrome": chrome})
+
+
+def train(name, cab):
+    """trainCar(): a commuter train car, 60 long along Roblox X, origin on the track bed under
+    its middle. Stainless sides bulging gently to a curved roof, the line's stripes, a window
+    band between four pairs of doors a side, air-con pods on the roof, bogies with their wheels,
+    underfloor boxes, gangway bellows; the cab car (`cab`) ends at +X in a raked nose with a
+    black-masked windscreen, lamps and the destination board, the middle car carries the
+    pantograph."""
+    body, stripe, stripe2, glass, door, roof, under, front, sign = (bmesh.new() for _ in range(9))
+    x0, x1 = -30.0, (27.4 if cab else 30.0)
+    sect = [(-4.2, 2.4), (4.2, 2.4), (4.5, 3.4), (4.55, 8.5), (4.35, 12.3), (3.4, 13.2), (0.0, 13.5), (-3.4, 13.2),
+            (-4.35, 12.3), (-4.55, 8.5), (-4.5, 3.4)]
+    add_profile(body, [(-z, y) for z, y in sect], x0, x1, bevel=0.12)
+    if cab:
+        # The nose: a side profile extruded across, raked back above the lamps.
+        nose = [(27.2, 2.4), (30.9, 2.4), (31.4, 4.4), (31.2, 7.6), (30.0, 12.4), (27.2, 13.4)]
+        tmp = bmesh.new()
+        verts = [tmp.verts.new((x, 0, y)) for x, y in nose]
+        face = tmp.faces.new(verts)
+        bmesh.ops.translate(tmp, vec=(0, -4.35, 0), verts=tmp.verts)
+        res = bmesh.ops.extrude_face_region(tmp, geom=[face])
+        moved = [g for g in res["geom"] if isinstance(g, bmesh.types.BMVert)]
+        bmesh.ops.translate(tmp, vec=(0, 8.7, 0), verts=moved)
+        bmesh.ops.recalc_face_normals(tmp, faces=tmp.faces)
+        bmesh.ops.bevel(tmp, geom=list(tmp.edges), offset=0.45, segments=3, affect="EDGES", profile=0.5, clamp_overlap=True)
+        merge(body, tmp)
+        # The mask round the windscreen, the screen, the lamps, the board over it.
+        tmp = bmesh.new()
+        add_box(tmp, (0, 0, 0), (0.12, 8.2, 4.6))
+        bmesh.ops.rotate(tmp, verts=tmp.verts, matrix=Matrix.Rotation(-math.atan2(1.2, 4.8), 3, "Y"))
+        bmesh.ops.translate(tmp, vec=(30.68, 0, 10.0), verts=tmp.verts)
+        merge(under, tmp)
+        tmp = bmesh.new()
+        add_box(tmp, (0, 0, 0), (0.08, 7.0, 3.4))
+        bmesh.ops.rotate(tmp, verts=tmp.verts, matrix=Matrix.Rotation(-math.atan2(1.2, 4.8), 3, "Y"))
+        bmesh.ops.translate(tmp, vec=(30.75, 0, 9.85), verts=tmp.verts)
+        merge(glass, tmp)
+        for z in (-2.9, 2.9):
+            rbox(front, (31.38, 4.6, z), (0.1, 0.7, 1.5), bevel=0.08)
+        rbox(sign, (30.05, 12.2, 0), (0.1, 0.7, 3.4))
+        for z in (-1, 1):
+            rbox(stripe, (31.2, 5.5, z * 3.2), (0.4, 1.2, 2.4), rot_y=z * 30)
+        rbox(stripe, (31.42, 5.5, 0), (0.1, 1.2, 4.6))
+    # The stripes and the window band, both sides.
+    for z in (-1, 1):
+        zz = z * 4.58
+        rbox(stripe, (((x0 + x1) / 2), 5.5, zz), (x1 - x0, 1.2, 0.06))
+        rbox(stripe2, (((x0 + x1) / 2), 4.45, zz), (x1 - x0, 0.5, 0.06))
+        for k in range(5):
+            a, b = [-30, -19, -5, 9, 23][k], [-23, -9, 5, 19, 30][k]
+            a, b = max(a, x0 + 0.6), min(b, x1 - 0.6)
+            if b - a > 1:
+                rbox(glass, ((a + b) / 2, 9.4, zz), (b - a - 0.6, 2.8, 0.06), bevel=0.02)
+        for dx in (-21, -7, 7, 21):
+            rbox(door, (dx, 6.7, z * 4.6), (3.8, 8.2, 0.08), bevel=0.03)
+            rbox(under, (dx, 6.7, z * 4.66), (0.08, 8.2, 0.04))
+            for side in (-0.95, 0.95):
+                rbox(glass, (dx + side, 8.6, z * 4.68), (1.2, 3.0, 0.04), bevel=0.02)
+    # The roof: air-con pods, a run of vents.
+    for x in (-15, 15):
+        if cab and x > 0:
+            x = 12
+        rbox(roof, (x, 13.9, 0), (8, 0.9, 5), bevel=0.35)
+    rbox(roof, ((x0 + x1) / 2, 13.55, 0), (x1 - x0 - 4, 0.12, 1.6))
+    if not cab:
+        # The pantograph: a diamond of struts on its base, the collector bar across the top.
+        rbox(under, (0, 13.75, 0), (3, 0.4, 3))
+        for zs in (-1, 1):
+            add_tube(under, [rb(-1.6, 14, zs * 1.2), rb(0, 15.4, zs * 0.6), rb(1.6, 14, zs * 1.2)], 0.07, segments=6)
+            add_tube(under, [rb(0, 15.4, zs * 0.6), rb(-0.8, 16.6, 0), rb(0.8, 16.6, 0)], 0.06, segments=6)
+        rbox(under, (0, 16.7, 0), (0.25, 0.12, 4.2))
+    # Underneath: the bogies and their wheels, the boxes between, the gangway bellows.
+    for bx in (-20, 20):
+        rbox(under, (bx, 1.6, 0), (9, 1.0, 7.4), bevel=0.15)
+        for wx in (bx - 2.8, bx + 2.8):
+            for z in (-1, 1):
+                add_cylinder(under, rb(wx, 1.05, z * 3.1), 1.05, 0.5, axis="X", segments=18)
+    for x in (-10, -3, 4, 10):
+        rbox(under, (x, 1.9, 0), (5, 1.1, 6.6), bevel=0.1)
+    ends = (-30.4,) if cab else (-30.4, 30.4)
+    for x in ends:
+        rbox(under, (x, 7.6, 0), (0.8, 9.6, 3.6), bevel=0.2)
+    pieces = {"Body": body, "Stripe": stripe, "Stripe2": stripe2, "Glass": glass, "Door": door, "Roof": roof, "Under": under}
+    if cab:
+        pieces["LampFront"], pieces["Sign"] = front, sign
+    return model(name, pieces)
+
+
 # ------------------------------------------------------------------------- build it all --
 
 def build():
@@ -1024,6 +1499,19 @@ def build():
     avenue_lamp("AvenueLamp2", True)
     car("Van", L=10, W=4.4, r=0.95, axles=(-3.3, 3.3), belt=2.6, roof=5.5, cabin=(-4.75, 2.9, 4.2, -4.85), nose=0.9,
         tail=0.15, ride=0.55)
+    bus()
+    kei_truck()
+    # Downtown's pickup (car(kind "pickup")): a single cab, the open bed behind.
+    car("Pickup", L=11, W=4.8, r=1.15, axles=(-3.4, 3.6), belt=2.85, roof=4.35, cabin=(-0.9, 1.3, 2.6, -1.05), nose=3.2,
+        tail=0.2, ride=0.55, arch=0.1, bed=(-1.25, -5.5))
+    bus_shelter()
+    water_tower()
+    roof_unit()
+    utility_pole("UtilityPole", False)
+    utility_pole("UtilityPoleT", True)
+    bike()
+    train("TrainCar", False)
+    train("TrainCab", True)
 
 
 def piece_frame(obj):
@@ -1273,6 +1761,12 @@ def render_previews(entries):
                               "MuscleCar": (6, 18, -100)},
                (), (("MuscleCar_Body", (0.8, 0.12, 0.1)), ("Dumpster_Body", (0.2, 0.45, 0.3))),
                (30, 56, 30), (0, -2, 4))
+        # The street's vehicles: a bus at the stop, a pickup, a kei truck, a food truck.
+        lineup("sheet3.png", {"BusShelter": (4, -7), "Bus": (2, 1.5, -90), "Pickup": (-26, 2, -90), "KeiTruck": (25, 1.5, -90),
+                              "FoodTruck": (-22, -9, 180), "StreetLamp": (-9, -6.5)},
+               (), (("Pickup_Body", (0.16, 0.36, 0.72)), ("KeiTruck_Body", (0.96, 0.96, 0.94)),
+                    ("Bus_Body", (0.96, 0.96, 0.94))),
+               (16, 58, 24), (0, -2, 3))
     bpy.data.objects.remove(g)
     bpy.data.objects.remove(sun)
     bpy.data.objects.remove(cam)

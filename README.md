@@ -203,10 +203,13 @@ down a stretch of pavement between the lamps and trees, pausing and turning at t
 and arms swinging as they go -- and when shooting starts near them (any tracer or impact
 within 45 studs, `CombatFX.Gunfire`) they break into a run, arms pumping, until it has been
 quiet for eight seconds. They are the players' own rig dressed in street clothes
-(`DistrictService.CIVILIANS`, routes in `Downtown.Walkers`), walked on every client
+(`DistrictService/Crowd.luau`, routes in `Downtown.Walkers`), walked on every client
 (`Pedestrians.client.luau`) off the server clock so everyone sees them in the same place, and
 they are not part of any fight: nothing can hit, touch or stand on them.
 `tools/uitest/staff.luau` checks they spawn, that every route is clear, and that they walk.
+Hanami City has its own crowd: sixteen people crossing the Scramble on both diagonals and all
+four zebras and walking the pavements round it (`HanamiConfig.Walkers`; the Hanami suite
+checks every stretch is clear of trees, lamps, rails and shop tables).
 
 **The ZEE BANK truck.** An armoured truck sits at the kerb up the west arm of the cross street
 (on the compass as 🚚). Hold **E** at its vault lock for 8 seconds: both back doors swing open
@@ -261,16 +264,25 @@ aerial.
 
 **Real meshes from Blender (the city kit).** `tools/models/build_kit.py` models the city's
 props in Blender, in code, and exports `assets/models/CityKit.glb` (previews in
-`assets/models/previews/`; the street in `sheet.png`, the plaza in `sheet2.png`):
+`assets/models/previews/`; the street in `sheet.png`, the plaza in `sheet2.png`, the vehicles
+in `sheet3.png`):
 
-- Downtown: the saloon (and taxi), hatchback, SUV and muscle car; the food trucks and the
-  ice-cream van; the crook street lamps and the plaza's post lamps; leafy trees, cypresses and
-  flowering shrubs; benches, bins, hydrants, dumpsters, phone booths, traffic lights and cafe
-  tables under their umbrellas; the shops' striped awnings (curved canvas, scalloped valance);
-  and the three-tier plaza fountain.
+- Downtown: the saloon (and taxi), hatchback, SUV, pickup (an open bed with a roll bar) and
+  muscle car; the food trucks and the ice-cream van; the bus shelters (a curved roof over framed
+  glass, a slatted bench, the lit advert, the stop's round sign); the crook street lamps and the
+  plaza's post lamps; leafy trees, cypresses and flowering shrubs; benches, bins, hydrants,
+  dumpsters, phone booths, traffic lights and cafe tables under their umbrellas; the shops'
+  striped awnings (curved canvas, scalloped valance); the three-tier plaza fountain; and on
+  the roofs, wooden water towers on braced steel legs (hoops, a conical cap, a ladder) and air
+  units with louvres and fan grilles.
 - Hanami City: the cherry trees (the Great Sakura too, grown huge), cloud-pruned pines, stone
-  lanterns, vending machines, its street trees, the big torii (stretched to each gate) and its
-  cars: kei boxes, the saloons its taxis are, and vans.
+  lanterns, vending machines, its street trees, the big torii (stretched to each gate), the
+  city buses (window band, black-masked windscreen, kerb-side doors, the air-con pod,
+  rabbit-ear mirrors), the commuter train at the station (stainless cars with the line's
+  stripes, four doors a side, air-con pods, bogies, a pantograph, raked cab noses), the
+  concrete utility poles (guard sleeve, step bolts, cross-arms with insulators, transformers),
+  the mamachari bicycles in their rows (spoked wheels, wire basket) and its cars: kei boxes,
+  the saloons its taxis are, vans and kei trucks with crates in the bed.
 - The pigeons.
 
 Each is drawn from the kit in place of its part-built version. A car is 8 meshes instead of
@@ -511,6 +523,7 @@ The giant screens rotate through their adverts (`ReplicatedStorage/CityScreens.l
 `StarterPlayerScripts/CityScreens` wipes each to its next picture on its own timer). They
 shine by day as well as by night. The streets have avenue lamps and street trees in turn,
 white guard rails along the kerbs, traffic lights, buses, taxis and kei cars keeping left,
+people crossing the Scramble and walking its pavements,
 poles and wires down the side streets, and cherry trees and lantern strings along the canal.
 At night the lanterns, signs and windows light up. Past the edges stand a skyline ring, the
 Hanami Tower and the mountain.

@@ -763,6 +763,17 @@ end
 function CityKit.Pole(root: B, at: Vector3, height: number?, transformer: boolean?, turned: boolean?): { Vector3 }
 	local h = height or 24
 	local b = root:within(CFrame.new(at) * CFrame.Angles(0, if turned then math.pi / 2 else 0, 0))
+	-- The kit's pole (31 high, stretched to `h`) where a client can draw it.
+	local back = root.frame:Inverse() * b.frame
+	local _, kb = MeshKit.Prop(b, if transformer then "UtilityPoleT" else "UtilityPole", {
+		Concrete = { colour = P.CONCRETE, material = M.Concrete, shadow = true, name = "Pole" },
+		Steel = { colour = P.STEEL, material = M.Metal, name = "CrossArm" },
+		Insulator = { colour = Color3.fromRGB(236, 236, 230), name = "Insulator" },
+		Sleeve = { colour = P.LINE_YELLOW, name = "PoleBand" },
+		Trim = { colour = P.KURO },
+		Box = { colour = Color3.fromRGB(150, 156, 160), material = M.Metal, name = "Transformer" },
+	}, { scale = Vector3.new(1, h / 31, 1) })
+	b = kb
 	b:part("Pole", Vector3.new(h, 0.9, 0.9), vertical(Vector3.new(0, h / 2, 0)), P.CONCRETE, M.Concrete, { shape = "Cylinder" })
 	b:decor("PoleBand", Vector3.new(1.4, 0.98, 0.98), vertical(Vector3.new(0, 2.2, 0)), P.LINE_YELLOW, nil, { shape = "Cylinder" })
 	b:decor("PoleBand", Vector3.new(0.5, 0.98, 0.98), vertical(Vector3.new(0, 3.2, 0)), P.KURO, nil, { shape = "Cylinder" })
@@ -776,7 +787,6 @@ function CityKit.Pole(root: B, at: Vector3, height: number?, transformer: boolea
 			nil, { shape = "Cylinder" })
 	end
 	b:decor("CableBox", Vector3.new(1, 1.4, 0.6), Vector3.new(0, h - 9, -0.7), Color3.fromRGB(200, 200, 196))
-	local back = root.frame:Inverse() * b.frame
 	return { back * Vector3.new(-2.3, h - 1, 0), back * Vector3.new(0, h - 1, 0), back * Vector3.new(2.3, h - 1, 0),
 		back * Vector3.new(-1.6, h - 3.6, 0) }
 end
@@ -818,6 +828,16 @@ end
 
 --- A bicycle standing on the ground, front wheel toward -Z: the city's mamachari, basket and all.
 function CityKit.Bike(b: B, colour: Color3)
+	-- The kit's bike where a client can draw it.
+	local _, kb = MeshKit.Prop(b, "Bike", {
+		Frame = { colour = colour, reflectance = 0.05, shadow = true, name = "BikeFrame" },
+		Tyre = { colour = P.KURO, material = M.Rubber },
+		Rim = { colour = Color3.fromRGB(200, 202, 208), material = M.Metal },
+		Basket = { colour = Color3.fromRGB(196, 200, 204), material = M.Metal, name = "Basket" },
+		Saddle = { colour = P.KURO, name = "Saddle" },
+		Chrome = { colour = Color3.fromRGB(200, 202, 208), material = M.Metal },
+	})
+	b = kb
 	for _, z in ipairs({ -1.45, 1.45 }) do
 		b:decor("Wheel", Vector3.new(0.18, 2.3, 2.3), Vector3.new(0, 1.15, z), P.KURO, nil, { shape = "Cylinder" })
 	end
@@ -1013,26 +1033,25 @@ function CityKit.StoneLantern(b: B, scale: number?)
 end
 
 --- A car, its nose to -Z: "kei" (a tall little box), "taxi", "van", "truck" (a kei truck).
-local KIT_CARS: { [string]: string } = { kei = "Kei", taxi = "JSedan", van = "Van" }
+local KIT_CARS: { [string]: string } = { kei = "Kei", taxi = "JSedan", van = "Van", truck = "KeiTruck" }
 
 function CityKit.Car(b: B, kind: string, colour: Color3)
-	-- The kit's car where a client can draw it (all but the kei truck); a taxi keeps its roof
-	-- sign and its stripe either way.
-	local model = if kind == "truck" then nil else (KIT_CARS[kind] or "JSedan")
-	local body = b
-	if model then
-		local _, kb = MeshKit.Prop(b, model, {
-			Body = { colour = colour, reflectance = 0.05, shadow = true, name = "CarShell" },
-			Glass = { colour = Color3.fromRGB(64, 84, 104), reflectance = 0.25 },
-			Chrome = { colour = Color3.fromRGB(200, 202, 208), material = M.Metal },
-			LampFront = { colour = Color3.fromRGB(250, 246, 220), material = M.Glass, name = "HeadLamp" },
-			LampRear = { colour = Color3.fromRGB(210, 50, 44), material = M.Glass, name = "TailLamp" },
-			Tyre = { colour = P.KURO, material = M.Rubber, shadow = true },
-			Rim = { colour = Color3.fromRGB(200, 202, 208), material = M.Metal },
-			Trim = { colour = P.KURO },
-		})
-		body = kb
-	end
+	-- The kit's car where a client can draw it; a taxi keeps its roof sign and its stripe
+	-- either way.
+	local model = KIT_CARS[kind] or "JSedan"
+	local _, body = MeshKit.Prop(b, model, {
+		Body = { colour = colour, reflectance = 0.05, shadow = true, name = "CarShell" },
+		Glass = { colour = Color3.fromRGB(64, 84, 104), reflectance = 0.25 },
+		Chrome = { colour = Color3.fromRGB(200, 202, 208), material = M.Metal },
+		LampFront = { colour = Color3.fromRGB(250, 246, 220), material = M.Glass, name = "HeadLamp" },
+		LampRear = { colour = Color3.fromRGB(210, 50, 44), material = M.Glass, name = "TailLamp" },
+		Tyre = { colour = P.KURO, material = M.Rubber, shadow = true },
+		Rim = { colour = Color3.fromRGB(200, 202, 208), material = M.Metal },
+		Trim = { colour = P.KURO },
+		-- The kei truck's deck and its load.
+		Bed = { colour = darker(colour, 0.1), shadow = true, name = "TruckBed" },
+		Load = { colour = Color3.fromRGB(150, 110, 70), material = M.WoodPlanks, name = "TruckLoad" },
+	})
 	local long = if kind == "van" then 10 elseif kind == "kei" or kind == "truck" then 7.2 else 9
 	local wide = if kind == "kei" or kind == "truck" then 3.8 else 4.4
 	-- The body (solid: cars are cover), the cabin, glass, wheels, lamps.
@@ -1495,6 +1514,25 @@ end
 
 --- A city bus, its nose to -Z: white over a coloured skirt, its route over the windscreen.
 function CityKit.Bus(b: B, colour: Color3, route: string?)
+	-- The kit's bus where a client can draw it; the route lettering stays either way.
+	local glass = Color3.fromRGB(52, 66, 84)
+	local _, kb = MeshKit.Prop(b, "Bus", {
+		Body = { colour = Color3.fromRGB(244, 244, 240), reflectance = 0.04, shadow = true, name = "BusShell" },
+		Skirt = { colour = colour, shadow = true, name = "BusSkirt" },
+		Stripe = { colour = lighter(colour, 0.35), name = "BusStripe" },
+		Glass = { colour = glass, material = M.Glass, reflectance = 0.2, name = "BusGlass" },
+		Door = { colour = Color3.fromRGB(60, 74, 90), material = M.Glass, reflectance = 0.2, name = "BusDoor" },
+		Trim = { colour = P.KURO },
+		Roof = { colour = Color3.fromRGB(214, 216, 218), shadow = true, name = "BusRoof" },
+		Sign = { colour = P.KURO, name = "BusSign" },
+		LampFront = { colour = Color3.fromRGB(250, 246, 220), material = M.Glass, name = "HeadLamp" },
+		LampRear = { colour = Color3.fromRGB(210, 50, 44), material = M.Glass, name = "TailLamp" },
+		Tyre = { colour = P.KURO, material = M.Rubber, shadow = true },
+		Rim = { colour = Color3.fromRGB(200, 202, 208), material = M.Metal },
+		Chrome = { colour = P.KURO, material = M.Metal },
+	})
+	local root = b
+	b = kb
 	b:part("Bus", Vector3.new(8.4, 8.6, 36), Vector3.new(0, 5.6, 0), Color3.fromRGB(244, 244, 240), M.SmoothPlastic)
 	b:decor("BusSkirt", Vector3.new(8.5, 1.6, 36.1), Vector3.new(0, 2, 0), colour)
 	b:decor("BusStripe", Vector3.new(8.5, 0.6, 36.1), Vector3.new(0, 3.4, 0), lighter(colour, 0.35))
@@ -1502,7 +1540,7 @@ function CityKit.Bus(b: B, colour: Color3, route: string?)
 	b:decor("BusScreen", Vector3.new(7.6, 4.8, 0.2), Vector3.new(0, 6.8, -18.06), Color3.fromRGB(52, 66, 84), M.Glass)
 	b:decor("BusRoof", Vector3.new(7.4, 0.8, 30), Vector3.new(0, 10.2, 1), Color3.fromRGB(214, 216, 218))
 	b:decor("BusSign", Vector3.new(6.4, 1.2, 0.2), Vector3.new(0, 9.4, -18.1), P.KURO)
-	text(b, route or "花見駅 HANAMI STN", CFrame.new(0, 9.4, -18.22), 6, 1, Color3.fromRGB(250, 186, 70), Enum.Font.Code)
+	text(root, route or "花見駅 HANAMI STN", CFrame.new(0, 9.4, -18.22), 6, 1, Color3.fromRGB(250, 186, 70), Enum.Font.Code)
 	for _, x in ipairs({ -3.9, 3.9 }) do
 		for _, z in ipairs({ -11, 11 }) do
 			b:decor("BusWheel", Vector3.new(1.2, 3.4, 3.4), Vector3.new(x, 1.7, z), P.KURO, nil, { shape = "Cylinder" })

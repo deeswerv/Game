@@ -313,6 +313,58 @@ for _, m in ipairs(folder:GetDescendants()) do
 		end
 	end
 end
+-- The crowd: a walker for every stretch, and every stretch clear of anything solid (a lamp,
+-- a tree, a rail, a sign post) at body height, a little either side of the line.
+do
+	local walkers = HanamiConfig.Walkers
+	local crowd = folder:FindFirstChild("Pedestrians")
+	local walking = 0
+	if crowd then
+		for _, m in ipairs(crowd:GetChildren()) do
+			if m:HasTag("Pedestrian") and typeof(m:GetAttribute("WalkFrom")) == "Vector3" then
+				walking += 1
+			end
+		end
+	end
+	check(walking == #walkers, ("the Scramble's crowd: %d walkers for %d stretches"):format(walking, #walkers))
+	local centre = HanamiConfig.CENTRE
+	local solids = {}
+	for _, d in ipairs(folder:GetDescendants()) do
+		if d:IsA("BasePart") and d.CanCollide and not (crowd and d:IsDescendantOf(crowd)) then
+			local rel = d.Position - centre
+			if math.abs(rel.X) < 150 and math.abs(rel.Z) < 150 and rel.Y < 40 then
+				table.insert(solids, d)
+			end
+		end
+	end
+	local blocked = {}
+	for i, w in ipairs(walkers) do
+		local a, c = w[1], w[2]
+		local dir = (c - a).Unit
+		local side = Vector3.new(-dir.Z, 0, dir.X)
+		local n = math.floor((c - a).Magnitude)
+		for k = 0, n do
+			local p = centre + a + dir * k
+			for _, y in ipairs({ 1.5, 3.5 }) do
+				for _, o in ipairs({ -0.7, 0, 0.7 }) do
+					local q = p + Vector3.new(0, y, 0) + side * o
+					for _, s in ipairs(solids) do
+						local rel = s.CFrame:PointToObjectSpace(q)
+						local h = s.Size / 2
+						if math.abs(rel.X) < h.X and math.abs(rel.Y) < h.Y and math.abs(rel.Z) < h.Z then
+							blocked[i] = blocked[i] or ("%s at %d studs"):format(s:GetFullName():match("[^.]+$"), k)
+						end
+					end
+				end
+			end
+		end
+	end
+	local why = {}
+	for i, b in pairs(blocked) do
+		table.insert(why, ("#%d %s"):format(i, b))
+	end
+	check(#why == 0, "every stretch clear of anything solid " .. table.concat(why, "; "))
+end
 check(kitted >= 10 and sized == kitted, ("vending machines and stone lanterns sized for the kit at the city's scale (%d of %d)"):format(
 	sized, kitted))
 local named: { [string]: { BasePart } } = {}

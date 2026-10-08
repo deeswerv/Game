@@ -475,6 +475,14 @@ local function wire(folder: Instance)
 		end
 	end
 	pcall(villagers, folder)
+	-- The crowd on the Scramble and its pavements (DistrictService.Crowd, Pedestrians.client).
+	local okCrowd, crowdErr = pcall(function()
+		local Crowd = require(ServerScriptService:FindFirstChild("DistrictService"):FindFirstChild("Crowd") :: ModuleScript) :: any
+		Crowd.Spawn(folder, HanamiConfig.CENTRE, HanamiConfig.Walkers, 500)
+	end)
+	if not okCrowd then
+		warn("[Hanami] crowd: " .. tostring(crowdErr))
+	end
 	local Jobs = HanamiService.Jobs
 	if Jobs and Jobs.Wire then
 		local ok, err = pcall(function()

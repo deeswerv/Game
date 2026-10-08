@@ -568,7 +568,7 @@ end
 ---   taxi      a sedan in yellow with a checker band and a TAXI light on the roof
 ---
 --- The lower body and the cabin are solid (you cannot walk through a car); the rest is trim.
-local CAR_MODELS: { [string]: string } = { sedan = "Sedan", taxi = "Sedan", hatch = "Hatch", suv = "SUV" }
+local CAR_MODELS: { [string]: string } = { sedan = "Sedan", taxi = "Sedan", hatch = "Hatch", suv = "SUV", pickup = "Pickup" }
 
 --- How the kit's cars are painted: the body in `colour`, the rest as the part-built cars.
 local function carPaint(colour: Color3): { [string]: MeshKit.Paint }
@@ -582,6 +582,7 @@ local function carPaint(colour: Color3): { [string]: MeshKit.Paint }
 		Rim = { colour = CAR_CHROME, material = M.Metal },
 		Trim = { colour = CAR_TRIM },
 		Spare = { colour = CAR_TRIM, material = M.Rubber },
+		Bed = { colour = CAR_TRIM, name = "BedFloor" },
 	}
 end
 
@@ -598,10 +599,16 @@ local function car(b: Kit.Builder, colour: Color3, kind: string?)
 	-- part-built car in a group the clients draw the kit over).
 	local model = CAR_MODELS[style]
 	local mesh: { [string]: BasePart }? = nil
+	local outer = b
 	if model then
 		local body
 		mesh, body = kitProp(b, model, carPaint(colour))
 		b = body
+	end
+	if model and style == "pickup" then
+		-- The crate rides in the bed whichever way the pickup is drawn.
+		outer:decor("Crate", Vector3.new(1.6, 1.0, 1.4), CFrame.new(-0.8, 2.6, 3.4) * CFrame.Angles(0, math.rad(12), 0), WOOD,
+			M.WoodPlanks)
 	end
 	if mesh then
 		if style == "hatch" then
@@ -610,6 +617,9 @@ local function car(b: Kit.Builder, colour: Color3, kind: string?)
 		elseif style == "suv" then
 			b:part("Body", Vector3.new(W + 0.2, 1.7, 10.4), Vector3.new(0, 1.85, 0), colour, nil, hull(mesh))
 			b:part("Cabin", Vector3.new(W - 0.4, 1.3, 6.2), Vector3.new(0, 3.35, 1.5), CAR_GLASS, nil, hull(mesh))
+		elseif style == "pickup" then
+			b:part("Body", Vector3.new(W + 0.2, 1.5, 11), Vector3.new(0, 1.65, 0), colour, nil, hull(mesh))
+			b:part("Cabin", Vector3.new(W - 0.4, 1.3, 2.4), Vector3.new(0, 3.05, -0.3), CAR_GLASS, nil, hull(mesh))
 		else
 			b:part("Body", Vector3.new(W, 1.3, 10), Vector3.new(0, 1.45, 0), colour, nil, hull(mesh))
 			b:part("Cabin", Vector3.new(W - 0.6, 1.1, 2.6), Vector3.new(0, 2.65, 0.8), CAR_GLASS, nil, hull(mesh))
@@ -719,7 +729,6 @@ local function car(b: Kit.Builder, colour: Color3, kind: string?)
 			b:decor("Mirror", Vector3.new(0.5, 0.36, 0.4), Vector3.new(x * 2.6, 2.95, -1.4), colour)
 		end
 		b:decor("Tailgate", Vector3.new(W + 0.2, 0.8, 0.2), Vector3.new(0, 2.8, L / 2 - 0.1), colour)
-		b:decor("Crate", Vector3.new(1.6, 1.0, 1.4), CFrame.new(-0.8, 3.0, 3.4) * CFrame.Angles(0, math.rad(12), 0), WOOD, M.WoodPlanks)
 		carEnds(b, W + 0.2, L, 1.05, 2.1)
 		wheels(b, 2.1, { -3.6, 3.4 }, 1.15)
 		carSides(b, W + 0.2, 2.43, -2.4, 1.1, 2.1, { -0.6 })
@@ -1044,18 +1053,31 @@ local function building(b: Kit.Builder, x0: number, x1: number, z0: number, z1: 
 	if not simple and w > 20 and d > 20 then
 		local rx, rz = cx + rng:NextNumber(-w / 5, w / 5), cz + rng:NextNumber(-d / 5, d / 5)
 		local pick = rng:NextInteger(1, 3)
+		-- The tank and the air unit are the kit's where a client can draw them (the roof is at
+		-- top + 0.7).
+		local onRoof = b:within(CFrame.new(rx, top + 0.7, rz))
 		if pick == 1 then
+			local _, tb = kitProp(onRoof, "WaterTower", {
+				Wood = { colour = Color3.fromRGB(150, 104, 66), material = M.WoodPlanks, shadow = true, name = "Tank" },
+				Iron = { colour = IRON, material = M.Metal, shadow = true, name = "TankIron" },
+				Roof = { colour = darker(IRON, 0.15), shadow = true, name = "TankCap" },
+			})
 			for _, o in ipairs({ Vector3.new(-1.6, 0, -1.6), Vector3.new(1.6, 0, -1.6), Vector3.new(-1.6, 0, 1.6),
 				Vector3.new(1.6, 0, 1.6) }) do
-				b:decor("TankLeg", Vector3.new(0.4, 3, 0.4), Vector3.new(rx, top + 2.2, rz) + o, IRON)
+				tb:decor("TankLeg", Vector3.new(0.4, 3, 0.4), Vector3.new(0, 1.5, 0) + o, IRON)
 			end
-			b:decor("Tank", Vector3.new(5, 5, 5), vertical(Vector3.new(rx, top + 6.2, rz)), Color3.fromRGB(150, 104, 66),
+			tb:decor("Tank", Vector3.new(5, 5, 5), vertical(Vector3.new(0, 5.5, 0)), Color3.fromRGB(150, 104, 66),
 				M.WoodPlanks, { shape = "Cylinder" })
-			b:decor("TankCap", Vector3.new(0.8, 5.4, 5.4), vertical(Vector3.new(rx, top + 9, rz)), IRON, nil,
+			tb:decor("TankCap", Vector3.new(0.8, 5.4, 5.4), vertical(Vector3.new(0, 8.3, 0)), IRON, nil,
 				{ shape = "Cylinder" })
 		elseif pick == 2 then
-			b:decor("RoofUnit", Vector3.new(6, 3, 5), Vector3.new(rx, top + 2.2, rz), Color3.fromRGB(206, 208, 204), M.Metal)
-			b:decor("Fan", Vector3.new(0.3, 3.2, 3.2), vertical(Vector3.new(rx, top + 3.8, rz)), STEEL, nil,
+			local _, ub = kitProp(onRoof, "RoofUnit", {
+				Body = { colour = Color3.fromRGB(206, 208, 204), material = M.Metal, shadow = true, name = "RoofUnit" },
+				Dark = { colour = Color3.fromRGB(40, 42, 46), name = "Louvre" },
+				Frame = { colour = STEEL, material = M.Metal, name = "UnitFrame" },
+			})
+			ub:decor("RoofUnit", Vector3.new(6, 3, 5), Vector3.new(0, 1.5, 0), Color3.fromRGB(206, 208, 204), M.Metal)
+			ub:decor("Fan", Vector3.new(0.3, 3.2, 3.2), vertical(Vector3.new(0, 3.1, 0)), STEEL, nil,
 				{ shape = "Cylinder" })
 		else
 			b:decor("StairHut", Vector3.new(6, 4.6, 6), Vector3.new(rx, top + 3, rz), darker(colour, 0.1))
@@ -3541,30 +3563,45 @@ end
 --- road); origin on the pavement at its middle.
 local function busShelter(b: Kit.Builder, stopName: string)
 	local frame = Color3.fromRGB(52, 58, 66)
+	local glass = Color3.fromRGB(170, 200, 214)
+	-- The kit's shelter (a curved roof, framed glass, a slatted bench) where there is one; the
+	-- advert's and the sign's lettering stay either way.
+	local mesh, body = kitProp(b, "BusShelter", {
+		Frame = { colour = frame, material = M.Metal, shadow = true, name = "ShelterFrame" },
+		Roof = { colour = frame, material = M.Metal, shadow = true, name = "ShelterRoof" },
+		Lip = { colour = TEAL, name = "ShelterLip" },
+		Glass = { colour = glass, material = M.Glass, transparency = 0.55, reflectance = 0.15, name = "ShelterGlass" },
+		AdPanel = { colour = Color3.fromRGB(250, 196, 70), name = "AdPanel" },
+		Bench = { colour = WOOD, material = M.WoodPlanks, shadow = true, name = "ShelterBench" },
+		Sign = { colour = TEAL, name = "StopSign" },
+	})
+	local shell = b
+	b = body
 	for _, x in ipairs({ -4, 4 }) do
 		for _, z in ipairs({ -1.3, 1.3 }) do
-			b:part("ShelterPost", Vector3.new(0.3, 7, 0.3), Vector3.new(x, 3.5, z), frame, M.Metal)
+			b:part("ShelterPost", Vector3.new(0.3, 7, 0.3), Vector3.new(x, 3.5, z), frame, M.Metal, hull(mesh))
 		end
 	end
-	b:part("ShelterRoof", Vector3.new(9, 0.35, 3.4), Vector3.new(0, 7.15, -0.1), frame, M.Metal)
+	b:part("ShelterRoof", Vector3.new(9, 0.35, 3.4), Vector3.new(0, 7.15, -0.1), frame, M.Metal, hull(mesh))
 	b:decor("ShelterLip", Vector3.new(9.1, 0.5, 0.15), Vector3.new(0, 7.0, -1.85), TEAL)
-	b:part("ShelterBack", Vector3.new(8, 5.6, 0.15), Vector3.new(0, 3.6, 1.3), Color3.fromRGB(170, 200, 214), M.Glass,
-		{ transparency = 0.55, reflectance = 0.15 })
-	b:part("ShelterSide", Vector3.new(0.15, 5.6, 2.4), Vector3.new(-4, 3.6, 0.1), Color3.fromRGB(170, 200, 214), M.Glass,
-		{ transparency = 0.55, reflectance = 0.15 })
+	b:part("ShelterBack", Vector3.new(8, 5.6, 0.15), Vector3.new(0, 3.6, 1.3), glass, M.Glass,
+		hull(mesh, { transparency = 0.55, reflectance = 0.15 }))
+	b:part("ShelterSide", Vector3.new(0.15, 5.6, 2.4), Vector3.new(-4, 3.6, 0.1), glass, M.Glass,
+		hull(mesh, { transparency = 0.55, reflectance = 0.15 }))
 	-- The advert: a lit panel in a frame at the other end.
-	b:part("AdFrame", Vector3.new(0.5, 5.8, 2.6), Vector3.new(4, 3.6, 0.1), frame, M.Metal)
+	b:part("AdFrame", Vector3.new(0.5, 5.8, 2.6), Vector3.new(4, 3.6, 0.1), frame, M.Metal, hull(mesh))
 	b:decor("AdPanel", Vector3.new(0.12, 5, 2.1), Vector3.new(4.3, 3.6, 0.1), Color3.fromRGB(250, 196, 70))
+	b = shell
 	painted(b, "ZEE COLA", Kit.Look(Vector3.new(4.37, 4.6, 0.1), Vector3.new(10, 4.6, 0.1)), 2, 0.6, RED)
 	painted(b, "ICE COLD", Kit.Look(Vector3.new(4.37, 3.2, 0.1), Vector3.new(10, 3.2, 0.1)), 1.8, 0.4, NAVY, Enum.Font.GothamBold)
 	-- The bench inside, against the glass.
-	b:part("ShelterBench", Vector3.new(6, 0.25, 1), Vector3.new(-0.4, 1.9, 0.6), WOOD, M.WoodPlanks)
+	body:part("ShelterBench", Vector3.new(6, 0.25, 1), Vector3.new(-0.4, 1.9, 0.6), WOOD, M.WoodPlanks, hull(mesh))
 	for _, x in ipairs({ -3, 2.2 }) do
-		b:decor("BenchLeg", Vector3.new(0.2, 1.8, 0.8), Vector3.new(x, 0.9, 0.6), frame, M.Metal)
+		body:decor("BenchLeg", Vector3.new(0.2, 1.8, 0.8), Vector3.new(x, 0.9, 0.6), frame, M.Metal)
 	end
 	-- The stop's sign on its own pole at the kerb.
-	b:part("StopPole", Vector3.new(0.25, 9, 0.25), Vector3.new(-5.4, 4.5, -1.3), frame, M.Metal)
-	b:decor("StopSign", Vector3.new(1.6, 1.6, 0.12), Vector3.new(-5.4, 8.2, -1.3), TEAL)
+	body:part("StopPole", Vector3.new(0.25, 9, 0.25), Vector3.new(-5.4, 4.5, -1.3), frame, M.Metal, hull(mesh))
+	body:decor("StopSign", Vector3.new(1.6, 1.6, 0.12), Vector3.new(-5.4, 8.2, -1.3), TEAL)
 	painted(b, "BUS", Kit.Look(Vector3.new(-5.4, 8.45, -1.37), Vector3.new(-5.4, 8.45, -10)), 1.3, 0.5, CREAM)
 	painted(b, stopName, Kit.Look(Vector3.new(-5.4, 7.85, -1.37), Vector3.new(-5.4, 7.85, -10)), 1.4, 0.3, CREAM,
 		Enum.Font.GothamBold)

@@ -41,6 +41,19 @@ South.SIDE = { -252, 252 }                       -- the side streets either side
 
 local function trainCar(t: B, cab: number)
 	local white = Color3.fromRGB(238, 240, 242)
+	-- The kit's car (the cab cars nose outward) where a client can draw it.
+	local _, kb = MeshKit.Prop(t, if cab == 0 then "TrainCar" else "TrainCab", {
+		Body = { colour = Color3.fromRGB(226, 230, 234), material = M.Metal, reflectance = 0.12, shadow = true, name = "TrainBody" },
+		Stripe = { colour = Color3.fromRGB(40, 160, 90), name = "TrainStripe" },
+		Stripe2 = { colour = P.SAKURA_DEEP, name = "TrainStripe" },
+		Glass = { colour = Color3.fromRGB(50, 66, 86), material = M.Glass, reflectance = 0.2, name = "TrainWindows" },
+		Door = { colour = Color3.fromRGB(206, 210, 214), material = M.Metal, reflectance = 0.1, name = "TrainDoor" },
+		Roof = { colour = Color3.fromRGB(160, 166, 172), material = M.Metal, shadow = true, name = "TrainRoof" },
+		Under = { colour = P.KURO, shadow = true, name = "Bogie" },
+		LampFront = { colour = Color3.fromRGB(252, 248, 226), material = M.Glass, name = "HeadLamp" },
+		Sign = { colour = Color3.fromRGB(250, 160, 40), name = "TrainSign" },
+	}, { yaw = if cab < 0 then math.pi else 0 })
+	t = kb
 	t:part("TrainCar", Vector3.new(60, 11, 9), Vector3.new(0, 7.5, 0), white, M.Metal)
 	t:decor("TrainWindows", Vector3.new(52, 3.4, 9.1), Vector3.new(0, 9.2, 0), Color3.fromRGB(50, 66, 86), M.Glass, { reflectance = 0.15 })
 	t:decor("TrainStripe", Vector3.new(60.1, 1.2, 9.12), Vector3.new(0, 5.4, 0), Color3.fromRGB(40, 160, 90))

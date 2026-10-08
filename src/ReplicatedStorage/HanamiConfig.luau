@@ -202,4 +202,28 @@ HanamiConfig.Population = {
 	{ archetype = "Rifleman", at = Vector3.new(-120, 40, 440) }, { archetype = "Rifleman", at = Vector3.new(96, 40, 410) },
 } :: { { archetype: string, at: Vector3 } }
 
+-- The crowd (HanamiService spawns them, Pedestrians.client walks them, as Downtown's): people
+-- crossing the Scramble on both diagonals and all four zebras, and walking the pavements
+-- round it. { from, to, look (DistrictService.Crowd.CIVILIANS), speed }, about CENTRE; the crossings
+-- on the road (y 0.1), the pavements on the kerb (y 0.5). The Hanami suite checks every
+-- stretch is clear.
+HanamiConfig.Walkers = {
+	{ Vector3.new(-20, 0.1, -20), Vector3.new(20, 0.1, 20), 1, 4.6 },
+	{ Vector3.new(19, 0.1, 21), Vector3.new(-21, 0.1, -19), 2, 5 },
+	{ Vector3.new(20, 0.1, -20), Vector3.new(-20, 0.1, 20), 3, 4.4 },
+	{ Vector3.new(-21, 0.1, 19), Vector3.new(19, 0.1, -21), 6, 4.8 },
+	{ Vector3.new(-20, 0.1, 29), Vector3.new(20, 0.1, 29), 2, 5.2 },
+	{ Vector3.new(20, 0.1, -29), Vector3.new(-20, 0.1, -29), 4, 5.4 },
+	{ Vector3.new(29, 0.1, -20), Vector3.new(29, 0.1, 20), 5, 4.2 },
+	{ Vector3.new(-29, 0.1, 20), Vector3.new(-29, 0.1, -20), 1, 4.8 },
+	{ Vector3.new(32.5, 0.5, 40), Vector3.new(32.5, 0.5, 92), 3, 4.6 },
+	{ Vector3.new(-30.5, 0.5, 92), Vector3.new(-30.5, 0.5, 40), 6, 5 },
+	{ Vector3.new(32.5, 0.5, -40), Vector3.new(32.5, 0.5, -110), 2, 4.8 },
+	{ Vector3.new(-32.5, 0.5, -110), Vector3.new(-32.5, 0.5, -40), 4, 4.4 },
+	{ Vector3.new(40, 0.5, 32.5), Vector3.new(92, 0.5, 32.5), 5, 5 },
+	{ Vector3.new(-92, 0.5, -30.5), Vector3.new(-40, 0.5, -30.5), 1, 4.6 },
+	{ Vector3.new(-40, 0.5, 32.5), Vector3.new(-92, 0.5, 32.5), 6, 4.8 },
+	{ Vector3.new(92, 0.5, -32.5), Vector3.new(40, 0.5, -32.5), 3, 5.2 },
+} :: { { any } }
+
 return HanamiConfig

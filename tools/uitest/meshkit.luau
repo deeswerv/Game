@@ -128,7 +128,7 @@ for _, shell in ipairs(shells) do
 		local rel = hullPart.CFrame:PointToObjectSpace(shell.Position)
 		local nose = hullPart.CFrame:PointToObjectSpace(lamp.Position)
 		local sized = false
-		for _, spec in pairs({ Data.Sedan.Body, Data.Hatch.Body, Data.SUV.Body, Data.MuscleCar.Body }) do
+		for _, spec in pairs({ Data.Sedan.Body, Data.Hatch.Body, Data.SUV.Body, Data.MuscleCar.Body, Data.Pickup.Body }) do
 			if (shell.Size - spec.size).Magnitude < 0.05 then
 				sized = true
 			end
