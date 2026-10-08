@@ -125,6 +125,7 @@ check(hidden == 0 and props[1]:FindFirstChild("KitMeshes") == nil, "sees the par
 
 print("a device that can")
 failing = false
+World.require(rs:FindFirstChild("MeshKitClient")).Reset()
 World.run(sps:FindFirstChild("CityMeshes"))
 World.advance(1)
 local models = 0

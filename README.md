@@ -297,6 +297,14 @@ wrong. Rebuild the kit after changing a model with
 `python tools/models/build_kit.py` (Blender's `bpy` module), and check it with
 `tools/uitest/meshkit.luau`.
 
+**A city that is lived in.** Pigeons potter about the plaza round the fountain, the forecourt
+and both parks, pecking. Walk up to them, or fire a shot nearby, and the whole flock goes up:
+wings out and beating, they climb, wheel round over the square, and glide back down somewhere
+else on it. They are the kit's Blender pigeon where the device can make meshes, little part
+birds where it cannot. Steam rises from the manholes and smoke curls off the chimney pots.
+PERFORMANCE thins the flocks and turns the steam and smoke off (`CityLife.client.luau`,
+`tools/uitest/citylife.luau`).
+
 **Downtown is the first stop.** You wash up at the Crossing; the Quartermaster's first job is
 *Welcome to Downtown*, and the Travel menu marks it START HERE. Everything past it -- the Flats,
 Watchpoint, the Reach, and the Quartermaster's work out there -- stays locked until you beat the

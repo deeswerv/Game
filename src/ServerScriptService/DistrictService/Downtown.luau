@@ -24,6 +24,7 @@
 -- agrees on north, and so east is -X (on your right as you face the tower); the comments below
 -- that call the +X side "east" predate it -- the signs and the compass are what players see.
 
+local CollectionService = game:GetService("CollectionService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local Kit = require(ServerScriptService.ArenaService.Kit)
@@ -3796,6 +3797,16 @@ function Downtown.Build(parent: Instance, centre: Vector3)
 	-- Bus shelters on the avenue, between the lamps, open to the road.
 	busShelter(root:within(CFrame.new(-20.3, 0.54, 138) * CFrame.Angles(0, math.rad(-90), 0)), "ZEE TOWER")
 	busShelter(root:within(CFrame.new(20.3, 0.54, 100) * CFrame.Angles(0, math.rad(90), 0)), "THE COURTS")
+	-- Pigeons (CityLife.client flies them): a flock on the plaza round the fountain, one on the
+	-- forecourt where travellers land, one in each park. Only a marker each here.
+	for _, flock in ipairs({ { Vector3.new(0, 0.6, 0), 34, 16, 9 }, { Vector3.new(0, 0.6, -HW + 26), 12, 2, 5 },
+		{ Vector3.new(-64, 0.6, 45), 9, 2, 4 }, { Vector3.new(-125, 0.6, 77), 14, 3, 6 } } :: { { any } }) do
+		local marker = root:decor("PigeonFlock", Vector3.new(1, 1, 1), flock[1], WHITE_LINE, nil, { transparency = 1 })
+		marker:SetAttribute("Radius", flock[2])
+		marker:SetAttribute("Inner", flock[3])
+		marker:SetAttribute("Count", flock[4])
+		CollectionService:AddTag(marker, "PigeonFlock")
+	end
 	-- The ZEE BANK truck at the kerb up the west arm, its back doors toward the plaza.
 	armouredTruck(root:within(CFrame.new(-150, 0, 13.8) * CFrame.Angles(0, math.rad(90), 0)))
 

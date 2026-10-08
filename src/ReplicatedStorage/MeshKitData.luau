@@ -132,8 +132,15 @@ return {
 		LanternGlass = { size = Vector3.new(1.120, 0.900, 0.970), offset = Vector3.new(-0.000, 3.450, 0.000), tris = 24 },
 	},
 	Vending = {
-		Body = { size = Vector3.new(3.000, 6.400, 2.100), offset = Vector3.new(0.000, 3.200, 1.150), tris = 108 },
+		Body = { size = Vector3.new(3.000, 6.400, 2.200), offset = Vector3.new(0.000, 3.200, 1.100), tris = 108 },
 		Trim = { size = Vector3.new(3.000, 4.435, 0.340), offset = Vector3.new(0.000, 4.142, -0.050), tris = 396 },
 		Dark = { size = Vector3.new(3.100, 3.160, 2.420), offset = Vector3.new(0.000, 1.580, 1.040), tris = 228 },
+	},
+	Pigeon = {
+		Body = { size = Vector3.new(0.571, 0.570, 1.385), offset = Vector3.new(0.000, 0.420, 0.218), tris = 188 },
+		Head = { size = Vector3.new(0.340, 0.518, 0.452), offset = Vector3.new(0.000, 0.591, -0.364), tris = 100 },
+		WingL = { size = Vector3.new(0.200, 0.146, 0.800), offset = Vector3.new(-0.270, 0.547, 0.220), tris = 24 },
+		WingR = { size = Vector3.new(0.200, 0.146, 0.800), offset = Vector3.new(0.270, 0.547, 0.220), tris = 24 },
+		Feet = { size = Vector3.new(0.220, 0.725, 0.680), offset = Vector3.new(0.000, 0.343, -0.330), tris = 66 },
 	},
 }

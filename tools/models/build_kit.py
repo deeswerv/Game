@@ -46,6 +46,8 @@ PREVIEW = {
     "Blossom1": (0.91, 0.52, 0.67), "Blossom2": (0.96, 0.69, 0.79), "Blossom3": (0.99, 0.83, 0.89),
     "Pine1": (0.18, 0.36, 0.25), "Pine2": (0.23, 0.42, 0.29), "Dark": (0.08, 0.08, 0.09),
     "WingL": (0.55, 0.57, 0.62), "WingR": (0.55, 0.57, 0.62), "Feet": (0.85, 0.45, 0.45),
+    "Counter": (0.96, 0.95, 0.92), "AwningA": (0.85, 0.24, 0.2), "AwningB": (0.96, 0.95, 0.92), "Top": (0.96, 0.95, 0.92),
+    "CanopyA": (0.9, 0.35, 0.38), "CanopyB": (0.96, 0.95, 0.92), "Chair": (0.9, 0.35, 0.38), "Black": (0.12, 0.13, 0.16),
 }
 
 random.seed(7)
@@ -457,10 +459,14 @@ def rbs(sx, sy, sz):
     return (sx, sz, sy)
 
 
-def rbox(bm, centre, size, rot_x=0.0, rot_y=0.0, bevel=0.0):
-    """A box placed as Downtown places it (Roblox centre and size; turned about Roblox X, then Y)."""
+def rbox(bm, centre, size, rot_x=0.0, rot_y=0.0, bevel=0.0, rot_z=0.0):
+    """A box placed as Downtown places it (Roblox centre and size; turned about Roblox Z, X,
+    then Y)."""
     tmp = bmesh.new()
     add_box(tmp, (0, 0, 0), rbs(*size), bevel=bevel)
+    if rot_z:
+        # Roblox's +Z is Blender's -Y.
+        bmesh.ops.rotate(tmp, verts=tmp.verts, matrix=Matrix.Rotation(-math.radians(rot_z), 3, "Y"))
     if rot_x:
         bmesh.ops.rotate(tmp, verts=tmp.verts, matrix=Matrix.Rotation(math.radians(rot_x), 3, "X"))
     if rot_y:
@@ -754,6 +760,135 @@ def vending():
     return model("Vending", {"Body": body, "Trim": trim, "Dark": dark})
 
 
+def add_profile_xz(bm, points_xz, y0, y1, bevel=0.0, segments=2):
+    """A profile in Blender's X-Z plane (Roblox X-Y) extruded along Blender Y (Roblox -Z)."""
+    tmp = bmesh.new()
+    verts = [tmp.verts.new((x, y0, z)) for x, z in points_xz]
+    face = tmp.faces.new(verts)
+    res = bmesh.ops.extrude_face_region(tmp, geom=[face])
+    moved = [g for g in res["geom"] if isinstance(g, bmesh.types.BMVert)]
+    bmesh.ops.translate(tmp, vec=(0, y1 - y0, 0), verts=moved)
+    bmesh.ops.recalc_face_normals(tmp, faces=tmp.faces)
+    if bevel > 0:
+        bmesh.ops.bevel(tmp, geom=list(tmp.edges), offset=bevel, segments=segments, affect="EDGES", profile=0.5,
+                        clamp_overlap=True)
+    merge(bm, tmp)
+
+
+def food_truck():
+    """foodTruck(): a street-food truck, its serving hatch toward Roblox -Z and its cab at -X:
+    a rounded box body with a band round it, a cab with a raked windscreen, wheels in arches,
+    the hatch with its counter under a striped awning with a scalloped edge, a roof vent."""
+    stripe, glass, trim, white, tyre, rim, awn_a, awn_b, front, rear = (bmesh.new() for _ in range(10))
+    shell = bmesh.new()
+    rbox(shell, (1.5, 4, 0), (11, 6, 6), bevel=0.35)
+    add_profile_xz(shell, [(-3.4, 1.0), (-7.5, 1.0), (-7.5, 3.4), (-7.05, 5.6), (-3.4, 5.6)], -2.9, 2.9, bevel=0.25)
+    body = mesh_object("FoodTruck_BodyTmp", shell)
+    arches = bmesh.new()
+    for x in (-5.4, 4.2):
+        add_cylinder(arches, rb(x, 1.1, 0), 1.38, 7.2, axis="Y", segments=28)
+    cut(body, arches)
+    rbox(stripe, (1.5, 2.2, 0), (11.08, 0.6, 6.08), bevel=0.3)
+    add_profile_xz(glass, [(-7.56, 3.5), (-7.14, 5.35), (-7.05, 5.35), (-7.47, 3.5)], -2.55, 2.55)
+    for z in (-2.93, 2.93):
+        rbox(glass, (-5.4, 4.4, z), (2.6, 1.7, 0.1), bevel=0.04)
+    for x in (-5.4, 4.2):
+        for z in (-2.75, 2.75):
+            add_cylinder(tyre, rb(x, 1.1, z), 1.1, 0.8, axis="Y", segments=22, bevel=0.15)
+            add_cylinder(rim, rb(x, 1.1, z + (0.36 if z > 0 else -0.36)), 0.6, 0.12, axis="Y", segments=18)
+            add_cylinder(rim, rb(x, 1.1, z + (0.42 if z > 0 else -0.42)), 0.2, 0.12, axis="Y", segments=10)
+    for x in (-7.7, 7.2):
+        rbox(trim, (x, 1.4, 0), (0.4, 0.7, 6), bevel=0.1)
+    for z in (-2.2, 2.2):
+        rbox(front, (-7.56, 2.5, z), (0.12, 0.55, 0.85), bevel=0.04)
+        rbox(rear, (7.02, 2.6, z), (0.12, 0.5, 0.7), bevel=0.04)
+    rbox(trim, (1.5, 4.9, -3.0), (6, 2.6, 0.1))                       # the open hatch
+    rbox(white, (1.5, 3.5, -3.4), (6.4, 0.3, 1.0), bevel=0.05)        # the counter
+    for k in range(6):
+        bm = awn_a if k % 2 == 0 else awn_b
+        x = -1.25 + k * 1.1
+        rbox(bm, (x, 6.95, -3.95), (1.1, 0.08, 2.15), rot_x=-24)
+        add_cylinder(bm, rb(x, 6.42, -4.92), 0.32, 0.06, axis="Y", segments=12)
+    rbox(trim, (1.5, 7.35, -3.0), (6.8, 0.2, 0.25))                    # the awning's rail
+    rbox(white, (4.6, 7.3, 1.4), (1.7, 0.6, 1.7), bevel=0.12)          # a roof vent
+    for x in (-1.2, 4.2):
+        rbox(trim, (x, 7.4, -0.2), (0.3, 1.2, 0.3))
+    rbox(trim, (6.6, 1.3, -4.4), (0.3, 2.4, 1.8), rot_z=8, bevel=0.04)  # the menu board
+    return model("FoodTruck", {"Body": body, "Stripe": stripe, "Glass": glass, "Trim": trim, "Counter": white,
+                               "Tyre": tyre, "Rim": rim, "AwningA": awn_a, "AwningB": awn_b, "LampFront": front,
+                               "LampRear": rear})
+
+
+def cafe_table():
+    """cafeTable() with three chairs: a pedestal table under an eight-panel umbrella with a
+    scalloped valance, chairs turned to it."""
+    iron, top, can_a, can_b, chair = (bmesh.new() for _ in range(5))
+    add_lathe(iron, [(0, 0), (0.85, 0), (0.85, 0.12), (0.3, 0.3), (0.18, 0.4), (0, 0.4)], segments=16)
+    add_cylinder(iron, (0, 0, 1.55), 0.16, 2.4, segments=10)
+    add_lathe(top, [(0, 2.75), (1.72, 2.75), (1.75, 2.9), (1.7, 3.02), (0, 3.02)], segments=28)
+    add_cylinder(top, (0, 0, 5.9), 0.09, 6.0, segments=8)
+    for k in range(8):
+        a0, a1 = k * math.pi / 4, (k + 1) * math.pi / 4
+        bm = can_a if k % 2 == 0 else can_b
+        tmp = bmesh.new()
+        pts = [(0, 0, 8.85)] + [(math.cos(a) * 3.25, math.sin(a) * 3.25, 7.7) for a in (a0, (a0 + a1) / 2, a1)]
+        vs = [tmp.verts.new(p) for p in pts]
+        tmp.faces.new([vs[0], vs[1], vs[2]])
+        tmp.faces.new([vs[0], vs[2], vs[3]])
+        res = bmesh.ops.extrude_face_region(tmp, geom=list(tmp.faces))
+        moved = [g for g in res["geom"] if isinstance(g, bmesh.types.BMVert)]
+        bmesh.ops.translate(tmp, vec=(0, 0, -0.08), verts=moved)
+        bmesh.ops.recalc_face_normals(tmp, faces=tmp.faces)
+        merge(bm, tmp)
+        am = (a0 + a1) / 2
+        add_cylinder(bm, (math.cos(am) * 3.1, math.sin(am) * 3.1, 7.55), 0.42, 0.05, axis="X", segments=12)
+        tmp2 = bmesh.new()
+        add_cylinder(tmp2, (0, 0, 0), 0.42, 0.05, axis="X", segments=12)
+        bmesh.ops.rotate(tmp2, verts=tmp2.verts, matrix=Matrix.Rotation(am + math.pi / 2, 3, "Z"))
+        bmesh.ops.translate(tmp2, vec=(math.cos(am) * 3.12, math.sin(am) * 3.12, 7.5), verts=tmp2.verts)
+        merge(bm, tmp2)
+    add_sphere(can_a, (0, 0, 9.0), 0.25, subdiv=1)
+    for i in range(3):
+        a = (i + 1) / 3 * math.pi * 2 + 0.4
+        tmp = bmesh.new()
+        rbox(tmp, (0, 1.5, 0), (1.4, 0.18, 1.4), bevel=0.05)
+        rbox(tmp, (0, 2.3, 0.64), (1.4, 1.2, 0.14), rot_x=-6, bevel=0.05)
+        for x in (-0.55, 0.55):
+            for z in (-0.55, 0.55):
+                add_cylinder(tmp, rb(x, 0.72, z), 0.06, 1.44, segments=6)
+        bmesh.ops.rotate(tmp, verts=tmp.verts, matrix=Matrix.Rotation(math.pi / 2 - a, 3, "Z"))
+        bmesh.ops.translate(tmp, vec=Vector(rb(math.cos(a) * 2.7, 0, math.sin(a) * 2.7)), verts=tmp.verts)
+        merge(chair, tmp)
+    return model("CafeTable", {"Iron": iron, "Top": top, "CanopyA": can_a, "CanopyB": can_b, "Chair": chair})
+
+
+def torii():
+    """A torii (Hanami's CityKit.Torii at w 10, h 8 -- the game stretches it to each gate):
+    tapering posts on black feet, the tie beam through them, the plaque strut, and the top
+    beam curving up at its ends under a black cap."""
+    red, black = bmesh.new(), bmesh.new()
+    for x in (-5, 5):
+        add_cylinder(red, (x, 0, 5.0), 0.62, 10.0, segments=16, radius2=0.52)
+        add_cylinder(black, (x, 0, 0.6), 0.82, 1.2, segments=16, radius2=0.74)
+    rbox(red, (0, 8, 0), (12.2, 0.55, 0.5), bevel=0.05)                  # the nuki
+    rbox(red, (0, 9.05, 0), (0.55, 1.6, 0.4))                            # the gakuzuka
+    rbox(black, (0, 9.1, -0.22), (1.3, 1.2, 0.08), bevel=0.03)           # its plaque
+    # The kasagi: a beam along X whose ends sweep up, the cap over it.
+    for bm, (y0, thick, depth, half) in ((red, (10.05, 0.66, 0.95, 7.2)), (black, (10.65, 0.45, 1.15, 7.5))):
+        tmp = bmesh.new()
+        n = 24
+        prof = []
+        for k in range(n + 1):
+            x = -half + 2 * half * k / n
+            lift = 0.55 * (abs(x) / half) ** 3
+            prof.append((x, y0 + lift))
+        top_pts = [(x, y + thick) for x, y in prof]
+        verts = [(x, z) for x, z in prof] + [(x, z) for x, z in reversed(top_pts)]
+        add_profile_xz(tmp, verts, -depth / 2, depth / 2)
+        merge(bm, tmp)
+    return model("Torii", {"Red": red, "Black": black})
+
+
 # -------------------------------------------------------------------------- city life --
 
 def pigeon():
@@ -818,6 +953,9 @@ def build():
     stone_lantern()
     vending()
     pigeon()
+    food_truck()
+    cafe_table()
+    torii()
 
 
 def piece_frame(obj):
