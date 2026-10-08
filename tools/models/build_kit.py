@@ -48,6 +48,7 @@ PREVIEW = {
     "WingL": (0.55, 0.57, 0.62), "WingR": (0.55, 0.57, 0.62), "Feet": (0.85, 0.45, 0.45),
     "Counter": (0.96, 0.95, 0.92), "AwningA": (0.85, 0.24, 0.2), "AwningB": (0.96, 0.95, 0.92), "Top": (0.96, 0.95, 0.92),
     "CanopyA": (0.9, 0.35, 0.38), "CanopyB": (0.96, 0.95, 0.92), "Chair": (0.9, 0.35, 0.38), "Black": (0.12, 0.13, 0.16),
+    "Fabric": (0.2, 0.6, 0.55),
 }
 
 random.seed(7)
@@ -780,14 +781,23 @@ def food_truck():
     a rounded box body with a band round it, a cab with a raked windscreen, wheels in arches,
     the hatch with its counter under a striped awning with a scalloped edge, a roof vent."""
     stripe, glass, trim, white, tyre, rim, awn_a, awn_b, front, rear = (bmesh.new() for _ in range(10))
-    shell = bmesh.new()
-    rbox(shell, (1.5, 4, 0), (11, 6, 6), bevel=0.35)
-    add_profile_xz(shell, [(-3.4, 1.0), (-7.5, 1.0), (-7.5, 3.4), (-7.05, 5.6), (-3.4, 5.6)], -2.9, 2.9, bevel=0.25)
-    body = mesh_object("FoodTruck_BodyTmp", shell)
-    arches = bmesh.new()
-    for x in (-5.4, 4.2):
-        add_cylinder(arches, rb(x, 1.1, 0), 1.38, 7.2, axis="Y", segments=28)
-    cut(body, arches)
+    # The box and the cab, each with its own wheel arch cut, then one piece.
+    merged = bmesh.new()
+    for shape, x in (("box", 4.2), ("cab", -5.4)):
+        shell = bmesh.new()
+        if shape == "box":
+            rbox(shell, (1.5, 4, 0), (11, 6, 6), bevel=0.35)
+        else:
+            add_profile_xz(shell, [(-3.4, 1.0), (-7.5, 1.0), (-7.5, 3.4), (-7.05, 5.6), (-3.4, 5.6)], -2.9, 2.9, bevel=0.25)
+        obj = mesh_object(f"FoodTruck_{shape}", shell)
+        arch = bmesh.new()
+        add_cylinder(arch, rb(x, 1.1, 0), 1.38, 7.2, axis="Y", segments=28)
+        cut(obj, arch)
+        tmp = bmesh.new()
+        tmp.from_mesh(obj.data)
+        merge(merged, tmp)
+        bpy.data.objects.remove(obj)
+    body = mesh_object("FoodTruck_BodyTmp", merged)
     rbox(stripe, (1.5, 2.2, 0), (11.08, 0.6, 6.08), bevel=0.3)
     add_profile_xz(glass, [(-7.56, 3.5), (-7.14, 5.35), (-7.05, 5.35), (-7.47, 3.5)], -2.55, 2.55)
     for z in (-2.93, 2.93):
@@ -840,12 +850,12 @@ def cafe_table():
         bmesh.ops.translate(tmp, vec=(0, 0, -0.08), verts=moved)
         bmesh.ops.recalc_face_normals(tmp, faces=tmp.faces)
         merge(bm, tmp)
+        # A scallop hanging from the rim, facing out.
         am = (a0 + a1) / 2
-        add_cylinder(bm, (math.cos(am) * 3.1, math.sin(am) * 3.1, 7.55), 0.42, 0.05, axis="X", segments=12)
         tmp2 = bmesh.new()
-        add_cylinder(tmp2, (0, 0, 0), 0.42, 0.05, axis="X", segments=12)
-        bmesh.ops.rotate(tmp2, verts=tmp2.verts, matrix=Matrix.Rotation(am + math.pi / 2, 3, "Z"))
-        bmesh.ops.translate(tmp2, vec=(math.cos(am) * 3.12, math.sin(am) * 3.12, 7.5), verts=tmp2.verts)
+        add_cylinder(tmp2, (0, 0, 0), 0.32, 0.04, axis="X", segments=12)
+        bmesh.ops.rotate(tmp2, verts=tmp2.verts, matrix=Matrix.Rotation(am, 3, "Z"))
+        bmesh.ops.translate(tmp2, vec=(math.cos(am) * 3.05, math.sin(am) * 3.05, 7.62), verts=tmp2.verts)
         merge(bm, tmp2)
     add_sphere(can_a, (0, 0, 9.0), 0.25, subdiv=1)
     for i in range(3):
@@ -887,6 +897,26 @@ def torii():
         add_profile_xz(tmp, verts, -depth / 2, depth / 2)
         merge(bm, tmp)
     return model("Torii", {"Red": red, "Black": black})
+
+
+def awning():
+    """One stripe of a shop's awning (the game stretches it to each stripe's width): canvas
+    curving down and out from the wall (Roblox +Z) to a valance with a scalloped edge. 2.4
+    wide, 1.3 tall, 3.2 deep, like the wedge it stands in for."""
+    fabric = bmesh.new()
+    top, bottom = [], []
+    n = 12
+    for k in range(n + 1):
+        t = k / n
+        z = 1.6 - 3.1 * t
+        y = 0.65 - 1.05 * t ** 1.6
+        top.append((-z, y))                        # (Blender y, Blender z)
+        bottom.append((-z, y - 0.08))
+    add_profile(fabric, top + list(reversed(bottom)), -1.2, 1.2)
+    add_box(fabric, (0, 1.52, -0.52), (2.4, 0.06, 0.26))
+    for x in (-0.6, 0.6):
+        add_cylinder(fabric, (x, 1.52, -0.62), 0.3, 0.06, axis="Y", segments=14)
+    return model("Awning", {"Fabric": fabric})
 
 
 # -------------------------------------------------------------------------- city life --
@@ -956,6 +986,7 @@ def build():
     food_truck()
     cafe_table()
     torii()
+    awning()
 
 
 def piece_frame(obj):
@@ -963,6 +994,7 @@ def piece_frame(obj):
     Blender axes."""
     obj.data.transform(obj.matrix_world)
     obj.matrix_world = Matrix.Identity(4)
+    assert len(obj.data.vertices) > 0, f"{obj.name} has no geometry"
     xs = [v.co.x for v in obj.data.vertices]
     ys = [v.co.y for v in obj.data.vertices]
     zs = [v.co.z for v in obj.data.vertices]

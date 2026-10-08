@@ -23,13 +23,13 @@
 -- (CityMeshes, with EditableMesh), hiding the part-built pieces on its own screen only. Where a
 -- client cannot, it simply sees the part-built prop.
 
-local CollectionService = game:GetService("CollectionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local ServerStorage = game:GetService("ServerStorage")
 
-local Kit = require(ServerScriptService:WaitForChild("ArenaService"):WaitForChild("Kit"))
+local Kit = require(ServerScriptService.ArenaService.Kit)
 
-local Data = require(game:GetService("ReplicatedStorage"):WaitForChild("MeshKitData")) :: any
+local Data = require(ReplicatedStorage.MeshKitData) :: any
 
 local MeshKit = {}
 
@@ -44,7 +44,7 @@ export type Paint = {
 
 export type Opts = {
 	lift: number?,         -- studs up from the prop's origin to the model's ground
-	scale: number?,        -- uniform, 1 by default
+	scale: (number | Vector3)?,  -- uniform, or per axis in the prop's frame (1 by default)
 	yaw: number?,          -- radians about the prop's up axis
 }
 
@@ -177,7 +177,9 @@ function MeshKit.Place(b: any, name: string, paints: { [string]: Paint }, opts: 
 		return nil
 	end
 	local pieces = templates[name] :: { [string]: Piece }
-	local scale = (opts and opts.scale) or 1
+	local raw = opts and opts.scale
+	local scale = if typeof(raw) == "Vector3" then raw elseif type(raw) == "number" then Vector3.new(raw, raw, raw)
+		else Vector3.new(1, 1, 1)
 	local base = frameOf(b, opts)
 	local placed: { [string]: BasePart } = {}
 	for role, piece in pairs(pieces) do
@@ -217,7 +219,7 @@ function MeshKit.Group(b: any, name: string, paints: { [string]: Paint }, opts: 
 	model.Name = name
 	model:SetAttribute("KitModel", name)
 	model:SetAttribute("KitFrame", frameOf(b, opts))
-	model:SetAttribute("KitScale", (opts and opts.scale) or 1)
+	model:SetAttribute("KitScale", (opts and opts.scale) or 1)    -- a number, or a Vector3 per axis
 	for role, paint in pairs(paints) do
 		model:SetAttribute("KitColour_" .. role, paint.colour)
 		model:SetAttribute("KitMaterial_" .. role, (paint.material or Enum.Material.SmoothPlastic).Name)
@@ -235,7 +237,7 @@ function MeshKit.Group(b: any, name: string, paints: { [string]: Paint }, opts: 
 		end
 	end
 	model.Parent = b.parent
-	CollectionService:AddTag(model, "KitProp")
+	model:AddTag("KitProp")
 	return model
 end
 
@@ -246,19 +248,29 @@ end
 function MeshKit.Prop(b: any, name: string, paints: { [string]: Paint }, opts: Opts?): ({ [string]: BasePart }?, any)
 	local mesh = MeshKit.Place(b, name, paints, opts)
 	if mesh then
-		local hulls = setmetatable({}, { __index = b }) :: any
-		function hulls.part(_, n: string, size: Vector3, at: any, colour: Color3, material: Enum.Material?, o: any): BasePart
-			local solid = table.clone(o or {})
-			solid.transparency = 1
-			solid.shadow = false
-			return b:part(n, size, at, colour, material, solid)
+		local function hullsOf(real: any): any
+			local hulls = setmetatable({}, { __index = real }) :: any
+			function hulls.part(_, n: string, size: Vector3, at: any, colour: Color3, material: Enum.Material?, o: any): BasePart
+				local solid = table.clone(o or {})
+				solid.transparency = 1
+				solid.shadow = false
+				local p = real:part(n, size, at, colour, material, solid)
+				if o and o.collide == false and not o.query then
+					p.Parent = nil          -- nothing to stand in for: the mesh is all there is
+				end
+				return p
+			end
+			function hulls.decor(_, n: string, size: Vector3, at: any, colour: Color3, material: Enum.Material?, o: any): BasePart
+				local p = real:decor(n, size, at, colour, material, o)
+				p.Parent = nil
+				return p
+			end
+			function hulls.within(_, offset: CFrame): any
+				return hullsOf(real:within(offset))
+			end
+			return hulls
 		end
-		function hulls.decor(_, n: string, size: Vector3, at: any, colour: Color3, material: Enum.Material?, o: any): BasePart
-			local p = b:decor(n, size, at, colour, material, o)
-			p.Parent = nil
-			return p
-		end
-		return mesh, hulls
+		return mesh, hullsOf(b)
 	end
 	local body = Kit.new(MeshKit.Group(b, name, paints, opts), b.frame)
 	body.side = b.side

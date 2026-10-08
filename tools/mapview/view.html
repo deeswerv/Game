@@ -243,6 +243,51 @@ for (const p of DATA.parts) {
   if (p.z[0] < 400 && p.z[2] < 400) bounds.expandByPoint(new THREE.Vector3(...p.p));
 }
 
+// ---------------------------------------------------------------- the kit --
+// The city kit's meshes where the clients draw them: each piece's vertices are fractions of
+// its half-size (int16), normals int8, triangles uint16 -- MeshKitGeometry's format.
+const kitCache = new Map();
+function kitGeometry(model, role) {
+  const key = model + '|' + role;
+  if (kitCache.has(key)) return kitCache.get(key);
+  const g = DATA.kitGeo[model][role];
+  const bin = Uint8Array.from(atob(g.data), (ch) => ch.charCodeAt(0));
+  const dv = new DataView(bin.buffer);
+  const half = g.size.map((v) => v / 2);
+  const pos = new Float32Array(g.verts * 3), nrm = new Float32Array(g.verts * 3);
+  for (let i = 0; i < g.verts; i++) {
+    for (let a = 0; a < 3; a++) {
+      pos[i * 3 + a] = dv.getInt16(i * 6 + a * 2, true) / 32767 * half[a] + g.offset[a];
+      nrm[i * 3 + a] = dv.getInt8(g.verts * 6 + i * 3 + a) / 127;
+    }
+  }
+  const idx = new Uint32Array(g.tris * 3);
+  for (let t = 0; t < g.tris * 3; t++) idx[t] = dv.getUint16(g.verts * 9 + t * 2, true);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+  geo.setIndex(new THREE.BufferAttribute(idx, 1));
+  kitCache.set(key, geo);
+  return geo;
+}
+for (const k of DATA.kits || []) {
+  const frame = new THREE.Matrix4().set(
+    k.r[0], k.r[1], k.r[2], k.p[0],
+    k.r[3], k.r[4], k.r[5], k.p[1],
+    k.r[6], k.r[7], k.r[8], k.p[2],
+    0, 0, 0, 1);
+  frame.multiply(new THREE.Matrix4().makeScale(k.sc[0], k.sc[1], k.sc[2]));
+  for (const role of Object.keys(DATA.kitGeo[k.k])) {
+    const paint = k.paint[role];
+    const mesh = new THREE.Mesh(kitGeometry(k.k, role), material({ n: role, c: paint.c, m: paint.m, t: paint.t, rf: paint.rf }));
+    mesh.matrixAutoUpdate = false;
+    mesh.matrix.copy(frame);
+    mesh.castShadow = (paint.t || 0) < 0.5;
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+  }
+}
+
 // ----------------------------------------------------------------- people --
 // The players' own rig for scale: the Roblox Boy in a white tee and dark trousers.
 if (DATA.rig && DATA.figures) {

@@ -110,6 +110,16 @@ local function ltm(p)
 	return p.LocalTransparencyModifier or 0
 end
 
+-- Which pieces are solid before any client draws anything: drawing must not change one.
+local solidBefore = {}
+for _, p in ipairs(props) do
+	for _, d in ipairs(p:GetDescendants()) do
+		if d:IsA("BasePart") then
+			solidBefore[d] = d.CanCollide
+		end
+	end
+end
+
 print("a device that cannot make meshes")
 World.run(sps:FindFirstChild("CityMeshes"))
 World.advance(0.5)
@@ -172,7 +182,13 @@ for _, p in ipairs(props) do
 	end
 end
 check(shown == 0, ("every part-built piece hidden on this screen (%d of %d still shown)"):format(shown, total))
-check(solid > #props, "and still solid for everything else")
+local changed = 0
+for part, was in pairs(solidBefore) do
+	if part.CanCollide ~= was then
+		changed += 1
+	end
+end
+check(solid > 100 and changed == 0, ("and still solid for everything else (%d solid, %d changed)"):format(solid, changed))
 
 -- Cars nose first; the shell over the body; the right size and paint.
 local good, cars, why = 0, 0, ""

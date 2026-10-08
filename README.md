@@ -263,11 +263,14 @@ aerial.
 props in Blender, in code, and exports `assets/models/CityKit.glb` (previews in
 `assets/models/previews/`; the street in `sheet.png`, the plaza in `sheet2.png`):
 
-- Downtown: the saloon (and taxi), hatchback, SUV and muscle car; the crook street lamps and
-  the plaza's post lamps; leafy trees, cypresses and flowering shrubs; benches, bins, hydrants,
-  dumpsters, phone booths and traffic lights; and the three-tier plaza fountain.
-- Hanami City: the cherry trees, cloud-pruned pines, stone lanterns, vending machines and its
-  street trees.
+- Downtown: the saloon (and taxi), hatchback, SUV and muscle car; the food trucks and the
+  ice-cream van; the crook street lamps and the plaza's post lamps; leafy trees, cypresses and
+  flowering shrubs; benches, bins, hydrants, dumpsters, phone booths, traffic lights and cafe
+  tables under their umbrellas; the shops' striped awnings (curved canvas, scalloped valance);
+  and the three-tier plaza fountain.
+- Hanami City: the cherry trees, cloud-pruned pines, stone lanterns, vending machines, its
+  street trees and the big torii (stretched to each gate).
+- The pigeons.
 
 Each is drawn from the kit in place of its part-built version. A car is 8 meshes instead of
 about 40 parts, and the fountain's basins are turned, not stacked cylinders. Lamp globes and
@@ -302,7 +305,10 @@ and both parks, pecking. Walk up to them, or fire a shot nearby, and the whole f
 wings out and beating, they climb, wheel round over the square, and glide back down somewhere
 else on it. They are the kit's Blender pigeon where the device can make meshes, little part
 birds where it cannot. Steam rises from the manholes and smoke curls off the chimney pots.
-PERFORMANCE thins the flocks and turns the steam and smoke off (`CityLife.client.luau`,
+Petals drift down out of every cherry tree in Hanami City, and after dark fireflies blink
+over Downtown's parks and Hanami's lantern pond. Hanami has pigeons too, on the shrine's
+gravel and in the festival square. PERFORMANCE thins the flocks and turns the steam, smoke,
+petals and fireflies off (`CityLife.client.luau`,
 `tools/uitest/citylife.luau`).
 
 **Downtown is the first stop.** You wash up at the Crossing; the Quartermaster's first job is

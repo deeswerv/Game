@@ -143,4 +143,31 @@ return {
 		WingR = { size = Vector3.new(0.200, 0.146, 0.800), offset = Vector3.new(0.270, 0.547, 0.220), tris = 24 },
 		Feet = { size = Vector3.new(0.220, 0.725, 0.680), offset = Vector3.new(0.000, 0.343, -0.330), tris = 66 },
 	},
+	FoodTruck = {
+		Body = { size = Vector3.new(14.500, 6.000, 6.000), offset = Vector3.new(-0.250, 4.000, -0.000), tris = 412 },
+		Stripe = { size = Vector3.new(11.080, 0.600, 6.080), offset = Vector3.new(1.500, 2.200, -0.000), tris = 108 },
+		Glass = { size = Vector3.new(3.460, 1.850, 5.960), offset = Vector3.new(-5.830, 4.425, -0.000), tris = 228 },
+		Trim = { size = Vector3.new(15.300, 7.904, 8.300), offset = Vector3.new(-0.250, 4.048, -1.150), tris = 372 },
+		Counter = { size = Vector3.new(7.150, 4.250, 6.150), offset = Vector3.new(1.875, 5.475, -0.825), tris = 216 },
+		Tyre = { size = Vector3.new(11.778, 2.200, 6.300), offset = Vector3.new(-0.600, 1.100, -0.000), tris = 1040 },
+		Rim = { size = Vector3.new(10.782, 1.200, 6.460), offset = Vector3.new(-0.600, 1.100, -0.000), tris = 416 },
+		AwningA = { size = Vector3.new(5.500, 1.324, 1.998), offset = Vector3.new(0.950, 6.762, -3.951), tris = 168 },
+		AwningB = { size = Vector3.new(5.500, 1.324, 1.998), offset = Vector3.new(2.050, 6.762, -3.951), tris = 168 },
+		LampFront = { size = Vector3.new(0.120, 0.550, 5.250), offset = Vector3.new(-7.560, 2.500, -0.000), tris = 216 },
+		LampRear = { size = Vector3.new(0.120, 0.500, 5.100), offset = Vector3.new(7.020, 2.600, -0.000), tris = 216 },
+	},
+	CafeTable = {
+		Iron = { size = Vector3.new(1.700, 2.750, 1.700), offset = Vector3.new(0.000, 1.375, -0.000), tris = 164 },
+		Top = { size = Vector3.new(3.500, 6.150, 3.500), offset = Vector3.new(0.000, 5.825, -0.000), tris = 196 },
+		CanopyA = { size = Vector3.new(6.500, 1.950, 6.500), offset = Vector3.new(0.000, 8.275, -0.000), tris = 244 },
+		CanopyB = { size = Vector3.new(6.500, 1.550, 6.500), offset = Vector3.new(0.000, 8.075, -0.000), tris = 224 },
+		Chair = { size = Vector3.new(6.614, 2.899, 6.149), offset = Vector3.new(0.140, 1.449, -0.446), tris = 888 },
+	},
+	Torii = {
+		Red = { size = Vector3.new(14.400, 11.260, 1.240), offset = Vector3.new(0.000, 5.630, -0.000), tris = 436 },
+		Black = { size = Vector3.new(15.000, 11.650, 1.640), offset = Vector3.new(0.000, 5.825, -0.000), tris = 424 },
+	},
+	Awning = {
+		Fabric = { size = Vector3.new(2.400, 1.570, 3.150), offset = Vector3.new(0.000, -0.135, 0.025), tris = 216 },
+	},
 }

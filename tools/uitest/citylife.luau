@@ -61,6 +61,20 @@ chimney.Size = Vector3.new(2, 0.4, 2)
 chimney.Position = centre + Vector3.new(0, 40, 60)
 chimney.Parent = city
 
+local petals = R.new("Part")
+petals.Name = "PetalFall"
+petals.Size = Vector3.new(26, 5, 26)
+petals.Position = centre + Vector3.new(-60, 20, 0)
+petals.Parent = city
+cs:AddTag(petals, "PetalFall")
+local field = R.new("Part")
+field.Name = "FireflyField"
+field.Size = Vector3.new(40, 5, 80)
+field.Position = centre + Vector3.new(0, 3, -80)
+field.Parent = city
+cs:AddTag(field, "FireflyField")
+World.service("Lighting").ClockTime = 13
+
 R.ClassMethods.Workspace.Raycast = function(_, origin, direction)
 	if direction.Y < 0 then
 		return { Position = Vector3.new(origin.X, GROUND, origin.Z), Normal = Vector3.new(0, 1, 0), Instance = marker }
@@ -164,8 +178,17 @@ local smoke = chimney:FindFirstChild("Smoke")
 check(steam and steam:FindFirstChildOfClass("ParticleEmitter").Enabled, "the manhole steams")
 check(smoke and smoke:FindFirstChildOfClass("ParticleEmitter").Enabled, "the chimney smokes")
 check((manhole.CFrame * steam.CFrame).Position.Y > manhole.Position.Y, "from its top")
+print("petals and fireflies")
+local fall = petals:FindFirstChild("Petals")
+local flies = field:FindFirstChild("Fireflies")
+check(fall and fall.Enabled and fall.Rate > 0, "petals drift down from the cherry")
+check(flies and not flies.Enabled, "no fireflies by day")
+World.service("Lighting").ClockTime = 22
+World.advance(1.5)
+check(flies.Enabled and flies.LightEmission == 1, "they come out after dark, glowing")
 World.player:SetAttribute("GraphicsQuality", 1)
 World.advance(0.2)
+check(not fall.Enabled and not flies.Enabled, "PERFORMANCE: no petals or fireflies")
 check(not steam:FindFirstChildOfClass("ParticleEmitter").Enabled and not smoke:FindFirstChildOfClass("ParticleEmitter").Enabled,
 	"PERFORMANCE turns them off")
 

@@ -356,6 +356,7 @@ local function shrine(root: B)
 	local x0, x1, z0, z1 = -232, -156, -476, -364
 	CityKit.Patch(f, "Gravel", x0, x1, z0, z1, 0.02, P.GRAVEL, M.Pebble)
 	CityKit.Patch(f, "Approach", -200, x1, -425, -415, 0.08, P.STONE, M.Slate)
+	CityKit.Life(f, "PigeonFlock", Vector3.new(-186, 0.6, -440), Vector3.new(1, 1, 1), { Radius = 20, Inner = 3, Count = 7 })
 	-- The wall round the grounds, the torii in its square-side.
 	local function wall(a: Vector3, c: Vector3)
 		local cf, len = Kit.Span(a, c)

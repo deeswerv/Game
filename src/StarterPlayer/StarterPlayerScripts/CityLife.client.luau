@@ -8,6 +8,8 @@
 --     going, they climb, wheel round over the square for a while and glide back down
 --     somewhere else on it.
 --   * Steam rising from the manholes, and smoke curling off the chimney pots.
+--   * Cherry petals drifting down out of every sakura ("PetalFall" markers), and after dark,
+--     fireflies blinking over the parks and Hanami's pond ("FireflyField").
 --
 -- Cosmetic and local: every client has its own birds. Nothing far from the camera is moved,
 -- and the GRAPHICS setting's PERFORMANCE turns the steam and smoke off and thins the flocks.
@@ -399,6 +401,101 @@ workspace.ChildAdded:Connect(function(child)
 	end
 end)
 
+-- ------------------------------------------------------------- petals and fireflies --
+
+local SPARKLE = "rbxasset://textures/particles/sparkles_main.dds"
+local Lighting = game:GetService("Lighting")
+local petalFalls: { [BasePart]: ParticleEmitter } = {}
+local fireflies: { [BasePart]: ParticleEmitter } = {}
+
+local function night(): boolean
+	local t = Lighting.ClockTime
+	return t < 6.2 or t > 18.8
+end
+
+local function addPetals(marker: Instance)
+	if not marker:IsA("BasePart") or petalFalls[marker] then
+		return
+	end
+	local e = Instance.new("ParticleEmitter")
+	e.Name = "Petals"
+	e.Texture = SPARKLE
+	e.Shape = Enum.ParticleEmitterShape.Box
+	e.Color = ColorSequence.new(Color3.fromRGB(252, 206, 222), Color3.fromRGB(244, 164, 194))
+	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.26), NumberSequenceKeypoint.new(1, 0.2) })
+	e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.08, 0.1),
+		NumberSequenceKeypoint.new(0.85, 0.2), NumberSequenceKeypoint.new(1, 1) })
+	e.Lifetime = NumberRange.new(5, 8)
+	e.Speed = NumberRange.new(0.3, 1)
+	e.SpreadAngle = Vector2.new(180, 180)
+	e.Acceleration = Vector3.new(0.5, -0.9, 0.3)
+	e.Drag = 0.6
+	e.Rotation = NumberRange.new(0, 360)
+	e.RotSpeed = NumberRange.new(-140, 140)
+	e.LightInfluence = 1
+	e.Rate = math.clamp(marker.Size.X * 0.25, 1, 10)
+	e.Enabled = level >= 2
+	e.Parent = marker
+	petalFalls[marker] = e
+end
+
+local function addFireflies(marker: Instance)
+	if not marker:IsA("BasePart") or fireflies[marker] then
+		return
+	end
+	local e = Instance.new("ParticleEmitter")
+	e.Name = "Fireflies"
+	e.Texture = SPARKLE
+	e.Shape = Enum.ParticleEmitterShape.Box
+	e.Color = ColorSequence.new(Color3.fromRGB(226, 255, 140))
+	e.LightEmission = 1
+	e.LightInfluence = 0
+	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(0.5, 0.3),
+		NumberSequenceKeypoint.new(1, 0.05) })
+	-- A blink or two in each one's life.
+	e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.2, 0.05),
+		NumberSequenceKeypoint.new(0.4, 0.8), NumberSequenceKeypoint.new(0.6, 0.05), NumberSequenceKeypoint.new(1, 1) })
+	e.Lifetime = NumberRange.new(4, 7)
+	e.Speed = NumberRange.new(0.2, 0.7)
+	e.SpreadAngle = Vector2.new(180, 180)
+	e.Acceleration = Vector3.new(0, 0.06, 0)
+	e.Drag = 1
+	e.Rate = math.clamp(marker.Size.X * marker.Size.Z / 300, 3, 20)
+	e.Enabled = false
+	e.Parent = marker
+	fireflies[marker] = e
+end
+
+local function refreshNight()
+	local on = level >= 2 and night()
+	for marker, e in pairs(fireflies) do
+		if marker.Parent then
+			e.Enabled = on
+		else
+			fireflies[marker] = nil
+		end
+	end
+end
+task.spawn(function()
+	while true do
+		refreshNight()
+		task.wait(1)
+	end
+end)
+
+for tag, add in pairs({ PetalFall = addPetals, FireflyField = addFireflies }) do
+	CollectionService:GetInstanceAddedSignal(tag):Connect(add)
+	for _, marker in ipairs(CollectionService:GetTagged(tag)) do
+		add(marker)
+	end
+end
+CollectionService:GetInstanceRemovedSignal("PetalFall"):Connect(function(m)
+	petalFalls[m :: BasePart] = nil
+end)
+CollectionService:GetInstanceRemovedSignal("FireflyField"):Connect(function(m)
+	fireflies[m :: BasePart] = nil
+end)
+
 local function readLevel()
 	local raw = tonumber(player:GetAttribute("GraphicsQuality"))
 	level = if raw then math.clamp(math.floor(raw + 0.5), 1, 3) else 3
@@ -407,6 +504,12 @@ local function readLevel()
 			e.Enabled = level >= 2
 		end
 	end
+	for part, e in pairs(petalFalls) do
+		if part.Parent then
+			e.Enabled = level >= 2
+		end
+	end
+	refreshNight()
 end
 player:GetAttributeChangedSignal("GraphicsQuality"):Connect(readLevel)
 readLevel()

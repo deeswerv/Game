@@ -283,6 +283,8 @@ local function park(root: B)
 	local R = 70
 	-- The pond: stone rim, dark water, the lanterns floating on it.
 	local pond = f:within(CFrame.new(pc.X, 0, pc.Z))
+	-- Fireflies over the water and the path round it after dark (CityLife.client).
+	CityKit.Life(pond, "FireflyField", Vector3.new(0, 3, 0), Vector3.new(R * 2 + 20, 5, R * 2 + 20))
 	pond:decor("PondPath", Vector3.new(0.1, R * 2 + 24, R * 2 + 24), vertical(Vector3.new(0, 0.07, 0)), P.GRAVEL, M.Pebble, { shape = "Cylinder" })
 	pond:decor("PondWater", Vector3.new(0.4, R * 2, R * 2), vertical(Vector3.new(0, 0.3, 0)), Color3.fromRGB(58, 120, 150), M.Glass,
 		{ shape = "Cylinder", reflectance = 0.2 })

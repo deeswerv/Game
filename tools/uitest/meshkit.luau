@@ -157,9 +157,19 @@ check(solidMesh == 0, "the meshes never collide or catch a bullet")
 check(visibleHull == 0 and n(names, "Body") == n(plainNames, "Body") and n(names, "Cabin") == n(plainNames, "Cabin"),
 	("every car keeps its solid body and cabin, as invisible hulls (%d shown; bodies %d/%d, cabins %d/%d)"):format(visibleHull,
 		n(names, "Body"), n(plainNames, "Body"), n(names, "Cabin"), n(plainNames, "Cabin")))
-check(n(names, "Pole") == n(plainNames, "Pole") and n(names, "Trunk") == n(plainNames, "Trunk"),
-	("lamp posts and trunks still solid (poles %d/%d, trunks %d/%d)"):format(n(names, "Pole"), n(plainNames, "Pole"),
-		n(names, "Trunk"), n(plainNames, "Trunk")))
+-- Solid ones only: a cafe umbrella's pole is trim, and the kit draws it.
+local function solid(byName, name)
+	local c = 0
+	for _, p in ipairs(byName[name] or {}) do
+		if p.CanCollide then
+			c += 1
+		end
+	end
+	return c
+end
+check(solid(names, "Pole") == solid(plainNames, "Pole") and solid(names, "Trunk") == solid(plainNames, "Trunk"),
+	("lamp posts and trunks still solid (poles %d/%d, trunks %d/%d)"):format(solid(names, "Pole"), solid(plainNames, "Pole"),
+		solid(names, "Trunk"), solid(plainNames, "Trunk")))
 
 -- A lamp's globe hangs where the part-built one did (half a stud higher: it stands on the pavement).
 local pole, globe = nil, nil

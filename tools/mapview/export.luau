@@ -22,11 +22,75 @@ local function safe(inst, key)
 	return ok and v or nil
 end
 
+-- The city kit, as clients draw it (CityMeshes): a Model tagged KitProp says which of the
+-- kit's models stands where and how it is painted; its part-built pieces are hidden (all but
+-- the KitKeep ones). KIT=0 exports the part-built props instead.
+local fs = require("@lune/fs")
+local luau = require("@lune/luau")
+local process = require("@lune/process")
+
+local function loadData(path)
+	if not fs.isFile(path) then
+		return nil
+	end
+	return luau.load(fs.readFile(path), { debugName = path, environment = { Vector3 = roblox.Vector3 } })()
+end
+
+local function kitOf(d)
+	local m = d.Parent
+	while m do
+		if m.ClassName == "Model" and m:GetAttribute("KitModel") then
+			return m
+		end
+		m = m.Parent
+	end
+	return nil
+end
+
 function Export.Parts(root, origin)
 	origin = origin or roblox.Vector3.new(0, 0, 0)
 	local parts, lights, signs = {}, {}, {}
+	local useKit = process.env.KIT ~= "0"
+	local kitData = useKit and loadData("src/ReplicatedStorage/MeshKitData.luau")
+	local kitGeometry = useKit and loadData("src/ReplicatedStorage/MeshKitGeometry.luau")
+	local kits, kitGeo = {}, {}
+	if kitData and kitGeometry then
+		for _, d in ipairs(root:GetDescendants()) do
+			local name = d.ClassName == "Model" and d:GetAttribute("KitModel")
+			local frame = name and d:GetAttribute("KitFrame")
+			if name and frame and kitData[name] then
+				local raw = d:GetAttribute("KitScale")
+				local sc = if typeof(raw) == "Vector3" then raw else roblox.Vector3.new(raw or 1, raw or 1, raw or 1)
+				local paint = {}
+				for role in pairs(kitData[name]) do
+					local c = d:GetAttribute("KitColour_" .. role)
+					paint[role] = {
+						c = c and c3(c) or { 160, 160, 160 },
+						m = d:GetAttribute("KitMaterial_" .. role) or "SmoothPlastic",
+						t = d:GetAttribute("KitClear_" .. role) or 0,
+						rf = d:GetAttribute("KitShine_" .. role) or 0,
+					}
+				end
+				local p = frame.Position - origin
+				local x, y, z = frame.XVector, frame.YVector, frame.ZVector
+				table.insert(kits, { k = name, p = { p.X, p.Y, p.Z }, r = { x.X, y.X, z.X, x.Y, y.Y, z.Y, x.Z, y.Z, z.Z },
+					sc = { sc.X, sc.Y, sc.Z }, paint = paint })
+				if not kitGeo[name] then
+					kitGeo[name] = {}
+					for role, spec in pairs(kitData[name]) do
+						local g = kitGeometry[name][role]
+						kitGeo[name][role] = { size = { spec.size.X, spec.size.Y, spec.size.Z },
+							offset = { spec.offset.X, spec.offset.Y, spec.offset.Z }, verts = g.verts, tris = g.tris,
+							data = (g.data:gsub("%s", "")) }
+					end
+				end
+			end
+		end
+	end
 	for _, d in ipairs(root:GetDescendants()) do
-		if d:IsA("BasePart") then
+		if d:IsA("BasePart") and #kits > 0 and kitOf(d) and not d:GetAttribute("KitKeep") then
+			-- Drawn by the kit instead.
+		elseif d:IsA("BasePart") then
 			local transparency = safe(d, "Transparency") or 0
 			local cf = safe(d, "CFrame")
 			if cf and transparency < 0.98 then
@@ -124,7 +188,7 @@ function Export.Parts(root, origin)
 			end
 		end
 	end
-	return { parts = parts, lights = lights, signs = signs }
+	return { parts = parts, lights = lights, signs = signs, kits = kits, kitGeo = kitGeo }
 end
 
 return Export

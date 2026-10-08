@@ -24,7 +24,6 @@
 -- agrees on north, and so east is -X (on your right as you face the tower); the comments below
 -- that call the +X side "east" predate it -- the signs and the compass are what players see.
 
-local CollectionService = game:GetService("CollectionService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local Kit = require(ServerScriptService.ArenaService.Kit)
@@ -435,6 +434,17 @@ end
 
 --- A cafe table under a striped umbrella, with chairs round it. Origin on the ground.
 local function cafeTable(b: Kit.Builder, colour: Color3, seats: number?)
+	-- The kit's table (three chairs) where a client can draw it.
+	if (seats or 3) == 3 then
+		local _, body = kitProp(b, "CafeTable", {
+			Iron = { colour = IRON, shadow = true },
+			Top = { colour = TRIM, shadow = true },
+			CanopyA = { colour = colour, material = M.Fabric, shadow = true },
+			CanopyB = { colour = TRIM, material = M.Fabric, shadow = true },
+			Chair = { colour = colour, shadow = true },
+		})
+		b = body
+	end
 	b:part("TableFoot", Vector3.new(1.6, 0.3, 1.6), Vector3.new(0, 0.15, 0), IRON)
 	b:part("TableLeg", Vector3.new(2.6, 0.35, 0.35), vertical(Vector3.new(0, 1.5, 0)), IRON, nil, { shape = "Cylinder" })
 	b:decor("TableTop", Vector3.new(0.25, 3.4, 3.4), vertical(Vector3.new(0, 2.9, 0)), TRIM, nil, { shape = "Cylinder" })
@@ -921,15 +931,24 @@ local function building(b: Kit.Builder, x0: number, x1: number, z0: number, z1: 
 					for k = 0, stripes - 1 do
 						local along = -run / 2 + sw * (k + 0.5)
 						local p = on(6.9, 1.6, along)
-						local awning = b:part("Awning", Vector3.new(sw, 1.3, 3.2), Kit.Look(p, p + normal),
-							if k % 2 == 0 then shopColour else TRIM, M.Fabric, { shape = "Wedge", collide = false })
+						local stripe = if k % 2 == 0 then shopColour else TRIM
+						-- The kit's curved canvas with its scalloped valance, where a client can draw it.
+						local _, sb = kitProp(b:within(Kit.Look(p, p + normal)), "Awning",
+							{ Fabric = { colour = stripe, material = M.Fabric, shadow = true, name = "AwningCanvas" } },
+							{ scale = Vector3.new(sw / 2.4, 1, 1) })
+						local awning = sb:part("Awning", Vector3.new(sw, 1.3, 3.2), CFrame.new(), stripe, M.Fabric,
+							{ shape = "Wedge", collide = false })
 						awning.CastShadow = true
 					end
 				end
 			elseif rng:NextNumber() < 0.5 then
 				local p = on(6.9, 1.6, 0)
-				local awning = b:part("Awning", Vector3.new(span * 0.8, 1.4, 3.2), Kit.Look(p, p + normal),
-					AWNINGS[rng:NextInteger(1, #AWNINGS)], M.Fabric, { shape = "Wedge", collide = false })
+				local canvas = AWNINGS[rng:NextInteger(1, #AWNINGS)]
+				local _, sb = kitProp(b:within(Kit.Look(p, p + normal)), "Awning",
+					{ Fabric = { colour = canvas, material = M.Fabric, shadow = true, name = "AwningCanvas" } },
+					{ scale = Vector3.new(span * 0.8 / 2.4, 1.4 / 1.3, 1) })
+				local awning = sb:part("Awning", Vector3.new(span * 0.8, 1.4, 3.2), CFrame.new(), canvas, M.Fabric,
+					{ shape = "Wedge", collide = false })
 				awning.CastShadow = true
 			end
 		end
@@ -3388,35 +3407,48 @@ end
 --- striped awning over the hatch, a menu board, and its name on a sign on the roof.
 local function foodTruck(b: Kit.Builder, colour: Color3, name: string, accent: Color3)
 	local trim = Color3.fromRGB(34, 34, 38)
-	b:part("TruckBody", Vector3.new(11, 6, 6), Vector3.new(1.5, 4, 0), colour)
-	b:part("TruckCab", Vector3.new(4, 4.6, 5.8), Vector3.new(-5.5, 3.3, 0), colour)
-	b:decor("Windshield", Vector3.new(0.12, 2, 5), CFrame.new(-7.52, 4.3, 0), Color3.fromRGB(60, 84, 110), M.Glass,
+	local _, body = kitProp(b, "FoodTruck", {
+		Body = { colour = colour, reflectance = 0.04, shadow = true, name = "TruckShell" },
+		Stripe = { colour = accent },
+		Glass = { colour = Color3.fromRGB(60, 84, 110), reflectance = 0.25 },
+		Trim = { colour = trim },
+		Counter = { colour = TRIM },
+		Tyre = { colour = trim, material = M.Rubber, shadow = true },
+		Rim = { colour = Color3.fromRGB(206, 206, 210), material = M.Metal },
+		AwningA = { colour = accent, material = M.Fabric, shadow = true },
+		AwningB = { colour = TRIM, material = M.Fabric, shadow = true },
+		LampFront = { colour = Color3.fromRGB(250, 246, 226), material = M.Glass, name = "Headlight" },
+		LampRear = { colour = Color3.fromRGB(200, 40, 40), material = M.Glass, name = "Taillight" },
+	})
+	body:part("TruckBody", Vector3.new(11, 6, 6), Vector3.new(1.5, 4, 0), colour)
+	body:part("TruckCab", Vector3.new(4, 4.6, 5.8), Vector3.new(-5.5, 3.3, 0), colour)
+	body:decor("Windshield", Vector3.new(0.12, 2, 5), CFrame.new(-7.52, 4.3, 0), Color3.fromRGB(60, 84, 110), M.Glass,
 		{ reflectance = 0.25 })
 	for _, z in ipairs({ -2.93, 2.93 }) do
-		b:decor("CabWindow", Vector3.new(2.6, 1.7, 0.08), Vector3.new(-5.4, 4.4, z), Color3.fromRGB(60, 84, 110), M.Glass)
+		body:decor("CabWindow", Vector3.new(2.6, 1.7, 0.08), Vector3.new(-5.4, 4.4, z), Color3.fromRGB(60, 84, 110), M.Glass)
 	end
-	b:decor("Bumper", Vector3.new(0.4, 0.7, 6), Vector3.new(-7.7, 1.4, 0), trim)
+	body:decor("Bumper", Vector3.new(0.4, 0.7, 6), Vector3.new(-7.7, 1.4, 0), trim)
 	for _, x in ipairs({ -5.4, 4.2 }) do
 		for _, z in ipairs({ -2.7, 2.7 }) do
-			b:decor("Wheel", Vector3.new(0.8, 2.2, 2.2), CFrame.new(x, 1.1, z) * CFrame.Angles(0, math.rad(90), 0), trim,
+			body:decor("Wheel", Vector3.new(0.8, 2.2, 2.2), CFrame.new(x, 1.1, z) * CFrame.Angles(0, math.rad(90), 0), trim,
 				M.Rubber, { shape = "Cylinder" })
-			b:decor("Hub", Vector3.new(0.84, 1, 1), CFrame.new(x, 1.1, z) * CFrame.Angles(0, math.rad(90), 0),
+			body:decor("Hub", Vector3.new(0.84, 1, 1), CFrame.new(x, 1.1, z) * CFrame.Angles(0, math.rad(90), 0),
 				Color3.fromRGB(206, 206, 210), M.Metal, { shape = "Cylinder" })
 		end
 	end
 	-- The hatch, open, with a counter and the menu.
-	b:decor("Hatch", Vector3.new(6, 2.6, 0.1), Vector3.new(1.5, 4.9, -3.02), Color3.fromRGB(40, 36, 34))
-	b:decor("Counter", Vector3.new(6.4, 0.3, 1), Vector3.new(1.5, 3.5, -3.4), TRIM)
+	body:decor("Hatch", Vector3.new(6, 2.6, 0.1), Vector3.new(1.5, 4.9, -3.02), Color3.fromRGB(40, 36, 34))
+	body:decor("Counter", Vector3.new(6.4, 0.3, 1), Vector3.new(1.5, 3.5, -3.4), TRIM)
 	for k = 0, 5 do
 		-- Tall at its +Z end, against the truck; sloping down and out over the counter.
-		b:decor("TruckAwning", Vector3.new(1.1, 0.9, 2), CFrame.new(-1.25 + k * 1.1, 6.9, -3.9),
+		body:decor("TruckAwning", Vector3.new(1.1, 0.9, 2), CFrame.new(-1.25 + k * 1.1, 6.9, -3.9),
 			if k % 2 == 0 then accent else TRIM, M.Fabric, { shape = "Wedge" })
 	end
-	b:decor("Stripe", Vector3.new(11.06, 0.6, 6.06), Vector3.new(1.5, 2.2, 0), accent)
+	body:decor("Stripe", Vector3.new(11.06, 0.6, 6.06), Vector3.new(1.5, 2.2, 0), accent)
 	board(b, name, Kit.Look(Vector3.new(1.5, 8.2, -0.6), Vector3.new(1.5, 8.2, -10)), 7.5, 1.6, accent, TRIM)
-	b:decor("SignPost", Vector3.new(0.3, 1.2, 0.3), Vector3.new(-1.2, 7.4, -0.2), trim)
-	b:decor("SignPost", Vector3.new(0.3, 1.2, 0.3), Vector3.new(4.2, 7.4, -0.2), trim)
-	b:decor("MenuBoard", Vector3.new(0.3, 2.4, 1.8), CFrame.new(6.6, 1.3, -4.4) * CFrame.Angles(0, 0, math.rad(8)), trim)
+	body:decor("SignPost", Vector3.new(0.3, 1.2, 0.3), Vector3.new(-1.2, 7.4, -0.2), trim)
+	body:decor("SignPost", Vector3.new(0.3, 1.2, 0.3), Vector3.new(4.2, 7.4, -0.2), trim)
+	body:decor("MenuBoard", Vector3.new(0.3, 2.4, 1.8), CFrame.new(6.6, 1.3, -4.4) * CFrame.Angles(0, 0, math.rad(8)), trim)
 	painted(b, "MENU", Kit.Look(Vector3.new(6.78, 1.9, -4.4), Vector3.new(16, 1.9, -4.4)), 1.5, 0.45, TRIM,
 		Enum.Font.GothamBold)
 end
@@ -3805,7 +3837,12 @@ function Downtown.Build(parent: Instance, centre: Vector3)
 		marker:SetAttribute("Radius", flock[2])
 		marker:SetAttribute("Inner", flock[3])
 		marker:SetAttribute("Count", flock[4])
-		CollectionService:AddTag(marker, "PigeonFlock")
+		marker:AddTag("PigeonFlock")
+	end
+	-- Fireflies over the parks after dark.
+	for _, field in ipairs({ { Vector3.new(-125, 3, 77), Vector3.new(40, 5, 84) }, { Vector3.new(-64, 3, 45), Vector3.new(18, 5, 18) } }) do
+		local marker = root:decor("FireflyField", field[2], field[1], WHITE_LINE, nil, { transparency = 1 })
+		marker:AddTag("FireflyField")
 	end
 	-- The ZEE BANK truck at the kerb up the west arm, its back doors toward the plaza.
 	armouredTruck(root:within(CFrame.new(-150, 0, 13.8) * CFrame.Angles(0, math.rad(90), 0)))

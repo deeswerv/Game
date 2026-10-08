@@ -917,6 +917,8 @@ function CityKit.Sakura(b: B, seed: number, scale: number?)
 	end
 	b:decor("Petals", Vector3.new(0.06, 9 * s, 9 * s), CFrame.new(0, 0.05, 0) * CFrame.Angles(0, 0, math.rad(90)), P.SAKURA_LIGHT,
 		nil, { shape = "Cylinder", transparency = 0.35 })
+	-- Petals drifting down out of the canopy (CityLife.client).
+	CityKit.Life(b, "PetalFall", Vector3.new(0, 9 * s, 0), Vector3.new(11 * s, 2 * s, 11 * s))
 end
 
 --- A street tree: a trunk in a grate and a round green crown.
@@ -963,6 +965,15 @@ end
 --- along X.
 function CityKit.Torii(b: B, w: number, h: number, colour: Color3?)
 	local c = colour or P.VERMILION
+	-- The kit's gate, stretched to this one, where a client can draw it (not the little ones of
+	-- the shrine's tunnel: squeezed that narrow, its posts would turn to planks).
+	if w >= 8 then
+		local _, body = MeshKit.Prop(b, "Torii", {
+			Red = { colour = c, shadow = true },
+			Black = { colour = P.KURO, shadow = true },
+		}, { scale = Vector3.new(w / 10, (h + 2) / 10, math.max(0.6, w * 0.055) / 0.6) })
+		b = body
+	end
 	local r = math.max(0.6, w * 0.055)
 	for _, x in ipairs({ -w / 2, w / 2 }) do
 		b:part("ToriiPost", Vector3.new(h + 2, r * 2, r * 2), vertical(Vector3.new(x, (h + 2) / 2, 0)), c, nil, { shape = "Cylinder" })
@@ -1175,6 +1186,15 @@ function CityKit.Marker(b: B, name: string, at: Vector3, attributes: { [string]:
 	for k, v in pairs(attributes or {}) do
 		p:SetAttribute(k, v)
 	end
+	return p
+end
+
+--- A marker for CityLife.client, tagged `tag` (PigeonFlock, FireflyField, PetalFall): `size`
+--- is the box it works in, `attributes` its settings.
+function CityKit.Life(b: B, tag: string, at: Vector3, size: Vector3, attributes: { [string]: any }?): BasePart
+	local p = CityKit.Marker(b, tag, at, attributes)
+	p.Size = size
+	p:AddTag(tag)
 	return p
 end
 

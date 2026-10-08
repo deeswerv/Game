@@ -123,10 +123,21 @@ env.require = function(target)
 		return false
 	end }
 end
+-- Sibling modules a builder may ask its script for: the maps' helpers, or a city's own
+-- (Downtown's MeshKit). Listed up front -- a metamethod cannot wait on the file system.
+local siblings = {}
+for _, dir in ipairs({ "HanamiService", "DistrictService", "ArenaService" }) do
+	for _, file in ipairs(fs.readDir("src/ServerScriptService/" .. dir)) do
+		local name = file:match("^(.+)%.luau$")
+		if name then
+			siblings[name] = "src/ServerScriptService/" .. dir .. "/" .. file
+		end
+	end
+end
 env.script = setmetatable({}, { __index = function(_, k)
 	if k == "Parent" then
 		return setmetatable({}, { __index = function(_, name)
-			return { __path = "src/ServerScriptService/ArenaService/" .. name .. ".luau" }
+			return { __path = siblings[name] or ("src/ServerScriptService/ArenaService/" .. name .. ".luau") }
 		end })
 	end
 	return nil

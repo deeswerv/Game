@@ -372,6 +372,7 @@ local function lanternRow(root: B)
 	-- the eaves round it, a drum on its stage.
 	local plaza = f:within(CFrame.new(-360, WALK, 36))
 	CityKit.Patch(plaza, "PlazaStone", -30, 30, -24, 24, 0.02, Color3.fromRGB(190, 180, 166), M.Slate)
+	CityKit.Life(plaza, "PigeonFlock", Vector3.new(0, 0.1, 0), Vector3.new(1, 1, 1), { Radius = 22, Inner = 9, Count = 6 })
 	local y = CityKit.Scaled(plaza, 1.6)
 	for _, x in ipairs({ -4.4, 4.4 }) do
 		for _, z in ipairs({ -4.4, 4.4 }) do

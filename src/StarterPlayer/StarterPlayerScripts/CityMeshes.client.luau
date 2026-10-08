@@ -49,7 +49,9 @@ local function draw(prop: Instance)
 	if not pieces or not prop.Parent or prop:GetAttribute("KitDrawn") then
 		return
 	end
-	local scale = tonumber(prop:GetAttribute("KitScale")) or 1
+	local raw = prop:GetAttribute("KitScale")
+	local scale = if typeof(raw) == "Vector3" then raw elseif type(raw) == "number" then Vector3.new(raw, raw, raw)
+		else Vector3.new(1, 1, 1)
 	local drawn = Instance.new("Folder")
 	drawn.Name = "KitMeshes"
 	for role, template in pairs(pieces) do
