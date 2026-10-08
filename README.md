@@ -253,6 +253,27 @@ have wheels in dark arches
 with five-spoke rims, chrome belt lines and door handles, lamp surrounds, an exhaust and an
 aerial.
 
+**Real meshes from Blender (the city kit).** `tools/models/build_kit.py` models three cars
+(saloon, hatchback, SUV), the crook street lamp, two trees, a bench, a bin and a hydrant in
+Blender, in code, and exports `assets/models/CityKit.glb` (previews in
+`assets/models/previews/`, the whole kit in `sheet.png`). Once the kit is in the place, Downtown
+draws its cars, lamps, trees, benches, bins and hydrants from it: a car is 8 meshes instead of
+about 40 parts. The lamp globes still light at night. The part-built solid pieces stay as invisible
+hulls, so nothing collides or stops a bullet differently. Without the kit, every prop is
+part-built as before. To bring it in (once, in Studio, which uploads the meshes to your account):
+
+1. **Home → Import 3D** (or **Avatar → Import 3D**), pick `assets/models/CityKit.glb`, Insert.
+2. Drag the imported **CityKit** model into **ServerStorage**. If it is left in the world, the
+   game tidies it away itself. Press Play.
+3. To keep it across builds, right-click **CityKit → Save to File…** and add it to the repo as
+   `assets/models/CityKit.rbxm`. The build then puts it in ServerStorage every time.
+
+MeshKitData.luau says where every piece goes, so the importer's scale, position and facing do
+not matter. A model with a missing or misshapen piece is skipped (a warning in Output), not drawn
+wrong. Rebuild the kit after changing a model with
+`python tools/models/build_kit.py` (Blender's `bpy` module), and check it with
+`tools/uitest/meshkit.luau`.
+
 **Downtown is the first stop.** You wash up at the Crossing; the Quartermaster's first job is
 *Welcome to Downtown*, and the Travel menu marks it START HERE. Everything past it -- the Flats,
 Watchpoint, the Reach, and the Quartermaster's work out there -- stays locked until you beat the

@@ -182,6 +182,7 @@ def model(name, pieces):
         if isinstance(bm, bpy.types.Object):
             obj = bm
             obj.name = f"{name}_{role}"
+            obj.data.name = obj.name
         else:
             obj = mesh_object(f"{name}_{role}", bm)
         finish(obj)
@@ -375,6 +376,9 @@ def bench():
         bmesh.ops.rotate(tmp, verts=tmp.verts, matrix=Matrix.Rotation(math.radians(12), 3, "X"))
         bmesh.ops.translate(tmp, vec=(0, -(0.82 + (i + 1) * 0.1), z), verts=tmp.verts)
         merge(wood, tmp)
+    # Seat height to match the part-built bench (slats 1.6 above the pavement, backs at 2.1 and 2.6).
+    for bm in (iron, wood):
+        bmesh.ops.scale(bm, vec=(1, 1, 0.8), verts=bm.verts)
     return model("Bench", {"Iron": iron, "Paint": wood})
 
 

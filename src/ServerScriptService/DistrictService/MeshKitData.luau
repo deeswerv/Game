@@ -54,8 +54,8 @@ return {
 		Leaves3 = { size = Vector3.new(6.370, 4.947, 6.800), offset = Vector3.new(0.238, 14.604, -0.199), tris = 480 },
 	},
 	Bench = {
-		Iron = { size = Vector3.new(5.500, 3.438, 2.016), offset = Vector3.new(0.000, 1.719, -0.062), tris = 864 },
-		Paint = { size = Vector3.new(6.100, 1.553, 1.975), offset = Vector3.new(0.000, 2.657, 0.158), tris = 540 },
+		Iron = { size = Vector3.new(5.500, 2.750, 2.016), offset = Vector3.new(0.000, 1.375, -0.062), tris = 864 },
+		Paint = { size = Vector3.new(6.100, 1.243, 1.975), offset = Vector3.new(0.000, 2.125, 0.158), tris = 540 },
 	},
 	Hydrant = {
 		Red = { size = Vector3.new(1.450, 2.780, 1.370), offset = Vector3.new(0.000, 1.390, 0.065), tris = 964 },
