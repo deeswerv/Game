@@ -4,3 +4,8 @@ out/
 node_modules/
 tools/mapview/three/
 __pycache__/
+# Obsidian: per-person window state (the vault settings in .obsidian/ are shared)
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache
+.trash/

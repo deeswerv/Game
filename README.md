@@ -31,6 +31,15 @@ you press Stop, whatever the game does. To test saving:
 
 The live game always saves.
 
+## Project notes (Obsidian)
+
+The repo doubles as an [Obsidian](https://obsidian.md) vault for tracking the game's progress:
+a roadmap, a changelog, a playtest checklist, a page to log bugs and wanted changes, and a page
+per map and system, with renders of the cities and the Blender kit. Install Obsidian, choose
+**Open folder as vault**, pick this repo's folder, and start at `notes/Home.md`. Scripts,
+builds and tools are hidden from its search and graph (`.obsidian/app.json`); daily notes go to
+`notes/Devlog` from the template in `notes/Templates`.
+
 ## Controls
 
 | Key | Does |

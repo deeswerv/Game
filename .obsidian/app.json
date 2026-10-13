@@ -1,0 +1,15 @@
+{
+  "userIgnoreFilters": [
+    "build/",
+    "src/",
+    "tools/",
+    "place/",
+    "node_modules/",
+    "out/"
+  ],
+  "attachmentFolderPath": "notes/attachments",
+  "newFileLocation": "folder",
+  "newFileFolderPath": "notes",
+  "alwaysUpdateLinks": true,
+  "showUnsupportedFiles": false
+}
