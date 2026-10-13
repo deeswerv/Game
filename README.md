@@ -281,8 +281,9 @@ in `sheet3.png`):
   glass, a slatted bench, the lit advert, the stop's round sign); the crook street lamps and the
   plaza's post lamps; leafy trees, cypresses and flowering shrubs; benches, bins, hydrants,
   dumpsters, phone booths, traffic lights and cafe tables under their umbrellas; the shops'
-  striped awnings (curved canvas, scalloped valance); the three-tier plaza fountain; and on
-  the roofs, wooden water towers on braced steel legs (hoops, a conical cap, a ladder) and air
+  striped awnings (curved canvas, scalloped valance); the three-tier plaza fountain; the ZEE
+  BANK armoured truck (barred windscreen, riveted strongbox, three axles, beacons; its back
+  doors and vault lock stay parts, so the robbery still swings them open); and on the roofs, wooden water towers on braced steel legs (hoops, a conical cap, a ladder) and air
   units with louvres and fan grilles.
 - Hanami City: the cherry trees (the Great Sakura too, grown huge), cloud-pruned pines, stone
   lanterns, vending machines, its street trees, the big torii (stretched to each gate), the
@@ -333,7 +334,7 @@ gravel and in the festival square. PERFORMANCE thins the flocks and turns the st
 petals and fireflies off (`CityLife.client.luau`,
 `tools/uitest/citylife.luau`).
 
-**Car alarms.** Put a round into a parked car, in either city, and it goes off: the hazards
+**Car alarms.** Put a round into a parked car (or the ZEE BANK truck), in either city, and it goes off: the hazards
 flash amber front and back, throwing a glow on the street, and it whoops its two-tone alarm
 for seven seconds before it settles. Every client works it out from the shots it already sees,
 so it costs no network traffic, and the people on the pavement scatter from the shooting as

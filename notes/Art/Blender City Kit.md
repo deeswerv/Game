@@ -30,6 +30,7 @@ change. A device that cannot make meshes just sees the parts. Back to [[Home]].
 | Bench, Bin, Hydrant, Dumpster, PhoneBooth, TrafficLight | Downtown street furniture | ![[Hydrant.png\|160]] |
 | CafeTable, Awning, Fountain, FoodTruck | The plaza, the shops, the taco truck and ice-cream van | ![[Fountain.png\|160]] |
 | BusShelter | Downtown's avenue | ![[BusShelter.png\|160]] |
+| ArmouredTruck | The ZEE BANK truck (its doors and lock stay parts so the robbery can swing them) | ![[ArmouredTruck.png\|160]] |
 | WaterTower, RoofUnit | Downtown's roofs | ![[WaterTower.png\|160]] |
 | Sakura, Pine, StoneLantern, Torii, Vending | Hanami's trees, lanterns, gates, drinks machines | ![[Sakura.png\|160]] |
 | AvenueLamp, AvenueLamp2 | Hanami's avenues | ![[AvenueLamp2.png\|160]] |
@@ -47,5 +48,5 @@ change. A device that cannot make meshes just sees the parts. Back to [[Home]].
 4. `lune run tools/build.luau`, then the `meshkit`, `citymeshes` and `hanami` suites.
 
 ## Ideas
-- [ ] The ZEE BANK armoured truck · [ ] the ice-cream van's cone · [ ] Hanami lantern strings and noren
+- [x] The ZEE BANK armoured truck · [ ] the ice-cream van's cone · [ ] Hanami lantern strings and noren
 - [ ] Mailboxes and news stands if Downtown ever wants more street clutter back

@@ -3503,42 +3503,57 @@ local function armouredTruck(b: Kit.Builder)
 	local armour = Color3.fromRGB(70, 82, 96)
 	local panel = darker(armour, 0.18)
 	local dark = Color3.fromRGB(26, 28, 32)
-	m:part("TruckBox", Vector3.new(6.6, 7.2, 10.5), Vector3.new(0, 5.0, 2.25), armour, M.DiamondPlate)
-	m:part("TruckCab", Vector3.new(6.2, 5.2, 4.5), Vector3.new(0, 4.0, -5.25), armour, M.Metal)
-	m:decor("Chassis", Vector3.new(5.8, 1, 15), Vector3.new(0, 1.3, 0), dark)
-	m:decor("CabRoof", Vector3.new(6.3, 0.3, 4.6), Vector3.new(0, 6.75, -5.25), panel)
+	-- The kit's truck where there is one. Its back doors, their frame and hinges, the vault
+	-- lock and the lettering stay parts on the truck itself: the robbery swings the doors.
+	local _, body = kitProp(m, "ArmouredTruck", {
+		Body = { colour = armour, material = M.Metal, reflectance = 0.06, shadow = true, name = "TruckShell" },
+		Panel = { colour = panel, material = M.DiamondPlate, shadow = true, name = "TruckPanel" },
+		Band = { colour = GOLD, material = M.Metal, name = "Band" },
+		Glass = { colour = CAR_GLASS, material = M.Glass, reflectance = 0.25, name = "Windscreen" },
+		Trim = { colour = dark, name = "TruckTrim" },
+		LampFront = { colour = Color3.fromRGB(250, 246, 226), material = M.Glass, name = "Headlight" },
+		LampRear = { colour = Color3.fromRGB(200, 40, 40), material = M.Glass, name = "Taillight" },
+		Beacon = { colour = Color3.fromRGB(255, 170, 40), material = M.Glass, name = "Beacon" },
+		Tyre = { colour = CAR_TRIM, material = M.Rubber, shadow = true },
+		Rim = { colour = CAR_CHROME, material = M.Metal },
+		Chrome = { colour = CAR_CHROME, material = M.Metal },
+	})
+	body:part("TruckBox", Vector3.new(6.6, 7.2, 10.5), Vector3.new(0, 5.0, 2.25), armour, M.DiamondPlate)
+	body:part("TruckCab", Vector3.new(6.2, 5.2, 4.5), Vector3.new(0, 4.0, -5.25), armour, M.Metal)
+	body:decor("Chassis", Vector3.new(5.8, 1, 15), Vector3.new(0, 1.3, 0), dark)
+	body:decor("CabRoof", Vector3.new(6.3, 0.3, 4.6), Vector3.new(0, 6.75, -5.25), panel)
 	-- The cab: a barred windscreen, side windows, the grille, the bumper and the lamps.
-	m:decor("Windscreen", Vector3.new(5.6, 2.2, 0.12), Vector3.new(0, 5.1, -7.52), CAR_GLASS, M.Glass, { reflectance = 0.25 })
+	body:decor("Windscreen", Vector3.new(5.6, 2.2, 0.12), Vector3.new(0, 5.1, -7.52), CAR_GLASS, M.Glass, { reflectance = 0.25 })
 	for _, x in ipairs({ -1.4, 0, 1.4 }) do
-		m:decor("ScreenBar", Vector3.new(0.14, 2.2, 0.1), Vector3.new(x, 5.1, -7.6), dark)
+		body:decor("ScreenBar", Vector3.new(0.14, 2.2, 0.1), Vector3.new(x, 5.1, -7.6), dark)
 	end
 	for _, x in ipairs({ -1, 1 }) do
-		m:decor("CabWindow", Vector3.new(0.08, 1.6, 2.2), Vector3.new(x * 3.12, 5.2, -5.4), CAR_GLASS, M.Glass)
-		m:decor("Mirror", Vector3.new(0.3, 0.9, 0.5), Vector3.new(x * 3.45, 5.0, -7.0), dark)
-		m:decor("Headlight", Vector3.new(1, 0.6, 0.08), Vector3.new(x * 2.3, 3.1, -7.56), Color3.fromRGB(250, 246, 226), M.Glass)
-		m:decor("Taillight", Vector3.new(0.6, 1, 0.08), Vector3.new(x * 2.9, 2.6, 7.54), Color3.fromRGB(200, 40, 40), M.Glass)
+		body:decor("CabWindow", Vector3.new(0.08, 1.6, 2.2), Vector3.new(x * 3.12, 5.2, -5.4), CAR_GLASS, M.Glass)
+		body:decor("Mirror", Vector3.new(0.3, 0.9, 0.5), Vector3.new(x * 3.45, 5.0, -7.0), dark)
+		body:decor("Headlight", Vector3.new(1, 0.6, 0.08), Vector3.new(x * 2.3, 3.1, -7.56), Color3.fromRGB(250, 246, 226), M.Glass)
+		body:decor("Taillight", Vector3.new(0.6, 1, 0.08), Vector3.new(x * 2.9, 2.6, 7.54), Color3.fromRGB(200, 40, 40), M.Glass)
 	end
-	m:decor("Grille", Vector3.new(4.4, 1.6, 0.1), Vector3.new(0, 2.6, -7.55), dark)
-	m:decor("Bumper", Vector3.new(6.6, 0.8, 0.5), Vector3.new(0, 1.5, -7.75), dark)
-	m:decor("RearBumper", Vector3.new(6.6, 0.6, 0.5), Vector3.new(0, 1.4, 7.75), dark)
-	m:decor("Step", Vector3.new(4.6, 0.3, 0.8), Vector3.new(0, 1.9, 8.0), STEEL, M.DiamondPlate)
+	body:decor("Grille", Vector3.new(4.4, 1.6, 0.1), Vector3.new(0, 2.6, -7.55), dark)
+	body:decor("Bumper", Vector3.new(6.6, 0.8, 0.5), Vector3.new(0, 1.5, -7.75), dark)
+	body:decor("RearBumper", Vector3.new(6.6, 0.6, 0.5), Vector3.new(0, 1.4, 7.75), dark)
+	body:decor("Step", Vector3.new(4.6, 0.3, 0.8), Vector3.new(0, 1.9, 8.0), STEEL, M.DiamondPlate)
 	-- The light bar on the cab.
-	m:decor("LightBar", Vector3.new(3, 0.4, 0.7), Vector3.new(0, 7.1, -5.6), dark)
+	body:decor("LightBar", Vector3.new(3, 0.4, 0.7), Vector3.new(0, 7.1, -5.6), dark)
 	for _, x in ipairs({ -1, 1 }) do
-		m:decor("Beacon", Vector3.new(0.7, 0.45, 0.6), Vector3.new(x * 1.1, 7.35, -5.6), Color3.fromRGB(255, 170, 40), M.Glass)
+		body:decor("Beacon", Vector3.new(0.7, 0.45, 0.6), Vector3.new(x * 1.1, 7.35, -5.6), Color3.fromRGB(255, 170, 40), M.Glass)
 	end
 	-- The strongbox: riveted ribs, the gold band, the name on both sides, a roof hatch.
 	for _, x in ipairs({ -1, 1 }) do
 		for _, z in ipairs({ -1.6, 1.4, 4.4 }) do
-			m:decor("Rib", Vector3.new(0.14, 4.6, 0.32), Vector3.new(x * 3.37, 6.15, z), panel)
+			body:decor("Rib", Vector3.new(0.14, 4.6, 0.32), Vector3.new(x * 3.37, 6.15, z), panel)
 		end
 		local at = Vector3.new(x * 3.42, 6.6, 2.25)
 		painted(m, "ZEE BANK", Kit.Look(at, at + Vector3.new(x * 10, 0, 0)), 7, 1.3, GOLD, Enum.Font.GothamBlack)
 		local sub = Vector3.new(x * 3.42, 4.4, 2.25)
 		painted(m, "SECURE TRANSPORT", Kit.Look(sub, sub + Vector3.new(x * 10, 0, 0)), 6, 0.5, CREAM, Enum.Font.GothamBold)
 	end
-	m:decor("Band", Vector3.new(6.74, 0.9, 10.6), Vector3.new(0, 3.3, 2.25), GOLD, M.Metal)
-	m:decor("RoofHatch", Vector3.new(2.4, 0.3, 2.4), Vector3.new(0, 8.75, 3.5), panel)
+	body:decor("Band", Vector3.new(6.74, 0.9, 10.6), Vector3.new(0, 3.3, 2.25), GOLD, M.Metal)
+	body:decor("RoofHatch", Vector3.new(2.4, 0.3, 2.4), Vector3.new(0, 8.75, 3.5), panel)
 	-- The back: a dark frame, two heavy doors, their hinges and handles, and the vault lock.
 	m:decor("DoorFrame", Vector3.new(6.4, 6.8, 0.15), Vector3.new(0, 5.0, 7.55), dark)
 	for _, x in ipairs({ -1, 1 }) do
@@ -3554,7 +3569,7 @@ local function armouredTruck(b: Kit.Builder)
 	m:decor("LockWheel", Vector3.new(0.12, 0.9, 0.9), CFrame.new(0, 6.2, 8.2) * CFrame.Angles(0, math.rad(90), 0), STEEL, M.Metal,
 		{ shape = "Cylinder" })
 	model.PrimaryPart = lock
-	wheels(m, 3.0, { -5.0, 1.2, 4.6 }, 1.4)
+	wheels(body, 3.0, { -5.0, 1.2, 4.6 }, 1.4)
 	return model
 end
 

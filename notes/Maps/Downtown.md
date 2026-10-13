@@ -29,7 +29,8 @@ cartoon low-poly street in saturated colours with white trim, no neon by day. Bu
 ## Kit models used here
 Saloon, hatch, SUV, pickup, muscle car, taxi; crook lamps and post lamps; trees, cypresses,
 shrubs; benches, bins, hydrants, dumpsters, phone booths, traffic lights, cafe tables; awnings;
-the fountain; food trucks; bus shelters; rooftop water towers and air units. See [[Blender City Kit]].
+the fountain; food trucks; bus shelters; the ZEE BANK armoured truck; rooftop water towers and air
+units. See [[Blender City Kit]].
 
 ## Notes and ideas
 - Streets are kept sparse on purpose so the roads read and the tower stays in view.

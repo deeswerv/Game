@@ -13,7 +13,7 @@ What makes the cities feel lived in. Back to [[Home]] · maps: [[Downtown]], [[H
 | Petals & fireflies | Petals fall from every cherry tree; fireflies over the parks at night | `CityLife.client` |
 | Rain | Streaks, splashes, wet streets, cooler grade, lightning and thunder (F4 → Weather → Rain) | `Rain.client`, `rain.luau` |
 | Night lights | Lamps and windows come on at dusk, most go dark after midnight | `CityLights.client`, `citylights.luau` |
-| Car alarms | Shoot a parked car: amber hazards, a glow, a two-tone alarm for 7 s | `CarAlarms.client`, `caralarms.luau` |
+| Car alarms | Shoot a parked car (or the bank truck): amber hazards, a glow, a two-tone alarm for 7 s | `CarAlarms.client`, `caralarms.luau` |
 | Giant screens | Hanami's screens rotate their adverts | `CityScreens.client` |
 
 **GRAPHICS** (F1): ULTRA, BALANCED or PERFORMANCE. PERFORMANCE thins flocks, turns steam, smoke,

@@ -5,6 +5,7 @@
 --     glow comes on, the alarm sounds -- on the kit's lamps where the kit is drawn;
 --   * no other car goes off, and a shot in the open sets nothing off;
 --   * a few seconds later it settles: the lamps are as they were, the glow and the sound gone;
+--   * the ZEE BANK truck goes off too;
 --   * it works on the part-built cars too, where a device cannot draw the kit.
 --
 --   lune run tools/uitest/caralarms.luau
@@ -171,6 +172,22 @@ for _, d in ipairs(car:GetDescendants()) do
 	end
 end
 check(restored, "it settles: lamps as they were, the glow and the sound gone")
+
+print("the ZEE BANK truck")
+local truck = nil
+for _, d in ipairs(folder:GetDescendants()) do
+	if d:IsA("Model") and d:GetAttribute("KitModel") == "ArmouredTruck" then
+		truck = d
+	end
+end
+local box = truck and truck:FindFirstChild("TruckBox")
+check(box ~= nil and truck.Parent.Name == "ArmouredTruck" and truck.Parent:FindFirstChild("TruckDoorL") ~= nil,
+	"is drawn from the kit, its doors still parts on the truck itself")
+if box then
+	CombatFX.Gunfire:Fire(box.Position + Vector3.new(3.3, 0, 0))
+	World.advance(0.1)
+	check(flashing(truck) and sounding(truck), "goes off when shot, like any car")
+end
 
 print("a car where the kit is not drawn")
 local plain = nil

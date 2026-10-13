@@ -14,6 +14,9 @@ Back to [[Home]].
 ![[notes/attachments/downtown-bus-shelter.jpg]]
 *A bus shelter on the avenue, from the Blender kit.*
 
+![[notes/attachments/downtown-bank-truck.jpg]]
+*The ZEE BANK armoured truck at the kerb, ready to rob.*
+
 ## Hanami City
 ![[notes/attachments/hanami-station.jpg]]
 *By the shrine's torii: the city bus, a kei car, the cherry trees and Hotel Sakura.*

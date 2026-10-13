@@ -53,7 +53,8 @@ PREVIEW = {
     "Bed": (0.72, 0.74, 0.76), "Load": (0.6, 0.45, 0.28), "Frame": (0.2, 0.22, 0.26), "Lip": (0.15, 0.59, 0.59),
     "AdPanel": (0.98, 0.77, 0.27), "Bench": (0.69, 0.49, 0.31), "Concrete": (0.7, 0.7, 0.68), "Insulator": (0.94, 0.94, 0.92),
     "Sleeve": (0.95, 0.78, 0.15), "Box": (0.62, 0.64, 0.66), "Basket": (0.75, 0.77, 0.8), "Saddle": (0.08, 0.08, 0.09),
-    "Stripe2": (0.9, 0.45, 0.6), "Under": (0.08, 0.08, 0.09),
+    "Stripe2": (0.9, 0.45, 0.6), "Under": (0.08, 0.08, 0.09), "Panel": (0.22, 0.26, 0.31), "Band": (0.9, 0.7, 0.2),
+    "Beacon": (1.0, 0.62, 0.12),
 }
 
 random.seed(7)
@@ -1458,6 +1459,78 @@ def train(name, cab):
     return model(name, pieces)
 
 
+def armoured_truck():
+    """armouredTruck(): the ZEE BANK armoured truck, nose to Roblox -Z, origin on the road. A
+    cab with a near-upright barred windscreen in front of a riveted strongbox, three axles in
+    cut arches, the bank's gold band, a light bar with amber beacons, a roof hatch, fuel tanks,
+    an exhaust stack, the grille, bumpers and a rear step. The back doors, their frame and the
+    vault lock are not part of it: the game keeps those as parts, since the robbery swings the
+    doors open."""
+    W, r = 6.6, 1.4
+    axles = (-5.0, 1.2, 4.6)
+
+    def arches(width):
+        a = bmesh.new()
+        for z in axles:
+            add_cylinder(a, rb(0, r, z), r + 0.16, width, axis="X", segments=28)
+        return a
+
+    shell = bmesh.new()
+    rbox(shell, (0, 5.0, 2.25), (W, 7.2, 10.5), bevel=0.3)
+    cab_bm = bmesh.new()
+    cprof = [(-3.0, 1.4), (-7.6, 1.4), (-7.62, 4.0), (-7.45, 6.35), (-6.9, 6.9), (-3.0, 6.9)]
+    add_profile(cab_bm, [(-z, y) for z, y in cprof], -3.1, 3.1, bevel=0.25, segments=3)
+    merge(shell, cab_bm)
+    body = mesh_object("ArmouredTruck_BodyTmp", shell)
+    cut(body, arches(W + 2))
+    panel, band, glass, trim, front, rear, beacon, tyre, rim, chrome = (bmesh.new() for _ in range(10))
+    # The strongbox: ribs down both sides, panel seams, a lip round the roof, the hatch.
+    for x in (-1, 1):
+        for z in (-1.6, 1.4, 4.4):
+            rbox(panel, (x * (W / 2 + 0.05), 6.15, z), (0.12, 4.6, 0.32), bevel=0.04)
+            for y in (4.1, 5.2, 6.3, 7.4, 8.3):
+                add_cylinder(panel, rb(x * (W / 2 + 0.12), y, z), 0.07, 0.06, axis="X", segments=8)
+        for y in (4.25, 8.1):
+            rbox(panel, (x * (W / 2 + 0.03), y, 2.25), (0.06, 0.1, 10.2))
+    rbox(panel, (0, 8.66, 2.25), (W - 0.2, 0.14, 10.2), bevel=0.05)
+    rbox(panel, (0, 8.8, 3.5), (2.4, 0.3, 2.4), bevel=0.08)
+    rbox(panel, (0, 6.95, -5.25), (6.0, 0.14, 4.2), bevel=0.05)                    # the cab roof skin
+    # The gold band, cut round the arches.
+    band_bm = bmesh.new()
+    rbox(band_bm, (0, 3.55, 2.25), (W + 0.12, 0.9, 10.62), bevel=0.06)
+    band_obj = mesh_object("ArmouredTruck_BandTmp", band_bm)
+    cut(band_obj, arches(W + 3))
+    # The cab: windscreen behind bars, side windows, mirrors on arms.
+    rbox(glass, (0, 5.15, -7.6), (5.4, 2.1, 0.06), rot_x=-4, bevel=0.03)
+    for x in (-1.4, 0, 1.4):
+        rbox(trim, (x, 5.15, -7.68), (0.14, 2.1, 0.08), rot_x=-4)
+    for x in (-1, 1):
+        rbox(glass, (x * 3.12, 5.2, -5.4), (0.06, 1.6, 2.2), bevel=0.03)
+        add_tube(trim, [rb(x * 3.1, 5.4, -6.8), rb(x * 3.55, 5.4, -7.0)], 0.05, segments=6)
+        rbox(trim, (x * 3.6, 5.0, -7.0), (0.25, 0.9, 0.45), bevel=0.06)
+    # The front: grille with slats, bumper, lamps, the light bar and its beacons.
+    rbox(trim, (0, 2.6, -7.66), (4.4, 1.6, 0.1), bevel=0.04)
+    for y in (2.05, 2.4, 2.75, 3.1):
+        rbox(chrome, (0, y, -7.72), (4.1, 0.08, 0.05))
+    rbox(trim, (0, 1.5, -7.85), (W, 0.8, 0.5), bevel=0.12)
+    for x in (-1, 1):
+        rbox(front, (x * 2.6, 3.1, -7.66), (1.0, 0.6, 0.08), bevel=0.05)
+        rbox(beacon, (x * 1.1, 7.35, -5.6), (0.7, 0.45, 0.6), bevel=0.1)
+        rbox(rear, (x * 2.9, 1.95, 7.82), (0.7, 0.35, 0.1), bevel=0.04)
+    rbox(trim, (0, 7.1, -5.6), (3.0, 0.4, 0.7), bevel=0.08)
+    # Underneath and behind: the chassis, fuel tanks, an exhaust stack, the rear bumper and step.
+    rbox(trim, (0, 1.25, 0), (4.4, 0.8, 15), bevel=0.1)
+    for x in (-1, 1):
+        add_cylinder(chrome, rb(x * 2.75, 1.75, -1.8), 0.5, 2.4, axis="Y", segments=16)
+    add_cylinder(chrome, rb(2.95, 5.2, -2.85), 0.16, 7.0, segments=12)
+    rbox(trim, (0, 1.4, 7.85), (W, 0.6, 0.5), bevel=0.1)
+    rbox(trim, (0, 1.9, 8.1), (4.6, 0.25, 0.8))
+    wheels(tyre, rim, W, r, axles, inset=0.3, width=0.8, nuts=6)
+    return model("ArmouredTruck", {"Body": body, "Panel": panel, "Band": band_obj, "Glass": glass, "Trim": trim,
+                                   "LampFront": front, "LampRear": rear, "Beacon": beacon, "Tyre": tyre, "Rim": rim,
+                                   "Chrome": chrome})
+
+
 # ------------------------------------------------------------------------- build it all --
 
 def build():
@@ -1512,6 +1585,7 @@ def build():
     bike()
     train("TrainCar", False)
     train("TrainCab", True)
+    armoured_truck()
 
 
 def piece_frame(obj):

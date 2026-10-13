@@ -5,7 +5,8 @@
 -- nothing goes over the network.
 --
 -- The cars are the city kit's: "KitProp" models of a car (CityMeshes draws them from the kit,
--- or they are still part-built where it cannot), in Downtown and Hanami City alike. Their lamps
+-- or they are still part-built where it cannot), in Downtown and Hanami City alike, and the
+-- ZEE BANK truck. Their lamps
 -- are whichever lamp pieces are showing on this screen. A car already going off just keeps
 -- going; a handful can sound at once, no more.
 
@@ -14,7 +15,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CARS: { [string]: boolean } = {
 	Sedan = true, Hatch = true, SUV = true, MuscleCar = true, Pickup = true,
-	Kei = true, JSedan = true, Van = true, KeiTruck = true,
+	Kei = true, JSedan = true, Van = true, KeiTruck = true, ArmouredTruck = true,
 }
 local LAMPS: { [string]: boolean } = { Headlight = true, Taillight = true, HeadLamp = true, TailLamp = true }
 

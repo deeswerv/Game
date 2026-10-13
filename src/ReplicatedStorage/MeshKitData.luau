@@ -309,4 +309,17 @@ return {
 		LampFront = { size = Vector3.new(0.100, 0.700, 7.300), offset = Vector3.new(31.380, 4.600, -0.000), tris = 216 },
 		Sign = { size = Vector3.new(0.100, 0.700, 3.400), offset = Vector3.new(30.050, 12.200, -0.000), tris = 12 },
 	},
+	ArmouredTruck = {
+		Body = { size = Vector3.new(6.600, 7.200, 15.118), offset = Vector3.new(0.000, 5.000, -0.059), tris = 652 },
+		Panel = { size = Vector3.new(6.900, 5.100, 14.700), offset = Vector3.new(0.000, 6.400, -0.000), tris = 1860 },
+		Band = { size = Vector3.new(6.720, 0.900, 10.620), offset = Vector3.new(0.000, 3.550, 2.250), tris = 108 },
+		Glass = { size = Vector3.new(6.300, 2.095, 3.401), offset = Vector3.new(0.000, 5.150, -6.001), tris = 324 },
+		Trim = { size = Vector3.new(7.450, 6.450, 16.600), offset = Vector3.new(0.000, 4.075, 0.200), tris = 844 },
+		LampFront = { size = Vector3.new(6.200, 0.600, 0.080), offset = Vector3.new(0.000, 3.100, -7.660), tris = 216 },
+		LampRear = { size = Vector3.new(6.500, 0.350, 0.100), offset = Vector3.new(0.000, 1.950, 7.820), tris = 216 },
+		Beacon = { size = Vector3.new(2.900, 0.450, 0.600), offset = Vector3.new(0.000, 7.350, -5.600), tris = 216 },
+		Tyre = { size = Vector3.new(6.800, 2.800, 12.400), offset = Vector3.new(0.000, 1.400, -0.200), tris = 1680 },
+		Rim = { size = Vector3.new(6.960, 1.736, 11.336), offset = Vector3.new(0.000, 1.400, -0.200), tris = 1536 },
+		Chrome = { size = Vector3.new(6.500, 7.450, 7.145), offset = Vector3.new(0.000, 4.975, -4.172), tris = 212 },
+	},
 }

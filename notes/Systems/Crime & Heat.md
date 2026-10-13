@@ -13,7 +13,8 @@ Targets stay empty for five minutes.
 
 ## The ZEE BANK truck
 At the kerb up the west arm of the cross street (🚚). Hold E at the vault lock for 8 s: a
-$1,600-2,400 bag, 90 s of heat, a bigger squad. Ten minutes between hits.
+$1,600-2,400 bag, 90 s of heat, a bigger squad. Ten minutes between hits. It is a Blender
+model now ([[Blender City Kit]]); shoot it and its alarm goes off.
 
 ## Notoriety
 Another job within ten minutes raises your stars (up to ★★★): more cash, more XP, longer heat,

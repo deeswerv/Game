@@ -11,7 +11,7 @@ suggestion, not a promise. Back to [[Home]].
 - [ ] Check the Blender meshes show in a live server (Game Settings → Security → **Allow Mesh / Image APIs**)
 
 ## Next
-- [ ] More of Downtown's props from the [[Blender City Kit]]: the ZEE BANK armoured truck, the ice-cream van's cone, the armoured truck's doors
+- [ ] More of Downtown's props from the [[Blender City Kit]]: the ice-cream van's cone, the gas station's pumps, the ATMs
 - [ ] Hanami: lantern strings, noren curtains and shop signs as kit models
 - [ ] A third city or region past the Iron Shogun (the Travel menu has room)
 - [ ] Sounds for city life: crowd murmur, birds, the train arriving at Hanami Station
@@ -25,6 +25,8 @@ suggestion, not a promise. Back to [[Home]].
 - [ ] Seasonal events: cherry-blossom festival in Hanami, a Downtown block party
 
 ## Done (latest first)
+- [x] The ZEE BANK armoured truck from the Blender kit; shooting it sets off its alarm (13 Oct)
+- [x] This Obsidian vault (13 Oct)
 - [x] Car alarms: shoot a parked car and it goes off (8 Oct)
 - [x] Hanami crowd on the Scramble; bus, kei truck, train, poles, bikes, pickup, bus shelters, water towers, air units in Blender (8 Oct)
 - [x] Hanami's cars, avenue lamps and the Great Sakura from the kit (8 Oct)

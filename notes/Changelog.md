@@ -6,6 +6,12 @@ tags: [history]
 What changed, newest first, grouped by day (from the commit history). Back to [[Home]] ·
 [[Roadmap]].
 
+## 13 Oct 2026
+- **The ZEE BANK armoured truck** from the [[Blender City Kit]]: barred windscreen, riveted strongbox, three axles, gold band, beacons. Its doors and vault lock stay parts, so the robbery still swings them; shoot it and its alarm goes off
+- **This Obsidian vault**: roadmap, changelog, playtest checklist, bugs page, maps, systems, gallery
+
+![[notes/attachments/downtown-bank-truck.jpg]]
+
 ## 8 Oct 2026: the overnight session
 - **Car alarms**: shoot a parked car and its hazards flash amber and it whoops for seven seconds ([[City Life & Effects]])
 - **Hanami crowd**: sixteen people crossing the Scramble and walking its pavements

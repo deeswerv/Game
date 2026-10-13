@@ -41,7 +41,7 @@ opens up a second city past the boss at the top of ZEE TOWER.
 - The full reference is `README.md` at the top of the file list.
 
 ## At a glance
-- In development since 25 Sep 2026; the latest game change is car alarms (8 Oct).
-- 42 Blender models in the city kit, drawn on every player's device with no import.
+- In development since 25 Sep 2026; the latest game change is the ZEE BANK truck from the kit (13 Oct).
+- 43 Blender models in the city kit, drawn on every player's device with no import.
 - Two cities, four duel maps, the Flats, three bosses (the Kingpin, the Don, the Iron Shogun)
   and a mini-boss (Foreman Tetsu).
