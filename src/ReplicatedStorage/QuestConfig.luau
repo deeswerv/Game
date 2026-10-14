@@ -46,8 +46,70 @@ QuestConfig.Quests = ({
 		summary = "Open the Travel menu and head Downtown. The Fixer by the courts has work.",
 		dialogue = "Fresh off the boat? The Crossing's no place to make a name. Open your Travel menu and head Downtown -- walk up to ZEE PLAZA, then find the Fixer by the courts. Everything past this harbour is shut until somebody deals with the man at the top of ZEE TOWER.",
 		objective = { kind = "Reach", position = Vector3.new(-155, 1000.5, 1500), radius = 44, count = 1,
-			label = "Reach ZEE PLAZA, Downtown" },
+			label = "Press T, travel Downtown, reach ZEE PLAZA" },
 		rewards = { coins = 250, xp = 150 },
+		firstDay = 1,
+		autoNext = "FirstDayAlley",
+	},
+	-- FIRST DAY: the rest of a new player's first ten minutes, one step straight after another
+	-- (`autoNext` takes the next job on by itself, so nobody walks back to the harbour), each
+	-- teaching one thing Downtown does -- a fight, the gear shop, a stick-up -- and ending at the
+	-- Fixer, whose own chain is the Downtown story. `auto` keeps them off every giver's board:
+	-- they are only ever reached through the chain. QuestService starts the chain on a first join.
+	{
+		id = "FirstDayAlley",
+		auto = true,
+		firstDay = 2,
+		title = "First Day: The Alley",
+		giver = "Quartermaster",
+		levelRequired = 1,
+		summary = "A crew squats in the alley behind the gas station. Put two of them down.",
+		dialogue = "",
+		objective = { kind = "KillCrew", zone = "Alley", count = 2, position = Vector3.new(-262, 1000.5, 1417), where = "THE ALLEY",
+			label = "Crew down in THE ALLEY" },
+		rewards = { coins = 300, xp = 200 },
+		autoNext = "FirstDayGear",
+	},
+	{
+		id = "FirstDayGear",
+		auto = true,
+		firstDay = 3,
+		title = "First Day: Gear Up",
+		giver = "Quartermaster",
+		levelRequired = 1,
+		summary = "Walk into ZEE TACTICS on the avenue and press E at the counter: heals, armour and bombs.",
+		dialogue = "",
+		objective = { kind = "Shop", panel = "Tactics", count = 1, position = Vector3.new(-115, 1000.5, 1390),
+			where = "ZEE TACTICS", label = "Press E at the ZEE TACTICS counter" },
+		rewards = { coins = 400, xp = 150 },
+		autoNext = "FirstDayScore",
+	},
+	{
+		id = "FirstDayScore",
+		auto = true,
+		firstDay = 4,
+		title = "First Day: The Score",
+		giver = "Quartermaster",
+		levelRequired = 1,
+		summary = "Hold E at a till or a cash machine. Then keep the bag through the heat: the crew will come.",
+		dialogue = "",
+		objective = { kind = "Stickup", count = 1, position = Vector3.new(-115, 1000.5, 1390), where = "a till",
+			label = "Rob a till (hold E behind any counter)" },
+		rewards = { coins = 300, xp = 250 },
+		autoNext = "FirstDayFixer",
+	},
+	{
+		id = "FirstDayFixer",
+		auto = true,
+		firstDay = 5,
+		title = "First Day: Meet the Fixer",
+		giver = "Quartermaster",
+		levelRequired = 1,
+		summary = "The Fixer runs the real work in Downtown. Find the purple JOBS canopy by the courts.",
+		dialogue = "",
+		objective = { kind = "Reach", position = Vector3.new(-109, 1000.5, 1542), radius = 12, count = 1,
+			label = "Find the Fixer by ZEE COURTS" },
+		rewards = { coins = 500, xp = 300, crystals = 2 },
 	},
 	{
 		id = "ClearTheCamp",
@@ -535,7 +597,7 @@ function QuestConfig.NextAvailable(giver: string, level: number, completed: { [s
 	flags: { [string]: boolean }?): (any, string?)
 	local lockedBy: string? = nil
 	for _, q in ipairs(QuestConfig.Quests) do
-		if q.giver == giver and not completed[q.id] then
+		if q.giver == giver and not completed[q.id] and not q.auto then
 			if q.requires and not (flags and flags[q.requires]) then
 				lockedBy = lockedBy or q.requires
 			elseif level >= q.levelRequired then

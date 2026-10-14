@@ -341,7 +341,15 @@ so it costs no network traffic, and the people on the pavement scatter from the 
 before (`CarAlarms.client.luau`, `tools/uitest/caralarms.luau`).
 
 **Downtown is the first stop.** You wash up at the Crossing; the Quartermaster's first job is
-*Welcome to Downtown*, and the Travel menu marks it START HERE. Everything past it -- the Flats,
+*Welcome to Downtown*, and the Travel menu marks it START HERE.
+
+**The First Day.** A brand-new player is put straight onto a short guided run through what
+Downtown does, each step taken on by itself the moment the last is done (no walking back to the
+harbour), each marked on the compass and paid: get to ZEE PLAZA (press T) → put down two of the
+crew in THE ALLEY → press E at the ZEE TACTICS counter → rob a till and feel the heat → find the
+Fixer, whose own chain takes it from there. About ten minutes, $1,750, 1,050 XP and two crystals
+in all. Anyone who has done any job already is left alone (`QuestConfig` `autoNext`,
+`QuestService.StartFirstDay`, `tools/uitest/firstday.luau`). Everything past it -- the Flats,
 Watchpoint, the Reach, and the Quartermaster's work out there -- stays locked until you beat the
 Don at the top of **ZEE TOWER**.
 

@@ -245,6 +245,13 @@ local function wire(folder: Instance)
 				-- The client opens the panel (StarterPlayerScripts.MainUI reads this).
 				prompt:SetAttribute("OpenPanel", panel)
 				prompt.HoldDuration = 0
+				-- The First Day sends new players to a counter; tell the quest tracker they got there.
+				prompt.Triggered:Connect(function(player)
+					local okQ, Quests = pcall(require, ServerScriptService:FindFirstChild("QuestService") :: ModuleScript)
+					if okQ and type(Quests) == "table" and Quests.RegisterEvent then
+						Quests.RegisterEvent(player, "shop", { panel = panel })
+					end
+				end)
 			elseif d.Name == "TowerDoor" or d.Name == "TowerExit" then
 				-- The elevator up ZEE TOWER and back down (TowerService decides who may go).
 				prompt.HoldDuration = 0.6

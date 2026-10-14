@@ -476,6 +476,33 @@ local function complete(player: Player, replica, quest)
 		crystals = quest.rewards.crystals,
 		rep = quest.rewards.rep,
 	})
+
+	-- A chained job (the First Day) takes the next one on by itself, once the banner for this
+	-- one has had a moment.
+	if type(quest.autoNext) == "string" then
+		task.delay(QuestService.CHAIN_DELAY, function()
+			if player.Parent and (replica.Data.CurrentQuest or "") == "" then
+				QuestService.Accept(player, quest.autoNext)
+			end
+		end)
+	end
+end
+
+-- Seconds between a chained job's banner and the next job going up.
+QuestService.CHAIN_DELAY = 3
+
+--- A brand-new player (no job done, none on) starts the First Day: the Quartermaster's
+--- first job, which chains through the rest. Anyone who has done anything is left alone.
+function QuestService.StartFirstDay(player: Player): boolean
+	local replica = profileOf(player)
+	if not replica then
+		return false
+	end
+	local data = replica.Data
+	if (data.CurrentQuest or "") ~= "" or #(data.CompletedQuests or {}) > 0 then
+		return false
+	end
+	return QuestService.Accept(player, "WelcomeDowntown").ok == true
 end
 
 --- Does this kill count toward this objective?
@@ -589,6 +616,8 @@ end)
 -- Which objective kind each Hanami event advances.
 QuestService.EVENT_OBJECTIVES = {
 	rescue = "Rescue", inspect = "Inspect", collect = "Collect", survive = "Survive", boss = "Boss",
+	-- Downtown's: a shop counter opened (DistrictService), a till or machine robbed (StickupService).
+	shop = "Shop", stickup = "Stickup",
 }
 
 --- Does this event count toward this objective? Pulled out, like ObjectiveMatches, so the
@@ -613,6 +642,9 @@ function QuestService.EventMatches(obj: any, kind: string, detail: any): boolean
 			return false
 		end
 		if obj.site and detail.site ~= obj.site then
+			return false
+		end
+		if obj.panel and detail.panel ~= obj.panel then
 			return false
 		end
 		if obj.prefix and (type(detail.id) ~= "string" or detail.id:sub(1, #obj.prefix) ~= obj.prefix) then
@@ -1038,6 +1070,7 @@ end
 local function onPlayerAdded(player: Player)
 	task.spawn(function()
 		task.wait(4)
+		pcall(QuestService.StartFirstDay, player)
 		push(player)
 	end)
 end

@@ -10,6 +10,11 @@ Back to [[Home]] · related: [[Combat & Guns]], [[Crime & Heat]].
 - The **level road** (Y) shows what every level unlocks.
 - Guns unlock by level and price: Fang $4,500 (6), Hornet $7,500 (8), Redwood $20,000 (16), Carbine $38,000 (25), Warden $50,000 (30).
 
+## The First Day (new players)
+Started automatically on a first join, each step chaining into the next (see `autoNext` in
+`QuestConfig`): get Downtown → two crew in THE ALLEY → the ZEE TACTICS counter → rob a till → find
+the Fixer. Pays $1,750, 1,050 XP and 2 crystals in all.
+
 ## Quest givers
 - **The Quartermaster**: the first job, *Welcome to Downtown*, and work out in the world
 - **The Fixer** ([[Downtown]]): Rooftop Run → The Car Park → Alley Cats → Park Life → Full Court Press → The Top Floor → Turn Up the Heat → The Kingpin → repeatable Street Sweep

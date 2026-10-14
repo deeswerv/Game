@@ -6,6 +6,10 @@ tags: [history]
 What changed, newest first, grouped by day (from the commit history). Back to [[Home]] ·
 [[Roadmap]].
 
+## 14 Oct 2026
+- **The First Day**: new players are walked through Downtown in five chained steps (get there, the Alley, ZEE TACTICS, a till, the Fixer), each on the compass and paid ([[Progression & Economy]])
+- Full test sweep of every suite
+
 ## 13 Oct 2026
 - **The ZEE BANK armoured truck** from the [[Blender City Kit]]: barred windscreen, riveted strongbox, three axles, gold band, beacons. Its doors and vault lock stay parts, so the robbery still swings them; shoot it and its alarm goes off
 - **This Obsidian vault**: roadmap, changelog, playtest checklist, bugs page, maps, systems, gallery

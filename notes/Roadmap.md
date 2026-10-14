@@ -8,6 +8,8 @@ suggestion, not a promise. Back to [[Home]].
 
 ## Now
 - [ ] Playtest the overnight build in Studio and log what you find → [[Playtest Checklist]], [[Bugs & Feedback]]
+- [ ] Play the First Day as a brand-new player (a fresh account or a wiped profile) and time it
+- [ ] Squads: group up with friends, shared payouts, friends on the radar
 - [ ] Check the Blender meshes show in a live server (Game Settings → Security → **Allow Mesh / Image APIs**)
 
 ## Next
@@ -25,6 +27,7 @@ suggestion, not a promise. Back to [[Home]].
 - [ ] Seasonal events: cherry-blossom festival in Hanami, a Downtown block party
 
 ## Done (latest first)
+- [x] The First Day: a guided first ten minutes for new players (14 Oct)
 - [x] The ZEE BANK armoured truck from the Blender kit; shooting it sets off its alarm (13 Oct)
 - [x] This Obsidian vault (13 Oct)
 - [x] Car alarms: shoot a parked car and it goes off (8 Oct)

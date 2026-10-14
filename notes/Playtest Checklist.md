@@ -12,6 +12,11 @@ and put anything broken in [[Bugs & Feedback]]. Back to [[Home]].
 - [ ] The BUILD stamp (title screen bottom-right, or F4) matches the newest commit
 - [ ] Output window has no red errors in the first minute
 
+## The First Day (as a brand-new player)
+- [ ] On first join the job "Welcome to Downtown" is already up, with a compass marker
+- [ ] Each step goes up by itself a few seconds after the last: Alley → ZEE TACTICS → a till → the Fixer
+- [ ] Nothing is confusing or blocked; note how long it takes: ____ minutes
+
 ## The Blender kit ([[Blender City Kit]])
 - [ ] Downtown's cars, lamps, trees and benches look smooth (meshes), not boxy (parts)
 - [ ] If they look boxy in a live server: Game Settings → Security → **Allow Mesh / Image APIs**

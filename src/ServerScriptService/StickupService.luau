@@ -356,6 +356,10 @@ function StickupService.Rob(player: Player, part: BasePart): (boolean, string?)
 	})
 	print(("[Stickup] %s robbed %s for $%d (%d star%s)"):format(player.Name, describe(target), loot, stars,
 		if stars == 1 then "" else "s"))
+	local Quests = lazy("QuestService")
+	if Quests and Quests.RegisterEvent then
+		task.spawn(Quests.RegisterEvent, player, "stickup", { kind = target.kind })
+	end
 
 	task.spawn(function()
 		while not job.done do

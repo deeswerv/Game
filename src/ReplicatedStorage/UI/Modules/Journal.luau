@@ -131,7 +131,7 @@ local function chapterOf(quest): string
 	if quest.repeatable then
 		return "Contracts"
 	end
-	if quest.giver == "Fixer" or quest.id == "WelcomeDowntown" then
+	if quest.giver == "Fixer" or quest.firstDay then
 		return "Downtown"
 	end
 	if quest.giver == "Elder" or quest.giver == "Captain" then
