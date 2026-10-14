@@ -543,6 +543,8 @@ check(promptOn(bell) and promptOn(bell).ActionText == "Pray", "the bell's prompt
 -- ------------------------------------------------------------ Elder Hoshi --
 
 print("the story starts")
+-- A player here is long past their First Day (a fresh profile is put on it when it joins).
+profile.CurrentQuest = ""
 setLevel(10)
 player:SetAttribute("TowerCleared", nil)
 profile.TowerCleared = false
